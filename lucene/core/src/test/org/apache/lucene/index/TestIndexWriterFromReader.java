@@ -539,9 +539,9 @@ public class TestIndexWriterFromReader extends LuceneTestCase {
     IOUtils.close(r2, r3, dir);
   }
 
-  // The writer rolls back to the reader's segments. Here the reader's deletes file isn't in any
-  // commit, so once the writer merged that segment away, only the rollback point references the
-  // file, which must still exist on rollback, even when all commits are kept.
+  // The writer rolls back to the reader's segments. Here the reader's deletes file isn't part of
+  // any commit, so once the writer merged that segment away, only a rollback still needs the file.
+  // It must still exist then, even when all commits are kept.
   public void testRollbackAfterMergingAwayReaderSegments() throws Exception {
     Directory dir = newDirectory();
     IndexWriter w =

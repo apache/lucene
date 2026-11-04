@@ -47,23 +47,24 @@ import org.apache.lucene.util.ThreadInterruptedException;
 
 /**
  * Randomly changes, reopens and commits an index, pauses commits so that readers are opened while
- * they are in progress, and closes, rolls back and reopens the writer. Checks these properties of
+ * they are in progress, and closes, rolls back and reopens the writer. Checks these rules for
  * reader versions ({@link DirectoryReader#getVersion()}) and {@link DirectoryReader#isCurrent()}:
  *
  * <ol>
- *   <li>Readers with the same version see the same documents, also across writers. Only a rollback
- *       (or closing a writer that doesn't commit on close) forks the history: then versions above
- *       the latest commit's may be used again, for different documents.
- *   <li>Versions don't go back: reopening a reader gives a higher version, a writer's readers have
- *       at least the version of earlier readers, and after a writer is closed normally, so do the
- *       next writer's readers.
- *   <li>A current reader points at the latest commit, or, if its writer was opened on another
- *       commit and didn't commit yet, at that commit.
- *   <li>A current reader can't be reopened, and a reader that isn't current can be reopened, if not
+ *   <li>Readers with the same version see the same documents, also across writers. The only
+ *       exception is after a rollback, or after closing a writer that doesn't commit on close: the
+ *       writer's uncommitted changes are lost, so versions above the latest commit's may be used
+ *       again, for different documents.
+ *   <li>Versions never go down: reopening a reader gives a higher version, each reader of a writer
+ *       has at least the version of its earlier readers, and after a writer is closed normally, so
+ *       do the next writer's readers.
+ *   <li>A current reader uses the latest commit, or, if its writer was opened on an older commit
+ *       and didn't commit yet, that commit.
+ *   <li>A current reader can't be reopened. A reader that isn't current can be reopened, if not
  *       right away then on the next try.
  *   <li>A writer without uncommitted changes doesn't commit anything.
- *   <li>Once the index doesn't change anymore, refreshing, and committing when there are
- *       uncommitted changes, stops committing.
+ *   <li>Once the index stops changing, refreshing, and committing when there are uncommitted
+ *       changes, soon stop writing new commits.
  *   <li>Opening a writer on an NRT reader's commit either works, or fails because that commit was
  *       deleted.
  * </ol>

@@ -537,7 +537,7 @@ public final class StandardDirectoryReader extends DirectoryReader {
       SegmentInfos sis = SegmentInfos.readLatestCommit(directory);
 
       // we loaded SegmentInfos from the directory. Also compare generations: a reader opened while
-      // a commit was in progress can have the commit's version but point at the previous commit.
+      // a commit was in progress can have the commit's version but still use the previous commit.
       return sis.getVersion() == segmentInfos.getVersion()
           && sis.getGeneration() == segmentInfos.getLastGeneration();
     } else {

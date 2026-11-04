@@ -60,8 +60,8 @@ public class TestRollback extends LuceneTestCase {
   }
 
   // A writer opened on an older commit rolls back to that commit's segments. The default deletion
-  // policy deletes that commit when the writer is created, so once the writer merged the segments
-  // away, only the rollback point references their files, which must still exist on rollback.
+  // policy deletes that commit when the writer is created. Once the writer merged the segments
+  // away, only a rollback still needs their files, so they must still exist then.
   public void testRollbackAfterMergingAwayDeletedStartingCommit() throws Exception {
     Directory dir = newDirectory();
     IndexWriter w =

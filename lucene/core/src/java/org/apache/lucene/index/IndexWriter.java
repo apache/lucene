@@ -272,16 +272,17 @@ public class IndexWriter
   private final AtomicLong changeCount = new AtomicLong();
   private volatile long lastCommitChangeCount; // last changeCount that was committed
 
-  // list of segmentInfo we will fallback to if the commit fails. The deleter holds a reference on
-  // their files, because the deletion policy may delete the commit they come from:
+  // list of segmentInfo we will fallback to if the commit fails. We keep their files from being
+  // deleted, because the deletion policy may delete the commit they come from:
   private List<SegmentCommitInfo> rollbackSegments;
 
   // set when a commit is pending (after prepareCommit() & before commit())
   private volatile SegmentInfos pendingCommit;
-  // Highest version of any NRT reader this writer opened, used by finishCommit; guarded by this:
+  // Highest version of any NRT reader this writer opened. finishCommit uses it to tell whether a
+  // reader was opened during the commit. Only accessed while synchronized on this writer:
   private long lastNRTReaderVersion = -1;
-  // Version that finishCommit bumped to without counting it as a change, or -1 if a commit was
-  // completed since; guarded by this:
+  // The version that finishCommit increased to, which no commit saved yet, or -1. close() commits
+  // if a reader got this version. Only accessed while synchronized on this writer:
   private long uncommittedBumpedVersion = -1;
   private volatile long pendingSeqNo;
   private volatile long pendingCommitChangeCount;
@@ -863,8 +864,8 @@ public class IndexWriter
                     globalFieldNumberMap,
                     bufferedUpdatesStream.getCompletedDelGen(),
                     infoStream)) {
-                  // bump SIS.version too: doc values updates become visible to NRT readers only
-                  // once they are written
+                  // also increase the version: NRT readers only see doc values updates once they
+                  // are written
                   checkpoint();
                 }
               }
@@ -1077,9 +1078,9 @@ public class IndexWriter
           segmentInfos.updateGenerationVersionAndCounter(reader.writer.segmentInfos);
         }
 
-        // Roll back to the reader's segments, like when opening a commit, and not to the reader's
-        // commit: this writer's deletion policy may delete that commit when the deleter is created
-        // below, together with the files of segments only it references:
+        // rollback() returns to the reader's segments, as when opening a commit, and not to the
+        // reader's commit: this writer's deletion policy may delete that commit below, together
+        // with the files that only it uses:
         rollbackSegments = segmentInfos.createBackupSegmentInfos();
       } else {
         // Init from either the latest commit point, or an explicit prior commit point:
@@ -1338,9 +1339,10 @@ public class IndexWriter
         flush(true, true);
         waitForMerges();
         synchronized (this) {
-          // If an NRT reader got a version that finishCommit bumped to, commit even without other
-          // changes, so the next writer on this index doesn't give that version to a reader with
-          // different contents:
+          // If an NRT reader got a version that no commit saved yet (see finishCommit), commit even
+          // without other changes. Otherwise the next writer on this index would start from the
+          // older saved version, and could give the same version to a reader with different
+          // documents:
           if (uncommittedBumpedVersion != -1 && lastNRTReaderVersion >= uncommittedBumpedVersion) {
             changed();
           }
@@ -4331,12 +4333,13 @@ public class IndexWriter
             // Carry over generation to our master SegmentInfos:
             segmentInfos.updateGeneration(pendingCommit);
             // A reader opened while this commit was in progress has the commit's version (or a
-            // higher one) but points at the previous segments_N, which may be deleted now. Bump the
-            // version so that reader isn't current anymore, and reopening it gives a reader with a
-            // new version. Only bump if such a reader exists, so a reader opened right after the
-            // commit usually keeps the commit's version. The bump isn't counted as a change, so
-            // hasUncommittedChanges() stays false and commits that run when it is true don't commit
-            // forever on an idle index. Instead, close() commits if a reader got the new version.
+            // higher one), but uses the previous segments_N file, which may be deleted now. So
+            // increase the version: that reader is then no longer current, and reopening it gives a
+            // reader with a new version. Only do this if such a reader was opened, so a reader
+            // opened right after a commit usually has the commit's version.
+            // This doesn't count as a change, so hasUncommittedChanges() stays false. Otherwise,
+            // code that commits whenever there are uncommitted changes would keep committing an
+            // index that doesn't change. Instead, close() commits if a reader got the new version.
             uncommittedBumpedVersion = -1;
             if (lastNRTReaderVersion >= pendingCommit.getVersion()) {
               segmentInfos.changed();

@@ -329,8 +329,8 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
     IOUtils.close(reader1, reader2, dir);
   }
 
-  // GITHUB#16900: flush writes pending doc values updates to disk, which must make NRT readers
-  // opened before the updates non-current
+  // GITHUB#16900: flush writes pending doc values updates to disk, so NRT readers opened before the
+  // updates must not be current anymore
   public void testReopenAfterFlush() throws Exception {
     Directory dir = newDirectory();
     IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));
@@ -369,8 +369,8 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
     IOUtils.close(reader1, reader2, writer, dir);
   }
 
-  // same as above, but the updates are written when applying the next updates packet because the
-  // reader pool uses more than half of the RAM buffer
+  // same as above, but the updates are written when the next updates are applied, because pending
+  // updates use more than half of the RAM buffer
   public void testReopenAfterUpdatesWrittenUnderRAMPressure() throws Exception {
     Directory dir = newDirectory();
     IndexWriterConfig conf = newIndexWriterConfig(new MockAnalyzer(random()));
@@ -384,7 +384,7 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
     writer.getConfig().setRAMBufferSizeMB(0.00000001);
     int flushDeletesCount = writer.getFlushDeletesCount();
     writer.updateNumericDocValue(new Term("id", "doc-0"), "val", 10L);
-    // applying this packet writes the previous one's updates, and leaves none pending
+    // applying these updates writes the earlier ones to disk, and leaves none pending
     writer.updateNumericDocValue(new Term("id", "doc-1"), "val", 20L);
     assertEquals(flushDeletesCount + 2, writer.getFlushDeletesCount());
 

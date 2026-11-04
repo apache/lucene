@@ -355,8 +355,9 @@ final class ReaderPool implements Closeable {
         boolean changed = rld.writeLiveDocs(directory);
         if (rld.writeFieldUpdates(
             directory, fieldNumbers, completedDelGenSupplier.getAsLong(), infoStream)) {
-          // Unlike deletes, NRT readers only see doc values updates once they are written. Writing
-          // them also clears the pending updates that IW#nrtIsCurrent checks, so bump the version:
+          // Unlike deletes, NRT readers only see doc values updates once they are written to disk.
+          // Writing them also clears the pending updates that IndexWriter#nrtIsCurrent checks, so
+          // increase the version, or readers opened before would still look current:
           infos.changed();
           changed = true;
         }

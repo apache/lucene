@@ -47,18 +47,17 @@ import org.apache.lucene.util.ThreadInterruptedException;
 
 /**
  * Tests NRT readers opened while a commit is in progress, that is, after the commit started but
- * before its segments_N file is written.
+ * before it wrote its segments_N file.
  *
- * <p>Checks two things:
+ * <p>Checks that:
  *
  * <ul>
- *   <li>If a reader says it is {@link DirectoryReader#isCurrent() current}, it points at the latest
- *       commit, not at an older segments_N that may already be deleted.
+ *   <li>A reader that says it is {@link DirectoryReader#isCurrent() current} uses the latest
+ *       commit, not an older segments_N file that may already be deleted.
  *   <li>Reopening a reader never returns a different reader with the same {@link
  *       DirectoryReader#getVersion() version}. {@link SearcherLifetimeManager} relies on this.
- *   <li>Once a writer is closed normally (not rolled back), a later writer on the same index never
- *       gives a version that a reader of the earlier writer had to a reader with different
- *       contents.
+ *   <li>After a writer is closed normally (not rolled back), the next writer on the same index
+ *       never gives a reader a version that an earlier reader had, with different documents.
  * </ul>
  */
 public class TestNRTReaderDuringCommit extends LuceneTestCase {
@@ -209,9 +208,9 @@ public class TestNRTReaderDuringCommit extends LuceneTestCase {
 
   /**
    * Describes the documents a reader sees: the id and doc value of each live document, sorted by
-   * id. Doesn't depend on how the documents are split into segments, since a merge doesn't change
-   * the version of the readers that see it (for example, a merge on {@link
-   * IndexWriterConfig#setMaxFullFlushMergeWaitMillis refresh}).
+   * id. Doesn't depend on how the documents are split into segments, because a reader can see a
+   * merge without getting a new version (for example, a merge when opening a reader, see {@link
+   * IndexWriterConfig#setMaxFullFlushMergeWaitMillis}).
    */
   static String contents(DirectoryReader reader) throws IOException {
     TreeMap<String, Long> docs = new TreeMap<>();
@@ -293,8 +292,8 @@ public class TestNRTReaderDuringCommit extends LuceneTestCase {
   }
 
   /**
-   * Returns a reader of {@code writer} whose version is higher than the latest commit's, because a
-   * reader was opened during that commit. Makes no changes after that commit.
+   * Returns a reader of {@code writer} whose version is higher than the latest commit's, because
+   * another reader was opened during that commit. Makes no changes after that commit.
    */
   private static DirectoryReader readerAheadOfLatestCommit(
       BlockingSyncDirectory dir, IndexWriter writer, boolean twoPhaseCommit) throws Exception {
@@ -579,11 +578,11 @@ public class TestNRTReaderDuringCommit extends LuceneTestCase {
   }
 
   /**
-   * If a reader was opened during a commit, the version is bumped when the commit finishes. The
-   * bump isn't an uncommitted change, so periodic "commit if there are uncommitted changes" loops
-   * don't keep committing an idle index. But if a reader got the bumped version, closing the writer
-   * commits, so the next writer doesn't reuse that version. If no reader got it, closing the writer
-   * doesn't commit.
+   * If a reader was opened during a commit, the writer increases the version when the commit
+   * finishes. This doesn't count as an uncommitted change, so code that commits whenever there are
+   * uncommitted changes doesn't keep committing an index that doesn't change. But if a reader got
+   * the new version, closing the writer commits, so the next writer doesn't reuse that version. If
+   * no reader got it, closing the writer doesn't commit.
    */
   public void testCloseCommitsBumpedVersionOnlyIfAReaderGotIt() throws Exception {
     for (boolean readerGotBumpedVersion : new boolean[] {false, true}) {
@@ -625,11 +624,10 @@ public class TestNRTReaderDuringCommit extends LuceneTestCase {
   }
 
   /**
-   * A reader opened during a commit must not be current once the commit finished and the writer is
-   * closed either. Then {@link DirectoryReader#isCurrent()} checks the reader against the latest
-   * commit on disk instead of asking the writer. Covers both a reader opened during the commit's
-   * file sync and one opened between {@link IndexWriter#prepareCommit()} and {@link
-   * IndexWriter#commit()}.
+   * Once the writer is closed, {@link DirectoryReader#isCurrent()} compares the reader with the
+   * latest commit on disk instead of asking the writer. A reader opened during a commit must not be
+   * current then either. Covers both a reader opened during the commit's file sync and one opened
+   * between {@link IndexWriter#prepareCommit()} and {@link IndexWriter#commit()}.
    */
   public void testReaderOpenedDuringCommitOnceWriterIsClosed() throws Exception {
     for (boolean twoPhaseCommit : new boolean[] {false, true}) {
@@ -684,11 +682,11 @@ public class TestNRTReaderDuringCommit extends LuceneTestCase {
   }
 
   /**
-   * A writer can give a reader a version that is higher than the latest commit's, if a reader was
-   * opened during that commit. If the writer is then closed without further changes, nothing is
-   * committed, so that version never reaches the index. The next writer on the index starts from
-   * the latest commit's version, and its first change must not give a reader the same version as
-   * the earlier writer's reader, with different contents.
+   * A writer can give a reader a version that is higher than the latest commit's, if another reader
+   * was opened during that commit. Closing the writer without other changes must still save that
+   * version. Otherwise the next writer starts from the latest commit's version, and its first
+   * change could give a reader the same version as the earlier writer's reader, with different
+   * documents.
    */
   public void testNextWriterDoesNotReuseVersion() throws Exception {
     for (boolean twoPhaseCommit : new boolean[] {false, true}) {
@@ -743,8 +741,7 @@ public class TestNRTReaderDuringCommit extends LuceneTestCase {
 
   /**
    * Same as {@link #testNextWriterDoesNotReuseVersion}, but the next writer opens the index with
-   * {@link OpenMode#CREATE}, which empties the index and bumps the version once, without any other
-   * change.
+   * {@link OpenMode#CREATE}, which empties the index and increases the version only once.
    */
   public void testNextWriterInCreateModeDoesNotReuseVersion() throws Exception {
     BlockingSyncDirectory dir = new BlockingSyncDirectory(newDirectory());
@@ -803,8 +800,8 @@ public class TestNRTReaderDuringCommit extends LuceneTestCase {
   }
 
   /**
-   * Merges selected segments when a commit or getReader runs, so the commit or getReader waits for
-   * the merge.
+   * On the given trigger (a commit or opening a reader), merges all segments that aren't already
+   * being merged, so the commit or the new reader waits for that merge.
    */
   static final class MergeOnTriggerPolicy extends FilterMergePolicy {
     private final MergeTrigger trigger;
@@ -837,10 +834,10 @@ public class TestNRTReaderDuringCommit extends LuceneTestCase {
   }
 
   /**
-   * With {@link IndexWriterConfig#setMaxFullFlushMergeWaitMillis}, a commit releases the writer's
-   * lock while it waits for merges, after it took the SegmentInfos to commit and before it writes
-   * pending_segments_N. A reader opened then must not be current once the commit finished, both
-   * when it was opened before the commit's merge finished and after.
+   * With {@link IndexWriterConfig#setMaxFullFlushMergeWaitMillis}, a commit waits for merges
+   * without holding the writer's lock, after it picked what to commit and before it writes any
+   * segments_N file. A reader opened while it waits must not be current once the commit finished,
+   * whether it was opened before or after the merge finished.
    */
   public void testReaderOpenedWhileCommitWaitsForMerges() throws Exception {
     for (boolean afterMerge : new boolean[] {false, true}) {
@@ -913,10 +910,10 @@ public class TestNRTReaderDuringCommit extends LuceneTestCase {
   }
 
   /**
-   * A commit whose only change is new commit data still writes a new segments_N, so a reader opened
-   * during it must not be current afterwards, and reopening it gives the same documents with a
-   * higher version. Commit data that doesn't increment the version isn't visible to NRT readers, so
-   * setting it alone doesn't make a reader stale.
+   * A commit whose only change is new commit user data still writes a new segments_N file, so a
+   * reader opened during it must not be current afterwards, and reopening it gives the same
+   * documents with a higher version. Setting commit user data without increasing the version
+   * doesn't make a reader out of date, because NRT readers don't see it.
    */
   public void testReaderOpenedDuringCommitOfOnlyCommitData() throws Exception {
     for (boolean doIncrementVersion : new boolean[] {false, true}) {
@@ -945,11 +942,11 @@ public class TestNRTReaderDuringCommit extends LuceneTestCase {
   }
 
   /**
-   * A writer can be opened on an NRT reader's commit once the reader's writer is closed. A reader
-   * opened during a commit points at the previous segments_N. A reader opened after that commit has
-   * the bumped version, so closing the writer commits again, and the reader points at the previous
-   * segments_N too. If the deletion policy deleted it, opening a writer on it must fail cleanly,
-   * and if not, it must work and continue from the earlier writer's version.
+   * Once a writer is closed, a new writer can be opened on the commit of one of its NRT readers.
+   * Here that commit isn't the latest one: either the reader was opened during a commit, or it got
+   * the version that the writer increased to after that commit, so closing the writer committed
+   * again. If the deletion policy deleted the reader's commit, opening a writer on it must fail
+   * with a clear error. Otherwise it must work, and continue after the earlier writer's versions.
    */
   public void testWriterOpenedOnCommitOfReaderOpenedDuringCommit() throws Exception {
     for (boolean keepAllCommits : new boolean[] {false, true}) {
@@ -1071,8 +1068,8 @@ public class TestNRTReaderDuringCommit extends LuceneTestCase {
             writer.prepareCommit();
             prepared = true;
           } else {
-            // returns once the commit is blocked in its file sync, or done if it had nothing to
-            // sync
+            // returns once the commit is paused in its file sync, or is done because it had nothing
+            // to sync
             CountDownLatch blockedOrDone = new CountDownLatch(1);
             dir.blockNextCommitSync(random().nextInt(5) == 0, blockedOrDone);
             BackgroundCommit commit = new BackgroundCommit(writer, blockedOrDone);
