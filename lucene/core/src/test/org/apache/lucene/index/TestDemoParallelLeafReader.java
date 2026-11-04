@@ -682,11 +682,6 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
         public void add(OneMerge merge) {
           super.add(new ReindexingOneMerge(merge.segments));
         }
-
-        @Override
-        public String segString(Directory dir) {
-          return "ReindexingMergeSpec(" + super.segString(dir) + ")";
-        }
       }
 
       MergeSpecification wrap(MergeSpecification spec) {

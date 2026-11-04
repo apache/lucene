@@ -239,7 +239,7 @@ public class TestSearchBeyondMaxInt extends LuceneTestCase {
     try (BeyondMaxInt b = buildReaderBeyondMaxInt()) {
       MultiReader reader = b.reader();
       IndexSearcher searcher = new IndexSearcher(reader);
-      long count = searcher.count(new MatchAllDocsQuery());
+      long count = searcher.count(MatchAllDocsQuery.INSTANCE);
       assertTrue("count should exceed Integer.MAX_VALUE: " + count, count > Integer.MAX_VALUE);
       // Every doc is live across the inflated leaves and the real one, so the count is maxDoc.
       assertEquals(reader.maxDoc(), count);

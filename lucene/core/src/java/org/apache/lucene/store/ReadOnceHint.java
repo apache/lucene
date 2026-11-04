@@ -16,7 +16,9 @@
  */
 package org.apache.lucene.store;
 
-/** A {@link IOContext.FileOpenHint} indicating the file will only be read once, sequentially */
+/**
+ * A {@link IOContext.FileOpenHint} indicating the file will only be read once, by a single thread
+ */
 public enum ReadOnceHint implements IOContext.FileOpenHint {
   INSTANCE
 }

@@ -338,7 +338,7 @@ public class TestTopFieldCollectorEarlyTermination extends LuceneTestCase {
       // numHits=1, threshold=1: want the single smallest value overall, which is 1 (last docid of
       // leaf B). Correct answer is 1; the bug drops it and returns 50 (from leaf A).
       TopFieldCollectorManager manager = new TopFieldCollectorManager(ascSort, 1, null, 1);
-      TopFieldDocs td = searcher.search(new MatchAllDocsQuery(), manager);
+      TopFieldDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, manager);
 
       assertEquals(1, td.scoreDocs.length);
       long topValue = (long) ((FieldDoc) td.scoreDocs[0]).fields[0];
@@ -373,7 +373,7 @@ public class TestTopFieldCollectorEarlyTermination extends LuceneTestCase {
     try (DirectoryReader r = DirectoryReader.open(d)) {
       IndexSearcher searcher = new IndexSearcher(r);
       return searcher.search(
-          new MatchAllDocsQuery(), new TopFieldCollectorManager(sort, numHits, after, 5));
+          MatchAllDocsQuery.INSTANCE, new TopFieldCollectorManager(sort, numHits, after, 5));
     }
   }
 
@@ -527,7 +527,8 @@ public class TestTopFieldCollectorEarlyTermination extends LuceneTestCase {
       assertTrue(leaves >= numSegments);
       IndexSearcher searcher = new IndexSearcher(r);
       TopFieldDocs td =
-          searcher.search(new MatchAllDocsQuery(), new TopFieldCollectorManager(sort, 5, null, 5));
+          searcher.search(
+              MatchAllDocsQuery.INSTANCE, new TopFieldCollectorManager(sort, 5, null, 5));
       assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, td.totalHits.relation());
       // each segment stops shortly after the threshold, rather than only the first one
       assertTrue(td.totalHits.value() < leaves * 20);
@@ -572,7 +573,8 @@ public class TestTopFieldCollectorEarlyTermination extends LuceneTestCase {
       IndexSearcher searcher = new IndexSearcher(r);
       TopFieldDocs td =
           searcher.search(
-              new MatchAllDocsQuery(), new TopFieldCollectorManager(sort, numHits, null, numHits));
+              MatchAllDocsQuery.INSTANCE,
+              new TopFieldCollectorManager(sort, numHits, null, numHits));
       assertEquals(numHits, td.scoreDocs.length);
       for (int i = 0; i < numHits; i++) {
         assertEquals(i, (long) ((FieldDoc) td.scoreDocs[i]).fields[0]);
