@@ -496,9 +496,8 @@ public class TestIndexWriterFromReader extends LuceneTestCase {
   }
 
   // The new writer's deletion policy deletes the reader's commit when the writer is created,
-  // because
-  // it isn't the latest commit. Rolling back the new writer must not delete that commit's files
-  // again.
+  // because it isn't the latest commit. Rolling back the new writer must not delete that commit's
+  // files again.
   public void testRollbackAfterReaderCommitIsDeleted() throws Exception {
     Directory dir = newDirectory();
     IndexWriterConfig iwc =

@@ -4331,14 +4331,12 @@ public class IndexWriter
             // Carry over generation to our master SegmentInfos:
             segmentInfos.updateGeneration(pendingCommit);
             // A reader opened while this commit was in progress has the commit's version (or a
-            // higher one) but points at the previous segments_N, which may be deleted now. Bump
-            // the version so that reader isn't current anymore, and reopening it gives a reader
-            // with a new version.
-            // Only bump if such a reader exists, so a reader opened right after the commit usually
-            // keeps the commit's version.
-            // The bump isn't counted as a change, so hasUncommittedChanges() stays false and
-            // commits that run when it is true don't commit forever on an idle index. Instead,
-            // close() commits if a reader got the bumped version.
+            // higher one) but points at the previous segments_N, which may be deleted now. Bump the
+            // version so that reader isn't current anymore, and reopening it gives a reader with a
+            // new version. Only bump if such a reader exists, so a reader opened right after the
+            // commit usually keeps the commit's version. The bump isn't counted as a change, so
+            // hasUncommittedChanges() stays false and commits that run when it is true don't commit
+            // forever on an idle index. Instead, close() commits if a reader got the new version.
             uncommittedBumpedVersion = -1;
             if (lastNRTReaderVersion >= pendingCommit.getVersion()) {
               segmentInfos.changed();
