@@ -16,12 +16,12 @@
  */
 package org.apache.lucene.store;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -211,12 +211,11 @@ public interface IOContext {
    * @throws IllegalArgumentException if two of the given hints are of the same type
    */
   default IOContext overrideHints(FileOpenHint... hints) {
-    Set<Class<?>> overridden =
-        Arrays.stream(hints).map(Object::getClass).collect(Collectors.toSet());
-    return withHints(
-        Stream.concat(
-                hints().stream().filter(hint -> overridden.contains(hint.getClass()) == false),
-                Arrays.stream(hints))
-            .toArray(FileOpenHint[]::new));
+    List<FileOpenHint> merged = new ArrayList<>(hints());
+    for (FileOpenHint hint : hints) {
+      merged.removeIf(existing -> existing.getClass() == hint.getClass());
+    }
+    Collections.addAll(merged, hints);
+    return withHints(merged.toArray(FileOpenHint[]::new));
   }
 }
