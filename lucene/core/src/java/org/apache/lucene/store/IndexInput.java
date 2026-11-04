@@ -17,6 +17,7 @@
 package org.apache.lucene.store;
 
 import java.io.Closeable;
+import java.io.EOFException;
 import java.io.IOException;
 import java.util.Optional;
 import org.apache.lucene.codecs.CompoundFormat;
@@ -228,6 +229,69 @@ public abstract class IndexInput extends DataInput implements Closeable {
    */
   public boolean prefetch(long offset, long length) throws IOException {
     return false;
+  }
+
+  /**
+   * Optional method: prefetch {@code [offset, offset+length)} and, if this implementation can serve
+   * those bytes from a buffer of its own, return an {@link IndexInput} over exactly them.
+   *
+   * <p>Where {@link #prefetch} only hints, this returns the input through which the prefetched
+   * bytes are to be read. An implementation backed by asynchronous I/O may return before the read
+   * has completed, in which case the first read on the returned input blocks until the bytes are
+   * available. Callers can therefore request many ranges before reading any of them, which lets an
+   * implementation issue them as a batch.
+   *
+   * <p>A non-null returned input is positioned at its beginning and has a {@link #length()} of
+   * {@code length}. It must be read and closed by the thread that called this method, and closed
+   * even if it is never read. Closing may block until an outstanding read into its buffer has
+   * completed.
+   *
+   * <p>A {@code null} return means this implementation has no buffer of its own to hand out, and
+   * the caller should read the bytes as it normally would. It is a property of the implementation,
+   * not of the call: an implementation that returns an input must do so on every call or throw. In
+   * particular it must not return {@code null} when it runs out of buffers, descriptors or queue
+   * capacity, because the caller cannot tell that apart from "unsupported". Such conditions throw
+   * {@link IOException}.
+   *
+   * <p>The default implementation checks the range and returns {@code null}. It does not call
+   * {@link #prefetch}; a caller that gets {@code null} is expected to call {@link #prefetch} for
+   * the range it wants, which may be wider than this one. An implementation that only advises the
+   * operating system, such as a memory-mapped one, should keep the default.
+   *
+   * @param rangeDescription description of the returned input, as for {@link #slice}
+   * @param offset start offset
+   * @param length the number of bytes to prefetch
+   * @return an input over the prefetched bytes, or {@code null} if this implementation has no
+   *     buffer to hand out
+   * @throws EOFException if {@code [offset, offset+length)} is not wholly within this input
+   * @throws IOException if the prefetch cannot be started, including when the implementation is out
+   *     of the resources it needs to buffer the range
+   */
+  public IndexInput prefetchRange(String rangeDescription, long offset, long length)
+      throws IOException {
+    checkRange(offset, length);
+    return null;
+  }
+
+  /**
+   * Verifies that {@code [offset, offset+length)} lies within this input, for {@link
+   * #prefetchRange} implementations. A zero-length range at the end is permitted, as for {@link
+   * #slice}.
+   */
+  protected final void checkRange(long offset, long length) throws IOException {
+    final long fileLength = length();
+    // Compared against the bytes remaining, since offset + length could overflow.
+    if (offset < 0 || length < 0 || length > fileLength - offset) {
+      throw new EOFException(
+          "prefetch range out of bounds: offset="
+              + offset
+              + ",length="
+              + length
+              + ",fileLength="
+              + fileLength
+              + ": "
+              + this);
+    }
   }
 
   /**
