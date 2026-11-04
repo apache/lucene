@@ -19,7 +19,11 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+* GITHUB#16806: HNSW searches track the visited nodes of a large graph in a hash set instead of a
+  bit set sized to the graph, which makes merges into large segments faster. (Ankur Goel)
+
+* GITHUB#16956: Merges that reuse an existing HNSW graph no longer read the query vector of every
+  copied node, which slowed the graph copy by 2.4x to 10x in one benchmark. (Ankur Goel)
 
 Bug Fixes
 ---------------------
@@ -33,6 +37,16 @@ Other
 
 API Changes
 ---------------------
+* GITHUB#16962: Removed usage of deprecated no-args constructors of MatchAllDocsQuery
+  and MatchNoDocsQuery. (Andrea Selva)
+
+* GITHUB#16964: Remove the deprecated FixBrokenOffsetsFilter and FixBrokenOffsetsFilterFactory
+  (SPI name "fixBrokenOffsets"). Fix the token filters that produce broken offsets instead.
+  (Chris Parrinello)
+
+* GITHUB#16963: Remove the deprecated MergePolicy.MergeSpecification#segString(Directory) method.
+  Use MergeSpecification#toString() instead. (Christoph Büscher)
+
 * GITHUB#16741: Lower the minimum supported major version from 10 to 9. Indexes created with 9.x
   remain fully supported in Lucene 11, no reindexing required. (Luca Cavanna)
 
@@ -261,6 +275,12 @@ Improvements
 Optimizations
 ---------------------
 
+* GITHUB#16746: Speed up decoding long overlapping LZ4 matches using bulk copies
+  of initialized bytes. (Andre Kurait)
+
+* GITHUB#16881: UnifiedHighlighter converts each term to UTF-16 once instead of once per automaton,
+  which speeds up highlighting of queries with many multi-term clauses. (Eugene Rizhkov)
+
 * GITHUB#16794: Concurrent HNSW merges now join the other deletion-free graphs into the base graph
   through their join sets, as serial merges have done since GITHUB#14331, instead of inserting all
   their vectors with a full search. Graphs now match the serial merge: slightly lower recall at the
@@ -313,8 +333,14 @@ Optimizations
   disk, opening soft-deletes readers, and sandbox FAISS KNN search over segments with deletions.
   (Costin Leau)
 
+* GITHUB#15902: Improve DiversifyingChildren performance by using primitive arrays (Alessandro Benedetti)
+
 Bug Fixes
 ---------------------
+* GITHUB#16867: Apply buffered soft-update/delete terms before the global delete buffer reaches the 2GB
+  addressing limit of its ByteBlockPool, and stall indexing if the limit is hit during a full flush.
+  (Alan Woodward)
+
 * GITHUB#16441: MultiFieldQueryParser + per-field boosts produce wrong Occur under AND default operator (Egor Potemkin, Olivier Jaquemet)
 
 * GITHUB#16443: MultiFieldQueryParser: default operator is not honored between term positions (Egor Potemkin, Olivier Jaquemet)
@@ -381,6 +407,11 @@ Bug Fixes
 
 * GITHUB#16926: RescoreTopNQuery no longer throws when its inner query matches no documents.
   (Greg Miller)
+
+* GITHUB#16947: Disable index-sort early termination for indexes with parent-child docs.  Index sorts
+  only apply to parent documents so naive early termination checks can read the sort value from a child
+  document as meaning no later documents would be competitive, and incorrectly miss parent documents.
+  (Alan Woodward)
 
 Changes in Runtime Behavior
 ---------------------
@@ -471,6 +502,10 @@ Other
 * GITHUB#16082: Added a new JMH microbenchmark for DiversifyingChildrenFloatKnnVectorQuery. (Anna Ruggero via Alessandro Benedetti)
 
 * GITHUB#16170: Add JMH benchmarks for int4BitDotProduct and int4DibitDotProduct. (Vignesh)
+
+* GITHUB#16858: Add join benchmarks to the benchmark module, comparing JoinUtil term, numeric and
+  global ordinals joins with ToParentBlockJoinQuery on a 1:M products/skus dataset, including
+  incremental updates with NRT reopen. (Mikhail Khludnev)
 
 * GITHUB#16279: Add JMH benchmarks comparing read I/O strategies under memory pressure. (neoremind)
 
@@ -582,7 +617,8 @@ Improvements
 
 * GITHUB#7820: CheckIndex now reports which segment's .si file could not be read, rather than only that
   a commit point was unreadable. SegmentInfos throws CorruptSegmentInfoException, carrying the segment
-  name and the underlying failure. (Gokul Manoj, Serhiy Bzhezytskyy)
+  name and the underlying failure, when a .si file is missing or corrupt; other I/O failures, such as
+  transient ones, propagate unchanged. (Gokul Manoj, Serhiy Bzhezytskyy, Alex Reelsen)
 
 * GITHUB#16292: Introduce TermGroupFacetCollectorManager to enable concurrent search with grouped
   faceting, removing usages of the deprecated IndexSearcher#search(Query, Collector).
@@ -994,6 +1030,9 @@ New Features
 
 Improvements
 ---------------------
+
+* GITHUB#15711: DirectoryTaxonomyReader.getBulkPath() now uses getPathFromCache. (Shubham Sharma)
+
 * GITHUB#15948: Improve BayesianScoreQuery and LogOddsFusionQuery with base rate prior,
   weighted Logarithmic Opinion Pooling, and auto parameter estimation. Add
   BayesianScoreEstimator for estimating sigmoid calibration parameters from corpus
@@ -1007,8 +1046,6 @@ Improvements
 
 * GITHUB#15823: Implement method to add all stream elements into a PriorityQueue.
   Call PriorityQueue#addAll with mapped stream in DisjunctionMaxBulkScorer's constructor. (Zhou Hui)
-
-* GITHUB#15711: DirectoryTaxonomyReader.getBulkPath() now uses getPathFromCache. (Shubham Sharma)
 
 * GITHUB#15757: Better skipper-based numeric sort pruning from the start of segments (Alan Woodward)
 
@@ -1112,8 +1149,6 @@ Optimizations
 * GITHUB#15886: Cache frozen FieldType to skip redundant schema validation. (Tim Brooks)
 
 * GITHUB#15942: Skip max score computation when sorting by relevance in BlockGroupingCollector (Binlong Gao)
-
-* GITHUB#15902: Improve DiversifyingChildren performance by using primitive arrays(Alessandro Benedetti)
 
 * GITHUB#15954: Use SkipBlockRangeIterator as the two-phase approximation in SortedNumericDocValuesRangeQuery. (Sagar Upadhyaya)
 
