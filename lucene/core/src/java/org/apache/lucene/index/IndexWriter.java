@@ -280,6 +280,9 @@ public class IndexWriter
   private volatile SegmentInfos pendingCommit;
   // Highest version of any NRT reader this writer opened, used by finishCommit; guarded by this:
   private long lastNRTReaderVersion = -1;
+  // Version that finishCommit bumped to without counting it as a change, or -1 if a commit was
+  // completed since; guarded by this:
+  private long uncommittedBumpedVersion = -1;
   private volatile long pendingSeqNo;
   private volatile long pendingCommitChangeCount;
 
@@ -1334,6 +1337,14 @@ public class IndexWriter
 
         flush(true, true);
         waitForMerges();
+        synchronized (this) {
+          // If an NRT reader got a version that finishCommit bumped to, commit even without other
+          // changes, so the next writer on this index doesn't give that version to a reader with
+          // different contents:
+          if (uncommittedBumpedVersion != -1 && lastNRTReaderVersion >= uncommittedBumpedVersion) {
+            changed();
+          }
+        }
         commitInternal(config.getMergePolicy());
       } catch (Throwable t) {
         // Be certain to close the index on any exception
@@ -4324,12 +4335,14 @@ public class IndexWriter
             // the version so that reader isn't current anymore, and reopening it gives a reader
             // with a new version.
             // Only bump if such a reader exists, so a reader opened right after the commit usually
-            // keeps the commit's version. Once this writer is closed, isCurrent compares a reader's
-            // version with the latest commit's, so after a bump it reports such a reader as not
-            // current even though it is. That's safe: its data is correct, and a new reader opened
-            // from the directory has the same commit and segments.
+            // keeps the commit's version.
+            // The bump isn't counted as a change, so hasUncommittedChanges() stays false and
+            // commits that run when it is true don't commit forever on an idle index. Instead,
+            // close() commits if a reader got the bumped version.
+            uncommittedBumpedVersion = -1;
             if (lastNRTReaderVersion >= pendingCommit.getVersion()) {
               segmentInfos.changed();
+              uncommittedBumpedVersion = segmentInfos.getVersion();
             }
 
             lastCommitChangeCount = pendingCommitChangeCount;

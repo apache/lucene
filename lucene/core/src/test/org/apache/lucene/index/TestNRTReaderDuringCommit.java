@@ -19,7 +19,10 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -28,6 +31,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.SearcherLifetimeManager;
@@ -36,6 +40,8 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.ThreadInterruptedException;
 
@@ -50,6 +56,9 @@ import org.apache.lucene.util.ThreadInterruptedException;
  *       commit, not at an older segments_N that may already be deleted.
  *   <li>Reopening a reader never returns a different reader with the same {@link
  *       DirectoryReader#getVersion() version}. {@link SearcherLifetimeManager} relies on this.
+ *   <li>Once a writer is closed normally (not rolled back), a later writer on the same index never
+ *       gives a version that a reader of the earlier writer had to a reader with different
+ *       contents.
  * </ul>
  */
 public class TestNRTReaderDuringCommit extends LuceneTestCase {
@@ -58,7 +67,7 @@ public class TestNRTReaderDuringCommit extends LuceneTestCase {
    * Pauses, and optionally fails, the file sync of the next commit. IndexWriter runs this sync
    * without holding its lock, so the test can open readers meanwhile.
    */
-  private static final class BlockingSyncDirectory extends FilterDirectory {
+  static final class BlockingSyncDirectory extends FilterDirectory {
     private final AtomicBoolean armed = new AtomicBoolean();
     private volatile boolean failSync;
     private volatile boolean syncBlocked;
@@ -128,7 +137,7 @@ public class TestNRTReaderDuringCommit extends LuceneTestCase {
   }
 
   /** Runs {@link IndexWriter#commit()} on another thread. */
-  private static final class BackgroundCommit {
+  static final class BackgroundCommit {
     private final Thread thread;
     private final AtomicReference<Throwable> failure = new AtomicReference<>();
 
@@ -159,7 +168,7 @@ public class TestNRTReaderDuringCommit extends LuceneTestCase {
     }
   }
 
-  private static Document doc(String id, long value) {
+  static Document doc(String id, long value) {
     Document doc = new Document();
     doc.add(new StringField("id", id, Field.Store.NO));
     doc.add(new NumericDocValuesField("dv", value));
@@ -186,7 +195,7 @@ public class TestNRTReaderDuringCommit extends LuceneTestCase {
     throw new AssertionError("no live doc with id=" + id);
   }
 
-  private static String latestCommit(Directory dir) throws IOException {
+  static String latestCommit(Directory dir) throws IOException {
     return SegmentInfos.readLatestCommit(dir).getSegmentsFileName();
   }
 
@@ -196,6 +205,108 @@ public class TestNRTReaderDuringCommit extends LuceneTestCase {
       names.add(((SegmentReader) ctx.reader()).getSegmentName());
     }
     return names;
+  }
+
+  /**
+   * Describes the documents a reader sees: the id and doc value of each live document, sorted by
+   * id. Doesn't depend on how the documents are split into segments, since a merge doesn't change
+   * the version of the readers that see it (for example, a merge on {@link
+   * IndexWriterConfig#setMaxFullFlushMergeWaitMillis refresh}).
+   */
+  static String contents(DirectoryReader reader) throws IOException {
+    TreeMap<String, Long> docs = new TreeMap<>();
+    for (LeafReaderContext ctx : reader.leaves()) {
+      LeafReader leaf = ctx.reader();
+      Bits liveDocs = leaf.getLiveDocs();
+      String[] ids = new String[leaf.maxDoc()];
+      Terms terms = leaf.terms("id");
+      if (terms != null) {
+        TermsEnum termsEnum = terms.iterator();
+        PostingsEnum postings = null;
+        for (BytesRef term = termsEnum.next(); term != null; term = termsEnum.next()) {
+          postings = termsEnum.postings(postings, PostingsEnum.NONE);
+          for (int doc = postings.nextDoc();
+              doc != DocIdSetIterator.NO_MORE_DOCS;
+              doc = postings.nextDoc()) {
+            ids[doc] = term.utf8ToString();
+          }
+        }
+      }
+      NumericDocValues dv = leaf.getNumericDocValues("dv");
+      for (int doc = 0; doc < leaf.maxDoc(); doc++) {
+        if (liveDocs == null || liveDocs.get(doc)) {
+          assertTrue(dv.advanceExact(doc));
+          assertNull("duplicate id " + ids[doc], docs.put(ids[doc], dv.longValue()));
+        }
+      }
+    }
+    return docs.toString();
+  }
+
+  /**
+   * Records which contents {@code reader} has for its version, and fails if a reader with the same
+   * version but different contents was seen before.
+   */
+  private static void checkVersionNotReused(Map<Long, String> seen, DirectoryReader reader)
+      throws IOException {
+    String contents = contents(reader);
+    String previous = seen.putIfAbsent(reader.getVersion(), contents);
+    if (previous != null && previous.equals(contents) == false) {
+      throw new AssertionError(
+          "version "
+              + reader.getVersion()
+              + " was reused for different contents: before="
+              + previous
+              + " now="
+              + contents);
+    }
+  }
+
+  /**
+   * Opens a reader while a commit of the pending changes is in progress, either during the commit's
+   * file sync or between {@link IndexWriter#prepareCommit()} and {@link IndexWriter#commit()}, and
+   * then lets the commit finish. Closes {@code reader} and returns the reader opened during the
+   * commit.
+   */
+  private static DirectoryReader reopenDuringCommit(
+      BlockingSyncDirectory dir, IndexWriter writer, DirectoryReader reader, boolean twoPhaseCommit)
+      throws Exception {
+    DirectoryReader newReader;
+    if (twoPhaseCommit) {
+      writer.prepareCommit();
+      newReader = DirectoryReader.openIfChanged(reader);
+      writer.commit();
+    } else {
+      dir.blockNextCommitSync(false);
+      BackgroundCommit commit = new BackgroundCommit(writer);
+      try {
+        dir.awaitSyncStarted();
+        newReader = DirectoryReader.openIfChanged(reader);
+      } finally {
+        dir.releaseSync();
+        assertNull(commit.join());
+      }
+    }
+    assertNotNull(newReader);
+    reader.close();
+    return newReader;
+  }
+
+  /**
+   * Returns a reader of {@code writer} whose version is higher than the latest commit's, because a
+   * reader was opened during that commit. Makes no changes after that commit.
+   */
+  private static DirectoryReader readerAheadOfLatestCommit(
+      BlockingSyncDirectory dir, IndexWriter writer, boolean twoPhaseCommit) throws Exception {
+    writer.addDocument(doc("0", 0));
+    writer.addDocument(doc("1", 1));
+    writer.commit();
+    DirectoryReader reader = DirectoryReader.open(writer);
+    writer.addDocument(doc("2", 2));
+    reader = reopenDuringCommit(dir, writer, reader, twoPhaseCommit);
+    reader = assertStaleAndReopen(reader, writer, dir, 3);
+    assertTrue(reader.getVersion() > SegmentInfos.readLatestCommit(dir).getVersion());
+    return reader;
   }
 
   /**
@@ -468,49 +579,49 @@ public class TestNRTReaderDuringCommit extends LuceneTestCase {
   }
 
   /**
-   * If a reader was opened during a commit, the version is bumped when the commit finishes, so
-   * readers opened afterwards have a higher version than the commit. Once the writer is closed,
-   * {@link DirectoryReader#isCurrent()} compares the reader's version with the latest commit's, so
-   * it reports such a reader as not current even though it is. That's safe: its data is correct,
-   * and a new reader opened from the directory has the same commit and segments.
+   * If a reader was opened during a commit, the version is bumped when the commit finishes. The
+   * bump isn't an uncommitted change, so periodic "commit if there are uncommitted changes" loops
+   * don't keep committing an idle index. But if a reader got the bumped version, closing the writer
+   * commits, so the next writer doesn't reuse that version. If no reader got it, closing the writer
+   * doesn't commit.
    */
-  public void testReaderAfterCommitWithReaderOpenedDuringCommitOnceWriterIsClosed()
-      throws Exception {
-    BlockingSyncDirectory dir = new BlockingSyncDirectory(newDirectory());
-    IndexWriter writer = newWriter(dir);
-    writer.addDocument(doc("0", 0));
-    writer.commit();
-    DirectoryReader reader = DirectoryReader.open(writer);
-    writer.addDocument(doc("1", 1));
+  public void testCloseCommitsBumpedVersionOnlyIfAReaderGotIt() throws Exception {
+    for (boolean readerGotBumpedVersion : new boolean[] {false, true}) {
+      BlockingSyncDirectory dir = new BlockingSyncDirectory(newDirectory());
+      IndexWriter writer = newWriter(dir);
+      writer.addDocument(doc("0", 0));
+      writer.commit();
+      DirectoryReader reader = DirectoryReader.open(writer);
+      writer.addDocument(doc("1", 1));
+      reader = reopenDuringCommit(dir, writer, reader, random().nextBoolean());
+      assertFalse(writer.hasUncommittedChanges());
+      // a commit without changes still doesn't commit anything
+      String lastCommit = latestCommit(dir);
+      writer.commit();
+      assertEquals(lastCommit, latestCommit(dir));
+      if (readerGotBumpedVersion) {
+        reader = assertStaleAndReopen(reader, writer, dir, 2);
+        assertTrue(reader.getVersion() > SegmentInfos.readLatestCommit(dir).getVersion());
+        assertFalse(writer.hasUncommittedChanges());
+      }
 
-    dir.blockNextCommitSync(false);
-    BackgroundCommit commit = new BackgroundCommit(writer);
-    try {
-      dir.awaitSyncStarted();
-      DirectoryReader newReader = DirectoryReader.openIfChanged(reader);
-      assertNotNull(newReader);
-      reader.close();
-      reader = newReader;
-    } finally {
-      dir.releaseSync();
-      assertNull(commit.join());
+      writer.close();
+      SegmentInfos latest = SegmentInfos.readLatestCommit(dir);
+      if (readerGotBumpedVersion) {
+        assertNotEquals(lastCommit, latest.getSegmentsFileName());
+        assertTrue(latest.getVersion() > reader.getVersion());
+      } else {
+        assertEquals("closing without changes must not commit", lastCommit, latestCommit(dir));
+      }
+      assertFalse(reader.isCurrent());
+
+      DirectoryReader fromCommit = DirectoryReader.open(dir);
+      assertEquals(latest.getSegmentsFileName(), fromCommit.getIndexCommit().getSegmentsFileName());
+      assertEquals(segmentNames(reader), segmentNames(fromCommit));
+      assertEquals(contents(reader), contents(fromCommit));
+      assertTrue(fromCommit.isCurrent());
+      IOUtils.close(fromCommit, reader, dir);
     }
-    reader = assertStaleAndReopen(reader, writer, dir, 2);
-    String lastCommit = latestCommit(dir);
-    assertTrue(reader.getVersion() > SegmentInfos.readLatestCommit(dir).getVersion());
-
-    writer.close();
-    assertEquals("closing without changes must not commit", lastCommit, latestCommit(dir));
-    assertFalse(reader.isCurrent());
-
-    DirectoryReader fromCommit = DirectoryReader.open(dir);
-    assertEquals(lastCommit, fromCommit.getIndexCommit().getSegmentsFileName());
-    assertEquals(lastCommit, reader.getIndexCommit().getSegmentsFileName());
-    assertEquals(segmentNames(reader), segmentNames(fromCommit));
-    assertEquals(reader.numDocs(), fromCommit.numDocs());
-    assertTrue(fromCommit.isCurrent());
-
-    IOUtils.close(fromCommit, reader, dir);
   }
 
   /**
@@ -573,10 +684,333 @@ public class TestNRTReaderDuringCommit extends LuceneTestCase {
   }
 
   /**
+   * A writer can give a reader a version that is higher than the latest commit's, if a reader was
+   * opened during that commit. If the writer is then closed without further changes, nothing is
+   * committed, so that version never reaches the index. The next writer on the index starts from
+   * the latest commit's version, and its first change must not give a reader the same version as
+   * the earlier writer's reader, with different contents.
+   */
+  public void testNextWriterDoesNotReuseVersion() throws Exception {
+    for (boolean twoPhaseCommit : new boolean[] {false, true}) {
+      for (boolean commitBeforeClose : new boolean[] {false, true}) {
+        for (String change :
+            new String[] {"add", "delete", "dvUpdate", "deleteAll", "addIndexes"}) {
+          String context =
+              "twoPhaseCommit="
+                  + twoPhaseCommit
+                  + " commitBeforeClose="
+                  + commitBeforeClose
+                  + " change="
+                  + change;
+          BlockingSyncDirectory dir = new BlockingSyncDirectory(newDirectory());
+          IndexWriter writer = newWriter(dir);
+          DirectoryReader first = readerAheadOfLatestCommit(dir, writer, twoPhaseCommit);
+          if (commitBeforeClose) {
+            writer.commit();
+          }
+          writer.close();
+
+          writer = newWriter(dir);
+          switch (change) {
+            case "add" -> writer.addDocument(doc("3", 3));
+            case "delete" -> writer.deleteDocuments(new Term("id", "0"));
+            case "dvUpdate" -> writer.updateNumericDocValue(new Term("id", "1"), "dv", 42);
+            case "deleteAll" -> writer.deleteAll();
+            case "addIndexes" -> {
+              try (Directory other = newDirectory()) {
+                try (IndexWriter otherWriter = newWriter(other)) {
+                  otherWriter.addDocument(doc("3", 3));
+                }
+                writer.addIndexes(other);
+              }
+            }
+            default -> throw new AssertionError(change);
+          }
+          DirectoryReader second = DirectoryReader.open(writer);
+          assertNotEquals(context, contents(first), contents(second));
+          assertTrue(
+              context
+                  + ": the next writer's reader must have a higher version: first="
+                  + first.getVersion()
+                  + " second="
+                  + second.getVersion(),
+              second.getVersion() > first.getVersion());
+          IOUtils.close(first, second, writer, dir);
+        }
+      }
+    }
+  }
+
+  /**
+   * Same as {@link #testNextWriterDoesNotReuseVersion}, but the next writer opens the index with
+   * {@link OpenMode#CREATE}, which empties the index and bumps the version once, without any other
+   * change.
+   */
+  public void testNextWriterInCreateModeDoesNotReuseVersion() throws Exception {
+    BlockingSyncDirectory dir = new BlockingSyncDirectory(newDirectory());
+    IndexWriter writer = newWriter(dir);
+    DirectoryReader first = readerAheadOfLatestCommit(dir, writer, random().nextBoolean());
+    writer.close();
+
+    writer =
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig(new MockAnalyzer(random()))
+                .setMergePolicy(NoMergePolicy.INSTANCE)
+                .setOpenMode(OpenMode.CREATE));
+    DirectoryReader second = DirectoryReader.open(writer);
+    assertEquals(0, second.numDocs());
+    assertTrue(
+        "the next writer's reader must have a higher version: first="
+            + first.getVersion()
+            + " second="
+            + second.getVersion(),
+        second.getVersion() > first.getVersion());
+    IOUtils.close(first, second, writer, dir);
+  }
+
+  /**
+   * After a writer is closed normally, the next writer's first reader sees the same contents as the
+   * earlier writer's last reader, so it must not have a lower version: versions shouldn't go back
+   * unless changes were rolled back or lost.
+   */
+  public void testNextWriterDoesNotGoBackInVersion() throws Exception {
+    // the next writer's reader is either opened directly, or by reopening the earlier writer's
+    // reader with the next writer, which always returns a new reader
+    for (boolean reopenWithNextWriter : new boolean[] {false, true}) {
+      BlockingSyncDirectory dir = new BlockingSyncDirectory(newDirectory());
+      IndexWriter writer = newWriter(dir);
+      DirectoryReader first = readerAheadOfLatestCommit(dir, writer, random().nextBoolean());
+      writer.close();
+
+      writer = newWriter(dir);
+      DirectoryReader second =
+          reopenWithNextWriter
+              ? DirectoryReader.openIfChanged(first, writer)
+              : DirectoryReader.open(writer);
+      assertNotNull(second);
+      assertEquals(contents(first), contents(second));
+      assertTrue(
+          "the next writer's reader must not have a lower version: first="
+              + first.getVersion()
+              + " second="
+              + second.getVersion()
+              + " reopenWithNextWriter="
+              + reopenWithNextWriter,
+          second.getVersion() >= first.getVersion());
+      IOUtils.close(first, second, writer, dir);
+    }
+  }
+
+  /**
+   * Merges selected segments when a commit or getReader runs, so the commit or getReader waits for
+   * the merge.
+   */
+  static final class MergeOnTriggerPolicy extends FilterMergePolicy {
+    private final MergeTrigger trigger;
+
+    MergeOnTriggerPolicy(MergePolicy in, MergeTrigger trigger) {
+      super(in);
+      this.trigger = trigger;
+    }
+
+    @Override
+    public MergeSpecification findFullFlushMerges(
+        MergeTrigger mergeTrigger, SegmentInfos segmentInfos, MergeContext mergeContext)
+        throws IOException {
+      if (mergeTrigger != trigger) {
+        return super.findFullFlushMerges(mergeTrigger, segmentInfos, mergeContext);
+      }
+      List<SegmentCommitInfo> toMerge = new ArrayList<>();
+      for (SegmentCommitInfo info : segmentInfos) {
+        if (mergeContext.getMergingSegments().contains(info) == false) {
+          toMerge.add(info);
+        }
+      }
+      if (toMerge.size() < 2) {
+        return null;
+      }
+      MergeSpecification spec = new MergeSpecification();
+      spec.add(new OneMerge(toMerge));
+      return spec;
+    }
+  }
+
+  /**
+   * With {@link IndexWriterConfig#setMaxFullFlushMergeWaitMillis}, a commit releases the writer's
+   * lock while it waits for merges, after it took the SegmentInfos to commit and before it writes
+   * pending_segments_N. A reader opened then must not be current once the commit finished, both
+   * when it was opened before the commit's merge finished and after.
+   */
+  public void testReaderOpenedWhileCommitWaitsForMerges() throws Exception {
+    for (boolean afterMerge : new boolean[] {false, true}) {
+      CountDownLatch paused = new CountDownLatch(1);
+      CountDownLatch resume = new CountDownLatch(1);
+      IndexWriterEventListener listener =
+          new IndexWriterEventListener() {
+            @Override
+            public void beginMergeOnFullFlush(MergePolicy.MergeSpecification merge) {
+              if (afterMerge == false) {
+                pause();
+              }
+            }
+
+            @Override
+            public void endMergeOnFullFlush(MergePolicy.MergeSpecification merge) {
+              if (afterMerge) {
+                pause();
+              }
+            }
+
+            private void pause() {
+              paused.countDown();
+              try {
+                assertTrue(resume.await(30, TimeUnit.SECONDS));
+              } catch (InterruptedException e) {
+                throw new ThreadInterruptedException(e);
+              }
+            }
+          };
+      Directory dir = newDirectory();
+      IndexWriter writer =
+          new IndexWriter(
+              dir,
+              newIndexWriterConfig(new MockAnalyzer(random()))
+                  .setMergePolicy(
+                      new MergeOnTriggerPolicy(NoMergePolicy.INSTANCE, MergeTrigger.COMMIT))
+                  .setMergeScheduler(new ConcurrentMergeScheduler())
+                  .setMaxFullFlushMergeWaitMillis(30_000)
+                  .setMaxBufferedDocs(IndexWriterConfig.DISABLE_AUTO_FLUSH)
+                  .setRAMBufferSizeMB(100)
+                  .setIndexWriterEventListener(listener));
+      writer.addDocument(doc("0", 0));
+      writer.commit();
+      DirectoryReader reader = DirectoryReader.open(writer);
+      writer.addDocument(doc("1", 1));
+      writer.flush();
+      writer.addDocument(doc("2", 2));
+
+      BackgroundCommit commit = new BackgroundCommit(writer);
+      try {
+        assertTrue(paused.await(30, TimeUnit.SECONDS));
+        DirectoryReader newReader = DirectoryReader.openIfChanged(reader);
+        assertNotNull(newReader);
+        reader.close();
+        reader = newReader;
+        assertEquals(3, reader.numDocs());
+        // after the merge, the writer and so the reader have the merged segment:
+        assertEquals("afterMerge=" + afterMerge, afterMerge ? 1 : 3, reader.leaves().size());
+      } finally {
+        resume.countDown();
+        assertNull(commit.join());
+      }
+      // the commit includes the merge:
+      assertEquals(1, SegmentInfos.readLatestCommit(dir).size());
+
+      reader = assertStaleAndReopen(reader, writer, dir, 3);
+      IOUtils.close(reader, writer, dir);
+    }
+  }
+
+  /**
+   * A commit whose only change is new commit data still writes a new segments_N, so a reader opened
+   * during it must not be current afterwards, and reopening it gives the same documents with a
+   * higher version. Commit data that doesn't increment the version isn't visible to NRT readers, so
+   * setting it alone doesn't make a reader stale.
+   */
+  public void testReaderOpenedDuringCommitOfOnlyCommitData() throws Exception {
+    for (boolean doIncrementVersion : new boolean[] {false, true}) {
+      BlockingSyncDirectory dir = new BlockingSyncDirectory(newDirectory());
+      IndexWriter writer = newWriter(dir);
+      writer.addDocument(doc("0", 0));
+      writer.commit();
+      DirectoryReader reader = DirectoryReader.open(writer);
+      String docs = contents(reader);
+
+      writer.setLiveCommitData(Map.of("key", "value").entrySet(), doIncrementVersion);
+      assertEquals(doIncrementVersion == false, reader.isCurrent());
+      if (doIncrementVersion) {
+        DirectoryReader newReader = DirectoryReader.openIfChanged(reader);
+        assertNotNull(newReader);
+        reader.close();
+        reader = newReader;
+      }
+      // the commit itself increments the version, so the reader opened during it is new:
+      reader = reopenDuringCommit(dir, writer, reader, random().nextBoolean());
+      assertEquals("value", SegmentInfos.readLatestCommit(dir).getUserData().get("key"));
+      reader = assertStaleAndReopen(reader, writer, dir, 1);
+      assertEquals(docs, contents(reader));
+      IOUtils.close(reader, writer, dir);
+    }
+  }
+
+  /**
+   * A writer can be opened on an NRT reader's commit once the reader's writer is closed. A reader
+   * opened during a commit points at the previous segments_N. A reader opened after that commit has
+   * the bumped version, so closing the writer commits again, and the reader points at the previous
+   * segments_N too. If the deletion policy deleted it, opening a writer on it must fail cleanly,
+   * and if not, it must work and continue from the earlier writer's version.
+   */
+  public void testWriterOpenedOnCommitOfReaderOpenedDuringCommit() throws Exception {
+    for (boolean keepAllCommits : new boolean[] {false, true}) {
+      for (boolean readerAfterCommit : new boolean[] {false, true}) {
+        String context =
+            "keepAllCommits=" + keepAllCommits + " readerAfterCommit=" + readerAfterCommit;
+        BlockingSyncDirectory dir = new BlockingSyncDirectory(newDirectory());
+        IndexWriterConfig config =
+            newIndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(NoMergePolicy.INSTANCE);
+        if (keepAllCommits) {
+          config.setIndexDeletionPolicy(NoDeletionPolicy.INSTANCE);
+        }
+        IndexWriter writer = new IndexWriter(dir, config);
+        writer.addDocument(doc("0", 0));
+        writer.commit();
+        DirectoryReader reader = DirectoryReader.open(writer);
+        writer.addDocument(doc("1", 1));
+        reader = reopenDuringCommit(dir, writer, reader, random().nextBoolean());
+        if (readerAfterCommit) {
+          reader = assertStaleAndReopen(reader, writer, dir, 2);
+        }
+        long maxVersion = reader.getVersion();
+        writer.close();
+        maxVersion = Math.max(maxVersion, SegmentInfos.readLatestCommit(dir).getVersion());
+        assertNotEquals(context, latestCommit(dir), reader.getIndexCommit().getSegmentsFileName());
+
+        IndexWriterConfig nextConfig =
+            newIndexWriterConfig(new MockAnalyzer(random()))
+                .setMergePolicy(NoMergePolicy.INSTANCE)
+                .setIndexCommit(reader.getIndexCommit());
+        if (keepAllCommits) {
+          nextConfig.setIndexDeletionPolicy(NoDeletionPolicy.INSTANCE);
+        }
+        if (keepAllCommits == false) {
+          IllegalArgumentException e =
+              expectThrows(IllegalArgumentException.class, () -> new IndexWriter(dir, nextConfig));
+          assertTrue(context + ": " + e.getMessage(), e.getMessage().contains("is stale"));
+        } else {
+          try (IndexWriter next = new IndexWriter(dir, nextConfig);
+              DirectoryReader nextReader = DirectoryReader.open(next)) {
+            assertEquals(context, contents(reader), contents(nextReader));
+            assertTrue(
+                context
+                    + ": the next writer's reader must have a higher version: max="
+                    + maxVersion
+                    + " next="
+                    + nextReader.getVersion(),
+                nextReader.getVersion() > maxVersion);
+          }
+        }
+        IOUtils.close(reader, dir);
+      }
+    }
+  }
+
+  /**
    * Randomly mixes changes, reopens and commits. The test thread pauses each commit (in its file
    * sync, or between prepareCommit and commit), and sometimes makes it fail. Checks that reopened
-   * readers have higher versions, and that when no commit is in progress, a current reader points
-   * at the latest commit.
+   * readers have higher versions, that when no commit is in progress, a current reader points at
+   * the latest commit, and that readers with the same version have the same contents, also across
+   * writers when the test closes the writer and opens a new one.
    */
   public void testRandomCommitsAndReopens() throws Exception {
     BlockingSyncDirectory dir = new BlockingSyncDirectory(newDirectory());
@@ -585,15 +1019,18 @@ public class TestNRTReaderDuringCommit extends LuceneTestCase {
     writer.addDocument(doc("0", 0));
     writer.commit();
     DirectoryReader reader = DirectoryReader.open(writer);
+    Map<Long, String> versions = new HashMap<>();
+    checkVersionNotReused(versions, reader);
 
     BackgroundCommit syncingCommit = null; // blocked in its file sync
     boolean prepared = false; // prepareCommit was called, but not commit yet
     int reopensDuringCommit = 0;
+    int writerRestarts = 0;
     try {
       int numSteps = atLeast(300);
       for (int step = 0; step < numSteps; step++) {
         boolean commitInProgress = syncingCommit != null || prepared;
-        int action = random().nextInt(10);
+        int action = random().nextInt(11);
         if (action < 3) {
           String id = Integer.toString(random().nextInt(20));
           switch (random().nextInt(4)) {
@@ -613,6 +1050,7 @@ public class TestNRTReaderDuringCommit extends LuceneTestCase {
                 newReader.getVersion() > reader.getVersion());
             reader.close();
             reader = newReader;
+            checkVersionNotReused(versions, reader);
             if (commitInProgress) {
               reopensDuringCommit++;
             }
@@ -620,6 +1058,14 @@ public class TestNRTReaderDuringCommit extends LuceneTestCase {
           if (commitInProgress == false && reader.isCurrent()) {
             assertEquals(latestCommit(dir), reader.getIndexCommit().getSegmentsFileName());
           }
+        } else if (action == 10 && commitInProgress == false) {
+          // close the writer normally (it commits pending changes) and open a new one
+          writer.close();
+          reader.close();
+          writer = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));
+          reader = DirectoryReader.open(writer);
+          checkVersionNotReused(versions, reader);
+          writerRestarts++;
         } else if (commitInProgress == false) {
           if (random().nextInt(4) == 0) {
             writer.prepareCommit();
@@ -661,7 +1107,12 @@ public class TestNRTReaderDuringCommit extends LuceneTestCase {
       }
     }
     if (VERBOSE) {
-      System.out.println("TEST: " + reopensDuringCommit + " reopens during a commit");
+      System.out.println(
+          "TEST: "
+              + reopensDuringCommit
+              + " reopens during a commit, "
+              + writerRestarts
+              + " writer restarts");
     }
 
     // wait for merges, so that nothing changes anymore after the final commit
@@ -673,6 +1124,7 @@ public class TestNRTReaderDuringCommit extends LuceneTestCase {
       assertTrue(newReader.getVersion() > reader.getVersion());
       reader.close();
       reader = newReader;
+      checkVersionNotReused(versions, reader);
     }
     assertEquals(latestCommit(dir), reader.getIndexCommit().getSegmentsFileName());
     assertTrue(reader.isCurrent());
