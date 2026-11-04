@@ -7,6 +7,11 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
+* GITHUB#16965: Remove the deprecated classes for explicit vector similarity search:
+  ByteVectorSimilarityQuery.Explicit, FloatVectorSimilarityQuery.Explicit and
+  ExplicitVectorSimilarityCollector.
+  Use the more performant Adaptive queries instead. (Andrea Selva)
+
 * GITHUB#16969: Remove deprecated SpanishMinimalStemFilter, SpanishMinimalStemFilterFactory and
   SpanishMinimalStemmer. Use SpanishPluralStemFilter instead. (Christoph Büscher)
 
