@@ -37,7 +37,7 @@ Other
 
 API Changes
 ---------------------
-* GITHUB#16nnn: Remove the deprecated contructor in TruncateTokenFilter.
+* GITHUB#16984: Remove the deprecated contructor in TruncateTokenFilter.
   Its usage has been replaced by static factory methods TruncateTokenFilter.truncateAfterChars
   for bakward compatibility or TruncateTokenFilter.truncateAfterCodePoints. (Andrea Selva)
 

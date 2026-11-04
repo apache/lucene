@@ -28,7 +28,7 @@ with `VisitedSet.create(expectedVisitedNodes, graphSize)`.
 
 ## Migration from Lucene 10.x to Lucene 11.0
 
-### TruncateTokenFilter constructor replaced by static factory methods (GITHUB#16nnn)
+### TruncateTokenFilter constructor replaced by static factory methods (GITHUB#16984)
 
 The constructor `TruncateTokenFilter(TokenStream, int)` has been removed. To accomplish
 the same functionality use the static factory methods `truncateAfterChars` or `truncateAfterCodePoints`.
