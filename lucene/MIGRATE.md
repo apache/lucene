@@ -28,7 +28,7 @@ with `VisitedSet.create(expectedVisitedNodes, graphSize)`.
 
 ## Migration from Lucene 10.x to Lucene 11.0
 
-### RegExp.ASCII_CASE_INSENSITIVE has been removed (GITHUB#14192)
+### RegExp.ASCII_CASE_INSENSITIVE has been removed (GITHUB#16968)
 
 The flag was deprecated in 10.x and already behaved the same as `RegExp.CASE_INSENSITIVE` (full
 Unicode case folding). Replace it with `RegExp.CASE_INSENSITIVE`.
