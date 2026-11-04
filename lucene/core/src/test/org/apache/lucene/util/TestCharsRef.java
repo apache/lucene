@@ -16,31 +16,10 @@
  */
 package org.apache.lucene.util;
 
-import java.util.Arrays;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
 public class TestCharsRef extends LuceneTestCase {
-
-  @SuppressWarnings("deprecation")
-  public void testUTF16InUTF8Order() {
-    final int numStrings = atLeast(1000);
-    BytesRef[] utf8 = new BytesRef[numStrings];
-    CharsRef[] utf16 = new CharsRef[numStrings];
-
-    for (int i = 0; i < numStrings; i++) {
-      String s = TestUtil.randomUnicodeString(random());
-      utf8[i] = new BytesRef(s);
-      utf16[i] = new CharsRef(s);
-    }
-
-    Arrays.sort(utf8);
-    Arrays.sort(utf16, CharsRef.getUTF16SortedAsUTF8Comparator());
-
-    for (int i = 0; i < numStrings; i++) {
-      assertEquals(utf8[i].utf8ToString(), utf16[i].toString());
-    }
-  }
 
   public void testAppend() {
     CharsRefBuilder ref = new CharsRefBuilder();
