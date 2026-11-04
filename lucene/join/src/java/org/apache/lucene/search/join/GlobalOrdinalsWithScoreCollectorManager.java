@@ -309,7 +309,13 @@ class GlobalOrdinalsWithScoreCollectorManager implements CollectorManager<Collec
   // At first a hash map implementation would make sense, but in the case that more than half of
   // docs match this becomes more expensive then just using an array.
 
-  // Maybe this should become a method parameter?
+  // Note: because the lock-striping is done over a BitSet build over longs, this number must be a
+  // multiple of 64. Otherwise a long could be split between two locks and two threads could acquire
+  // a lock on the same long in the BitSet.  If this were ever made into a parameter we'd want to
+  // elevate that to a runtime exception (ecjLint won't allow us to assert or test this assertion
+  // since it's constant).
+  //
+  // assert arraySize % Long.SIZE != 0: "arraySize (number of locks) must be a multiple of 64";
   static final int arraySize = 4096;
 
   static final class Scores {
