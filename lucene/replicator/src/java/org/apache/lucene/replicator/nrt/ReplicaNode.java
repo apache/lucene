@@ -837,6 +837,7 @@ public abstract class ReplicaNode extends Node {
     List<Map.Entry<String, FileMetaData>> toCopy = new ArrayList<>();
     for (Map.Entry<String, FileMetaData> ent : files.entrySet()) {
       String fileName = ent.getKey();
+      validateFileName(fileName);
       FileMetaData fileMetaData = ent.getValue();
       if (fileIsIdentical(fileName, fileMetaData) == false) {
         toCopy.add(ent);
@@ -844,6 +845,23 @@ public abstract class ReplicaNode extends Node {
     }
 
     return toCopy;
+  }
+
+  /**
+   * File names arrive here from the primary node over the (implementation specific) wire protocol,
+   * yet they are passed to {@link Directory} methods that resolve them against the replica's index
+   * directory. Reject anything that is not a plain file name, so a bogus name like {@code
+   * ../segments_1} can never read, write or delete files outside the index directory.
+   */
+  static void validateFileName(String fileName) {
+    if (fileName.isEmpty()
+        || fileName.equals(".")
+        || fileName.equals("..")
+        || fileName.indexOf('/') != -1
+        || fileName.indexOf('\\') != -1
+        || fileName.indexOf(':') != -1) {
+      throw new IllegalArgumentException("invalid file name from primary: \"" + fileName + "\"");
+    }
   }
 
   /**
