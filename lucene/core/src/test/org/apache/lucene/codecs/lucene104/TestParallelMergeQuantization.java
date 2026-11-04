@@ -45,6 +45,7 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
@@ -167,6 +168,36 @@ public class TestParallelMergeQuantization extends LuceneTestCase {
         }
       }
     }
+  }
+
+  /** The centroid sums skip deleted vectors and have the same bits for any number of workers. */
+  public void testCentroidSumsSameForAnyWorkers() throws Exception {
+    int dim = 1 + random().nextInt(50);
+    int n = 1 + random().nextInt(5 * Lucene104ScalarQuantizedVectorsWriter.CENTROID_CHUNK_SIZE);
+    List<float[]> vectors = randomVectors(n, dim, VectorSimilarityFunction.EUCLIDEAN);
+    FixedBitSet liveDocs = new FixedBitSet(n);
+    double[] expected = new double[dim];
+    int live = 0;
+    for (int i = 0; i < n; i++) {
+      if (random().nextInt(4) != 0) {
+        liveDocs.set(i);
+        live++;
+        for (int j = 0; j < dim; j++) {
+          expected[j] += vectors.get(i)[j];
+        }
+      }
+    }
+    FloatVectorValues values = FloatVectorValues.fromFloats(vectors, dim);
+    double[] serial = new double[dim];
+    double[] parallel = new double[dim];
+    assertEquals(
+        live, Lucene104ScalarQuantizedVectorsWriter.sumVectors(values, liveDocs, serial, null, 1));
+    assertEquals(
+        live,
+        Lucene104ScalarQuantizedVectorsWriter.sumVectors(
+            values, liveDocs, parallel, new TaskExecutor(executor), 2 + random().nextInt(7)));
+    assertArrayEquals(serial, parallel, 0);
+    assertArrayEquals(expected, serial, 1e-6);
   }
 
   private static void index(
