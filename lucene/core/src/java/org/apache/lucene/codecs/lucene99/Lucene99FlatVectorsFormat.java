@@ -63,11 +63,13 @@ import org.apache.lucene.store.IndexOutput;
  *       that only in sparse case
  * </ul>
  *
- * <p>NOTE: Arm Neoverse machines have a performance overhead in reading data that is not aligned to
- * 64 bytes, so this format aligns the <code>.vec</code> file to that size. There may be a
- * performance penalty in searching of float vectors that do <b>not</b> have a dimension of a
- * multiple of 16 (equivalent to 64 bytes), because the alignment will not hold for all vectors in
- * the file.
+ * <p>NOTE: this format aligns the vector data of each field in the <code>.vec</code> file to 4096
+ * bytes, for every encoding. A vector whose size divides 4096 bytes or is a multiple of it (e.g.
+ * 1024-dim float32) then never straddles a page boundary, so reading one vector, as rescoring does,
+ * touches no extra page. 4096 is also a multiple of 64 bytes, the alignment that Arm Neoverse
+ * machines need to read vectors without overhead. If the vector size is not a multiple of 64 bytes,
+ * most vectors in the file are not aligned to 64 bytes, and searching them may be slower on these
+ * machines.
  *
  * @lucene.experimental
  */

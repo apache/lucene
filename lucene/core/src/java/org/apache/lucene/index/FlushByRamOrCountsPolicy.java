@@ -32,6 +32,11 @@ class FlushByRamOrCountsPolicy extends FlushPolicy {
 
   @Override
   public void onChange(DocumentsWriterFlushControl control, DocumentsWriterPerThread perThread) {
+    // Buffered deletes are addressed with 32-bit offsets, so always apply them when they reach
+    // the maximum configured byte size to avoid overflows
+    if (control.getDeleteBytesUsed() >= control.maxDeleteBytes) {
+      flushDeletes(control);
+    }
     if (perThread != null
         && flushOnDocCount()
         && perThread.getNumDocsInRAM() >= indexWriterConfig.getMaxBufferedDocs()) {

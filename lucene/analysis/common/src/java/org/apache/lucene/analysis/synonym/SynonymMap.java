@@ -193,6 +193,24 @@ public class SynonymMap {
       maxHorizontalContext = Math.max(maxHorizontalContext, numOutputWords);
     }
 
+    /** Compares by Unicode code point, which matches the UTF-8 byte order the FST requires. */
+    static int compareCodePoints(CharsRef a, CharsRef b) {
+      int aEnd = a.offset + a.length;
+      int bEnd = b.offset + b.length;
+      int i = a.offset;
+      int j = b.offset;
+      while (i < aEnd && j < bEnd) {
+        int aCp = Character.codePointAt(a.chars, i, aEnd);
+        int bCp = Character.codePointAt(b.chars, j, bEnd);
+        if (aCp != bCp) {
+          return Integer.compare(aCp, bCp);
+        }
+        i += Character.charCount(aCp);
+        j += Character.charCount(bCp);
+      }
+      return Integer.compare(aEnd - i, bEnd - j);
+    }
+
     private int countWords(CharsRef chars) {
       int wordCount = 1;
       int upto = chars.offset;
@@ -240,7 +258,7 @@ public class SynonymMap {
 
       Set<CharsRef> keys = workingSet.keySet();
       CharsRef[] sortedKeys = keys.toArray(CharsRef[]::new);
-      Arrays.sort(sortedKeys, CharsRef.getUTF16SortedAsUTF8Comparator());
+      Arrays.sort(sortedKeys, SynonymMap.Builder::compareCodePoints);
 
       final IntsRefBuilder scratchIntsRef = new IntsRefBuilder();
 

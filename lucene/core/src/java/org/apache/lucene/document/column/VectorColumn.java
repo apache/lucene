@@ -20,21 +20,24 @@ import org.apache.lucene.index.IndexableFieldType;
 import org.apache.lucene.index.VectorEncoding;
 
 /**
- * A {@link Column} that provides KNN vector values via a tuple cursor. Vector columns are
- * vector-only: the field type must declare {@code vectorDimension() > 0}, and must not also set doc
- * values, points, stored, or {@code indexOptions}. Vectors are single-valued, so the cursor yields
- * strictly increasing batch-local doc-ids.
+ * A {@link Column} that provides KNN vector values. Vector columns are vector-only: the field type
+ * must declare {@code vectorDimension() > 0}, and must not also set doc values, points, stored, or
+ * {@code indexOptions}. Vectors are single-valued, so the tuple cursor yields strictly increasing
+ * batch-local doc-ids.
  *
  * <p>The type parameter {@code T} must match {@link IndexableFieldType#vectorEncoding()}: {@code
- * float[]} for {@link VectorEncoding#FLOAT32 FLOAT32} and {@code byte[]} for {@link
- * VectorEncoding#BYTE BYTE}. A mismatch is reported as a {@link ClassCastException} when values are
- * consumed during indexing.
+ * float[]} for {@link VectorEncoding#FLOAT32 FLOAT32}, {@code short[]} (float16 bits) for {@link
+ * VectorEncoding#FLOAT16 FLOAT16}, and {@code byte[]} for {@link VectorEncoding#BYTE BYTE}. A
+ * mismatch is reported when values are consumed during indexing, as a {@link ClassCastException}
+ * or, when a dense cursor bulk-fills a writer-owned buffer, an {@link ArrayStoreException}.
  *
  * <p>{@link Column.Density#DENSE DENSE} indicates that every batch-local doc has a vector; {@link
- * Column.Density#SPARSE SPARSE} allows gaps. Both densities use the same tuple cursor — there is no
- * dense bulk-fill fast path for vectors.
+ * Column.Density#SPARSE SPARSE} allows gaps. {@link #tuples()} is always available and is used for
+ * sparse columns. {@link #values()} is a bulk cursor over consecutive doc-ids; it must be
+ * overridden when {@link #density()} is {@link Column.Density#DENSE DENSE} and is only consulted in
+ * that case.
  *
- * @param <T> the vector array type, either {@code float[]} or {@code byte[]}
+ * @param <T> the vector array type: {@code float[]}, {@code short[]} or {@code byte[]}
  * @lucene.experimental
  */
 public abstract class VectorColumn<T> extends Column {
@@ -57,4 +60,15 @@ public abstract class VectorColumn<T> extends Column {
 
   /** Returns a fresh tuple cursor starting at the beginning of the batch. */
   public abstract ObjectTupleCursor<T> tuples();
+
+  /**
+   * Returns a fresh values cursor iterating dense vectors for doc-ids {@code [0, numDocs)}. Must be
+   * overridden when {@link Column#density()} is {@link Column.Density#DENSE DENSE}; the default
+   * implementation throws {@link UnsupportedOperationException} and is never called for {@link
+   * Column.Density#SPARSE SPARSE} columns.
+   */
+  public VectorValuesCursor<T> values() {
+    throw new UnsupportedOperationException(
+        "values() requires density() == DENSE for column \"" + name() + "\"");
+  }
 }

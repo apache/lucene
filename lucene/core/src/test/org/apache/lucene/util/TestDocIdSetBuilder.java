@@ -87,6 +87,23 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
     assertEquals(new BitDocIdSet(ref), result);
   }
 
+  public void testExpectMoreUpgradesToBitSet() throws IOException {
+    final int maxDoc = 1 << 14;
+    DocIdSetBuilder builder = new DocIdSetBuilder(maxDoc);
+    builder.grow(1).add(7);
+
+    builder.expectMore((maxDoc >>> 7) + 1L);
+    builder.grow(1).add(11);
+
+    DocIdSet result = builder.build();
+    assertTrue(result instanceof BitDocIdSet);
+    DocIdSetIterator iterator = result.iterator();
+    assertEquals(7, iterator.nextDoc());
+    assertEquals(11, iterator.nextDoc());
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, iterator.nextDoc());
+    assertEquals(2, iterator.cost());
+  }
+
   public void testRandom() throws IOException {
     final int maxDoc =
         TEST_NIGHTLY
