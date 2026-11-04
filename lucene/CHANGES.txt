@@ -209,6 +209,9 @@ API Changes
   multiterm) now throw IndexSearcher.TooManyClauses instead of IllegalStateException when
   they expand to more than maxExpansions terms. (Mayya Sharipova)
 
+* GITHUB#16968: Remove deprecated RegExp.ASCII_CASE_INSENSITIVE flag, use
+  RegExp.CASE_INSENSITIVE instead. (Christoph Büscher)
+
 New Features
 ---------------------
 * GITHUB#16723: Support SIMD Faiss library variants with runtime fallback. (Abhinav Chinnala)
