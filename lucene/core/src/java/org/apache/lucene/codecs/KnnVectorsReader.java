@@ -32,6 +32,7 @@ import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
+import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Bits;
 
@@ -66,6 +67,17 @@ public abstract class KnnVectorsReader implements Closeable {
    * never {@code null}.
    */
   public abstract FloatVectorValues getFloatVectorValues(String field) throws IOException;
+
+  /**
+   * Returns the {@link FloatVectorValues} for the given {@code field}, to be read with the given
+   * access pattern, such as {@link DataAccessHint#SEQUENTIAL} to read all vectors in order.
+   *
+   * <p>The default implementation ignores {@code access}.
+   */
+  public FloatVectorValues getFloatVectorValues(String field, DataAccessHint access)
+      throws IOException {
+    return getFloatVectorValues(field);
+  }
 
   /**
    * Returns the {@link ByteVectorValues} for the given {@code field}. The behavior is undefined if

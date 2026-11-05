@@ -3885,8 +3885,7 @@ public class IndexWriter
 
       if (pointInTimeMerges != null && pointInTimeMerges.merges.size() != 0) {
         if (infoStream.isEnabled("IW")) {
-          infoStream.message(
-              "IW", "now run merges during commit: " + pointInTimeMerges.segString(directory));
+          infoStream.message("IW", "now run merges during commit: " + pointInTimeMerges);
         }
         eventListener.beginMergeOnFullFlush(pointInTimeMerges);
 

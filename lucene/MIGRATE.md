@@ -17,7 +17,72 @@
 
 # Apache Lucene Migration Guide
 
+## Migration from Lucene 11.x to Lucene 12.0
+
+### HnswGraphSearcher takes a VisitedSet instead of a BitSet (GITHUB#16806)
+
+The constructor `HnswGraphSearcher(NeighborQueue, BitSet)` is now
+`HnswGraphSearcher(NeighborQueue, VisitedSet)`, and the protected field `visited` is a
+`VisitedSet`. This interface has the `set`, `getAndSet` and `clear` methods of `BitSet`; create one
+with `VisitedSet.create(expectedVisitedNodes, graphSize)`.
+
 ## Migration from Lucene 10.x to Lucene 11.0
+
+### Explicit byte and float similarity vector search has been removed (GITHUB#16965)
+
+The `Explicit` variants of `ByteVectorSimilarityQuery` and `FloatVectorSimilarityQuery`
+have been removed. Use `Adaptive` instead. Drop `traversalSimilarity` and pass
+`resultSimilarity` plus an optional `decay` (default `0.5`); the constructors are not
+a drop-in rename.
+
+### RegExp.ASCII_CASE_INSENSITIVE has been removed (GITHUB#16968)
+
+The flag was deprecated in 10.x and already behaved the same as `RegExp.CASE_INSENSITIVE` (full
+Unicode case folding). Replace it with `RegExp.CASE_INSENSITIVE`.
+
+The flag's raw value `0x0100` is no longer accepted: calls like
+`new RegExp(s, syntax_flags, 0x0100)` to `RegExp(String, int, int)` now throw an
+`IllegalArgumentException` and must be changed to `new RegExp(s, syntax_flags, RegExp.CASE_INSENSITIVE)`.
+
+### SpanishMinimalStemFilter has been removed (GITHUB#16969)
+
+`SpanishMinimalStemFilter` and `SpanishMinimalStemFilterFactory` (SPI name `spanishMinimalStem`)
+were deprecated in favor of `SpanishPluralStemFilter` and are now removed.
+Use `SpanishPluralStemFilter` (SPI name `spanishPluralStem`) instead. Indexes analyzed with the old
+filter may need reindexing, as the stemming results can differ.
+
+### MatchAllDocsQuery and MatchNoDocsQuery no-args constructors (GITHUB#16962)
+
+`MatchAllDocsQuery` and `MatchNoDocsQuery` no-args constructors visibility has been narrowed
+from public to private. Use instead the singleton instances available in the `INSTANCE` field.
+The direct no-args instantiation `new MatchAllDocsQuery()` has to be replaced by static field's
+reference `MatchAllDocsQuery.INSTANCE` and `MatchNoDocsQuery.INSTANCE` for `new MatchNoDocsQuery()`.
+
+### FixBrokenOffsetsFilter has been removed (GITHUB#16964)
+
+The deprecated `FixBrokenOffsetsFilter` and its factory (SPI name `fixBrokenOffsets`) are gone.
+Offsets that go backwards are rejected at index time; fix the upstream token filter or tokenizer
+that produces them instead.
+
+### MergePolicy.MergeSpecification#segString(Directory) has been removed (GITHUB#16963)
+
+The deprecated `MergePolicy.MergeSpecification#segString(Directory)` method is gone. The `Directory`
+argument was already ignored, so call `MergeSpecification#toString()` instead. Subclasses that
+overrode `segString(Directory)` should override `toString()`.
+
+### SortField#setOptimizeSortWithIndexedData has been removed (GITHUB#14399)
+
+`SortField#setOptimizeSortWithIndexedData(false)` and `setOptimizeSortWithPoints(false)`, along with
+their getters, are gone. Wrap the sort field instead: `SortField.withoutPruning(sortField)`. The
+wrapper is immutable and never lets comparators skip documents using points, terms or doc values
+skippers. Early termination for sorts that are a prefix of the index sort still applies. The
+wrapper is for searching only: it cannot be used as an index sort, and `getIndexSorter()` throws
+`UnsupportedOperationException`.
+
+`FieldComparator#setSingleSort`, `FieldComparator#disableSkipping` and
+`LeafFieldComparator#disableSkipping` were removed too. Custom comparators that relied on
+`setSingleSort` can use the `Pruning` they are constructed with: a single sort field that is not
+paging gets `Pruning.GREATER_THAN_OR_EQUAL_TO`, and has no top value set.
 
 ### Java 25 is the minimum required JDK (GITHUB#14229, GITHUB#15215)
 
