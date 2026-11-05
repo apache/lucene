@@ -94,7 +94,7 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
 
   /** Create {@link FacetCutter} for a long field by name, using its skip index when present. */
   public static LongRangeFacetCutter create(String field, LongRange[] longRanges) {
-    // Leave the single-valued source null. The skip path reads the field directly, and a
+    // Leave the single-valued source null. Single-valued segments read the field directly, and a
     // multi-valued segment must fall back to the multi-valued leaf cutter.
     return createSingleOrMultiValued(
         MultiLongValuesSource.fromLongField(field), null, longRanges, field);
