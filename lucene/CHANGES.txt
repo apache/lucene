@@ -25,6 +25,9 @@ Optimizations
 * GITHUB#16956: Merges that reuse an existing HNSW graph no longer read the query vector of every
   copied node, which slowed the graph copy by 2.4x to 10x in one benchmark. (Ankur Goel)
 
+* GITHUB#16977: Use FixedBitSet more aggressively on HNSW query-side to track visited nodes until the graph is about
+  2048 times larger than the expected number of visited nodes, instead of 128 times. (Shubham Chaudhary)
+
 Bug Fixes
 ---------------------
 (No changes)

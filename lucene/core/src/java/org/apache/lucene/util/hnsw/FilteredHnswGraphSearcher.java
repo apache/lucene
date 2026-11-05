@@ -89,7 +89,7 @@ public class FilteredHnswGraphSearcher extends HnswGraphSearcher {
     assert percentFiltered > 0.0f && percentFiltered < 1.0f;
     double totalOps = Math.log(graphSize) * topk;
     int approximateVisitation = (int) (totalOps / percentFiltered);
-    return VisitedSet.create(approximateVisitation, graphSize);
+    return VisitedSet.createForQuery(approximateVisitation, graphSize);
   }
 
   @Override
