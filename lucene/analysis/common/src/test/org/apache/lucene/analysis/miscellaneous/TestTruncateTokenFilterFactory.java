@@ -132,7 +132,7 @@ public class TestTruncateTokenFilterFactory extends BaseTokenStreamFactoryTestCa
                   "prefixLength",
                   "3");
             });
-    assertThat(expected.getMessage(), stringContainsInOrder("Unknown parameter", "prefixLength"));
+    assertThat(expected.getMessage(), stringContainsInOrder("Unknown parameter(s):", "prefixLength"));
   }
 
   /** Test that negative prefix length result in exception */
