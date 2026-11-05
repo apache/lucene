@@ -24,6 +24,7 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.Simple64;
 import org.apache.lucene.util.automaton.Transition;
 
 // TODO: can we share this with the frame in STE?
@@ -48,6 +49,8 @@ final class IntersectTermsEnumFrame {
   final ByteArrayDataInput suffixesReader = new ByteArrayDataInput();
 
   byte[] suffixLengthBytes;
+  // Only used in non-leaf blocks, because for leaf blocks we fully decode all terms' suffix lengths
+  // up front.
   final ByteArrayDataInput suffixLengthsReader;
 
   byte[] statBytes = new byte[64];
@@ -72,6 +75,14 @@ final class IntersectTermsEnumFrame {
 
   // True if all entries are terms
   boolean isLeafBlock;
+
+  // True if all entries have the same length.
+  boolean allEqual;
+  // only used when the block is a leaf and allEqual == false.
+  long[] suffixLengthLongs;
+  int suffixLengthLongIndex;
+  int currentSuffixLengthLongStartOrd;
+  int currentSuffixLengthLongValueCount;
 
   int numFollowFloorBlocks;
   int nextFloorLabel;
@@ -190,18 +201,52 @@ final class IntersectTermsEnumFrame {
     suffixesReader.reset(suffixBytes, 0, numSuffixBytes);
 
     int numSuffixLengthBytes = ite.in.readVInt();
-    final boolean allEqual = (numSuffixLengthBytes & 0x01) != 0;
+    allEqual = (numSuffixLengthBytes & 0x01) != 0;
     numSuffixLengthBytes >>>= 1;
-    if (suffixLengthBytes.length < numSuffixLengthBytes) {
-      suffixLengthBytes = new byte[ArrayUtil.oversize(numSuffixLengthBytes, 1)];
-    }
-    if (allEqual) {
-      Arrays.fill(suffixLengthBytes, 0, numSuffixLengthBytes, ite.in.readByte());
+    if (isLeafBlock) {
+      // TODO: If this frame reused from a stale non leaf frame, we could reset/clean
+      // suffixLengthBytes and suffixLengthsReader. That would help gc, but suffixLengthBytes would
+      // need new allocate if this frame load non leaf block again.
+      if (allEqual) {
+        // Leaf blocks store term suffix lengths only. Here allEqual means every term has this same
+        // decoded suffix length(Instead of numSuffixLengthBytes, we save suffixLength directly for
+        // allEqual leaf block).
+        suffixLength = numSuffixLengthBytes;
+        // This frame maybe reused from a stale frame, so reset stale frame's state.
+        suffixLengthLongs = null;
+      } else {
+        // This frame maybe reused from a stale frame, so reset stale frame's state.
+        // We can't reset suffixLength to -1, since IntersectTermsEnum#seekToStartTerm uses
+        // saveSuffix as length to arraycopy when cmp > 0, when target is "" the length is 0 is ok.
+        // if reset suffixLength to -1, the length will be -1.
+        //        suffixLength = -1;
+        int numLongs = numSuffixLengthBytes;
+        suffixLengthLongs = new long[numLongs];
+        ite.in.readLongs(suffixLengthLongs, 0, numLongs);
+        suffixLengthLongIndex = 0;
+        currentSuffixLengthLongStartOrd = 0;
+        currentSuffixLengthLongValueCount = 0;
+      }
     } else {
-      ite.in.readBytes(suffixLengthBytes, 0, numSuffixLengthBytes);
+      // Non-leaf blocks store encoded VInt/VLong bytes containing both suffix lengths and sub-block
+      // FPs. Here allEqual means every encoded byte is identical, not that suffix lengths are
+      // equal.
+      // This frame maybe reused from a stale frame, so reset stale frame's state.
+      // We can't reset suffixLength to -1, since IntersectTermsEnum#seekToStartTerm uses saveSuffix
+      // as length to arraycopy when cmp > 0, when target is "" the length is 0 is ok. if reset
+      // suffixLength to -1, the length will be -1.
+      //      suffixLength = -1;
+      suffixLengthLongs = null;
+      if (suffixLengthBytes.length < numSuffixLengthBytes) {
+        suffixLengthBytes = new byte[ArrayUtil.oversize(numSuffixLengthBytes, 1)];
+      }
+      if (allEqual) {
+        Arrays.fill(suffixLengthBytes, 0, numSuffixLengthBytes, ite.in.readByte());
+      } else {
+        ite.in.readBytes(suffixLengthBytes, 0, numSuffixLengthBytes);
+      }
+      suffixLengthsReader.reset(suffixLengthBytes, 0, numSuffixLengthBytes);
     }
-    suffixLengthsReader.reset(suffixLengthBytes, 0, numSuffixLengthBytes);
-
     // stats
     int numBytes = ite.in.readVInt();
     if (statBytes.length < numBytes) {
@@ -245,10 +290,49 @@ final class IntersectTermsEnumFrame {
   public void nextLeaf() {
     assert nextEnt != -1 && nextEnt < entCount
         : "nextEnt=" + nextEnt + " entCount=" + entCount + " fp=" + fp;
+    if (allEqual == false) {
+      suffixLength = suffixLength(nextEnt);
+    }
     nextEnt++;
-    suffixLength = suffixLengthsReader.readVInt();
     startBytePos = suffixesReader.getPosition();
     suffixesReader.skipBytes(suffixLength);
+  }
+
+  private int suffixLength(int ord) {
+    assert allEqual == false;
+    // Normally it would not happen. Except if a seek moves backward within the same loaded block,
+    // and we don't want reload this block. See: https://github.com/apache/lucene/pull/13253.
+    if (ord < currentSuffixLengthLongStartOrd) {
+      suffixLengthLongIndex = 0;
+      currentSuffixLengthLongStartOrd = 0;
+      currentSuffixLengthLongValueCount = 0;
+    }
+    if (ord >= currentSuffixLengthLongStartOrd + currentSuffixLengthLongValueCount) {
+      skipSuffixLengthLongs(ord);
+    }
+    return Simple64.decodeOneInt(
+        suffixLengthLongs[suffixLengthLongIndex], ord - currentSuffixLengthLongStartOrd);
+  }
+
+  private void skipSuffixLengthLongs(int ord) {
+    int start = currentSuffixLengthLongStartOrd + currentSuffixLengthLongValueCount;
+    if (currentSuffixLengthLongValueCount > 0) {
+      suffixLengthLongIndex++;
+    }
+    while (true) {
+      assert suffixLengthLongIndex < suffixLengthLongs.length;
+      long word = suffixLengthLongs[suffixLengthLongIndex];
+      int packedCount = Simple64.count(word);
+      int decodedCount = Math.min(packedCount, entCount - start);
+      assert decodedCount > 0;
+      if (ord < start + decodedCount) {
+        currentSuffixLengthLongStartOrd = start;
+        currentSuffixLengthLongValueCount = decodedCount;
+        return;
+      }
+      suffixLengthLongIndex++;
+      start += decodedCount;
+    }
   }
 
   public boolean nextNonLeaf() {
