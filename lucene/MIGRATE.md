@@ -32,7 +32,10 @@ with `VisitedSet.create(expectedVisitedNodes, graphSize)`.
 
 The constructor `TruncateTokenFilter(TokenStream, int)` has been removed. To accomplish
 the same functionality use the static factory methods `truncateAfterChars` or `truncateAfterCodePoints`.
-Use the first as replacement of the existing behavior, but the second is unicode conformant.
+`truncateAfterChars` keeps the old char-length behavior; `truncateAfterCodePoints` is the
+Unicode-correct replacement.
+The factory parameter `prefixLength` has also been removed. Replace it with `truncateAfterChars`
+or `truncateAfterCodePoints` on `TruncateTokenFilterFactory`.
 
 ### Explicit byte and float similarity vector search has been removed (GITHUB#16965)
 
