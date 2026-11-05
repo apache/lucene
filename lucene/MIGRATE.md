@@ -37,6 +37,13 @@ Unicode-correct replacement.
 The factory parameter `prefixLength` has also been removed. Replace it with `truncateAfterChars`
 or `truncateAfterCodePoints` on `TruncateTokenFilterFactory`.
 
+### UnifiedHighlighter must be created through its Builder (GITHUB#16975)
+
+The deprecated `UnifiedHighlighter(IndexSearcher, Analyzer)` constructor, its setters and the
+protected `shouldXxx` methods were removed. Use the Builder via
+`UnifiedHighlighter.builder(searcher, analyzer).withXxx(...).build()` instead. Subclasses that
+overrode the `shouldXxx` methods should override `getFlags(String)`.
+
 ### Explicit byte and float similarity vector search has been removed (GITHUB#16965)
 
 The `Explicit` variants of `ByteVectorSimilarityQuery` and `FloatVectorSimilarityQuery`

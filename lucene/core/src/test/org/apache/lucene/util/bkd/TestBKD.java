@@ -691,8 +691,6 @@ public class TestBKD extends LuceneTestCase {
     IndexOutput out = dir.createOutput("bkd", IOContext.DEFAULT);
     IndexInput in = null;
 
-    boolean success = false;
-
     try {
 
       byte[] scratch = new byte[numBytesPerDim * numDataDims];
@@ -867,12 +865,10 @@ public class TestBKD extends LuceneTestCase {
       if (toMerge != null) {
         dir.deleteFile("bkd2");
       }
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(w, in, out);
-        IOUtils.deleteFilesIgnoringExceptions(dir, "bkd", "bkd2");
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, w, in, out);
+      IOUtils.deleteFilesSuppressingExceptions(t, dir, "bkd", "bkd2");
+      throw t;
     }
   }
 
