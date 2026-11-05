@@ -30,11 +30,10 @@ import org.apache.lucene.util.Version;
  * href="https://doi.org/10.1002/asi.20750">Information Retrieval on Turkish Texts</a>
  *
  * <p>Since Lucene 10.5, the filter correctly handles codepoints and truncates after {@code
- * truncateAfterCodePoints} codepoints, no longer producing incomplete surrogate pairs. For
- * backwards compatibility the old {@code prefixLength} is still supported and its behaviour depends
- * on the {@code luceneMatchVersion} parameter. If no parameter is given, it uses a prefix length of
- * 5. In case you change to the more modern codepoint behaviour, reindexing may be required if your
- * documents contain surrogate pairs (like emojis).
+ * truncateAfterCodePoints} codepoints, no longer producing incomplete surrogate pairs.
+ * If no parameter is given, it uses a prefix length of 5. In case you change to the more
+ * modern codepoint behaviour, reindexing may be required if your documents contain
+ * surrogate pairs (like emojis).
  *
  * <p>The following type is recommended for "<i>diacritics-insensitive search</i>" for Turkish:
  *
