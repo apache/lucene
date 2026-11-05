@@ -402,7 +402,7 @@ Query MultiTerm(String field, List<BooleanClause> clauses) : {
   {
     if (splitOnWhitespace == false) {
       firstQuery = getFieldQuery(field, discardEscapeChar(text.image), false);
-      addClause(clauses, CONJ_NONE, MOD_NONE, firstQuery);
+      addMultiTermRunClauses(clauses, firstQuery);
     }
     return firstQuery;
   }

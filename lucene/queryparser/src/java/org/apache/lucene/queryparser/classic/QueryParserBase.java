@@ -21,9 +21,11 @@ import java.text.DateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -46,6 +48,7 @@ import org.apache.lucene.search.MultiTermQuery;
 import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.PrefixQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.RegexpQuery;
 import org.apache.lucene.search.TermRangeQuery;
 import org.apache.lucene.search.WildcardQuery;
@@ -387,6 +390,49 @@ public abstract class QueryParserBase extends QueryBuilder
     else if (!required && prohibited)
       clauses.add(newBooleanClause(q, BooleanClause.Occur.MUST_NOT));
     else throw new RuntimeException("Clause cannot be both required and prohibited");
+  }
+
+  /**
+   * Adds the clauses for a run of plain words that was sent to the analyzer as one piece of text.
+   *
+   * <p>If the analyzed query has one clause per term position (each with the default operator's
+   * occur, all covering the same fields), the clauses are added one by one. A following AND/OR then
+   * applies to the last term position, even if the analyzer dropped a word in between, as it does
+   * with {@code splitOnWhitespace} set to true. Any other query, such as the field alternatives
+   * {@link MultiFieldQueryParser} builds for a single term, is added as one clause.
+   */
+  void addMultiTermRunClauses(List<BooleanClause> clauses, Query q) {
+    if (q instanceof BooleanQuery bq
+        && bq.getMinimumNumberShouldMatch() == 0
+        && bq.clauses().isEmpty() == false) {
+      Occur defaultOccur = operator == OR_OPERATOR ? Occur.SHOULD : Occur.MUST;
+      Set<String> fields = fieldsOf(bq.clauses().get(0).query());
+      boolean positions = true;
+      for (BooleanClause clause : bq.clauses()) {
+        if (clause.occur() != defaultOccur || fields.equals(fieldsOf(clause.query())) == false) {
+          positions = false;
+          break;
+        }
+      }
+      if (positions) {
+        clauses.addAll(bq.clauses());
+        return;
+      }
+    }
+    addClause(clauses, CONJ_NONE, MOD_NONE, q);
+  }
+
+  private static Set<String> fieldsOf(Query query) {
+    Set<String> fields = new HashSet<>();
+    query.visit(
+        new QueryVisitor() {
+          @Override
+          public boolean acceptField(String field) {
+            fields.add(field);
+            return false;
+          }
+        });
+    return fields;
   }
 
   /**
