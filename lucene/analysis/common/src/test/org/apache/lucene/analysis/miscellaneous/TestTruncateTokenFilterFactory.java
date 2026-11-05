@@ -23,6 +23,8 @@ import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.util.Version;
 
+import static org.hamcrest.Matchers.stringContainsInOrder;
+
 /** Simple tests to ensure the simple truncation filter factory is working. */
 public class TestTruncateTokenFilterFactory extends BaseTokenStreamFactoryTestCase {
 
@@ -120,6 +122,17 @@ public class TestTruncateTokenFilterFactory extends BaseTokenStreamFactoryTestCa
                   "6");
             });
     assertTrue(expected.getMessage().contains("Can only give one of the following parameters:"));
+
+    expected =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              tokenFilterFactory(
+                  "Truncate",
+                  "prefixLength",
+                  "3");
+            });
+    assertThat(expected.getMessage(), stringContainsInOrder("Unknown parameter", "prefixLength"));
   }
 
   /** Test that negative prefix length result in exception */
