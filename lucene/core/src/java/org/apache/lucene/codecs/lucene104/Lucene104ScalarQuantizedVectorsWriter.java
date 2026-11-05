@@ -1055,12 +1055,13 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     List<Callable<Void>> calls = new ArrayList<>(tasks);
     for (int t = 0; t < tasks; t++) {
       int task = t;
-      FloatVectorValues copy = values.copy();
+      // one task runs on the merging thread, so it reads the values themselves
+      FloatVectorValues vectors = tasks == 1 ? values : values.copy();
       calls.add(
           () -> {
             Arrays.fill(chunkSums[task], 0);
             for (int i = 0; i < sizes[task]; i++) {
-              float[] vector = copy.vectorValue(ords[task][i]);
+              float[] vector = vectors.vectorValue(ords[task][i]);
               for (int j = 0; j < vector.length; j++) {
                 chunkSums[task][j] += vector[j];
               }
