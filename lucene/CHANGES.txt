@@ -42,6 +42,9 @@ API Changes
   IndexReader, Document or plain text). Use TokenSources#getTokenStream(String, Fields, String,
   Analyzer, int) or TokenSources#getTermVectorTokenStreamOrNull instead. (Christoph Büscher)
 
+* GITHUB#16975: Removed the deprecated UnifiedHighlighter constructor, setters and shouldXxx
+  methods. Use UnifiedHighlighter.Builder instead. (Christoph Büscher)
+
 * GITHUB#16965: Remove the deprecated classes for explicit vector similarity search:
   ByteVectorSimilarityQuery.Explicit, FloatVectorSimilarityQuery.Explicit and
   ExplicitVectorSimilarityCollector.
