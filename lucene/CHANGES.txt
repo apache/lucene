@@ -37,6 +37,11 @@ Other
 
 API Changes
 ---------------------
+* GITHUB#16965: Remove the deprecated classes for explicit vector similarity search:
+  ByteVectorSimilarityQuery.Explicit, FloatVectorSimilarityQuery.Explicit and
+  ExplicitVectorSimilarityCollector.
+  Use the more performant Adaptive queries instead. (Andrea Selva)
+
 * GITHUB#16969: Remove deprecated SpanishMinimalStemFilter, SpanishMinimalStemFilterFactory and
   SpanishMinimalStemmer. Use SpanishPluralStemFilter instead. (Christoph Büscher)
 
@@ -341,10 +346,17 @@ Optimizations
 
 * GITHUB#15902: Improve DiversifyingChildren performance by using primitive arrays (Alessandro Benedetti)
 
+* GITHUB#16970: SortingStoredFieldsConsumer reads its temporary files using a single-threaded
+  IOContext, allowing MMapDirectory to open them with confined areas and avoiding JVM-wide
+  handshakes when the files are closed. (Alan Woodward)
+
 * GITHUB#16835: Speed up rangeIntoBitSet for table-encoded numeric and sorted numeric DocValues. (Ke Wei)
 
 Bug Fixes
 ---------------------
+* GITHUB#16983: UnifiedHighlighter.Builder#withFlags is no longer ignored when building the
+  highlighter. (Christoph Büscher)
+
 * GITHUB#16867: Apply buffered soft-update/delete terms before the global delete buffer reaches the 2GB
   addressing limit of its ByteBlockPool, and stall indexing if the limit is hit during a full flush.
   (Alan Woodward)
@@ -416,10 +428,14 @@ Bug Fixes
 * GITHUB#16926: RescoreTopNQuery no longer throws when its inner query matches no documents.
   (Greg Miller)
 
+* GITHUB#16972: Fix Brazilian "logias" stem replacement. (Simranjeet Singh)
+
 * GITHUB#16947: Disable index-sort early termination for indexes with parent-child docs.  Index sorts
   only apply to parent documents so naive early termination checks can read the sort value from a child
   document as meaning no later documents would be competitive, and incorrectly miss parent documents.
   (Alan Woodward)
+
+* GITHUB#16971: Fix double DocValuesStats extrema initialization. (Simranjeet Singh)
 
 Changes in Runtime Behavior
 ---------------------
