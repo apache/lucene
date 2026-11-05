@@ -37,6 +37,15 @@ field, Fields tvFields, int maxStartOffset)`. The `getAnyTokenStream` and
 Load the document's term vectors once with `reader.termVectors().get(docId)`, get the field value
 from the stored fields, and pass both to `getTokenStream`. Use `-1` as `maxStartOffset` for no limit.
 
+```java
+// before
+TokenStream ts = TokenSources.getAnyTokenStream(reader, docId, field, analyzer);
+// after
+Fields tvFields = reader.termVectors().get(docId);
+String text = reader.storedFields().document(docId).get(field);
+TokenStream ts = TokenSources.getTokenStream(field, tvFields, text, analyzer, -1);
+```
+
 ### Explicit byte and float similarity vector search has been removed (GITHUB#16965)
 
 The `Explicit` variants of `ByteVectorSimilarityQuery` and `FloatVectorSimilarityQuery`
