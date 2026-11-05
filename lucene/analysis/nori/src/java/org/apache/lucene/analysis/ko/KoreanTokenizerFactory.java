@@ -59,6 +59,10 @@ import org.apache.lucene.util.ResourceLoaderAware;
  *       {@link DecompoundMode}
  *   <li>outputUnknownUnigrams: If true outputs unigrams for unknown words.
  *   <li>discardPunctuation: true if punctuation tokens should be dropped from the output.
+ *   <li>cacheHangulRootArcs: if true caches Hangul syllable root arcs in user dictionary FST for
+ *       faster tokenization at the cost of additional heap. Default is true. The system dictionary
+ *       honors system property {@link
+ *       org.apache.lucene.analysis.ko.dict.TokenInfoDictionary#CACHE_HANGUL_ROOT_ARCS_PROPERTY}.
  * </ul>
  *
  * @lucene.experimental
@@ -75,6 +79,7 @@ public class KoreanTokenizerFactory extends TokenizerFactory implements Resource
   private static final String DECOMPOUND_MODE = "decompoundMode";
   private static final String OUTPUT_UNKNOWN_UNIGRAMS = "outputUnknownUnigrams";
   private static final String DISCARD_PUNCTUATION = "discardPunctuation";
+  private static final String CACHE_HANGUL_ROOT_ARCS = "cacheHangulRootArcs";
 
   private final String userDictionaryPath;
   private final String userDictionaryEncoding;
@@ -83,6 +88,7 @@ public class KoreanTokenizerFactory extends TokenizerFactory implements Resource
   private final KoreanTokenizer.DecompoundMode mode;
   private final boolean outputUnknownUnigrams;
   private final boolean discardPunctuation;
+  private final boolean cacheHangulRootArcs;
 
   /** Creates a new KoreanTokenizerFactory */
   public KoreanTokenizerFactory(Map<String, String> args) {
@@ -95,6 +101,7 @@ public class KoreanTokenizerFactory extends TokenizerFactory implements Resource
                 .toUpperCase(Locale.ROOT));
     outputUnknownUnigrams = getBoolean(args, OUTPUT_UNKNOWN_UNIGRAMS, false);
     discardPunctuation = getBoolean(args, DISCARD_PUNCTUATION, true);
+    cacheHangulRootArcs = getBoolean(args, CACHE_HANGUL_ROOT_ARCS, true);
 
     if (!args.isEmpty()) {
       throw new IllegalArgumentException("Unknown parameters: " + args);
@@ -120,7 +127,7 @@ public class KoreanTokenizerFactory extends TokenizerFactory implements Resource
                 .onMalformedInput(CodingErrorAction.REPORT)
                 .onUnmappableCharacter(CodingErrorAction.REPORT);
         Reader reader = new InputStreamReader(stream, decoder);
-        userDictionary = UserDictionary.open(reader);
+        userDictionary = UserDictionary.open(reader, cacheHangulRootArcs);
       }
     } else {
       userDictionary = null;
