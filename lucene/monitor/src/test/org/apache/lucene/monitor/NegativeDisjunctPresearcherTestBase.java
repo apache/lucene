@@ -46,11 +46,14 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.ByteRunnable;
 
-/** Presearcher tests with NotSlots enabled, in addition to all of {@link PresearcherTestBase} */
-public abstract class NotSlotPresearcherTestBase extends PresearcherTestBase {
+/**
+ * Presearcher tests with negative disjuncts enabled, in addition to all of {@link
+ * PresearcherTestBase}
+ */
+public abstract class NegativeDisjunctPresearcherTestBase extends PresearcherTestBase {
 
   protected abstract Presearcher createPresearcher(
-      int maxNotSlots, List<CustomQueryHandler> handlers);
+      int maxNegativeDisjuncts, List<CustomQueryHandler> handlers);
 
   @Override
   protected Presearcher createPresearcher() {
@@ -98,10 +101,10 @@ public abstract class NotSlotPresearcherTestBase extends PresearcherTestBase {
     return new ConstantScoreQuery(parse(query));
   }
 
-  public void testNegatedConjunctionNeedsTwoNotSlots() throws IOException {
+  public void testNegatedConjunctionNeedsTwoNegativeDisjuncts() throws IOException {
     String query = "*:* -(+y:b +z:c)";
     Document both = doc("y", "b", "z", "c");
-    // one NotSlot: the pass overflows and accepts every document
+    // one negative disjunct: the pass overflows and accepts every document
     assertRunAndMatched(1, 0, run(createPresearcher(1, List.of()), query, both));
     assertRunAndMatched(0, 0, run(createPresearcher(2, List.of()), query, both));
     assertRunAndMatched(1, 1, run(createPresearcher(2, List.of()), query, doc("y", "b")));
@@ -124,13 +127,14 @@ public abstract class NotSlotPresearcherTestBase extends PresearcherTestBase {
     }
   }
 
-  public void testFieldsNamedLikeNotSlotFieldsAreSafe() throws IOException {
-    // A user field named like a NotSlot field of x must not let the document's x:t exclude the
+  public void testFieldsNamedLikeNegativeDisjunctFieldsAreSafe() throws IOException {
+    // A user field named like a negative disjunct field of x must not let the document's x:t
+    // exclude the
     // query; the helper query lets x:t pass the term filter
     for (String field :
         new String[] {
-          TermFilteredPresearcher.notSlotField("x", 0),
-          TermFilteredPresearcher.notSlotField("x_0", 0)
+          TermFilteredPresearcher.negativeDisjunctField("x", 0),
+          TermFilteredPresearcher.negativeDisjunctField("x_0", 0)
         }) {
       try (Monitor monitor = newMonitor()) {
         monitor.register(

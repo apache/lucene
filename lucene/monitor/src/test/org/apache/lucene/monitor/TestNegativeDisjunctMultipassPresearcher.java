@@ -21,32 +21,34 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Set;
 
-public class TestNotSlotMultipassPresearcher extends NotSlotPresearcherTestBase {
+public class TestNegativeDisjunctMultipassPresearcher extends NegativeDisjunctPresearcherTestBase {
 
   @Override
-  protected Presearcher createPresearcher(int maxNotSlots, List<CustomQueryHandler> handlers) {
+  protected Presearcher createPresearcher(
+      int maxNegativeDisjuncts, List<CustomQueryHandler> handlers) {
     return new MultipassTermFilteredPresearcher(
-        4, 0, TermWeightor.DEFAULT, handlers, Set.of(), maxNotSlots);
+        4, 0, TermWeightor.DEFAULT, handlers, Set.of(), maxNegativeDisjuncts);
   }
 
-  private static Presearcher createPresearcher(int passes, int maxNotSlots) {
+  private static Presearcher createPresearcher(int passes, int maxNegativeDisjuncts) {
     return new MultipassTermFilteredPresearcher(
-        passes, 0, TermWeightor.DEFAULT, List.of(), Set.of(), maxNotSlots);
+        passes, 0, TermWeightor.DEFAULT, List.of(), Set.of(), maxNegativeDisjuncts);
   }
 
-  public void testNotSlotFillsAPassThePositivesLeaveUnused() throws IOException {
-    // pass 0 takes x:abc, pass 1 the NotSlot
+  public void testNegativeDisjunctFillsAPassThePositivesLeaveUnused() throws IOException {
+    // pass 0 takes x:abc, pass 1 the negative disjunct
     assertRunAndMatched(
         0, 0, run(createPresearcher(2, 1), "+x:abc -f:t", doc("x", "abc", "f", "t")));
     assertRunAndMatched(1, 1, run(createPresearcher(2, 1), "+x:abc -f:t", doc("x", "abc")));
-    // with one pass the NotSlot is never reached
+    // with one pass the negative disjunct is never reached
     assertRunAndMatched(
         1, 0, run(createPresearcher(1, 1), "+x:abc -f:t", doc("x", "abc", "f", "t")));
   }
 
   public void testOverflowingPassStillLetsOtherPassesFilter() throws IOException {
     String query = "+x:abc -(+y:b +z:c)";
-    // pass 0 takes x:abc; pass 1 has two NotSlots for a budget of one, so it accepts everything
+    // pass 0 takes x:abc; pass 1 has two negative disjuncts for a budget of one, so it accepts
+    // everything
     assertRunAndMatched(0, 0, run(createPresearcher(2, 1), query, doc("y", "b", "z", "c")));
     assertRunAndMatched(
         1, 0, run(createPresearcher(2, 1), query, doc("x", "abc", "y", "b", "z", "c")));

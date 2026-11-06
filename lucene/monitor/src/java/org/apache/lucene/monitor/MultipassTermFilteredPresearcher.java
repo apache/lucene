@@ -78,14 +78,14 @@ public class MultipassTermFilteredPresearcher extends TermFilteredPresearcher {
    * Construct a new MultipassTermFilteredPresearcher that also filters on negated clauses
    *
    * @param passes the number of times a query should be indexed
-   * @param minWeight the minimum weight a querytree should be advanced over. NotSlots usually weigh
-   *     less than terms (see {@link TermWeightor#negate(double)}), so a minimum above 0 can keep
-   *     later passes from using them
+   * @param minWeight the minimum weight a querytree should be advanced over. Negative disjuncts
+   *     usually weigh less than terms (see {@link TermWeightor#negate(double)}), so a minimum above
+   *     0 can keep later passes from using them
    * @param weightor the TreeWeightor to use
    * @param queryHandlers a list of custom query handlers
    * @param filterFields a set of fields to use as filters
-   * @param maxNotSlots the maximum number of NotSlots a query may use per pass; 0 disables
-   *     filtering on negated clauses. See {@link TermFilteredPresearcher}.
+   * @param maxNegativeDisjuncts the maximum number of negative disjuncts a query may use per pass;
+   *     0 disables filtering on negated clauses. See {@link TermFilteredPresearcher}.
    */
   public MultipassTermFilteredPresearcher(
       int passes,
@@ -93,8 +93,8 @@ public class MultipassTermFilteredPresearcher extends TermFilteredPresearcher {
       TermWeightor weightor,
       List<CustomQueryHandler> queryHandlers,
       Set<String> filterFields,
-      int maxNotSlots) {
-    super(weightor, queryHandlers, filterFields, maxNotSlots);
+      int maxNegativeDisjuncts) {
+    super(weightor, queryHandlers, filterFields, maxNegativeDisjuncts);
     this.passes = passes;
     this.minWeight = minWeight;
   }
@@ -132,7 +132,7 @@ public class MultipassTermFilteredPresearcher extends TermFilteredPresearcher {
     }
 
     @Override
-    public boolean supportsNotSlots() {
+    public boolean supportsNegativeDisjuncts() {
       return true;
     }
 

@@ -37,7 +37,7 @@ public interface CustomQueryHandler {
    *
    * <p>The node must select every document that {@code query} does not match. For example, if every
    * document containing any of a set of terms matches {@code query}, a {@link
-   * QueryTree#notSlot(java.util.Set, TermWeightor) NotSlot} over those terms.
+   * QueryTree#negativeDisjunct(java.util.Set, TermWeightor) negative disjunct} over those terms.
    */
   default QueryTree handleNegatedQuery(Query query, TermWeightor termWeightor) {
     return null;

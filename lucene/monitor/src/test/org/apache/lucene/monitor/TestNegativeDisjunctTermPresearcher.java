@@ -24,15 +24,18 @@ import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.util.BytesRef;
 
-public class TestNotSlotTermPresearcher extends NotSlotPresearcherTestBase {
+public class TestNegativeDisjunctTermPresearcher extends NegativeDisjunctPresearcherTestBase {
 
   @Override
-  protected Presearcher createPresearcher(int maxNotSlots, List<CustomQueryHandler> handlers) {
-    return new TermFilteredPresearcher(TermWeightor.DEFAULT, handlers, Set.of(), maxNotSlots);
+  protected Presearcher createPresearcher(
+      int maxNegativeDisjuncts, List<CustomQueryHandler> handlers) {
+    return new TermFilteredPresearcher(
+        TermWeightor.DEFAULT, handlers, Set.of(), maxNegativeDisjuncts);
   }
 
-  /** A document query builder that ignores NotSlots */
-  private static class IgnoringNotSlots implements TermFilteredPresearcher.DocumentQueryBuilder {
+  /** A document query builder that ignores negative disjuncts */
+  private static class IgnoringNegativeDisjuncts
+      implements TermFilteredPresearcher.DocumentQueryBuilder {
     @Override
     public void addTerm(String field, BytesRef term) {}
 
@@ -52,15 +55,15 @@ public class TestNotSlotTermPresearcher extends NotSlotPresearcherTestBase {
     };
   }
 
-  public void testQueryBuildersMustSupportNotSlots() throws IOException {
+  public void testQueryBuildersMustSupportNegativeDisjuncts() throws IOException {
     expectThrows(
         IllegalStateException.class,
-        () -> run(withQueryBuilder(new IgnoringNotSlots()), "*:* -f:t", doc("f", "t")));
+        () -> run(withQueryBuilder(new IgnoringNegativeDisjuncts()), "*:* -f:t", doc("f", "t")));
     // claiming support without implementing addNegatableTerm
     TermFilteredPresearcher.DocumentQueryBuilder claiming =
-        new IgnoringNotSlots() {
+        new IgnoringNegativeDisjuncts() {
           @Override
-          public boolean supportsNotSlots() {
+          public boolean supportsNegativeDisjuncts() {
             return true;
           }
         };
@@ -69,7 +72,7 @@ public class TestNotSlotTermPresearcher extends NotSlotPresearcherTestBase {
         () -> run(withQueryBuilder(claiming), "*:* -f:t", doc("f", "t")));
   }
 
-  public void testNegativeMaxNotSlotsIsRejected() {
+  public void testNegativeMaxNegativeDisjunctsIsRejected() {
     expectThrows(
         IllegalArgumentException.class,
         () -> new TermFilteredPresearcher(TermWeightor.DEFAULT, List.of(), Set.of(), -1));

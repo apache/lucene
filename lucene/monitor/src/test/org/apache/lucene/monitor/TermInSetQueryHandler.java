@@ -33,8 +33,8 @@ import org.apache.lucene.util.BytesRefIterator;
 /**
  * Handles {@link TermInSetQuery}s with more than one term, which visit their terms as an automaton
  * and so reach the presearcher as unknown leaves. Such a query matches exactly the documents that
- * contain any of its terms, so its negation, "contains none of them", is a NotSlot; whether this
- * handler provides it is configurable.
+ * contain any of its terms, so its negation, "contains none of them", is a negative disjunct;
+ * whether this handler provides it is configurable.
  */
 final class TermInSetQueryHandler implements CustomQueryHandler {
 
@@ -72,7 +72,7 @@ final class TermInSetQueryHandler implements CustomQueryHandler {
   @Override
   public QueryTree handleNegatedQuery(Query query, TermWeightor termWeightor) {
     if (negatable && query instanceof TermInSetQuery tisq) {
-      return QueryTree.notSlot(terms(tisq), termWeightor);
+      return QueryTree.negativeDisjunct(terms(tisq), termWeightor);
     }
     return null;
   }

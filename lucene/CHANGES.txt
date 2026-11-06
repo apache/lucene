@@ -127,9 +127,9 @@ API Changes
 New Features
 ---------------------
 * GITHUB#TBD: Monitor's TermFilteredPresearcher and MultipassTermFilteredPresearcher can now filter
-  on negated clauses. With a maximum number of NotSlots greater than 0, the negated terms of a
-  query are indexed so that, for example, "*:* -flag:true" is only selected for documents without
-  flag:true. TermWeightor gains negate and withNegation to weigh the absence of a term, and
+  on negated clauses. With a maximum number of negative disjuncts greater than 0, the negated terms
+  of a query are indexed so that, for example, "*:* -flag:true" is only selected for documents
+  without flag:true. TermWeightor gains negate and withNegation to weigh the absence of a term, and
   CustomQueryHandler gains handleNegatedQuery. (lkotzaniewsk)
 
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of

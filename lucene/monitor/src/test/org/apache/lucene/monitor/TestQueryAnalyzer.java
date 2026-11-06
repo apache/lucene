@@ -197,9 +197,9 @@ public class TestQueryAnalyzer extends LuceneTestCase {
     assertFalse(tree.advancePhase(0.1f));
   }
 
-  // NotSlots (negation optimized)
+  // Negative disjuncts (negation optimized)
 
-  private static final QueryAnalyzer notSlotAnalyzer = new QueryAnalyzer(List.of(), true);
+  private static final QueryAnalyzer negativeDisjunctAnalyzer = new QueryAnalyzer(List.of(), true);
 
   private static Term t(String text) {
     return new Term("field", text);
@@ -208,12 +208,12 @@ public class TestQueryAnalyzer extends LuceneTestCase {
   private static final Set<Term> ANY =
       Set.of(new Term(TermFilteredPresearcher.ANYTOKEN_FIELD, TermFilteredPresearcher.ANYTOKEN));
 
-  /** The terms and NotSlots of the current path */
-  private record Pass(Set<Term> terms, List<Set<Term>> notSlots) {}
+  /** The terms and negative disjuncts of the current path */
+  private record Pass(Set<Term> terms, List<Set<Term>> negativeDisjuncts) {}
 
   private static Pass collect(QueryTree tree) {
     Set<Term> terms = new HashSet<>();
-    List<Set<Term>> notSlots = new ArrayList<>();
+    List<Set<Term>> negativeDisjuncts = new ArrayList<>();
     tree.collectTerms(
         new QueryTree.TermCollector() {
           @Override
@@ -222,49 +222,52 @@ public class TestQueryAnalyzer extends LuceneTestCase {
           }
 
           @Override
-          public void notSlot(Set<Term> slotTerms) {
-            notSlots.add(slotTerms);
+          public void negativeDisjunct(Set<Term> disjunctTerms) {
+            negativeDisjuncts.add(disjunctTerms);
           }
         });
-    return new Pass(terms, notSlots);
+    return new Pass(terms, negativeDisjuncts);
   }
 
-  private static QueryTree notSlotTree(Query query) {
-    return notSlotAnalyzer.buildTree(query, TermWeightor.DEFAULT);
+  private static QueryTree negativeDisjunctTree(Query query) {
+    return negativeDisjunctAnalyzer.buildTree(query, TermWeightor.DEFAULT);
   }
 
-  private static Pass notSlotPass(String query) {
-    return collect(notSlotTree(MonitorTestBase.parse(query)));
+  private static Pass negativeDisjunctPass(String query) {
+    return collect(negativeDisjunctTree(MonitorTestBase.parse(query)));
   }
 
-  public void testNegatedTermBecomesANotSlotAfterThePositives() {
-    QueryTree tree = notSlotTree(MonitorTestBase.parse("+a -b"));
+  public void testNegatedTermBecomesANegativeDisjunctAfterThePositives() {
+    QueryTree tree = negativeDisjunctTree(MonitorTestBase.parse("+a -b"));
     assertEquals(new Pass(Set.of(t("a")), List.of()), collect(tree));
     assertTrue(tree.advancePhase(0));
     assertEquals(new Pass(Set.of(), List.of(Set.of(t("b")))), collect(tree));
     assertFalse(tree.advancePhase(0));
   }
 
-  public void testNegatedTermsOfAConjunctionShareANotSlot() {
-    assertEquals(new Pass(Set.of(), List.of(Set.of(t("b"), t("c")))), notSlotPass("*:* -b -c"));
-    assertEquals(new Pass(Set.of(), List.of(Set.of(t("b"), t("c")))), notSlotPass("-b -c"));
+  public void testNegatedTermsOfAConjunctionShareANegativeDisjunct() {
+    assertEquals(
+        new Pass(Set.of(), List.of(Set.of(t("b"), t("c")))), negativeDisjunctPass("*:* -b -c"));
+    assertEquals(
+        new Pass(Set.of(), List.of(Set.of(t("b"), t("c")))), negativeDisjunctPass("-b -c"));
     // De Morgan: NOT(b OR c) = NOT b AND NOT c
-    assertEquals(new Pass(Set.of(), List.of(Set.of(t("b"), t("c")))), notSlotPass("*:* -(b c)"));
+    assertEquals(
+        new Pass(Set.of(), List.of(Set.of(t("b"), t("c")))), negativeDisjunctPass("*:* -(b c)"));
   }
 
-  public void testNegatedConjunctionIsADisjunctionOfNotSlots() {
-    Pass pass = notSlotPass("*:* -(+b +c)");
+  public void testNegatedConjunctionIsADisjunctionOfNegativeDisjuncts() {
+    Pass pass = negativeDisjunctPass("*:* -(+b +c)");
     assertEquals(Set.of(), pass.terms());
-    assertEquals(Set.of(Set.of(t("b")), Set.of(t("c"))), new HashSet<>(pass.notSlots()));
+    assertEquals(Set.of(Set.of(t("b")), Set.of(t("c"))), new HashSet<>(pass.negativeDisjuncts()));
   }
 
-  public void testNegatedOneTermPhraseIsANotSlot() {
+  public void testNegatedOneTermPhraseIsANegativeDisjunct() {
     Query query =
         new BooleanQuery.Builder()
             .add(MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.SHOULD)
             .add(new PhraseQuery("field", "b"), BooleanClause.Occur.MUST_NOT)
             .build();
-    assertEquals(new Pass(Set.of(), List.of(Set.of(t("b")))), collect(notSlotTree(query)));
+    assertEquals(new Pass(Set.of(), List.of(Set.of(t("b")))), collect(negativeDisjunctTree(query)));
   }
 
   private static Query matchAllExcept(Query negated) {
@@ -278,22 +281,25 @@ public class TestQueryAnalyzer extends LuceneTestCase {
     TermQuery b = new TermQuery(t("b"));
     List<Set<Term>> notB = List.of(Set.of(t("b")));
     assertEquals(
-        new Pass(Set.of(), notB), collect(notSlotTree(matchAllExcept(new BoostQuery(b, 2)))));
+        new Pass(Set.of(), notB),
+        collect(negativeDisjunctTree(matchAllExcept(new BoostQuery(b, 2)))));
     assertEquals(
-        new Pass(Set.of(), notB), collect(notSlotTree(matchAllExcept(new ConstantScoreQuery(b)))));
+        new Pass(Set.of(), notB),
+        collect(negativeDisjunctTree(matchAllExcept(new ConstantScoreQuery(b)))));
     Query oneTermSet = new TermInSetQuery("field", List.of(new BytesRef("b")));
-    assertEquals(new Pass(Set.of(), notB), collect(notSlotTree(matchAllExcept(oneTermSet))));
+    assertEquals(
+        new Pass(Set.of(), notB), collect(negativeDisjunctTree(matchAllExcept(oneTermSet))));
     Query synonyms = new SynonymQuery.Builder("field").addTerm(t("b")).addTerm(t("c")).build();
     assertEquals(
         new Pass(Set.of(), List.of(Set.of(t("b"), t("c")))),
-        collect(notSlotTree(matchAllExcept(synonyms))));
+        collect(negativeDisjunctTree(matchAllExcept(synonyms))));
 
     // not negated exactly: a disjunction-max wrapper, an empty boolean query (which matches
     // nothing), and a query whose handler does not implement handleNegatedQuery
     Query dismax = new DisjunctionMaxQuery(List.of(b, new TermQuery(t("c"))), 0);
-    assertEquals(new Pass(ANY, List.of()), collect(notSlotTree(matchAllExcept(dismax))));
+    assertEquals(new Pass(ANY, List.of()), collect(negativeDisjunctTree(matchAllExcept(dismax))));
     Query empty = new BooleanQuery.Builder().build();
-    assertEquals(new Pass(ANY, List.of()), collect(notSlotTree(matchAllExcept(empty))));
+    assertEquals(new Pass(ANY, List.of()), collect(negativeDisjunctTree(matchAllExcept(empty))));
     QueryAnalyzer regexp = new QueryAnalyzer(List.of(new RegexpQueryHandler()), true);
     Query negatedRegexp = matchAllExcept(new RegexpQuery(t("ab.*")));
     assertEquals(
@@ -302,7 +308,8 @@ public class TestQueryAnalyzer extends LuceneTestCase {
 
   public void testDoubleNegationIsPositive() {
     // NOT(a AND NOT b) = NOT a OR b
-    assertEquals(new Pass(Set.of(t("b")), List.of(Set.of(t("a")))), notSlotPass("*:* -(+a -b)"));
+    assertEquals(
+        new Pass(Set.of(t("b")), List.of(Set.of(t("a")))), negativeDisjunctPass("*:* -(+a -b)"));
   }
 
   public void testInexactNegationsAreAny() {
@@ -310,7 +317,7 @@ public class TestQueryAnalyzer extends LuceneTestCase {
         new String[] {
           "*:* -\"a b\"", "*:* -b*", "*:* -field:[a TO c]", "*:* -/ab.*/", "*:* -(-b)"
         }) {
-      assertEquals(query, new Pass(ANY, List.of()), notSlotPass(query));
+      assertEquals(query, new Pass(ANY, List.of()), negativeDisjunctPass(query));
     }
     BooleanQuery msm =
         new BooleanQuery.Builder()
@@ -323,7 +330,7 @@ public class TestQueryAnalyzer extends LuceneTestCase {
             .add(MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.SHOULD)
             .add(msm, BooleanClause.Occur.MUST_NOT)
             .build();
-    assertEquals(new Pass(ANY, List.of()), collect(notSlotTree(query)));
+    assertEquals(new Pass(ANY, List.of()), collect(negativeDisjunctTree(query)));
 
     // a query that passes its terms straight to the visitor, but needs all of them to match
     Query allTerms =
@@ -353,7 +360,7 @@ public class TestQueryAnalyzer extends LuceneTestCase {
             .add(MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.SHOULD)
             .add(allTerms, BooleanClause.Occur.MUST_NOT)
             .build();
-    assertEquals(new Pass(ANY, List.of()), collect(notSlotTree(query)));
+    assertEquals(new Pass(ANY, List.of()), collect(negativeDisjunctTree(query)));
   }
 
   public void testCustomQueryHandlersUnderNegation() {

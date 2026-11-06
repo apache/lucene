@@ -31,22 +31,24 @@ public class TestQueryTree extends LuceneTestCase {
   private static final Term B = new Term("f", "b");
   private static final Term C = new Term("g", "c");
 
-  private static double notSlotWeight(TermWeightor weightor, Term... terms) {
-    return QueryTree.notSlot(Set.of(terms), weightor).weight();
+  private static double negativeDisjunctWeight(TermWeightor weightor, Term... terms) {
+    return QueryTree.negativeDisjunct(Set.of(terms), weightor).weight();
   }
 
-  public void testNotSlotLeaf() {
-    QueryTree notSlot = QueryTree.notSlot(Set.of(C, B, A), 0.25);
-    assertEquals(0.25, notSlot.weight(), 0);
-    assertFalse(notSlot.advancePhase(0));
-    assertEquals("NotSlot[f:a, f:b, g:c]^0.25", notSlot.toString());
-    expectThrows(IllegalArgumentException.class, () -> QueryTree.notSlot(Set.of(), 1));
-    expectThrows(IllegalArgumentException.class, () -> QueryTree.notSlot(Set.of(A), 0).weight());
+  public void testNegativeDisjunctLeaf() {
+    QueryTree negativeDisjunct = QueryTree.negativeDisjunct(Set.of(C, B, A), 0.25);
+    assertEquals(0.25, negativeDisjunct.weight(), 0);
+    assertFalse(negativeDisjunct.advancePhase(0));
+    assertEquals("NegativeDisjunct[f:a, f:b, g:c]^0.25", negativeDisjunct.toString());
+    expectThrows(IllegalArgumentException.class, () -> QueryTree.negativeDisjunct(Set.of(), 1));
+    expectThrows(
+        IllegalArgumentException.class, () -> QueryTree.negativeDisjunct(Set.of(A), 0).weight());
   }
 
-  public void testCollectorsWithoutNotSlotSupportGetTheAnyToken() {
+  public void testCollectorsWithoutNegativeDisjunctSupportGetTheAnyToken() {
     Term any = new Term(TermFilteredPresearcher.ANYTOKEN_FIELD, TermFilteredPresearcher.ANYTOKEN);
-    QueryTree tree = QueryTree.conjunction(QueryTree.notSlot(Set.of(A), 2), QueryTree.term(B, 1));
+    QueryTree tree =
+        QueryTree.conjunction(QueryTree.negativeDisjunct(Set.of(A), 2), QueryTree.term(B, 1));
     Set<Term> terms = new HashSet<>();
     tree.collectTerms((BiConsumer<String, BytesRef>) (f, b) -> terms.add(new Term(f, b)));
     assertEquals(Set.of(any), terms);
@@ -56,31 +58,33 @@ public class TestQueryTree extends LuceneTestCase {
     assertEquals(Set.of(any), terms);
   }
 
-  public void testNotSlotWeightIsTheMaxNegatedWeight() {
+  public void testNegativeDisjunctWeightIsTheMaxNegatedWeight() {
     TermWeightor weights = t -> t.equals(A) ? 0.2 : t.equals(B) ? 0.7 : 0.1;
     TermWeightor weightor = weights.withNegation(w -> w);
-    assertEquals(0.2, notSlotWeight(weightor, A), 0);
-    assertEquals(0.7, notSlotWeight(weightor, A, B, C), 0);
+    assertEquals(0.2, negativeDisjunctWeight(weightor, A), 0);
+    assertEquals(0.7, negativeDisjunctWeight(weightor, A, B, C), 0);
   }
 
   public void testDefaultNegationReadsWeightsAsSurprisal() {
     // weights as -ln p: A is in 1% of documents, B in 60%
     TermWeightor weightor = t -> t.equals(A) ? -Math.log(0.01) : -Math.log(0.6);
-    assertEquals(-Math.log(0.99), notSlotWeight(weightor, A), 1e-9);
-    assertEquals(-Math.log(0.4), notSlotWeight(weightor, B), 1e-9);
-    assertEquals(TermWeightor.MIN_NEGATED_WEIGHT, notSlotWeight(_ -> 1000, A), 0);
+    assertEquals(-Math.log(0.99), negativeDisjunctWeight(weightor, A), 1e-9);
+    assertEquals(-Math.log(0.4), negativeDisjunctWeight(weightor, B), 1e-9);
+    assertEquals(TermWeightor.MIN_NEGATED_WEIGHT, negativeDisjunctWeight(_ -> 1000, A), 0);
   }
 
-  public void testDefaultWeightorRanksNotSlotsBelowTerms() {
+  public void testDefaultWeightorRanksNegativeDisjunctsBelowTerms() {
     double minTermWeight = Double.MAX_VALUE;
     Set<Term> allTerms = new HashSet<>();
     for (int length = 1; length <= 40; length++) {
       Term term = new Term("f", "x".repeat(length));
       allTerms.add(term);
       minTermWeight = Math.min(minTermWeight, TermWeightor.DEFAULT.applyAsDouble(term));
-      assertTrue(notSlotWeight(TermWeightor.DEFAULT, term) < minTermWeight);
+      assertTrue(negativeDisjunctWeight(TermWeightor.DEFAULT, term) < minTermWeight);
     }
-    assertTrue(notSlotWeight(TermWeightor.DEFAULT, allTerms.toArray(new Term[0])) < minTermWeight);
+    assertTrue(
+        negativeDisjunctWeight(TermWeightor.DEFAULT, allTerms.toArray(new Term[0]))
+            < minTermWeight);
   }
 
   public void testCombinedWeightorsKeepTheNegation() {
@@ -89,17 +93,22 @@ public class TestQueryTree extends LuceneTestCase {
     TermWeightor field = TermWeightor.fieldWeightor(0.5, "f");
     double halfOfCombined = 0.5 * negating.applyAsDouble(A) / 2;
 
-    assertEquals(halfOfCombined, notSlotWeight(TermWeightor.combine(field, negating), A), 1e-9);
-    TermWeightor nested = TermWeightor.combine(TermWeightor.combine(negating), field);
-    assertEquals(halfOfCombined, notSlotWeight(nested, A), 1e-9);
-    TermWeightor shared = TermWeightor.combine(negating, field.withNegation(half));
-    assertEquals(halfOfCombined, notSlotWeight(shared, A), 1e-9);
     assertEquals(
-        TermWeightor.DEFAULT.negate(0.5), notSlotWeight(TermWeightor.combine(field), A), 1e-9);
+        halfOfCombined, negativeDisjunctWeight(TermWeightor.combine(field, negating), A), 1e-9);
+    TermWeightor nested = TermWeightor.combine(TermWeightor.combine(negating), field);
+    assertEquals(halfOfCombined, negativeDisjunctWeight(nested, A), 1e-9);
+    TermWeightor shared = TermWeightor.combine(negating, field.withNegation(half));
+    assertEquals(halfOfCombined, negativeDisjunctWeight(shared, A), 1e-9);
+    assertEquals(
+        TermWeightor.DEFAULT.negate(0.5),
+        negativeDisjunctWeight(TermWeightor.combine(field), A),
+        1e-9);
 
     TermWeightor conflicting = field.withNegation(w -> w);
     expectThrows(IllegalArgumentException.class, () -> TermWeightor.combine(negating, conflicting));
     assertEquals(
-        4, notSlotWeight(TermWeightor.combineWithNegation(_ -> 4, negating, conflicting), A), 0);
+        4,
+        negativeDisjunctWeight(TermWeightor.combineWithNegation(_ -> 4, negating, conflicting), A),
+        0);
   }
 }

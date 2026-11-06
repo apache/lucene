@@ -141,7 +141,7 @@ class QueryAnalyzer {
         // Lucene matches nothing for a pure negative query such as (-b). Negated, it matches every
         // document, which its clauses can't express (NOT (-b) is not b), so select the query for
         // every document. Positive, it is treated as *:* -b, which selects more documents than it
-        // matches. Without NotSlots, it always selects the query for every document.
+        // matches. Without negative disjuncts, it always selects the query for every document.
         if (parent instanceof BooleanQuery bq
             && isPureNegative(bq)
             && (!isNegationOptimized || isNegated)) {
@@ -199,13 +199,13 @@ class QueryAnalyzer {
       if (!negatedTerms.isEmpty()) {
         all = new ArrayList<>(children);
         if (buildsDisjunction) {
-          // NOT a OR NOT b: each term is a NotSlot of its own
+          // NOT a OR NOT b: each term is a negative disjunct of its own
           for (Term term : negatedTerms) {
-            all.add(w -> QueryTree.notSlot(Set.of(term), w));
+            all.add(w -> QueryTree.negativeDisjunct(Set.of(term), w));
           }
         } else {
-          // NOT a AND NOT b: one NotSlot, a document must contain none of the terms
-          all.add(w -> QueryTree.notSlot(negatedTerms, w));
+          // NOT a AND NOT b: one negative disjunct, a document must contain none of the terms
+          all.add(w -> QueryTree.negativeDisjunct(negatedTerms, w));
         }
       }
       if (all.isEmpty() && isNegationOptimized) {

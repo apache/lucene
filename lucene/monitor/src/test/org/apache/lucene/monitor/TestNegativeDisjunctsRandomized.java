@@ -48,8 +48,10 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 
-/** NotSlots must never drop a matching query, and must exclude some that would be selected */
-public class TestNotSlotRandomized extends LuceneTestCase {
+/**
+ * Negative disjuncts must never drop a matching query, and must exclude some that would be selected
+ */
+public class TestNegativeDisjunctsRandomized extends LuceneTestCase {
 
   private static final Analyzer ANALYZER = new WhitespaceAnalyzer();
   private static final int MAX_BATCH_SIZE = 16;
@@ -214,11 +216,14 @@ public class TestNotSlotRandomized extends LuceneTestCase {
   }
 
   private static Presearcher presearcher(
-      int passes, TermWeightor weightor, List<CustomQueryHandler> handlers, int maxNotSlots) {
+      int passes,
+      TermWeightor weightor,
+      List<CustomQueryHandler> handlers,
+      int maxNegativeDisjuncts) {
     return passes == 0
-        ? new TermFilteredPresearcher(weightor, handlers, Set.of(), maxNotSlots)
+        ? new TermFilteredPresearcher(weightor, handlers, Set.of(), maxNegativeDisjuncts)
         : new MultipassTermFilteredPresearcher(
-            passes, 0, weightor, handlers, Set.of(), maxNotSlots);
+            passes, 0, weightor, handlers, Set.of(), maxNegativeDisjuncts);
   }
 
   private static Set<String> matchIds(MultiMatchingQueries<QueryMatch> matches, int doc) {
@@ -250,12 +255,12 @@ public class TestNotSlotRandomized extends LuceneTestCase {
   }
 
   @Nightly
-  public void testNotSlotsNeverDropMatches() throws IOException {
+  public void testNegativeDisjunctsNeverDropMatches() throws IOException {
     Random r = random();
     long excluded = 0;
     for (int iteration = atLeast(5); iteration > 0; iteration--) {
       TestConfig config = randomTestConfig(r);
-      int maxNotSlots = TestUtil.nextInt(r, 1, 2);
+      int maxNegativeDisjuncts = TestUtil.nextInt(r, 1, 2);
       TermWeightor weightor = randomWeightor(r);
       List<CustomQueryHandler> handlers = new ArrayList<>();
       if (r.nextBoolean()) {
@@ -266,24 +271,25 @@ public class TestNotSlotRandomized extends LuceneTestCase {
       String description =
           "passes="
               + passes
-              + " maxNotSlots="
-              + maxNotSlots
+              + " maxNegativeDisjuncts="
+              + maxNegativeDisjuncts
               + " handlers="
               + handlers.size()
               + " "
               + config;
 
       try (Monitor oracle = new Monitor(ANALYZER, Presearcher.NO_FILTERING);
-          Monitor withoutNotSlots =
+          Monitor withoutNegativeDisjuncts =
               new Monitor(ANALYZER, presearcher(passes, weightor, handlers, 0));
           Monitor monitor =
-              new Monitor(ANALYZER, presearcher(passes, weightor, handlers, maxNotSlots))) {
+              new Monitor(
+                  ANALYZER, presearcher(passes, weightor, handlers, maxNegativeDisjuncts))) {
         List<MonitorQuery> queries = new ArrayList<>();
         for (int i = 0; i < 150; i++) {
           queries.add(new MonitorQuery(Integer.toString(i), randomQuery(r, config, 3)));
         }
         oracle.register(queries);
-        withoutNotSlots.register(queries);
+        withoutNegativeDisjuncts.register(queries);
         monitor.register(queries);
 
         for (int batch = 0; batch < 20; batch++) {
@@ -306,12 +312,12 @@ public class TestNotSlotRandomized extends LuceneTestCase {
               fail(message.toString());
             }
           }
-          Set<String> exclusions = selectedIds(withoutNotSlots, docs);
+          Set<String> exclusions = selectedIds(withoutNegativeDisjuncts, docs);
           exclusions.removeAll(selectedIds(monitor, docs));
           excluded += exclusions.size();
         }
       }
     }
-    assertTrue("NotSlots never excluded a query", excluded > 0);
+    assertTrue("Negative disjuncts never excluded a query", excluded > 0);
   }
 }

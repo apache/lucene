@@ -45,27 +45,27 @@ public abstract class QueryTree {
   /** The weight of this node */
   public abstract double weight();
 
-  /** Collect terms and NotSlots from the most highly-weighted path below this node */
+  /** Collect terms and negative disjuncts from the most highly-weighted path below this node */
   public abstract void collectTerms(TermCollector termCollector);
 
   /**
-   * Collect terms from the most highly-weighted path below this node, with NotSlots collected as
-   * the ANYTOKEN
+   * Collect terms from the most highly-weighted path below this node, with negative disjuncts
+   * collected as the ANYTOKEN
    */
   public final void collectTerms(BiConsumer<String, BytesRef> termCollector) {
     collectTerms(termCollector::accept);
   }
 
-  /** Receives the terms of the most highly-weighted path, including NotSlots */
+  /** Receives the terms of the most highly-weighted path, including negative disjuncts */
   public interface TermCollector extends BiConsumer<String, BytesRef> {
 
     /**
      * The current path is also satisfied by a document containing none of {@code terms}
      *
-     * <p>The default collects the ANYTOKEN, so that collectors that do not support NotSlots select
-     * the query for every document.
+     * <p>The default collects the ANYTOKEN, so that collectors that do not support negative
+     * disjuncts select the query for every document.
      */
-    default void notSlot(Set<Term> terms) {
+    default void negativeDisjunct(Set<Term> terms) {
       accept(
           TermFilteredPresearcher.ANYTOKEN_FIELD, new BytesRef(TermFilteredPresearcher.ANYTOKEN));
     }
@@ -169,41 +169,41 @@ public abstract class QueryTree {
   }
 
   /**
-   * Returns a NotSlot leaf, satisfied by documents that contain none of {@code terms}, weighted by
-   * the strongest of their {@link TermWeightor#negate(double) negated weights}
+   * Returns a negative disjunct leaf, satisfied by documents that contain none of {@code terms},
+   * weighted by the strongest of their {@link TermWeightor#negate(double) negated weights}
    */
-  public static QueryTree notSlot(Set<Term> terms, TermWeightor weightor) {
+  public static QueryTree negativeDisjunct(Set<Term> terms, TermWeightor weightor) {
     // The sum would be exact for independent terms but overestimates correlated ones; the max is a
     // lower bound whatever the correlation.
     double weight = 0;
     for (Term term : terms) {
       weight = Math.max(weight, weightor.negate(weightor.applyAsDouble(term)));
     }
-    return notSlot(terms, weight);
+    return negativeDisjunct(terms, weight);
   }
 
   /**
-   * Returns a NotSlot leaf, satisfied by documents that contain none of {@code terms}
+   * Returns a negative disjunct leaf, satisfied by documents that contain none of {@code terms}
    *
    * <p>The weight must be greater than 0
    */
-  public static QueryTree notSlot(Set<Term> terms, double weight) {
+  public static QueryTree negativeDisjunct(Set<Term> terms, double weight) {
     if (terms.isEmpty()) {
-      throw new IllegalArgumentException("A NotSlot must have at least one term");
+      throw new IllegalArgumentException("A negative disjunct must have at least one term");
     }
     SortedSet<Term> sorted = Collections.unmodifiableSortedSet(new TreeSet<>(terms));
     return new QueryTree() {
       @Override
       public double weight() {
         if (weight <= 0) {
-          throw new IllegalArgumentException("NotSlot weights must be greater than 0");
+          throw new IllegalArgumentException("Negative disjunct weights must be greater than 0");
         }
         return weight;
       }
 
       @Override
       public void collectTerms(TermCollector termCollector) {
-        termCollector.notSlot(sorted);
+        termCollector.negativeDisjunct(sorted);
       }
 
       @Override
@@ -213,7 +213,7 @@ public abstract class QueryTree {
 
       @Override
       public String toString(int depth) {
-        return space(depth) + "NotSlot" + sorted + "^" + weight;
+        return space(depth) + "NegativeDisjunct" + sorted + "^" + weight;
       }
     };
   }
