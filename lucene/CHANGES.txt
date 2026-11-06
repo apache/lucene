@@ -37,6 +37,11 @@ Other
 
 API Changes
 ---------------------
+* GITHUB#16984: Remove the deprecated constructor in TruncateTokenFilter.
+  Its usage has been replaced by static factory methods TruncateTokenFilter.truncateAfterChars
+  for backward compatibility or TruncateTokenFilter.truncateAfterCodePoints.
+  The deprecated factory parameter prefixLength (constant field PREFIX_LENGTH_KEY) is also removed;
+  use truncateAfterChars or truncateAfterCodePoints instead.(Andrea Selva)
 
 * GITHUB#16975: Removed the deprecated UnifiedHighlighter constructor, setters and shouldXxx
   methods. Use UnifiedHighlighter.Builder instead. (Christoph Büscher)
