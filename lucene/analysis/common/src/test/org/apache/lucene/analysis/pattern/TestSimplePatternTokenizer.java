@@ -29,6 +29,7 @@ import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.automaton.Automaton;
+import org.apache.lucene.util.automaton.TooComplexToDeterminizeException;
 
 public class TestSimplePatternTokenizer extends BaseTokenStreamTestCase {
 
@@ -135,6 +136,27 @@ public class TestSimplePatternTokenizer extends BaseTokenStreamTestCase {
     a.addTransition(mid1, end, 'b');
     a.addTransition(mid2, end, 'b');
     expectThrows(IllegalArgumentException.class, () -> new SimplePatternTokenizer(a));
+  }
+
+  public void testNonDeterministicRegExp() throws Exception {
+    Tokenizer t = new SimplePatternTokenizer("ab|ac");
+    t.setReader(new StringReader("ab ac ad"));
+    assertTokenStreamContents(t, new String[] {"ab", "ac"}, new int[] {0, 3}, new int[] {2, 5});
+  }
+
+  public void testNonDeterministicRegExpGreedy() throws Exception {
+    Tokenizer t = new SimplePatternTokenizer("[a-z]+|[a-z]+\\.[a-z]+");
+    t.setReader(new StringReader("foo.bar baz"));
+    assertTokenStreamContents(
+        t, new String[] {"foo.bar", "baz"}, new int[] {0, 8}, new int[] {7, 11});
+  }
+
+  public void testDeterminizeWorkLimit() {
+    String regexp = "(a|b)*a(a|b){5}";
+    new SimplePatternTokenizer(regexp);
+    expectThrows(
+        TooComplexToDeterminizeException.class,
+        () -> new SimplePatternTokenizer(TokenStream.DEFAULT_TOKEN_ATTRIBUTE_FACTORY, regexp, 1));
   }
 
   public void testOffsetCorrection() throws Exception {
