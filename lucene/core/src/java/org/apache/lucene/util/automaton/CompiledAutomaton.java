@@ -258,7 +258,7 @@ public class CompiledAutomaton implements Accountable {
     } else {
       // We already had a DFA (or threw exception), according to mike UTF32toUTF8 won't "blow up"
       binary = Operations.determinize(binary, Integer.MAX_VALUE);
-      runAutomaton = new ByteRunAutomaton(binary, true);
+      runAutomaton = new ByteRunAutomaton(binary, true, isBinary);
 
       this.automaton = runAutomaton.automaton;
 
