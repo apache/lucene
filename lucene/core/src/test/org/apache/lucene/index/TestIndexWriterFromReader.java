@@ -30,6 +30,7 @@ import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IOUtils;
 
 public class TestIndexWriterFromReader extends LuceneTestCase {
@@ -565,10 +566,17 @@ public class TestIndexWriterFromReader extends LuceneTestCase {
    */
   public void testSoftDeletesFromDiskReader() throws Exception {
     Directory dir = newDirectory();
+    // The tombstone can be flushed into a segment of its own. Keep that segment, so the soft delete
+    // count doesn't depend on how the documents are flushed.
+    MergePolicy keepFullyDeleted =
+        new FilterMergePolicy(NoMergePolicy.INSTANCE) {
+          @Override
+          public boolean keepFullyDeletedSegment(IOSupplier<CodecReader> readerIOSupplier) {
+            return true;
+          }
+        };
     IndexWriterConfig iwc =
-        newIndexWriterConfig()
-            .setSoftDeletesField("soft_delete")
-            .setMergePolicy(NoMergePolicy.INSTANCE);
+        newIndexWriterConfig().setSoftDeletesField("soft_delete").setMergePolicy(keepFullyDeleted);
     IndexWriter w = new IndexWriter(dir, iwc);
     for (int i = 0; i < 5; i++) {
       w.addDocument(doc(Integer.toString(i)));
@@ -594,7 +602,7 @@ public class TestIndexWriterFromReader extends LuceneTestCase {
             dir,
             newIndexWriterConfig()
                 .setSoftDeletesField("soft_delete")
-                .setMergePolicy(NoMergePolicy.INSTANCE)
+                .setMergePolicy(keepFullyDeleted)
                 .setIndexCommit(r.getIndexCommit()));
     r.close();
     List<String> expected = List.of("0-new", "2-new", "3", "4");

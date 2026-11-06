@@ -173,8 +173,12 @@ public class TestSoftDeletesFromReaderInvariants extends LuceneTestCase {
    * updateDocValues skips documents that are already soft deleted, so this uses tryUpdateDocValue.
    */
   private static void undelete(IndexWriter w, String id) throws IOException {
+    int attempts = 0;
     while (tryUndelete(w, id) == false) {
       // a merge replaced a segment of the reader, so try again with a new reader
+      if (++attempts == 100) {
+        fail("couldn't undelete " + id + ": merges kept replacing its segments");
+      }
     }
     // Write the reset right away. Until it's written, a later soft delete of the same document
     // still sees the document as deleted, and is lost.
