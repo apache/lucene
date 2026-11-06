@@ -337,6 +337,26 @@ public class TestBlendedInfixSuggester extends LuceneTestCase {
     duplicateCheck(inputDocuments, 2);
   }
 
+  public void testDuplicateDoesNotEvictDistinctSuggestion() throws IOException {
+    Input[] inputs =
+        new Input[] {
+          new Input("the lake", 1000),
+          new Input("lake", 950),
+          new Input("lake", 950),
+          new Input("my lake", 920)
+        };
+    try (Analyzer analyzer = new StandardAnalyzer(CharArraySet.EMPTY_SET);
+        BlendedInfixSuggester suggester = new BlendedInfixSuggester(newDirectory(), analyzer)) {
+      suggester.build(new InputArrayIterator(inputs));
+      List<Lookup.LookupResult> results = suggester.lookup("lake", false, 2);
+      assertEquals(2, results.size());
+      assertEquals("lake", results.get(0).key.toString());
+      assertEquals(950, results.get(0).value);
+      assertEquals("the lake", results.get(1).key.toString());
+      assertEquals(900, results.get(1).value);
+    }
+  }
+
   public void testSuggesterCountForAllLookups() throws IOException {
 
     Input[] keys =
