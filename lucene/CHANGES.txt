@@ -449,7 +449,7 @@ Bug Fixes
 
 * GITHUB#16971: Fix double DocValuesStats extrema initialization. (Simranjeet Singh)
 
-* GITHUB#XXXXX: Removing the soft deletes field of a document that is hard deleted before the update
+* GITHUB#17003: Removing the soft deletes field of a document that is hard deleted before the update
   is written no longer makes the soft delete count negative. (Di Wu)
 
 Changes in Runtime Behavior
