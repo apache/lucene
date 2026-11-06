@@ -45,6 +45,7 @@ Fields tvFields = reader.termVectors().get(docId);
 String text = reader.storedFields().document(docId).get(field);
 TokenStream ts = TokenSources.getTokenStream(field, tvFields, text, analyzer, -1);
 ```
+
 ### TruncateTokenFilter constructor replaced by static factory methods (GITHUB#16984)
 
 The constructor `TruncateTokenFilter(TokenStream, int)` has been removed. To accomplish
