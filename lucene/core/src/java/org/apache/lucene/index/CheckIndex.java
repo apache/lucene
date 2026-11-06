@@ -169,7 +169,7 @@ public final class CheckIndex implements Closeable {
     SegmentInfos newSegments;
 
     /** How many documents will be lost to bad segments. */
-    public int totLoseDocCount;
+    public long totLoseDocCount;
 
     /** How many bad segments were found. */
     public int numBadSegments;
@@ -733,8 +733,8 @@ public final class CheckIndex implements Closeable {
     }
 
     if (infoStream != null) {
-      int maxDoc = 0;
-      int delCount = 0;
+      long maxDoc = 0;
+      long delCount = 0;
       for (SegmentCommitInfo info : lastCommit) {
         maxDoc += info.info.maxDoc();
         delCount += info.getDelCount();
@@ -1077,7 +1077,7 @@ public final class CheckIndex implements Closeable {
                 + info.info.maxDoc());
       }
 
-      final int numDocs = reader.numDocs();
+      final int numDocs = reader.numLeafDocs();
       toLoseDocCount = numDocs;
 
       if (reader.hasDeletions()) {
@@ -1255,7 +1255,7 @@ public final class CheckIndex implements Closeable {
         if (metaData.hasBlocks() && fieldInfos.getParentField() != null) {
           iter = reader.getNumericDocValues(fieldInfos.getParentField());
         } else {
-          iter = DocIdSetIterator.all(reader.maxDoc());
+          iter = DocIdSetIterator.all(reader.maxLeafDoc());
         }
         int prevDoc = iter.nextDoc();
         int nextDoc;
@@ -1308,7 +1308,7 @@ public final class CheckIndex implements Closeable {
 
     try {
       if (infoStream != null) infoStream.print("    test: check live docs.....");
-      final int numDocs = reader.numDocs();
+      final int numDocs = reader.numLeafDocs();
       if (reader.hasDeletions()) {
         Bits liveDocs = reader.getLiveDocs();
         if (liveDocs == null) {
@@ -1321,7 +1321,7 @@ public final class CheckIndex implements Closeable {
           }
         }
 
-        status.numDeleted = reader.numDeletedDocs();
+        status.numDeleted = reader.numDeletedLeafDocs();
         msg(
             infoStream,
             String.format(
@@ -1438,7 +1438,10 @@ public final class CheckIndex implements Closeable {
         if (info.hasNorms()) {
           checkNumericDocValues(info.name, normsReader.getNorms(info), normsReader.getNorms(info));
           checkBulkFetchNumericDocValues(
-              info.name, normsReader.getNorms(info), normsReader.getNorms(info), reader.maxDoc());
+              info.name,
+              normsReader.getNorms(info),
+              normsReader.getNorms(info),
+              reader.maxLeafDoc());
           ++status.totFields;
         }
       }
@@ -2690,7 +2693,7 @@ public final class CheckIndex implements Closeable {
     // TODO: we should go and verify term vectors match, if the Level is high enough to
     // include slow checks
     Status.TermIndexStatus status;
-    final int maxDoc = reader.maxDoc();
+    final int maxDoc = reader.maxLeafDoc();
 
     try {
       if (infoStream != null) {
@@ -2787,7 +2790,7 @@ public final class CheckIndex implements Closeable {
             }
 
             VerifyPointsVisitor visitor =
-                new VerifyPointsVisitor(fieldInfo.name, reader.maxDoc(), values);
+                new VerifyPointsVisitor(fieldInfo.name, reader.maxLeafDoc(), values);
             values.intersect(visitor);
 
             if (visitor.getPointCountSeen() != size) {
@@ -3127,7 +3130,7 @@ public final class CheckIndex implements Closeable {
                   fieldInfo.name,
                   values.vectorValue(count),
                   collector,
-                  AcceptDocs.fromLiveDocs(null, codecReader.maxDoc()));
+                  AcceptDocs.fromLiveDocs(null, codecReader.maxLeafDoc()));
           TopDocs docs = collector.topDocs();
           if (docs.scoreDocs.length == 0) {
             throw new CheckIndexException(
@@ -3179,7 +3182,7 @@ public final class CheckIndex implements Closeable {
                   fieldInfo.name,
                   values.vectorValue(count),
                   collector,
-                  AcceptDocs.fromLiveDocs(null, codecReader.maxDoc()));
+                  AcceptDocs.fromLiveDocs(null, codecReader.maxLeafDoc()));
           TopDocs docs = collector.topDocs();
           if (docs.scoreDocs.length == 0) {
             throw new CheckIndexException(
@@ -3231,7 +3234,7 @@ public final class CheckIndex implements Closeable {
                 fieldInfo.name,
                 values.vectorValue(count),
                 collector,
-                AcceptDocs.fromLiveDocs(null, codecReader.maxDoc()));
+                AcceptDocs.fromLiveDocs(null, codecReader.maxLeafDoc()));
         TopDocs docs = collector.topDocs();
         if (docs.scoreDocs.length == 0) {
           throw new CheckIndexException(
@@ -3651,7 +3654,7 @@ public final class CheckIndex implements Closeable {
       for (FieldInfo fieldInfo : reader.getFieldInfos()) {
         if (fieldInfo.getDocValuesType() != DocValuesType.NONE) {
           status.totalValueFields++;
-          checkDocValues(fieldInfo, reader.maxDoc(), dvReader, status);
+          checkDocValues(fieldInfo, reader.maxLeafDoc(), dvReader, status);
         }
       }
 

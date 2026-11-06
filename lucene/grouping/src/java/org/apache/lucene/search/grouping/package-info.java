@@ -170,11 +170,10 @@
  *           () -&gt; new TermGroupSelector(groupField), sortWithinGroup);
  *   AllGroupHeadsCollectorManager.GroupHeadsResult result =
  *       indexSearcher.search(new TermQuery(new Term("content", searchTerm)), manager);
- *   // Return all group heads as int array
- *   int[] groupHeadsArray = result.retrieveGroupHeads();
- *   // Return all group heads as FixedBitSet.
- *   int maxDoc = indexSearcher.getIndexReader().maxDoc();
- *   Bits groupHeadsBitSet = result.retrieveGroupHeads(maxDoc);
+ *   // Return all group head global doc ids as a long array
+ *   long[] groupHeadsArray = result.retrieveGroupHeads();
+ *   // Return all group heads as one FixedBitSet per leaf (indexed by leaf ord)
+ *   FixedBitSet[] groupHeads = result.retrieveGroupHeads(indexSearcher.getIndexReader().leaves());
  * </code></pre>
  *
  * <p>Grouped faceting is handled by {@link

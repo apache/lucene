@@ -92,12 +92,13 @@ public class PrefixTreeFacetCounter {
             new Bits() {
               @Override
               public boolean get(int index) {
-                return topAcceptDocs.get(leafCtx.docBase + index);
+                // topAcceptDocs is an int-addressed Bits, so this caps at 2^31 docs
+                return topAcceptDocs.get(Math.toIntExact(leafCtx.docBase + index));
               }
 
               @Override
               public int length() {
-                return leafCtx.reader().maxDoc();
+                return leafCtx.maxLeafDoc();
               }
             };
       }
@@ -115,12 +116,12 @@ public class PrefixTreeFacetCounter {
       final int facetLevel,
       final FacetVisitor facetVisitor)
       throws IOException {
-    if (acceptDocs != null && acceptDocs.length() != context.reader().maxDoc()) {
+    if (acceptDocs != null && acceptDocs.length() != context.maxLeafDoc()) {
       throw new IllegalArgumentException(
           "acceptDocs bits length "
               + acceptDocs.length()
               + " != leaf maxdoc "
-              + context.reader().maxDoc());
+              + context.maxLeafDoc());
     }
     final SpatialPrefixTree tree = strategy.getGrid();
 

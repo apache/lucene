@@ -706,7 +706,7 @@ public class TestFieldExistsQuery extends LuceneTestCase {
       try (IndexReader reader = iw.getReader()) {
         final IndexSearcher searcher = newSearcher(reader);
 
-        final int count = searcher.count(new FieldExistsQuery("vector"));
+        final long count = searcher.count(new FieldExistsQuery("vector"));
         assertEquals(docWithVector.cardinality(), count);
       }
     }
@@ -737,8 +737,8 @@ public class TestFieldExistsQuery extends LuceneTestCase {
                 .add(new FieldExistsQuery("vector"), Occur.FILTER)
                 .build();
 
-        int count = searcher.count(booleanQuery);
-        assertThat(count, lessThanOrEqualTo(numVectors));
+        long count = searcher.count(booleanQuery);
+        assertThat(count, lessThanOrEqualTo((long) numVectors));
         if (allDocsHaveVector) {
           assertEquals(numDocs / 2, count);
         }
@@ -801,7 +801,7 @@ public class TestFieldExistsQuery extends LuceneTestCase {
       try (IndexReader reader = iw.getReader()) {
         final IndexSearcher searcher = newSearcher(reader);
 
-        final int count = searcher.count(new FieldExistsQuery("num"));
+        final long count = searcher.count(new FieldExistsQuery("num"));
         assertEquals(docWithValue.cardinality(), count);
       }
     }
@@ -869,7 +869,7 @@ public class TestFieldExistsQuery extends LuceneTestCase {
 
   private void assertSameMatches(IndexSearcher searcher, Query q1, Query q2, boolean scores)
       throws IOException {
-    final int maxDoc = searcher.getIndexReader().maxDoc();
+    final int maxDoc = Math.toIntExact(searcher.getIndexReader().maxDoc());
     final TopDocs td1 = searcher.search(q1, maxDoc, scores ? Sort.RELEVANCE : Sort.INDEXORDER);
     final TopDocs td2 = searcher.search(q2, maxDoc, scores ? Sort.RELEVANCE : Sort.INDEXORDER);
     assertEquals(td1.totalHits.value(), td2.totalHits.value());

@@ -483,7 +483,7 @@ public class TestIndexingSequenceNumbers extends LuceneTestCase {
         // We pre-add all ids up front:
         assert expectedThreadIDs[id] != -1;
         assertEquals(1, hits.totalHits.value());
-        int hitDoc = hits.scoreDocs[0].doc;
+        int hitDoc = Math.toIntExact(hits.scoreDocs[0].doc);
         assertEquals(hitDoc, docValues.advance(hitDoc));
         int actualThreadID = (int) docValues.longValue();
         if (expectedThreadIDs[id] != actualThreadID) {
@@ -660,7 +660,7 @@ public class TestIndexingSequenceNumbers extends LuceneTestCase {
       for (int id = 0; id < idCount; id++) {
         // System.out.println("TEST: check id=" + id + " expectedThreadID=" +
         // expectedThreadIDs[id]);
-        int actualCount = s.count(new TermQuery(new Term("id", "" + id)));
+        int actualCount = Math.toIntExact(s.count(new TermQuery(new Term("id", "" + id))));
         if (expectedCounts[id] != actualCount) {
           System.out.println("TEST: FAIL r=" + r + " id=" + id + " commitSeqNo=" + commitSeqNo);
           for (int threadID = 0; threadID < threadOps.size(); threadID++) {
@@ -697,7 +697,7 @@ public class TestIndexingSequenceNumbers extends LuceneTestCase {
             System.out.println("  sub=" + ctx.reader());
             Bits liveDocs = ctx.reader().getLiveDocs();
             storedFields = ctx.reader().storedFields();
-            for (int docID = 0; docID < ctx.reader().maxDoc(); docID++) {
+            for (int docID = 0; docID < ctx.maxLeafDoc(); docID++) {
               System.out.println(
                   "    docID="
                       + docID

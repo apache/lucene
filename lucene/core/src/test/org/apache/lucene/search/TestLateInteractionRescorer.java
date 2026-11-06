@@ -67,13 +67,16 @@ public class TestLateInteractionRescorer extends LuceneTestCase {
                 LATE_I_FIELD, lateIQueryVector, vectorSimilarityFunction);
         TopDocs rerankedHits = rescorer.rescore(s, knnHits, topN);
         Set<Integer> knnHitDocs =
-            Arrays.stream(knnHits.scoreDocs).map(k -> k.doc).collect(Collectors.toSet());
+            Arrays.stream(knnHits.scoreDocs)
+                .map(k -> Math.toIntExact(k.doc))
+                .collect(Collectors.toSet());
         assertEquals(topN, rerankedHits.scoreDocs.length);
         StoredFields storedFields = reader.storedFields();
         for (int i = 0; i < rerankedHits.scoreDocs.length; i++) {
-          assertTrue(knnHitDocs.contains(rerankedHits.scoreDocs[i].doc));
+          assertTrue(knnHitDocs.contains(Math.toIntExact(rerankedHits.scoreDocs[i].doc)));
           int idValue =
-              Integer.parseInt(storedFields.document(rerankedHits.scoreDocs[i].doc).get("id"));
+              Integer.parseInt(
+                  storedFields.document(Math.toIntExact(rerankedHits.scoreDocs[i].doc)).get("id"));
           float[][] docVector = corpus.get(idValue);
           float expected =
               scoreFunction.compare(lateIQueryVector, docVector, vectorSimilarityFunction);
@@ -107,10 +110,12 @@ public class TestLateInteractionRescorer extends LuceneTestCase {
                 "bad-test-field", lateIQueryVector, vectorSimilarityFunction);
         TopDocs rerankedHits = rescorer.rescore(s, knnHits, topN);
         Set<Integer> knnHitDocs =
-            Arrays.stream(knnHits.scoreDocs).map(k -> k.doc).collect(Collectors.toSet());
+            Arrays.stream(knnHits.scoreDocs)
+                .map(k -> Math.toIntExact(k.doc))
+                .collect(Collectors.toSet());
         assertEquals(topN, rerankedHits.scoreDocs.length);
         for (int i = 0; i < rerankedHits.scoreDocs.length; i++) {
-          assertTrue(knnHitDocs.contains(rerankedHits.scoreDocs[i].doc));
+          assertTrue(knnHitDocs.contains(Math.toIntExact(rerankedHits.scoreDocs[i].doc)));
           assertEquals(0f, rerankedHits.scoreDocs[i].score, 1e-5);
         }
 
@@ -119,10 +124,13 @@ public class TestLateInteractionRescorer extends LuceneTestCase {
                 "bad-test-field", lateIQueryVector, vectorSimilarityFunction);
         knnHits = s.search(knnQuery, 5 * topN);
         rerankedHits = rescorerWithFallback.rescore(s, knnHits, topN);
-        knnHitDocs = Arrays.stream(knnHits.scoreDocs).map(k -> k.doc).collect(Collectors.toSet());
+        knnHitDocs =
+            Arrays.stream(knnHits.scoreDocs)
+                .map(k -> Math.toIntExact(k.doc))
+                .collect(Collectors.toSet());
         assertEquals(topN, rerankedHits.scoreDocs.length);
         for (int i = 0; i < rerankedHits.scoreDocs.length; i++) {
-          assertTrue(knnHitDocs.contains(rerankedHits.scoreDocs[i].doc));
+          assertTrue(knnHitDocs.contains(Math.toIntExact(rerankedHits.scoreDocs[i].doc)));
           assertEquals(knnHits.scoreDocs[i].score, rerankedHits.scoreDocs[i].score, 1e-5);
         }
       }

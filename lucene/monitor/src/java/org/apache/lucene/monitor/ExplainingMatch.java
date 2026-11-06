@@ -33,7 +33,7 @@ public class ExplainingMatch extends QueryMatch {
             @Override
             public void matchQuery(String queryId, Query matchQuery, Map<String, String> metadata)
                 throws IOException {
-              int maxDocs = searcher.getIndexReader().maxDoc();
+              int maxDocs = Math.toIntExact(searcher.getIndexReader().maxDoc());
               for (int i = 0; i < maxDocs; i++) {
                 Explanation explanation = searcher.explain(matchQuery, i);
                 if (explanation.isMatch()) addMatch(new ExplainingMatch(queryId, explanation), i);

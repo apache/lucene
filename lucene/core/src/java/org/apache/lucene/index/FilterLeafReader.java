@@ -396,15 +396,15 @@ public abstract class FilterLeafReader extends LeafReader {
   }
 
   @Override
-  public int numDocs() {
+  public int numLeafDocs() {
     // Don't call ensureOpen() here (it could affect performance)
-    return in.numDocs();
+    return in.numLeafDocs();
   }
 
   @Override
-  public int maxDoc() {
+  public int maxLeafDoc() {
     // Don't call ensureOpen() here (it could affect performance)
-    return in.maxDoc();
+    return in.maxLeafDoc();
   }
 
   @Override

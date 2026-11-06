@@ -490,7 +490,7 @@ public class TestSuggestField extends LuceneTestCase {
         new BitsProducer() {
           @Override
           public Bits getBits(LeafReaderContext context) throws IOException {
-            return new Bits.MatchNoBits(context.reader().maxDoc());
+            return new Bits.MatchNoBits(context.maxLeafDoc());
           }
         };
     DirectoryReader reader = iw.getReader();

@@ -178,7 +178,8 @@ abstract class SpatialQuery extends Query {
       return new ScorerSupplier() {
         @Override
         public Scorer get(long leadCost) {
-          return new ConstantScoreScorer(score, scoreMode, DocIdSetIterator.all(reader.maxDoc()));
+          return new ConstantScoreScorer(
+              score, scoreMode, DocIdSetIterator.all(reader.maxLeafDoc()));
         }
 
         @Override
@@ -313,15 +314,15 @@ abstract class SpatialQuery extends Query {
         // If all docs have exactly one value and the cost is greater
         // than half the leaf size then maybe we can make things faster
         // by computing the set of documents that do NOT match the query
-        final FixedBitSet result = new FixedBitSet(reader.maxDoc());
-        result.set(0, reader.maxDoc());
+        final FixedBitSet result = new FixedBitSet(reader.maxLeafDoc());
+        result.set(0, reader.maxLeafDoc());
         final long[] cost = new long[] {reader.maxDoc()};
         values.intersect(getInverseDenseVisitor(spatialVisitor, queryRelation, result, cost));
         final DocIdSetIterator iterator = new BitSetIterator(result, cost[0]);
         return new ConstantScoreScorer(boost, scoreMode, iterator);
       } else if (values.getDocCount() < (values.size() >>> 2)) {
         // we use a dense structure so we can skip already visited documents
-        final FixedBitSet result = new FixedBitSet(reader.maxDoc());
+        final FixedBitSet result = new FixedBitSet(reader.maxLeafDoc());
         final long[] cost = new long[] {0};
         values.intersect(getIntersectsDenseVisitor(spatialVisitor, queryRelation, result, cost));
         assert cost[0] > 0 || result.cardinality() == 0;
@@ -329,7 +330,7 @@ abstract class SpatialQuery extends Query {
             cost[0] == 0 ? DocIdSetIterator.empty() : new BitSetIterator(result, cost[0]);
         return new ConstantScoreScorer(boost, scoreMode, iterator);
       } else {
-        final DocIdSetBuilder docIdSetBuilder = new DocIdSetBuilder(reader.maxDoc(), values);
+        final DocIdSetBuilder docIdSetBuilder = new DocIdSetBuilder(reader.maxLeafDoc(), values);
         values.intersect(getSparseVisitor(spatialVisitor, queryRelation, docIdSetBuilder));
         final DocIdSetIterator iterator = docIdSetBuilder.build().iterator();
         return new ConstantScoreScorer(boost, scoreMode, iterator);
@@ -339,19 +340,19 @@ abstract class SpatialQuery extends Query {
     /** Scorer used for WITHIN and DISJOINT */
     private Scorer getDenseScorer(LeafReader reader, final float boost, ScoreMode scoreMode)
         throws IOException {
-      final FixedBitSet result = new FixedBitSet(reader.maxDoc());
+      final FixedBitSet result = new FixedBitSet(reader.maxLeafDoc());
       final long[] cost;
       if (values.getDocCount() == reader.maxDoc()) {
         cost = new long[] {values.size()};
         // In this case we can spare one visit to the tree, all documents
         // are potential matches
-        result.set(0, reader.maxDoc());
+        result.set(0, reader.maxLeafDoc());
         // Remove false positives
         values.intersect(getInverseDenseVisitor(spatialVisitor, queryRelation, result, cost));
       } else {
         cost = new long[] {0};
         // Get potential  documents.
-        final FixedBitSet excluded = new FixedBitSet(reader.maxDoc());
+        final FixedBitSet excluded = new FixedBitSet(reader.maxLeafDoc());
         values.intersect(getDenseVisitor(spatialVisitor, queryRelation, result, excluded, cost));
         result.andNot(excluded);
         // Remove false positives, we only care about the inner nodes as intersecting
@@ -367,10 +368,10 @@ abstract class SpatialQuery extends Query {
 
     private Scorer getContainsDenseScorer(LeafReader reader, final float boost, ScoreMode scoreMode)
         throws IOException {
-      final FixedBitSet result = new FixedBitSet(reader.maxDoc());
+      final FixedBitSet result = new FixedBitSet(reader.maxLeafDoc());
       final long[] cost = new long[] {0};
       // Get potential  documents.
-      final FixedBitSet excluded = new FixedBitSet(reader.maxDoc());
+      final FixedBitSet excluded = new FixedBitSet(reader.maxLeafDoc());
       values.intersect(
           getContainsDenseVisitor(spatialVisitor, queryRelation, result, excluded, cost));
       result.andNot(excluded);

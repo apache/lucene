@@ -68,7 +68,7 @@ public final class HitQueue extends PriorityQueue<ScoreDoc> {
               // Always set the doc Id to MAX_VALUE so that it won't be favored by
               // lessThan. This generally should not happen since if score is not NEG_INF,
               // TopScoreDocCollector will always add the object to the queue.
-              return new ScoreDoc(Integer.MAX_VALUE, Float.NEGATIVE_INFINITY);
+              return new ScoreDoc(Long.MAX_VALUE, Float.NEGATIVE_INFINITY);
             }
             : () -> null);
   }

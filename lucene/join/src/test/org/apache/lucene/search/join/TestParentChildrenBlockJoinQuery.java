@@ -85,7 +85,7 @@ public class TestParentChildrenBlockJoinQuery extends LuceneTestCase {
           reader.leaves().get(ReaderUtil.subIndex(parentScoreDoc.doc, reader.leaves()));
       NumericDocValues numericDocValuesField =
           leafReader.reader().getNumericDocValues("num_child_docs");
-      numericDocValuesField.advance(parentScoreDoc.doc - leafReader.docBase);
+      numericDocValuesField.advance(leafReader.toLeafDocId(parentScoreDoc.doc));
       long expectedChildDocs = numericDocValuesField.longValue();
 
       ParentChildrenBlockJoinQuery parentChildrenBlockJoinQuery =

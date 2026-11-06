@@ -68,7 +68,7 @@ public final class OverviewImpl extends LukeModel implements Overview {
 
   @Override
   public int getNumDocuments() {
-    return reader.numDocs();
+    return Math.toIntExact(reader.numDocs());
   }
 
   @Override
@@ -83,7 +83,7 @@ public final class OverviewImpl extends LukeModel implements Overview {
 
   @Override
   public int getNumDeletedDocs() {
-    return reader.numDeletedDocs();
+    return Math.toIntExact(reader.numDeletedDocs());
   }
 
   @Override

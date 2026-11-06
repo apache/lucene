@@ -600,7 +600,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
       return new ConstantScoreWeight(this, boost) {
         @Override
         public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-          int maxDoc = context.reader().maxDoc();
+          int maxDoc = context.maxLeafDoc();
           FixedBitSet bits = new FixedBitSet(maxDoc);
           Random random = new Random(seed ^ context.docBase);
           for (int docID = 0; docID < maxDoc; docID++) {

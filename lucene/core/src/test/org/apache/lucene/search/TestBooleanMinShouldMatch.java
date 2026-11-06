@@ -375,7 +375,7 @@ public class TestBooleanMinShouldMatch extends LuceneTestCase {
     int numScoringClauses = q.getClauses(Occur.SHOULD).size() + q.getClauses(Occur.MUST).size();
 
     for (int hit = 0; hit < top2.totalHits.value(); hit++) {
-      int id = top2.scoreDocs[hit].doc;
+      int id = Math.toIntExact(top2.scoreDocs[hit].doc);
       float score = top2.scoreDocs[hit].score;
       boolean found = false;
       // find this doc in other hits

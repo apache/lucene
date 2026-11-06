@@ -264,11 +264,11 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
           enableSkipping = true;
         } else if (fieldInfo.getIndexOptions() != IndexOptions.NONE) {
           terms = context.reader().terms(field);
-          dense = terms != null && terms.getDocCount() == context.reader().maxDoc();
+          dense = terms != null && terms.getDocCount() == context.maxLeafDoc();
           enableSkipping = shouldEnableSkipping(dense);
         } else if (fieldInfo.docValuesSkipIndexType() != DocValuesSkipIndexType.NONE) {
           skipper = context.reader().getDocValuesSkipper(field);
-          dense = skipper != null && skipper.docCount() == context.reader().maxDoc();
+          dense = skipper != null && skipper.docCount() == context.maxLeafDoc();
           enableSkipping = shouldEnableSkipping(dense);
         } else {
           dense = false;
@@ -519,7 +519,7 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
 
     CompetitiveState(LeafReaderContext context) {
       iterator = new UpdateableDocIdSetIterator();
-      iterator.update(DocIdSetIterator.all(context.reader().maxDoc()));
+      iterator.update(DocIdSetIterator.all(context.maxLeafDoc()));
     }
 
     abstract void update(int minOrd, int maxOrd) throws IOException;
@@ -677,7 +677,7 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
     SkipperBasedCompetitiveState(LeafReaderContext context, DocValuesSkipper skipper) {
       super(context);
       this.skipper = skipper;
-      this.maxDoc = context.reader().maxDoc();
+      this.maxDoc = context.maxLeafDoc();
       this.iterator.update(DocIdSetIterator.all(maxDoc));
     }
 

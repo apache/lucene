@@ -96,7 +96,7 @@ public class TestDoubleValuesSourceRescorer extends LuceneTestCase {
               s.storedFields().document(hit.doc).get(DOC_VAL_STORED_FIELD),
               Integer.toString((int) hit.score));
         }
-        int doc = rescoredHits.scoreDocs[0].doc;
+        int doc = Math.toIntExact(rescoredHits.scoreDocs[0].doc);
         Explanation e = rescorer.explain(s, s.explain(query, doc), doc);
         String msg = e.toString();
         assertTrue(msg.contains("combined score from firstPass and DoubleValuesSource"));
@@ -148,7 +148,7 @@ public class TestDoubleValuesSourceRescorer extends LuceneTestCase {
             assertTrue(rescoredHits.scoreDocs[i - 1].doc < rescoredHits.scoreDocs[i].doc);
           }
         }
-        int doc = rescoredHits.scoreDocs[0].doc;
+        int doc = Math.toIntExact(rescoredHits.scoreDocs[0].doc);
         Explanation e = rescorer.explain(s, s.explain(query, doc), doc);
         String msg = e.toString();
         assertTrue(msg.contains("combined score from firstPass and DoubleValuesSource"));

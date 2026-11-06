@@ -47,7 +47,7 @@ public abstract class TopDocsCollector<T extends ScoreDoc> implements Collector 
   protected final PriorityQueue<T> pq;
 
   /** The total number of documents that the collector encountered. */
-  protected int totalHits;
+  protected long totalHits;
 
   /** Whether {@link #totalHits} is exact or a lower bound. */
   protected TotalHits.Relation totalHitsRelation = TotalHits.Relation.EQUAL_TO;
@@ -78,7 +78,7 @@ public abstract class TopDocsCollector<T extends ScoreDoc> implements Collector 
   }
 
   /** The total number of documents that matched this query. */
-  public int getTotalHits() {
+  public long getTotalHits() {
     return totalHits;
   }
 
@@ -87,7 +87,7 @@ public abstract class TopDocsCollector<T extends ScoreDoc> implements Collector 
     // In case pq was populated with sentinel values, there might be less
     // results than pq.size(). Therefore return all results until either
     // pq.size() or totalHits.
-    return Math.min(totalHits, pq.size());
+    return (int) Math.min(totalHits, pq.size());
   }
 
   /** Returns the top docs that were collected by this collector. */

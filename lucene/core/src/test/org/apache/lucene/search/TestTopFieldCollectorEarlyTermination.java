@@ -135,7 +135,7 @@ public class TestTopFieldCollectorEarlyTermination extends LuceneTestCase {
           int numDocs = 0; // number of live docs in the slice
           for (LeafReaderContextPartition partition : slice.partitions) {
             Bits liveDocs = partition.ctx.reader().getLiveDocs();
-            int maxDoc = Math.min(partition.maxDocId, partition.ctx.reader().maxDoc());
+            int maxDoc = Math.min(partition.maxDocId, partition.ctx.maxLeafDoc());
             for (int doc = partition.minDocId; doc < maxDoc; ++doc) {
               if (liveDocs == null || liveDocs.get(doc)) {
                 numDocs++;

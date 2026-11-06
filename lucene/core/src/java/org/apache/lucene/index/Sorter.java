@@ -191,7 +191,7 @@ public final class Sorter {
     FieldInfos fieldInfos = reader.getFieldInfos();
     if (metaData.hasBlocks() && fieldInfos.getParentField() != null) {
       BitSet parents =
-          BitSet.of(reader.getNumericDocValues(fieldInfos.getParentField()), reader.maxDoc());
+          BitSet.of(reader.getNumericDocValues(fieldInfos.getParentField()), reader.maxLeafDoc());
       comparatorWrapper =
           in ->
               (docID1, docID2) ->
@@ -212,9 +212,10 @@ public final class Sorter {
         throw new IllegalArgumentException(
             "Cannot use sortfield + " + fields[i] + " to sort indexes");
       }
-      comparators[i] = comparatorWrapper.apply(sorter.getDocComparator(reader, reader.maxDoc()));
+      comparators[i] =
+          comparatorWrapper.apply(sorter.getDocComparator(reader, reader.maxLeafDoc()));
     }
-    return sort(reader.maxDoc(), comparators);
+    return sort(reader.maxLeafDoc(), comparators);
   }
 
   DocMap sort(int maxDoc, IndexSorter.DocComparator[] comparators) throws IOException {

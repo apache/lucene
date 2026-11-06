@@ -203,7 +203,7 @@ public class TestSegmentReader extends LuceneTestCase {
   }
 
   public void testOutOfBoundsAccess() throws IOException {
-    int numDocs = reader.maxDoc();
+    int numDocs = reader.maxLeafDoc();
 
     expectThrows(
         IndexOutOfBoundsException.class,

@@ -266,7 +266,7 @@ public abstract class BaseRangeFieldQueryTestCase extends LuceneTestCase {
     int dimensions = ranges[0][0].numDimensions();
     int iters = atLeast(25);
     Bits liveDocs = MultiBits.getLiveDocs(s.getIndexReader());
-    int maxDoc = s.getIndexReader().maxDoc();
+    int maxDoc = Math.toIntExact(s.getIndexReader().maxDoc());
 
     for (int iter = 0; iter < iters; ++iter) {
       if (VERBOSE) {

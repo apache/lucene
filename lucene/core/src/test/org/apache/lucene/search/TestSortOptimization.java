@@ -590,7 +590,7 @@ public class TestSortOptimization extends LuceneTestCase {
       // sort by _doc with search after should trigger optimization
       {
         final Sort sort = new Sort(FIELD_DOC);
-        FieldDoc after = new FieldDoc(searchAfter, Float.NaN, new Integer[] {searchAfter});
+        FieldDoc after = new FieldDoc(searchAfter, Float.NaN, new Long[] {(long) searchAfter});
         TopDocs topDocs = assertSearchHits(reader, sort, numHits, after);
         int expNumHits =
             (searchAfter >= (numDocs - numHits)) ? (numDocs - searchAfter - 1) : numHits;
@@ -606,7 +606,8 @@ public class TestSortOptimization extends LuceneTestCase {
       // sort by _doc + _score with search after should trigger optimization
       {
         final Sort sort = new Sort(FIELD_DOC, FIELD_SCORE);
-        FieldDoc after = new FieldDoc(searchAfter, Float.NaN, new Object[] {searchAfter, 1.0f});
+        FieldDoc after =
+            new FieldDoc(searchAfter, Float.NaN, new Object[] {(long) searchAfter, 1.0f});
         TopDocs topDocs = assertSearchHits(reader, sort, numHits, after);
         int expNumHits =
             (searchAfter >= (numDocs - numHits)) ? (numDocs - searchAfter - 1) : numHits;
@@ -622,7 +623,7 @@ public class TestSortOptimization extends LuceneTestCase {
       // sort by _doc desc should not trigger optimization
       {
         final Sort sort = new Sort(new SortField(null, SortField.Type.DOC, true));
-        FieldDoc after = new FieldDoc(searchAfter, Float.NaN, new Integer[] {searchAfter});
+        FieldDoc after = new FieldDoc(searchAfter, Float.NaN, new Long[] {(long) searchAfter});
         TopDocs topDocs = assertSearchHits(reader, sort, numHits, after);
         int expNumHits = (searchAfter < numHits) ? searchAfter : numHits;
         assertEquals(expNumHits, topDocs.scoreDocs.length);
@@ -1356,7 +1357,7 @@ public class TestSortOptimization extends LuceneTestCase {
   }
 
   private void doTestStringSortOptimization(DirectoryReader reader) throws IOException {
-    final int numDocs = reader.numDocs();
+    final int numDocs = Math.toIntExact(reader.numDocs());
     final int numHits = 5;
 
     { // simple ascending sort
@@ -1465,7 +1466,7 @@ public class TestSortOptimization extends LuceneTestCase {
                 "my_field", false, SortedSetSelector.Type.MIN, SortField.STRING_LAST));
 
     Sort sort = new Sort(sortField);
-    final int numDocs = reader.numDocs();
+    final int numDocs = Math.toIntExact(reader.numDocs());
     final int numHits = 5;
 
     TopDocs topDocs = assertSearchHits(reader, sort, numHits, null);
@@ -1482,7 +1483,8 @@ public class TestSortOptimization extends LuceneTestCase {
     FieldDoc after2 = null;
     if (after != null) {
       Object[] afterFields2 = ArrayUtil.growExact(after.fields, after.fields.length + 1);
-      afterFields2[afterFields2.length - 1] = Integer.MAX_VALUE;
+      // a _doc (Type.DOC) sort value is a global doc id: Long, not Integer
+      afterFields2[afterFields2.length - 1] = (long) Integer.MAX_VALUE;
       after2 = new FieldDoc(after.doc, after.score, afterFields2);
     }
     assertSearchHits(reader, new Sort(sortField2), n, after2);

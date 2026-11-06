@@ -151,7 +151,7 @@ final class XYPointInGeometryQuery extends Query {
         return new ScorerSupplier() {
 
           long cost = -1;
-          final DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values);
+          final DocIdSetBuilder result = new DocIdSetBuilder(reader.maxLeafDoc(), values);
           final IntersectVisitor visitor = getIntersectVisitor(result, tree);
 
           @Override

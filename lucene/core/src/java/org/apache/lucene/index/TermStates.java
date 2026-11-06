@@ -44,7 +44,7 @@ public final class TermStates {
   private final Object topReaderContextIdentity;
   private final TermState[] states;
   private final Term term; // null if stats are to be used
-  private int docFreq;
+  private long docFreq;
   private long totalTermFreq;
 
   // public static boolean DEBUG = BlockTreeTermsWriter.DEBUG;
@@ -155,7 +155,7 @@ public final class TermStates {
   }
 
   /** Expert: Accumulate term statistics. */
-  public void accumulateStatistics(final int docFreq, final long totalTermFreq) {
+  public void accumulateStatistics(final long docFreq, final long totalTermFreq) {
     assert docFreq >= 0;
     assert totalTermFreq >= 0;
     assert docFreq <= totalTermFreq;
@@ -227,7 +227,7 @@ public final class TermStates {
    * @return the accumulated document frequency of all {@link TermState} instances passed to {@link
    *     #register(TermState, int, int, long)}.
    */
-  public int docFreq() {
+  public long docFreq() {
     if (term != null) {
       throw new IllegalStateException("Cannot call docFreq() when needsStats=false");
     }
@@ -268,6 +268,6 @@ public final class TermStates {
 
   @Override
   public int hashCode() {
-    return Integer.hashCode(docFreq);
+    return Long.hashCode(docFreq);
   }
 }

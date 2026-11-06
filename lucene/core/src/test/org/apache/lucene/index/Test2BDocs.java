@@ -89,7 +89,7 @@ public class Test2BDocs extends LuceneTestCase {
 
     for (LeafReaderContext context : r.leaves()) {
       LeafReader reader = context.reader();
-      int lim = context.reader().maxDoc();
+      int lim = context.maxLeafDoc();
 
       Terms terms = reader.terms("f1");
       for (int i = 0; i < 10000; i++) {

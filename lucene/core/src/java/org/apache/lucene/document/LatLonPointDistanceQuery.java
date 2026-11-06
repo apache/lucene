@@ -135,7 +135,7 @@ final class LatLonPointDistanceQuery extends Query {
         LatLonPoint.checkCompatible(fieldInfo);
 
         // matching docids
-        DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values);
+        DocIdSetBuilder result = new DocIdSetBuilder(reader.maxLeafDoc(), values);
         final IntersectVisitor visitor = getIntersectVisitor(result);
 
         return new ScorerSupplier() {
@@ -150,8 +150,8 @@ final class LatLonPointDistanceQuery extends Query {
               // If all docs have exactly one value and the cost is greater
               // than half the leaf size then maybe we can make things faster
               // by computing the set of documents that do NOT match the range
-              final FixedBitSet result = new FixedBitSet(reader.maxDoc());
-              result.set(0, reader.maxDoc());
+              final FixedBitSet result = new FixedBitSet(reader.maxLeafDoc());
+              result.set(0, reader.maxLeafDoc());
               long[] cost = new long[] {reader.maxDoc()};
               values.intersect(getInverseIntersectVisitor(result, cost));
               final DocIdSetIterator iterator = new BitSetIterator(result, cost[0]);

@@ -287,7 +287,9 @@ public class TestDirectoryReaderReopen extends LuceneTestCase {
                     ScoreDoc[] hits =
                         searcher.search(
                                 new TermQuery(
-                                    new Term("field1", "a" + rnd.nextInt(refreshed.maxDoc()))),
+                                    new Term(
+                                        "field1",
+                                        "a" + rnd.nextInt(Math.toIntExact(refreshed.maxDoc())))),
                                 1000)
                             .scoreDocs;
                     if (hits.length > 0) {
@@ -1353,7 +1355,9 @@ public class TestDirectoryReaderReopen extends LuceneTestCase {
                       ScoreDoc[] hits =
                           searcher.search(
                                   new TermQuery(
-                                      new Term("field1", "a" + rnd.nextInt(refreshed.maxDoc()))),
+                                      new Term(
+                                          "field1",
+                                          "a" + rnd.nextInt(Math.toIntExact(refreshed.maxDoc())))),
                                   1000)
                               .scoreDocs;
                       if (hits.length > 0) {

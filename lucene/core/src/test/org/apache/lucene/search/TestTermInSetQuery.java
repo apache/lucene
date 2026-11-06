@@ -288,7 +288,7 @@ public class TestTermInSetQuery extends LuceneTestCase {
 
   private void assertSameMatches(IndexSearcher searcher, Query q1, Query q2, boolean scores)
       throws IOException {
-    final int maxDoc = searcher.getIndexReader().maxDoc();
+    final int maxDoc = Math.toIntExact(searcher.getIndexReader().maxDoc());
     if (scores) {
       final TopDocs td1 = searcher.search(q1, maxDoc);
       final TopDocs td2 = searcher.search(q2, maxDoc);

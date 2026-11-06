@@ -168,7 +168,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
                 });
         assertTrue(overflow.getMessage(), overflow.getMessage().contains("number of documents"));
       } finally {
-        IndexWriter.setMaxDocs(IndexWriter.MAX_DOCS);
+        IndexWriter.setMaxDocs(IndexWriter.MAX_TOTAL_DOCS);
       }
     }
     dir.close();

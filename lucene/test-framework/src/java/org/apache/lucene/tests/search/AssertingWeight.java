@@ -43,8 +43,8 @@ class AssertingWeight extends FilterWeight {
   @Override
   public int count(LeafReaderContext context) throws IOException {
     final int count = in.count(context);
-    if (count < -1 || count > context.reader().numDocs()) {
-      throw new AssertionError("count=" + count + ", numDocs=" + context.reader().numDocs());
+    if (count < -1 || count > context.numLeafDocs()) {
+      throw new AssertionError("count=" + count + ", numDocs=" + context.numLeafDocs());
     }
     return count;
   }
@@ -95,7 +95,7 @@ class AssertingWeight extends FilterWeight {
         }
 
         return AssertingBulkScorer.wrap(
-            new Random(random.nextLong()), inScorer, context.reader().maxDoc());
+            new Random(random.nextLong()), inScorer, context.maxLeafDoc());
       }
 
       @Override

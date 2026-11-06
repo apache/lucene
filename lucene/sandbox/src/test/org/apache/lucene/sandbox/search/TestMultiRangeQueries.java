@@ -849,7 +849,7 @@ public class TestMultiRangeQueries extends LuceneTestCase {
           multiRangeQuery
               .createWeight(searcher, ScoreMode.COMPLETE, 1.0f)
               .count(searcher.getLeafContexts().get(0));
-      int booleanCount = searcher.count(booleanQuery);
+      long booleanCount = searcher.count(booleanQuery);
       assertEquals(booleanCount, count);
     }
     IOUtils.close(reader, w, dir);

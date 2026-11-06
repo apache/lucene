@@ -475,7 +475,7 @@ public abstract class ReplicaNode extends Node {
       lastFileMetaData = copyState.files();
     }
 
-    int markerCount;
+    long markerCount;
     IndexSearcher s = mgr.acquire();
     try {
       markerCount = s.count(new TermQuery(new Term("marker", "marker")));

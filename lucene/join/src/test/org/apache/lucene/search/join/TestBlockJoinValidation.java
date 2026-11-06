@@ -136,7 +136,7 @@ public class TestBlockJoinValidation extends LuceneTestCase {
     int target;
     do {
       // make the parent scorer advance to a doc ID which is not a parent
-      target = TestUtil.nextInt(random(), 0, context.reader().maxDoc() - 2);
+      target = TestUtil.nextInt(random(), 0, context.maxLeafDoc() - 2);
     } while (parentDocs.get(target + 1));
 
     final int illegalTarget = target;

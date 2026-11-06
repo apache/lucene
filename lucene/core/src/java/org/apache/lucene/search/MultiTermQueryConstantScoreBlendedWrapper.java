@@ -57,7 +57,7 @@ final class MultiTermQueryConstantScoreBlendedWrapper<Q extends MultiTermQuery>
           List<TermAndState> collectedTerms,
           long leadCost)
           throws IOException {
-        DocIdSetBuilder otherTerms = new DocIdSetBuilder(context.reader().maxDoc(), terms);
+        DocIdSetBuilder otherTerms = new DocIdSetBuilder(context.maxLeafDoc(), terms);
         PriorityQueue<PostingsEnum> highFrequencyTerms =
             PriorityQueue.usingComparator(
                 collectedTerms.size(), Comparator.comparingLong(PostingsEnum::cost));

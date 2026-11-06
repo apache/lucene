@@ -40,7 +40,7 @@ public class SortRescorer extends Rescorer {
 
     // Copy ScoreDoc[] and sort by ascending docID:
     ScoreDoc[] hits = firstPassTopDocs.scoreDocs.clone();
-    Comparator<ScoreDoc> docIdComparator = Comparator.comparingInt(sd -> sd.doc);
+    Comparator<ScoreDoc> docIdComparator = Comparator.comparingLong(sd -> sd.doc);
     Arrays.sort(hits, docIdComparator);
 
     List<LeafReaderContext> leaves = searcher.getIndexReader().leaves();
@@ -51,32 +51,32 @@ public class SortRescorer extends Rescorer {
     // Now merge sort docIDs from hits, with reader's leaves:
     int hitUpto = 0;
     int readerUpto = -1;
-    int endDoc = 0;
-    int docBase = 0;
+    long endDoc = 0;
+    LeafReaderContext currentLeaf = null;
 
     LeafCollector leafCollector = null;
     SimpleScorable score = new SimpleScorable();
 
     while (hitUpto < hits.length) {
       ScoreDoc hit = hits[hitUpto];
-      int docID = hit.doc;
+      long docID = hit.doc;
       LeafReaderContext readerContext = null;
       while (docID >= endDoc) {
         readerUpto++;
         readerContext = leaves.get(readerUpto);
-        endDoc = readerContext.docBase + readerContext.reader().maxDoc();
+        endDoc = readerContext.docBase + readerContext.maxLeafDoc();
       }
 
       if (readerContext != null) {
         // We advanced to another segment:
         leafCollector = collector.getLeafCollector(readerContext);
         leafCollector.setScorer(score);
-        docBase = readerContext.docBase;
+        currentLeaf = readerContext;
       }
 
       score.score = hit.score;
 
-      leafCollector.collect(docID - docBase);
+      leafCollector.collect(currentLeaf.toLeafDocId(docID));
 
       hitUpto++;
     }
@@ -93,7 +93,7 @@ public class SortRescorer extends Rescorer {
   }
 
   @Override
-  public Explanation explain(IndexSearcher searcher, Explanation firstPassExplanation, int docID)
+  public Explanation explain(IndexSearcher searcher, Explanation firstPassExplanation, long docID)
       throws IOException {
     TopDocs oneHit =
         new TopDocs(

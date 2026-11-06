@@ -7,11 +7,16 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
-(No changes)
+* GITHUB#16847: IndexReader#maxDoc, #numDocs, #docFreq and #getDocCount now return long, and
+  LeafReaderContext#docBase is now long, so a composite reader can address a global doc-id space
+  beyond Integer.MAX_VALUE. Per-segment counts remain int through the new LeafReader#maxLeafDoc
+  and #numLeafDocs, and ScoreDoc#doc is now long. (Jim Ferenczi)
 
 New Features
 ---------------------
-(No changes)
+* GITHUB#16847: A single index may hold more than Integer.MAX_VALUE documents across its segments.
+  Each segment still stays within the per-segment IndexWriter.MAX_DOCS limit, while the whole index
+  is bounded by the new IndexWriter.MAX_TOTAL_DOCS. (Jim Ferenczi)
 
 Improvements
 ---------------------

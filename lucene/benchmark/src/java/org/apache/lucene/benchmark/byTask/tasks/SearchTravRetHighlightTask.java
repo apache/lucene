@@ -252,7 +252,7 @@ public class SearchTravRetHighlightTask extends SearchTravTask {
               highlighter.getBestFragments(
                   fq,
                   reader,
-                  scoreDoc.doc,
+                  Math.toIntExact(scoreDoc.doc),
                   hlField,
                   fragSize,
                   maxFrags,
@@ -270,7 +270,7 @@ public class SearchTravRetHighlightTask extends SearchTravTask {
   private ScoreDoc[] docIdOrder(ScoreDoc[] scoreDocs) {
     ScoreDoc[] clone = new ScoreDoc[scoreDocs.length];
     System.arraycopy(scoreDocs, 0, clone, 0, scoreDocs.length);
-    ArrayUtil.introSort(clone, (a, b) -> Integer.compare(a.doc, b.doc));
+    ArrayUtil.introSort(clone, (a, b) -> Long.compare(a.doc, b.doc));
     return clone;
   }
 

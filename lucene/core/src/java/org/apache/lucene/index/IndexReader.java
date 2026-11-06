@@ -294,22 +294,25 @@ public abstract sealed class IndexReader implements Closeable permits CompositeR
    *
    * <p><b>NOTE</b>: This operation may run in O(maxDoc). Implementations that can't return this
    * number in constant-time should cache it.
+   *
+   * <p>Access the per-segment {@code int} count with {@link LeafReader#numLeafDocs()}.
    */
-  public abstract int numDocs();
+  public abstract long numDocs();
 
   /**
-   * Returns one greater than the largest possible document number. This may be used to, e.g.,
-   * determine how big to allocate an array which will have an element for every document number in
-   * an index.
+   * Returns one greater than the largest possible document number.
+   *
+   * <p>Access the per-segment {@code int} count with {@link LeafReader#maxLeafDoc()}, e.g. to size
+   * an array or bit set over one segment.
    */
-  public abstract int maxDoc();
+  public abstract long maxDoc();
 
   /**
    * Returns the number of deleted documents.
    *
    * <p><b>NOTE</b>: This operation may run in O(maxDoc).
    */
-  public final int numDeletedDocs() {
+  public final long numDeletedDocs() {
     return maxDoc() - numDocs();
   }
 
@@ -403,9 +406,11 @@ public abstract sealed class IndexReader implements Closeable permits CompositeR
    * term or field does not exists. This method does not take into account deleted documents that
    * have not yet been merged away.
    *
+   * <p>Access the per-segment {@code int} count with {@link LeafReader#leafDocFreq(Term)}.
+   *
    * @see TermsEnum#docFreq()
    */
-  public abstract int docFreq(Term term) throws IOException;
+  public abstract long docFreq(Term term) throws IOException;
 
   /**
    * Returns the total number of occurrences of {@code term} across all documents (the sum of the
@@ -426,9 +431,11 @@ public abstract sealed class IndexReader implements Closeable permits CompositeR
    * Returns the number of documents that have at least one term for this field. Note that, just
    * like other term measures, this measure does not take deleted documents into account.
    *
+   * <p>Access the per-segment {@code int} count with {@link LeafReader#getLeafDocCount(String)}.
+   *
    * @see Terms#getDocCount()
    */
-  public abstract int getDocCount(String field) throws IOException;
+  public abstract long getDocCount(String field) throws IOException;
 
   /**
    * Returns the sum of {@link TermsEnum#totalTermFreq} for all terms in this field. Note that, just

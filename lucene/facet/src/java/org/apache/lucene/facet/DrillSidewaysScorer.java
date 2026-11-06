@@ -118,7 +118,7 @@ class DrillSidewaysScorer extends BulkScorer {
 
     /*
     System.out.println("\nbaseDocID=" + baseScorer.docID() + " est=" + estBaseHitCount);
-    System.out.println("  maxDoc=" + context.reader().maxDoc());
+    System.out.println("  maxDoc=" + context.maxLeafDoc());
     System.out.println("  maxCost=" + maxCost);
     System.out.println("  dims[0].freq=" + dims[0].freq);
     if (numDims > 1) {
@@ -335,7 +335,7 @@ class DrillSidewaysScorer extends BulkScorer {
       Bits acceptDocs, LeafCollector collector, DocsAndCost[] dims) throws IOException {
     setScorer(collector, new Score());
 
-    final int maxDoc = context.reader().maxDoc();
+    final int maxDoc = context.maxLeafDoc();
     final int numDims = dims.length;
 
     // if (DEBUG) {
@@ -547,7 +547,7 @@ class DrillSidewaysScorer extends BulkScorer {
     // }
     setScorer(collector, new Score());
 
-    final int maxDoc = context.reader().maxDoc();
+    final int maxDoc = context.maxLeafDoc();
     final int numDims = dims.length;
 
     // TODO: maybe a class like BS, instead of parallel arrays

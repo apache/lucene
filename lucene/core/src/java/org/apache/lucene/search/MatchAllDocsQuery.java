@@ -39,7 +39,7 @@ public final class MatchAllDocsQuery extends Query {
 
       @Override
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-        return ConstantScoreScorerSupplier.matchAll(score(), scoreMode, context.reader().maxDoc());
+        return ConstantScoreScorerSupplier.matchAll(score(), scoreMode, context.maxLeafDoc());
       }
 
       @Override
@@ -49,7 +49,7 @@ public final class MatchAllDocsQuery extends Query {
 
       @Override
       public int count(LeafReaderContext context) {
-        return context.reader().numDocs();
+        return context.numLeafDocs();
       }
     };
   }

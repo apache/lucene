@@ -1092,14 +1092,14 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
   }
 
   /** Returns sum of all segment's maxDocs. Note that this does not include deletions */
-  public int totalMaxDoc() {
+  public long totalMaxDoc() {
     long count = 0;
     for (SegmentCommitInfo info : this) {
       count += info.info.maxDoc();
     }
     // we should never hit this, checks should happen elsewhere...
     assert count <= IndexWriter.getActualMaxDocs();
-    return Math.toIntExact(count);
+    return count;
   }
 
   /** Call this before committing if changes have been made to the segments. */

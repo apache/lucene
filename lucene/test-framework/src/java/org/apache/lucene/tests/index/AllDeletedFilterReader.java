@@ -26,7 +26,7 @@ public class AllDeletedFilterReader extends FilterLeafReader {
 
   public AllDeletedFilterReader(LeafReader in) {
     super(in);
-    liveDocs = new Bits.MatchNoBits(in.maxDoc());
+    liveDocs = new Bits.MatchNoBits(in.maxLeafDoc());
     assert maxDoc() == 0 || hasDeletions();
   }
 
@@ -36,7 +36,7 @@ public class AllDeletedFilterReader extends FilterLeafReader {
   }
 
   @Override
-  public int numDocs() {
+  public int numLeafDocs() {
     return 0;
   }
 

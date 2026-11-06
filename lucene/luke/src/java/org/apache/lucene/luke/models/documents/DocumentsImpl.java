@@ -69,7 +69,7 @@ public final class DocumentsImpl extends LukeModel implements Documents {
 
   @Override
   public int getMaxDoc() {
-    return reader.maxDoc();
+    return Math.toIntExact(reader.maxDoc());
   }
 
   @Override

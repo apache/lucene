@@ -187,7 +187,7 @@ public class TestSortRescorer extends LuceneTestCase {
 
     Integer[] expected = new Integer[numHits];
     for (int i = 0; i < numHits; i++) {
-      expected[i] = hits.scoreDocs[i].doc;
+      expected[i] = Math.toIntExact(hits.scoreDocs[i].doc);
     }
 
     final int reverseInt = reverse ? -1 : 1;
@@ -214,7 +214,8 @@ public class TestSortRescorer extends LuceneTestCase {
           }
         });
 
-    Integer[] rescored = Stream.of(hits2.scoreDocs).map(d -> d.doc).toArray(Integer[]::new);
+    Integer[] rescored =
+        Stream.of(hits2.scoreDocs).map(d -> Math.toIntExact(d.doc)).toArray(Integer[]::new);
     assertArrayEquals(expected, rescored);
 
     r.close();

@@ -280,14 +280,14 @@ public class TestWordBreakSpellChecker extends LuceneTestCase {
       assertEquals(2, sw[0].length);
       assertSuggestionEquals(sw[0][0], "one", 1.0f);
       assertSuggestionEquals(sw[0][1], "thousand", 1.0f);
-      MatcherAssert.assertThat(sw[0][1].freq, greaterThan(1));
+      MatcherAssert.assertThat(sw[0][1].freq, greaterThan(1L));
       MatcherAssert.assertThat(sw[0][0].freq, greaterThan(sw[0][1].freq));
 
       assertEquals(3, sw[1].length);
       assertSuggestionEquals(sw[1][0], "one", 2.0f);
       assertSuggestionEquals(sw[1][1], "thou", 2.0f);
       assertSuggestionEquals(sw[1][2], "sand", 2.0f);
-      MatcherAssert.assertThat(sw[1][0].freq, greaterThan(1));
+      MatcherAssert.assertThat(sw[1][0].freq, greaterThan(1L));
       assertEquals(1, sw[1][1].freq);
       assertEquals(1, sw[1][2].freq);
     }

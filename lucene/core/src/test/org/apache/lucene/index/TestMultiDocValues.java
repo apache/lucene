@@ -72,7 +72,7 @@ public class TestMultiDocValues extends LuceneTestCase {
     testRandomAdvanceExact(
         merged.getNumericDocValues("numbers"),
         MultiDocValues.getNumericValues(ir, "numbers"),
-        merged.maxDoc());
+        merged.maxLeafDoc());
 
     ir.close();
     ir2.close();
@@ -119,7 +119,7 @@ public class TestMultiDocValues extends LuceneTestCase {
     testRandomAdvanceExact(
         merged.getBinaryDocValues("bytes"),
         MultiDocValues.getBinaryValues(ir, "bytes"),
-        merged.maxDoc());
+        merged.maxLeafDoc());
 
     ir.close();
     ir2.close();
@@ -175,7 +175,7 @@ public class TestMultiDocValues extends LuceneTestCase {
     testRandomAdvanceExact(
         merged.getSortedDocValues("bytes"),
         MultiDocValues.getSortedValues(ir, "bytes"),
-        merged.maxDoc());
+        merged.maxLeafDoc());
     ir.close();
     ir2.close();
     dir.close();
@@ -225,7 +225,7 @@ public class TestMultiDocValues extends LuceneTestCase {
     testRandomAdvanceExact(
         merged.getSortedDocValues("bytes"),
         MultiDocValues.getSortedValues(ir, "bytes"),
-        merged.maxDoc());
+        merged.maxLeafDoc());
 
     ir.close();
     ir2.close();
@@ -290,7 +290,7 @@ public class TestMultiDocValues extends LuceneTestCase {
     testRandomAdvanceExact(
         merged.getSortedSetDocValues("bytes"),
         MultiDocValues.getSortedSetValues(ir, "bytes"),
-        merged.maxDoc());
+        merged.maxLeafDoc());
 
     ir.close();
     ir2.close();
@@ -356,7 +356,7 @@ public class TestMultiDocValues extends LuceneTestCase {
     testRandomAdvanceExact(
         merged.getSortedSetDocValues("bytes"),
         MultiDocValues.getSortedSetValues(ir, "bytes"),
-        merged.maxDoc());
+        merged.maxLeafDoc());
 
     ir.close();
     ir2.close();
@@ -414,7 +414,7 @@ public class TestMultiDocValues extends LuceneTestCase {
     testRandomAdvanceExact(
         merged.getSortedNumericDocValues("nums"),
         MultiDocValues.getSortedNumericValues(ir, "nums"),
-        merged.maxDoc());
+        merged.maxLeafDoc());
 
     ir.close();
     ir2.close();

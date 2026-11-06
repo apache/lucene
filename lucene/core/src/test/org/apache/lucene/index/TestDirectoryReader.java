@@ -1229,7 +1229,7 @@ public class TestDirectoryReader extends LuceneTestCase {
 
     ExecutorService executor =
         Executors.newFixedThreadPool(1, new NamedThreadFactory("TestDirectoryReader"));
-    Comparator<LeafReader> sorter = (r1, r2) -> Integer.compare(r1.numDocs(), r2.numDocs());
+    Comparator<LeafReader> sorter = (r1, r2) -> Integer.compare(r1.numLeafDocs(), r2.numLeafDocs());
 
     try {
       DirectoryReader reader = DirectoryReader.open(dir, sorter, executor);
@@ -1270,7 +1270,7 @@ public class TestDirectoryReader extends LuceneTestCase {
 
     ExecutorService executor =
         Executors.newFixedThreadPool(1, new NamedThreadFactory("TestDirectoryReader"));
-    Comparator<LeafReader> sorter = (r1, r2) -> Integer.compare(r1.numDocs(), r2.numDocs());
+    Comparator<LeafReader> sorter = (r1, r2) -> Integer.compare(r1.numLeafDocs(), r2.numLeafDocs());
 
     try (DirectoryReader baseReader = DirectoryReader.open(dir)) {
       IndexCommit commit = baseReader.getIndexCommit();

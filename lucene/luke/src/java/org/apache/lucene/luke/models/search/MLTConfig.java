@@ -27,7 +27,7 @@ public final class MLTConfig {
 
   private final List<String> fields;
 
-  private final int maxDocFreq;
+  private final long maxDocFreq;
 
   private final int minDocFreq;
 
@@ -37,7 +37,7 @@ public final class MLTConfig {
   public static class Builder {
 
     private final List<String> fields = new ArrayList<>();
-    private int maxDocFreq = MoreLikeThis.DEFAULT_MAX_DOC_FREQ;
+    private long maxDocFreq = MoreLikeThis.DEFAULT_MAX_DOC_FREQ;
     private int minDocFreq = MoreLikeThis.DEFAULT_MIN_DOC_FREQ;
     private int minTermFreq = MoreLikeThis.DEFAULT_MIN_TERM_FREQ;
 
@@ -77,7 +77,7 @@ public final class MLTConfig {
     return fields.toArray(String[]::new);
   }
 
-  public int getMaxDocFreq() {
+  public long getMaxDocFreq() {
     return maxDocFreq;
   }
 

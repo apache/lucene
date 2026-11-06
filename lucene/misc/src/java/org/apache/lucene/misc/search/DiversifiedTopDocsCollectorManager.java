@@ -71,7 +71,7 @@ public abstract class DiversifiedTopDocsCollectorManager<C extends DiversifiedTo
     allDocs.sort(
         (a, b) -> {
           int cmp = Float.compare(b.score, a.score);
-          return cmp != 0 ? cmp : Integer.compare(a.doc, b.doc);
+          return cmp != 0 ? cmp : Long.compare(a.doc, b.doc);
         });
     // Greedy pick: take up to numHits while honouring maxHitsPerKey per key
     LongIntHashMap keyCounts = new LongIntHashMap();

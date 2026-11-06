@@ -133,3 +133,27 @@ constraints:
 severity: error
 message: Avoid pre-sized arrays in Collection#toArray calls
 note: Prefer `toArray($TYPE[]::new)` or `toArray(new $TYPE[0])`
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: raw-global-doc-id-narrowing
+language: java
+rule:
+  any:
+    - pattern: (int) ($DOC - $CTX.docBase)
+    - pattern: (int) ($DOC - docBase)
+severity: error
+message: do not narrow a global doc id to an int with a raw cast
+note: |
+  A global (composite) doc id is a long; a leaf-local doc id is an int. Use
+  LeafReaderContext#toLeafDocId(long) so the narrowing happens and is range-checked in one place.
+  Only relative/probing arithmetic (advance targets, explain of an arbitrary doc) may cast directly;
+  such files are listed in `ignores` below.
+files:
+  - "**/*.java"
+ignores:
+  # the single sanctioned narrowing: LeafReaderContext#toLeafDocId is itself this cast
+  - "**/LeafReaderContext.java"
+  # advance() probes a target that may lie past the current leaf (guarded by ensureIntDocIdSpace)
+  - "**/MultiDocValues.java"
+  # explain() accepts any doc id, including one past a leaf's end
+  - "**/IndexSearcher.java"

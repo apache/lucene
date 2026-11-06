@@ -210,7 +210,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     /** Create a new CompetitiveDISIBuilder */
     protected CompetitiveDISIBuilder(NumericLeafComparator leafComparator) {
       this.leafComparator = leafComparator;
-      this.maxDoc = leafComparator.context.reader().maxDoc();
+      this.maxDoc = leafComparator.context.maxLeafDoc();
       this.competitiveIterator.update(DocIdSetIterator.all(maxDoc));
       if (leafTopSet) {
         encodeTop();

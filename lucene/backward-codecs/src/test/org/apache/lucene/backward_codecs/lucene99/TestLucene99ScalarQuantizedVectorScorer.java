@@ -297,7 +297,11 @@ public class TestLucene99ScalarQuantizedVectorScorer extends LuceneTestCase {
         float[] queryVector = new float[] {0.6f, 0.8f};
         var hits =
             leafReader.searchNearestVectors(
-                "field", queryVector, 3, AcceptDocs.fromLiveDocs(null, leafReader.maxDoc()), 100);
+                "field",
+                queryVector,
+                3,
+                AcceptDocs.fromLiveDocs(null, leafReader.maxLeafDoc()),
+                100);
         assertEquals(hits.scoreDocs.length, 3);
         assertEquals("B", storedFields.document(hits.scoreDocs[0].doc).get("id"));
         assertEquals("A", storedFields.document(hits.scoreDocs[1].doc).get("id"));

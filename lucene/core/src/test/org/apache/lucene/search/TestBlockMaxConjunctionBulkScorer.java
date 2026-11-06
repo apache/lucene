@@ -82,7 +82,7 @@ public class TestBlockMaxConjunctionBulkScorer extends LuceneTestCase {
           scorers.add(new CountingScorer(clause.weight.scorerSupplier(ctx).get(Long.MAX_VALUE)));
         }
         BulkScorer bulkScorer =
-            new BlockMaxConjunctionBulkScorer(ctx.reader().maxDoc(), new ArrayList<>(scorers));
+            new BlockMaxConjunctionBulkScorer(ctx.reader().maxLeafDoc(), new ArrayList<>(scorers));
 
         int next =
             bulkScorer.score(new TopKLeafCollector(10), null, 0, DocIdSetIterator.NO_MORE_DOCS);

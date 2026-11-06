@@ -321,7 +321,7 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
           } else {
             bulkScorer =
                 ConstantScoreScorerSupplier.fromIterator(
-                        weightOrIterator.iterator, score(), scoreMode, context.reader().maxDoc())
+                        weightOrIterator.iterator, score(), scoreMode, context.maxLeafDoc())
                     .bulkScorer();
           }
 

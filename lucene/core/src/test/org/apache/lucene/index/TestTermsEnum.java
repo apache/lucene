@@ -243,7 +243,7 @@ public class TestTermsEnum extends LuceneTestCase {
     final IndexReader r = w.getReader();
     w.close();
 
-    int[] docIDToID = new int[r.maxDoc()];
+    int[] docIDToID = new int[Math.toIntExact(r.maxDoc())];
     NumericDocValues values = MultiDocValues.getNumericValues(r, "id");
     for (int i = 0; i < r.maxDoc(); i++) {
       assertEquals(i, values.nextDoc());
@@ -409,7 +409,7 @@ public class TestTermsEnum extends LuceneTestCase {
     d.close();
   }
 
-  private int docFreq(IndexReader r, String term) throws Exception {
+  private long docFreq(IndexReader r, String term) throws Exception {
     return r.docFreq(new Term(FIELD, term));
   }
 

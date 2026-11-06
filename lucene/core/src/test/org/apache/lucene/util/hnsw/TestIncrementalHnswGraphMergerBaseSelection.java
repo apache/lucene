@@ -114,8 +114,8 @@ public class TestIncrementalHnswGraphMergerBaseSelection extends LuceneTestCase 
         assertEquals(numSegments, segments.size());
         int expectedLive = -1;
         for (CodecReader segment : segments) {
-          int total = segment.maxDoc();
-          int live = segment.numDocs();
+          int total = segment.maxLeafDoc();
+          int live = segment.numLeafDocs();
           if ((total - live) * 100 / total <= DELETE_PCT_THRESHOLD) {
             expectedLive = Math.max(expectedLive, live);
           }
