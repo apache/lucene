@@ -28,6 +28,7 @@ import org.apache.lucene.analysis.LowerCaseFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
@@ -37,6 +38,7 @@ import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.MultiTermQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.TermInSetQuery;
@@ -116,6 +118,22 @@ public abstract class NegativeDisjunctPresearcherTestBase extends PresearcherTes
     assertRunAndMatched(0, 0, run(query, doc("y", "b")));
     assertRunAndMatched(0, 0, run(query, doc("z", "c")));
     assertRunAndMatched(1, 1, run(query, doc("x", "a")));
+  }
+
+  public void testDocValuesQueriesAreNotExcludedByIndexedTerms() throws IOException {
+    // flag is indexed as the terms true and false, but its doc value is "true false", so the doc
+    // values query for "true" doesn't match and its negation does
+    Document doc = doc("flag", "true false");
+    doc.add(new SortedSetDocValuesField("flag", new BytesRef("true false")));
+    Query query =
+        new BooleanQuery.Builder()
+            .add(MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.SHOULD)
+            .add(
+                new TermInSetQuery(
+                    MultiTermQuery.DOC_VALUES_REWRITE, "flag", List.of(new BytesRef("true"))),
+                BooleanClause.Occur.MUST_NOT)
+            .build();
+    assertRunAndMatched(1, 1, run(createPresearcher(), query, doc));
   }
 
   public void testBatchesOnlyExcludeOnTermsEveryDocumentContains() throws IOException {

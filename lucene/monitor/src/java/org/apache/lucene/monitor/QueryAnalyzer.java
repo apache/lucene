@@ -29,6 +29,7 @@ import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.ConstantScoreQuery;
+import org.apache.lucene.search.MultiTermQuery;
 import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
@@ -171,9 +172,11 @@ class QueryAnalyzer {
     @Override
     public void consumeTerms(Query query, Term... terms) {
       if (isNegated) {
+        // a doc values query doesn't match on indexed terms, so they must not exclude it
         if (query instanceof TermQuery
             || query instanceof SynonymQuery
-            || query instanceof TermInSetQuery
+            || (query instanceof TermInSetQuery tisq
+                && tisq.getRewriteMethod() != MultiTermQuery.DOC_VALUES_REWRITE)
             || query instanceof PhraseQuery) {
           negatedTerms.addAll(Arrays.asList(terms));
         } else {
