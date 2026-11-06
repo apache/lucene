@@ -43,7 +43,7 @@ public class TestSoftDeletesFromReaderInvariants extends LuceneTestCase {
   private static final String SOFT = "soft_delete";
 
   /** Merges drop soft deleted docs unless they are retained, so only then compare versions. */
-  private static boolean compareVersions;
+  private boolean compareVersions;
 
   /** Per id: docs that aren't hard deleted, and docs that are neither hard nor soft deleted. */
   private static final class State {
@@ -64,20 +64,6 @@ public class TestSoftDeletesFromReaderInvariants extends LuceneTestCase {
     void normalize() {
       versions.values().removeIf(v -> v == 0);
       live.values().removeIf(v -> v == 0);
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      State s = (State) o;
-      State a = copy(), b = s.copy();
-      a.normalize();
-      b.normalize();
-      return (compareVersions == false || a.versions.equals(b.versions)) && a.live.equals(b.live);
-    }
-
-    @Override
-    public int hashCode() {
-      return 0;
     }
 
     @Override
@@ -151,7 +137,17 @@ public class TestSoftDeletesFromReaderInvariants extends LuceneTestCase {
     return s;
   }
 
-  private static void assertWriter(IndexWriter w, State expected, boolean checkDocStats)
+  private void assertState(State expected, State actual) {
+    State a = expected.copy(), b = actual.copy();
+    a.normalize();
+    b.normalize();
+    if (compareVersions) {
+      assertEquals("versions", a.versions, b.versions);
+    }
+    assertEquals("live", a.live, b.live);
+  }
+
+  private void assertWriter(IndexWriter w, State expected, boolean checkDocStats)
       throws IOException {
     // getDocStats is checked before anything is buffered: it can be off by one later on, also
     // before this change
@@ -159,7 +155,7 @@ public class TestSoftDeletesFromReaderInvariants extends LuceneTestCase {
       assertEquals(expected.numDocs(), w.getDocStats().numDocs);
     }
     try (DirectoryReader r = DirectoryReader.open(w)) {
-      assertEquals(expected, readState(r));
+      assertState(expected, readState(r));
     }
   }
 
@@ -242,7 +238,7 @@ public class TestSoftDeletesFromReaderInvariants extends LuceneTestCase {
             r = DirectoryReader.open(w, applyAllDeletes, writeAllDeletes);
             if (applyAllDeletes) {
               expected = m.copy();
-              assertEquals(expected, readState(r));
+              assertState(expected, readState(r));
             } else {
               expected = readState(r);
             }
@@ -263,7 +259,7 @@ public class TestSoftDeletesFromReaderInvariants extends LuceneTestCase {
             commits.put(latestGen(dir), m.copy());
             r = DirectoryReader.open(dir);
             expected = m.copy();
-            assertEquals(expected, readState(r));
+            assertState(expected, readState(r));
           } else if (mode == 3) {
             // an older commit from disk
             w.close();
@@ -272,7 +268,7 @@ public class TestSoftDeletesFromReaderInvariants extends LuceneTestCase {
             IndexCommit commit = all.get(random().nextInt(all.size()));
             r = DirectoryReader.open(commit);
             expected = commits.get(commit.getGeneration()).copy();
-            assertEquals(expected, readState(r));
+            assertState(expected, readState(r));
           } else {
             // a disk reader that reuses the segments of an NRT reader
             DirectoryReader nrt = DirectoryReader.open(w);
@@ -291,7 +287,7 @@ public class TestSoftDeletesFromReaderInvariants extends LuceneTestCase {
             }
             assertNull(((StandardDirectoryReader) r).writer);
             expected = m.copy();
-            assertEquals(expected, readState(r));
+            assertState(expected, readState(r));
           }
           w = new IndexWriter(dir, iwc(retainAll).setIndexCommit(r.getIndexCommit()));
           r.close();
@@ -307,7 +303,7 @@ public class TestSoftDeletesFromReaderInvariants extends LuceneTestCase {
       assertWriter(w, m, false);
       w.close();
       try (DirectoryReader r = DirectoryReader.open(dir)) {
-        assertEquals(m, readState(r));
+        assertState(m, readState(r));
       }
     }
   }
