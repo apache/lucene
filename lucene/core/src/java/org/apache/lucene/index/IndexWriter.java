@@ -4538,6 +4538,15 @@ public class IndexWriter
           anyDVUpdates = true;
         }
       }
+      if (softDeletesEnabled && mappedDVUpdates.containsKey(config.getSoftDeletesField())) {
+        // Soft deletes only count toward the merged segment's delete count once their doc values
+        // are written, and the source segments already counted them, so write them now.
+        mergedDeletesAndUpdates.writeFieldUpdates(
+            directory,
+            globalFieldNumberMap,
+            bufferedUpdatesStream.getCompletedDelGen(),
+            infoStream);
+      }
     }
 
     if (infoStream.isEnabled("IW")) {
