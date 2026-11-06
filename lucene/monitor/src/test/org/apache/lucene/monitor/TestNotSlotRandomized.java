@@ -209,7 +209,7 @@ public class TestNotSlotRandomized extends LuceneTestCase {
       case 0 -> TermWeightor.DEFAULT;
       case 1 -> weights;
       default ->
-          TermWeightor.of(weights, t -> 0.01 + 3 * new Random(~seed ^ t.hashCode()).nextDouble());
+          weights.withNegation(w -> 0.01 + 3 * new Random(~seed ^ Double.hashCode(w)).nextDouble());
     };
   }
 

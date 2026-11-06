@@ -93,8 +93,8 @@ public class TestQueryTree extends LuceneTestCase {
   }
 
   public void testNotSlotWeightIsTheMaxNegatedWeight() {
-    TermWeightor weightor =
-        TermWeightor.of(_ -> 1, t -> t.equals(A) ? 0.2 : t.equals(B) ? 0.7 : 0.1);
+    TermWeightor weights = t -> t.equals(A) ? 0.2 : t.equals(B) ? 0.7 : 0.1;
+    TermWeightor weightor = weights.withNegation(w -> w);
     assertEquals(0.2, QueryTree.notSlot(Set.of(A), weightor).weight(), 0);
     assertEquals(0.7, QueryTree.notSlot(Set.of(A, B), weightor).weight(), 0);
     assertEquals(0.7, QueryTree.notSlot(Set.of(A, B, C), weightor).weight(), 0);

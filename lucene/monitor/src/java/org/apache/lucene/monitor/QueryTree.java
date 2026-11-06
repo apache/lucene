@@ -170,14 +170,14 @@ public abstract class QueryTree {
 
   /**
    * Returns a NotSlot leaf, satisfied by documents that contain none of {@code terms}, weighted by
-   * the strongest of their {@link TermWeightor#applyNegatedAsDouble(Term) negated weights}
+   * the strongest of their {@link TermWeightor#negate(double) negated weights}
    */
   public static QueryTree notSlot(Set<Term> terms, TermWeightor weightor) {
     // The sum would be exact for independent terms but overestimates correlated ones; the max is a
     // lower bound whatever the correlation.
     double weight = 0;
     for (Term term : terms) {
-      weight = Math.max(weight, weightor.applyNegatedAsDouble(term));
+      weight = Math.max(weight, weightor.negate(weightor.applyAsDouble(term)));
     }
     return notSlot(terms, weight);
   }

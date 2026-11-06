@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.DoubleUnaryOperator;
 import java.util.function.ToDoubleFunction;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.util.BytesRef;
@@ -29,84 +30,88 @@ import org.apache.lucene.util.BytesRef;
  * Calculates the weight of a {@link Term}
  *
  * <p>Higher weights mark terms that are more useful for selecting queries, typically rarer or
- * longer ones. {@link #applyNegatedAsDouble(Term)} weighs the absence of a term, for negated
- * clauses.
+ * longer ones. {@link #negate(double)} turns a weight into the weight of the absence of the term,
+ * for negated clauses.
  */
 public interface TermWeightor extends ToDoubleFunction<Term> {
 
   /** A default TermWeightor based on token length */
   TermWeightor DEFAULT = lengthWeightor(3, 0.3f);
 
-  /** The smallest weight returned by the default {@link #applyNegatedAsDouble(Term)} */
+  /** The smallest weight returned by the default {@link #negate(double)} */
   double MIN_NEGATED_WEIGHT = 1e-6;
 
   /**
-   * The weight of "the document does not contain {@code term}", used for negated clauses
+   * The weight of the absence of a term of weight {@code weight}, used for negated clauses
    *
-   * <p>By default the weight {@code w} of the term is read as surprisal, {@code w = -ln p} where
-   * {@code p} is the share of documents containing the term, giving {@code -ln(1 - e^-w)}: rare
-   * terms are weak exclusions and common terms strong ones. Override this if weights express a
-   * preference rather than rarity.
+   * <p>By default the weight is read as surprisal, {@code w = -ln p} where {@code p} is the share
+   * of documents containing the term, giving {@code -ln(1 - e^-w)}: rare terms are weak exclusions
+   * and common terms strong ones. Use {@link #withNegation(DoubleUnaryOperator)} if weights are not
+   * surprisal.
    */
-  default double applyNegatedAsDouble(Term term) {
-    return Math.max(MIN_NEGATED_WEIGHT, -Math.log1p(-Math.exp(-applyAsDouble(term))));
+  default double negate(double weight) {
+    return Math.max(MIN_NEGATED_WEIGHT, -Math.log1p(-Math.exp(-weight)));
   }
 
   /**
-   * Creates a TermWeightor from separate weightings for the presence and the absence of a term
+   * Returns this TermWeightor, with the absence of a term weighed by {@code negation}
    *
-   * @param weightor the weight of a term
-   * @param negatedWeightor the weight of the absence of a term
+   * @param negation maps the weight of a term to the weight of its absence, which must be greater
+   *     than 0
    */
-  static TermWeightor of(ToDoubleFunction<Term> weightor, ToDoubleFunction<Term> negatedWeightor) {
-    return new TermWeightor() {
-      @Override
-      public double applyAsDouble(Term term) {
-        return weightor.applyAsDouble(term);
-      }
+  default TermWeightor withNegation(DoubleUnaryOperator negation) {
+    return new NegatingTermWeightor(this, negation);
+  }
 
-      @Override
-      public double applyNegatedAsDouble(Term term) {
-        return negatedWeightor.applyAsDouble(term);
+  /**
+   * Combine weightors by multiplication
+   *
+   * <p>The result uses the {@link #withNegation(DoubleUnaryOperator) negation} of its weightors, if
+   * any of them has one
+   *
+   * @throws IllegalArgumentException if weightors have different negations; use {@link
+   *     #combineWithNegation(DoubleUnaryOperator, TermWeightor...)} to choose one
+   */
+  static TermWeightor combine(TermWeightor... weightors) {
+    DoubleUnaryOperator negation = null;
+    for (TermWeightor w : weightors) {
+      if (w instanceof NegatingTermWeightor n) {
+        if (negation != null && negation != n.negation()) {
+          throw new IllegalArgumentException(
+              "Cannot combine weightors with different negations; use combineWithNegation");
+        }
+        negation = n.negation();
       }
+    }
+    return negation == null ? multiply(weightors) : multiply(weightors).withNegation(negation);
+  }
+
+  /**
+   * Combine weightors by multiplication, weighing the absence of a term by {@code negation} instead
+   * of the negations of the weightors
+   */
+  static TermWeightor combineWithNegation(DoubleUnaryOperator negation, TermWeightor... weightors) {
+    return multiply(weightors).withNegation(negation);
+  }
+
+  private static TermWeightor multiply(TermWeightor... weightors) {
+    return value -> {
+      double r = 1;
+      for (TermWeightor w : weightors) {
+        r *= w.applyAsDouble(value);
+      }
+      return r;
     };
   }
 
-  /** Combine weightors by multiplication, of both their weights and their negated weights */
-  static TermWeightor combine(TermWeightor... weightors) {
-    return of(
-        value -> {
-          double r = 1;
-          for (TermWeightor w : weightors) {
-            r *= w.applyAsDouble(value);
-          }
-          return r;
-        },
-        value -> {
-          double r = 1;
-          for (TermWeightor w : weightors) {
-            r *= w.applyNegatedAsDouble(value);
-          }
-          return r;
-        });
-  }
-
-  private static TermWeightor factor(ToDoubleFunction<Term> factor) {
-    return of(factor, factor);
-  }
-
-  /**
-   * QueryTerms with a field from the selected set will be assigned the given weight, as both their
-   * weight and their negated weight
-   */
+  /** QueryTerms with a field from the selected set will be assigned the given weight */
   static TermWeightor fieldWeightor(double weight, Set<String> fields) {
-    return factor(
-        value -> {
-          if (fields.contains(value.field())) {
-            return weight;
-          }
-          return 1;
-        });
+    return value -> {
+      if (fields.contains(value.field())) {
+        return weight;
+      }
+      return 1;
+    };
   }
 
   /** QueryTerms with a field from the selected set will be assigned the given weight */
@@ -114,18 +119,14 @@ public interface TermWeightor extends ToDoubleFunction<Term> {
     return fieldWeightor(weight, new HashSet<>(Arrays.asList(fields)));
   }
 
-  /**
-   * QueryTerms with a term value from the selected set will be assigned the given weight, as both
-   * their weight and their negated weight
-   */
+  /** QueryTerms with a term value from the selected set will be assigned the given weight */
   static TermWeightor termWeightor(double weight, Set<BytesRef> terms) {
-    return factor(
-        value -> {
-          if (terms.contains(value.bytes())) {
-            return weight;
-          }
-          return 1;
-        });
+    return value -> {
+      if (terms.contains(value.bytes())) {
+        return weight;
+      }
+      return 1;
+    };
   }
 
   /** QueryTerms with a term value from the selected set will be assigned the given weight */
@@ -134,17 +135,15 @@ public interface TermWeightor extends ToDoubleFunction<Term> {
   }
 
   /**
-   * QueryTerms with a term and field value from the selected set will be assigned the given weight,
-   * as both their weight and their negated weight
+   * QueryTerms with a term and field value from the selected set will be assigned the given weight
    */
   static TermWeightor termAndFieldWeightor(double weight, Set<Term> terms) {
-    return factor(
-        value -> {
-          if (terms.contains(value)) {
-            return weight;
-          }
-          return 1;
-        });
+    return value -> {
+      if (terms.contains(value)) {
+        return weight;
+      }
+      return 1;
+    };
   }
 
   /**

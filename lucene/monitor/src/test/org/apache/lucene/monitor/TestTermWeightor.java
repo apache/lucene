@@ -18,29 +18,21 @@
 package org.apache.lucene.monitor;
 
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
+import java.util.function.DoubleUnaryOperator;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestTermWeightor extends LuceneTestCase {
 
-  private static final Term RARE = new Term("f", "rare");
-  private static final Term COMMON = new Term("f", "common");
+  private static final Term TERM = new Term("f", "term");
 
-  public void testDefaultNegatedWeightReadsWeightsAsSurprisal() {
+  public void testDefaultNegationReadsWeightsAsSurprisal() {
     // weights as -ln p: the rare term is in 1% of documents, the common one in 60%
-    Map<Term, Double> weights = Map.of(RARE, -Math.log(0.01), COMMON, -Math.log(0.6));
-    TermWeightor weightor = weights::get;
-
-    assertEquals(-Math.log(0.99), weightor.applyNegatedAsDouble(RARE), 1e-9);
-    assertEquals(-Math.log(0.4), weightor.applyNegatedAsDouble(COMMON), 1e-9);
-    assertTrue(weightor.applyNegatedAsDouble(COMMON) > weightor.applyNegatedAsDouble(RARE));
-  }
-
-  public void testDefaultNegatedWeightIsAlwaysPositive() {
-    TermWeightor weightor = _ -> 1000;
-    assertEquals(TermWeightor.MIN_NEGATED_WEIGHT, weightor.applyNegatedAsDouble(RARE), 0);
+    TermWeightor weightor = TermWeightor.DEFAULT;
+    assertEquals(-Math.log(0.99), weightor.negate(-Math.log(0.01)), 1e-9);
+    assertEquals(-Math.log(0.4), weightor.negate(-Math.log(0.6)), 1e-9);
+    assertEquals(TermWeightor.MIN_NEGATED_WEIGHT, weightor.negate(1000), 0);
   }
 
   public void testDefaultWeightorRanksNotSlotsBelowTerms() {
@@ -55,31 +47,22 @@ public class TestTermWeightor extends LuceneTestCase {
     assertTrue(QueryTree.notSlot(allTerms, TermWeightor.DEFAULT).weight() < minTermWeight);
   }
 
-  public void testFactorWeightorsScaleNegatedWeights() {
+  public void testCombineKeepsTheNegation() {
+    DoubleUnaryOperator half = w -> w / 2;
+    TermWeightor negating = TermWeightor.lengthWeightor(3, 0.3).withNegation(half);
     TermWeightor field = TermWeightor.fieldWeightor(0.5, "f");
-    assertEquals(0.5, field.applyNegatedAsDouble(RARE), 0);
-    assertEquals(1, field.applyNegatedAsDouble(new Term("g", "x")), 0);
 
-    TermWeightor term = TermWeightor.termWeightor(3, RARE.bytes());
-    assertEquals(3, term.applyNegatedAsDouble(RARE), 0);
-    assertEquals(1, term.applyNegatedAsDouble(COMMON), 0);
+    TermWeightor combined = TermWeightor.combine(field, negating);
+    assertEquals(0.5 * negating.applyAsDouble(TERM), combined.applyAsDouble(TERM), 1e-9);
+    assertEquals(1.5, combined.negate(3), 0);
+    assertEquals(1.5, TermWeightor.combine(combined, field).negate(3), 0);
+    assertEquals(1.5, TermWeightor.combine(negating, field.withNegation(half)).negate(3), 0);
+    assertEquals(TermWeightor.DEFAULT.negate(3), TermWeightor.combine(field).negate(3), 0);
 
-    TermWeightor termAndField = TermWeightor.termAndFieldWeightor(4, COMMON);
-    assertEquals(4, termAndField.applyNegatedAsDouble(COMMON), 0);
-    assertEquals(1, termAndField.applyNegatedAsDouble(RARE), 0);
-  }
-
-  public void testCombineMultipliesNegatedWeights() {
-    TermWeightor base = TermWeightor.of(_ -> 2, _ -> 0.3);
-    TermWeightor combined = TermWeightor.combine(base, TermWeightor.fieldWeightor(0.5, "f"));
-    assertEquals(1, combined.applyAsDouble(RARE), 1e-9);
-    assertEquals(0.15, combined.applyNegatedAsDouble(RARE), 1e-9);
-    assertEquals(0.3, combined.applyNegatedAsDouble(new Term("g", "x")), 1e-9);
-  }
-
-  public void testOfRoutesBothWeightings() {
-    TermWeightor weightor = TermWeightor.of(_ -> 7, _ -> 0.25);
-    assertEquals(7, weightor.applyAsDouble(RARE), 0);
-    assertEquals(0.25, weightor.applyNegatedAsDouble(RARE), 0);
+    TermWeightor conflicting = field.withNegation(w -> w);
+    expectThrows(IllegalArgumentException.class, () -> TermWeightor.combine(negating, conflicting));
+    TermWeightor chosen = TermWeightor.combineWithNegation(_ -> 4, negating, conflicting);
+    assertEquals(combined.applyAsDouble(TERM), chosen.applyAsDouble(TERM), 1e-9);
+    assertEquals(4, chosen.negate(3), 0);
   }
 }
