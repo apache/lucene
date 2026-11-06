@@ -45,6 +45,14 @@ Fields tvFields = reader.termVectors().get(docId);
 String text = reader.storedFields().document(docId).get(field);
 TokenStream ts = TokenSources.getTokenStream(field, tvFields, text, analyzer, -1);
 ```
+### TruncateTokenFilter constructor replaced by static factory methods (GITHUB#16984)
+
+The constructor `TruncateTokenFilter(TokenStream, int)` has been removed. To accomplish
+the same functionality use the static factory methods `truncateAfterChars` or `truncateAfterCodePoints`.
+`truncateAfterChars` keeps the old char-length behavior; `truncateAfterCodePoints` is the
+Unicode-correct replacement.
+The factory parameter `prefixLength` has also been removed. Replace it with `truncateAfterChars`
+or `truncateAfterCodePoints` on `TruncateTokenFilterFactory`.
 
 ### UnifiedHighlighter must be created through its Builder (GITHUB#16975)
 
