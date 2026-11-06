@@ -47,7 +47,7 @@ public class EscapeQuerySyntaxImpl implements EscapeQuerySyntax {
 
     // regular escapable char for terms
     for (String escapableTermChar : escapableTermChars) {
-      buffer = escapeIgnoringCase(buffer, escapableTermChar.toLowerCase(locale), "\\", locale);
+      buffer = escapeIgnoringCase(buffer, escapableTermChar.toLowerCase(locale), "\\");
     }
 
     // first char of a term as more escaping chars
@@ -67,7 +67,7 @@ public class EscapeQuerySyntaxImpl implements EscapeQuerySyntax {
     CharSequence buffer = str;
 
     for (String escapableQuotedChar : escapableQuotedChars) {
-      buffer = escapeIgnoringCase(buffer, escapableQuotedChar.toLowerCase(locale), "\\", locale);
+      buffer = escapeIgnoringCase(buffer, escapableQuotedChar.toLowerCase(locale), "\\");
     }
     return buffer;
   }
@@ -98,7 +98,7 @@ public class EscapeQuerySyntaxImpl implements EscapeQuerySyntax {
    *     escapeChar}
    */
   private static CharSequence escapeIgnoringCase(
-      CharSequence string, CharSequence sequence1, CharSequence escapeChar, Locale locale) {
+      CharSequence string, CharSequence sequence1, CharSequence escapeChar) {
     if (escapeChar == null || sequence1 == null || string == null) throw new NullPointerException();
 
     int count = string.length();
@@ -114,34 +114,25 @@ public class EscapeQuerySyntaxImpl implements EscapeQuerySyntax {
       return result;
     }
 
-    // normal case
-    String lowercase = string.toString().toLowerCase(locale);
+    // normal case: match and copy from the same string. Lower-casing the whole string first can
+    // change its length (e.g. U+0130 becomes two chars), which would shift the escape positions.
+    String str = string.toString();
+    String seq = sequence1.toString();
     StringBuilder result = new StringBuilder();
-    char first = sequence1.charAt(0);
-    int start = 0, copyStart = 0, firstIndex;
-    while (start < count) {
-      if ((firstIndex = lowercase.indexOf(first, start)) == -1) break;
-      boolean found = true;
-      if (sequence1.length() > 1) {
-        if (firstIndex + sequence1Length > count) break;
-        for (int i = 1; i < sequence1Length; i++) {
-          if (lowercase.charAt(firstIndex + i) != sequence1.charAt(i)) {
-            found = false;
-            break;
-          }
-        }
-      }
-      if (found) {
-        result.append(string, copyStart, firstIndex);
+    int copyStart = 0;
+    for (int i = 0; i + sequence1Length <= count; ) {
+      if (str.regionMatches(true, i, seq, 0, sequence1Length)) {
+        result.append(str, copyStart, i);
         result.append(escapeChar);
-        result.append(string, firstIndex, firstIndex + sequence1Length);
-        copyStart = start = firstIndex + sequence1Length;
+        result.append(str, i, i + sequence1Length);
+        i += sequence1Length;
+        copyStart = i;
       } else {
-        start = firstIndex + 1;
+        i++;
       }
     }
     if (result.isEmpty() && copyStart == 0) return string;
-    result.append(string, copyStart, string.length());
+    result.append(str, copyStart, count);
     return result;
   }
 
@@ -158,7 +149,7 @@ public class EscapeQuerySyntaxImpl implements EscapeQuerySyntax {
     CharSequence buffer = str;
 
     for (String escapableWhiteChar : escapableWhiteChars) {
-      buffer = escapeIgnoringCase(buffer, escapableWhiteChar.toLowerCase(locale), "\\", locale);
+      buffer = escapeIgnoringCase(buffer, escapableWhiteChar.toLowerCase(locale), "\\");
     }
     return buffer;
   }
