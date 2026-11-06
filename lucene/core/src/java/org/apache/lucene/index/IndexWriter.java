@@ -275,15 +275,17 @@ public class IndexWriter
   // list of segmentInfo we will fallback to if the commit fails. We keep their files from being
   // deleted, because the deletion policy may delete the commit they come from:
   private List<SegmentCommitInfo> rollbackSegments;
+  // the files of rollbackSegments, which this writer holds a reference to:
+  private Collection<String> rollbackFiles = List.of();
 
   // set when a commit is pending (after prepareCommit() & before commit())
   private volatile SegmentInfos pendingCommit;
   // Highest version of any NRT reader this writer opened. finishCommit uses it to tell whether a
   // reader was opened during the commit. Only accessed while synchronized on this writer:
   private long lastNRTReaderVersion = -1;
-  // The version that finishCommit increased to, which no commit saved yet, or -1. close() commits
-  // if a reader got this version. Only accessed while synchronized on this writer:
-  private long uncommittedBumpedVersion = -1;
+  // Version of the last commit this writer wrote, or of the index it started from. close() commits
+  // if a reader got a higher version. Only accessed while synchronized on this writer:
+  private long lastCommitVersion;
   private volatile long pendingSeqNo;
   private volatile long pendingCommitChangeCount;
 
@@ -1022,7 +1024,6 @@ public class IndexWriter
           sis.updateGenerationVersionAndCounter(previous);
         }
         segmentInfos = sis;
-        rollbackSegments = segmentInfos.createBackupSegmentInfos();
 
         // Record that we have a change (zero out all
         // segments) pending:
@@ -1077,11 +1078,6 @@ public class IndexWriter
           // update SIS metadata so we remain write-once:
           segmentInfos.updateGenerationVersionAndCounter(reader.writer.segmentInfos);
         }
-
-        // rollback() returns to the reader's segments, as when opening a commit, and not to the
-        // reader's commit: this writer's deletion policy may delete that commit below, together
-        // with the files that only it uses:
-        rollbackSegments = segmentInfos.createBackupSegmentInfos();
       } else {
         // Init from either the latest commit point, or an explicit prior commit point:
 
@@ -1119,8 +1115,6 @@ public class IndexWriter
                 "IW", "init: loaded commit \"" + commit.getSegmentsFileName() + "\"");
           }
         }
-
-        rollbackSegments = segmentInfos.createBackupSegmentInfos();
       }
       if (infoStream.isEnabled("IW")) {
         infoStream.message("IW", "init " + segmentInfos.toStringVerbose());
@@ -1190,9 +1184,10 @@ public class IndexWriter
         // We incRef all files when we return an NRT reader from IW, so all files must exist even in
         // the NRT case:
         assert create || filesExist(segmentInfos);
-        // The deletion policy may delete the commit we started from, so keep the files that a
-        // rollback needs:
-        deleter.incRef(segmentFiles(rollbackSegments));
+        // rollback() returns to the segments we start from, also when we start from an NRT reader
+        // and not from its commit. The deletion policy may delete the commit we started from, so
+        // keep their files:
+        setRollbackSegments(segmentInfos.createBackupSegmentInfos());
       }
 
       if (deleter.startingCommitDeleted) {
@@ -1208,6 +1203,7 @@ public class IndexWriter
         segmentInfos.changed();
         changed();
       }
+      lastCommitVersion = segmentInfos.getVersion();
 
       if (infoStream.isEnabled("IW")) {
         infoStream.message("IW", "init: create=" + create + " reader=" + reader);
@@ -1343,7 +1339,7 @@ public class IndexWriter
           // without other changes. Otherwise the next writer on this index would start from the
           // older saved version, and could give the same version to a reader with different
           // documents:
-          if (uncommittedBumpedVersion != -1 && lastNRTReaderVersion >= uncommittedBumpedVersion) {
+          if (lastNRTReaderVersion > lastCommitVersion) {
             changed();
           }
         }
@@ -2694,7 +2690,7 @@ public class IndexWriter
         // these methods throw ACE:
         if (tragedy.get() == null) {
           deleter.checkpoint(segmentInfos, false);
-          deleter.decRef(segmentFiles(rollbackSegments));
+          deleter.decRef(rollbackFiles);
           deleter.refresh();
           deleter.close();
         }
@@ -4142,14 +4138,12 @@ public class IndexWriter
    */
   private void writeReaderPool(boolean writeDeletes) throws IOException {
     assert Thread.holdsLock(this);
-    if (writeDeletes) {
-      if (readerPool.commit(segmentInfos)) {
-        checkpointNoSIS();
-      }
-    } else { // only write the docValues
-      if (readerPool.writeAllDocValuesUpdates()) {
-        checkpoint();
-      }
+    // NRT readers only see doc values updates once they are written, so increase the version:
+    if (readerPool.writeAllDocValuesUpdates()) {
+      checkpoint();
+    }
+    if (writeDeletes && readerPool.commit(segmentInfos)) {
+      checkpointNoSIS();
     }
     // now do some best effort to check if a segment is fully deleted
     List<SegmentCommitInfo> toDrop = new ArrayList<>(); // don't modify segmentInfos in-place
@@ -4334,25 +4328,17 @@ public class IndexWriter
 
             // Carry over generation to our master SegmentInfos:
             segmentInfos.updateGeneration(pendingCommit);
-            // A reader opened while this commit was in progress has the commit's version (or a
-            // higher one), but uses the previous segments_N file, which may be deleted now. So
-            // increase the version: that reader is then no longer current, and reopening it gives a
-            // reader with a new version. Only do this if such a reader was opened, so a reader
-            // opened right after a commit usually has the commit's version.
-            // This doesn't count as a change, so hasUncommittedChanges() stays false. Otherwise,
-            // code that commits whenever there are uncommitted changes would keep committing an
-            // index that doesn't change. Instead, close() commits if a reader got the new version.
-            uncommittedBumpedVersion = -1;
-            if (lastNRTReaderVersion >= pendingCommit.getVersion()) {
+            // A reader opened during this commit has the commit's version but uses the previous
+            // segments_N, so increase the version to make that reader no longer current. This
+            // isn't a change, so an idle index doesn't keep committing. close() saves the version
+            // if a reader got it.
+            lastCommitVersion = pendingCommit.getVersion();
+            if (lastNRTReaderVersion >= lastCommitVersion) {
               segmentInfos.changed();
-              uncommittedBumpedVersion = segmentInfos.getVersion();
             }
 
             lastCommitChangeCount = pendingCommitChangeCount;
-            List<SegmentCommitInfo> previousRollbackSegments = rollbackSegments;
-            rollbackSegments = pendingCommit.createBackupSegmentInfos();
-            deleter.incRef(segmentFiles(rollbackSegments));
-            deleter.decRef(segmentFiles(previousRollbackSegments));
+            setRollbackSegments(pendingCommit.createBackupSegmentInfos());
 
           } finally {
             notifyAll();
@@ -6159,13 +6145,16 @@ public class IndexWriter
     return closing == false && closed == false;
   }
 
-  /** Returns the files of the given segments. */
-  private static Set<String> segmentFiles(List<SegmentCommitInfo> segments) throws IOException {
+  /** Sets the segments that rollback() returns to, and keeps their files until the next call. */
+  private void setRollbackSegments(List<SegmentCommitInfo> segments) throws IOException {
     Set<String> files = new HashSet<>();
     for (SegmentCommitInfo info : segments) {
       files.addAll(info.files());
     }
-    return files;
+    deleter.incRef(files);
+    deleter.decRef(rollbackFiles);
+    rollbackSegments = segments;
+    rollbackFiles = files;
   }
 
   // Used for testing.  Current points:
