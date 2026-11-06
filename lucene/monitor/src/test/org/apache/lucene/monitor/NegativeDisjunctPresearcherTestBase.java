@@ -110,6 +110,14 @@ public abstract class NegativeDisjunctPresearcherTestBase extends PresearcherTes
     assertRunAndMatched(1, 1, run(createPresearcher(2, List.of()), query, doc("y", "b")));
   }
 
+  public void testNestedNegationsShareANegativeDisjunct() throws IOException {
+    // one negative disjunct {y:b, z:c}, so either term excludes the query in a single pass
+    String query = "+(*:* -y:b) +(*:* -z:c)";
+    assertRunAndMatched(0, 0, run(query, doc("y", "b")));
+    assertRunAndMatched(0, 0, run(query, doc("z", "c")));
+    assertRunAndMatched(1, 1, run(query, doc("x", "a")));
+  }
+
   public void testBatchesOnlyExcludeOnTermsEveryDocumentContains() throws IOException {
     try (Monitor monitor = newMonitor()) {
       monitor.register(new MonitorQuery("q", parse("*:* -f:t")));

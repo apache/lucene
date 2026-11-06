@@ -19,6 +19,7 @@ package org.apache.lucene.monitor;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -193,8 +194,29 @@ class QueryAnalyzer {
           });
     }
 
+    /**
+     * Moves the negated terms of the conjunctions nested in this one into this one, and removes the
+     * builders left empty: (a AND NOT x) AND NOT y = a AND NOT (x OR y), one negative disjunct
+     */
+    private void mergeNestedNegatedConjuncts() {
+      Iterator<Function<TermWeightor, QueryTree>> it = children.iterator();
+      while (it.hasNext()) {
+        if (it.next() instanceof QueryBuilder child && !child.buildsDisjunction) {
+          child.mergeNestedNegatedConjuncts();
+          negatedTerms.addAll(child.negatedTerms);
+          child.negatedTerms.clear();
+          if (child.children.isEmpty()) {
+            it.remove();
+          }
+        }
+      }
+    }
+
     @Override
     public QueryTree apply(TermWeightor termWeightor) {
+      if (isNegationOptimized && !buildsDisjunction) {
+        mergeNestedNegatedConjuncts();
+      }
       List<Function<TermWeightor, QueryTree>> all = children;
       if (!negatedTerms.isEmpty()) {
         all = new ArrayList<>(children);

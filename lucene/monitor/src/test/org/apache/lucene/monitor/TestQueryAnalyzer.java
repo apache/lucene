@@ -255,6 +255,18 @@ public class TestQueryAnalyzer extends LuceneTestCase {
         new Pass(Set.of(), List.of(Set.of(t("b"), t("c")))), negativeDisjunctPass("*:* -(b c)"));
   }
 
+  public void testNegatedTermsOfNestedConjunctionsShareANegativeDisjunct() {
+    QueryTree tree = negativeDisjunctTree(MonitorTestBase.parse("+(+x -a) -b"));
+    assertEquals(new Pass(Set.of(t("x")), List.of()), collect(tree));
+    assertTrue(tree.advancePhase(0));
+    assertEquals(new Pass(Set.of(), List.of(Set.of(t("a"), t("b")))), collect(tree));
+    assertFalse(tree.advancePhase(0));
+
+    assertEquals(
+        new Pass(Set.of(), List.of(Set.of(t("a"), t("b")))),
+        negativeDisjunctPass("+(*:* -a) +(*:* -b)"));
+  }
+
   public void testNegatedConjunctionIsADisjunctionOfNegativeDisjuncts() {
     Pass pass = negativeDisjunctPass("*:* -(+b +c)");
     assertEquals(Set.of(), pass.terms());
