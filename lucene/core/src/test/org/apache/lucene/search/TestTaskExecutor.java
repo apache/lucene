@@ -20,16 +20,21 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.LockSupport;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -395,5 +400,188 @@ public class TestTaskExecutor extends LuceneTestCase {
       assertEquals(taskCount, res.size());
       assertEquals(taskCount, executedTasks.get());
     }
+  }
+
+  public void testNoTaskGroupOutsideOfTasks() {
+    assertSame(TaskExecutor.TaskGroup.NONE, TaskExecutor.currentTaskGroup());
+    assertFalse(TaskExecutor.TaskGroup.NONE.hasSiblings());
+  }
+
+  public void testTaskWithoutSiblings() throws IOException {
+    TaskExecutor taskExecutor = new TaskExecutor(executorService);
+    TaskExecutor.TaskGroup group =
+        taskExecutor
+            .invokeAll(List.<Callable<TaskExecutor.TaskGroup>>of(TaskExecutor::currentTaskGroup))
+            .getFirst();
+    assertNotSame(TaskExecutor.TaskGroup.NONE, group);
+    assertFalse(group.hasSiblings());
+  }
+
+  public void testSiblingTasksShareTaskGroup() throws IOException {
+    TaskExecutor taskExecutor = new TaskExecutor(executorService);
+    List<Callable<TaskExecutor.TaskGroup>> tasks = new ArrayList<>();
+    int numTasks = random().nextInt(2, 10);
+    for (int i = 0; i < numTasks; i++) {
+      tasks.add(TaskExecutor::currentTaskGroup);
+    }
+    List<TaskExecutor.TaskGroup> groups = taskExecutor.invokeAll(tasks);
+    assertTrue(groups.getFirst().hasSiblings());
+    for (TaskExecutor.TaskGroup group : groups) {
+      assertSame(groups.getFirst(), group);
+    }
+    assertFalse(groups.getFirst().isFailed());
+    assertNotSame(groups.getFirst(), taskExecutor.invokeAll(tasks).getFirst());
+    assertSame(TaskExecutor.TaskGroup.NONE, TaskExecutor.currentTaskGroup());
+  }
+
+  public void testRunningTasksExitEarlyOnFailure() {
+    try (ExecutorService executor =
+        Executors.newFixedThreadPool(2, new NamedThreadFactory("TestTaskExecutor"))) {
+      TaskExecutor taskExecutor = new TaskExecutor(executor);
+      CountDownLatch running = new CountDownLatch(1);
+      boolean error = random().nextBoolean();
+      List<Callable<Void>> tasks = new ArrayList<>();
+      tasks.add(
+          () -> {
+            running.countDown();
+            awaitTaskGroupFailure(TaskExecutor.currentTaskGroup()).ensureNotFailed();
+            throw new AssertionError("unreachable");
+          });
+      tasks.add(
+          () -> {
+            assertTrue(running.await(30, TimeUnit.SECONDS));
+            if (error) {
+              throw new OutOfMemoryError("boom");
+            }
+            throw new IOException("boom");
+          });
+      Collections.shuffle(tasks, random());
+      Class<? extends Throwable> expected = error ? OutOfMemoryError.class : IOException.class;
+      Throwable t = expectThrows(expected, () -> taskExecutor.invokeAll(tasks));
+      assertEquals(0, t.getSuppressed().length);
+    }
+  }
+
+  public void testCancellationExceptionIsAFailureIfNoOtherTaskFailed() {
+    TaskExecutor taskExecutor = new TaskExecutor(executorService);
+    List<Callable<Void>> tasks = new ArrayList<>();
+    tasks.add(() -> null);
+    tasks.add(
+        () -> {
+          throw new CancellationException("boom");
+        });
+    Collections.shuffle(tasks, random());
+    CancellationException e =
+        expectThrows(CancellationException.class, () -> taskExecutor.invokeAll(tasks));
+    assertEquals("boom", e.getMessage());
+  }
+
+  public void testTaskGroupsWithVirtualThreads() throws Exception {
+    final int numGroups = random().nextInt(2, 8);
+    final int tasksPerGroup = random().nextInt(2, 8);
+    // all tasks of all groups are alive at the same time and unmount while waiting, so that carrier
+    // threads run tasks of different groups: this fails if the group is stored per carrier thread
+    CountDownLatch allRunning = new CountDownLatch(numGroups * tasksPerGroup);
+    try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
+      TaskExecutor taskExecutor = new TaskExecutor(executor);
+      List<Callable<TaskExecutor.TaskGroup>> tasks = new ArrayList<>();
+      for (int i = 0; i < tasksPerGroup; i++) {
+        tasks.add(
+            () -> {
+              TaskExecutor.TaskGroup group = TaskExecutor.currentTaskGroup();
+              allRunning.countDown();
+              assertTrue(allRunning.await(30, TimeUnit.SECONDS));
+              Thread.yield();
+              assertSame(group, TaskExecutor.currentTaskGroup());
+              return group;
+            });
+      }
+      List<Future<List<TaskExecutor.TaskGroup>>> invocations = new ArrayList<>();
+      for (int i = 0; i < numGroups; i++) {
+        invocations.add(executor.submit(() -> taskExecutor.invokeAll(tasks)));
+      }
+      Set<TaskExecutor.TaskGroup> distinct = Collections.newSetFromMap(new IdentityHashMap<>());
+      for (Future<List<TaskExecutor.TaskGroup>> invocation : invocations) {
+        List<TaskExecutor.TaskGroup> groups = invocation.get();
+        for (TaskExecutor.TaskGroup group : groups) {
+          assertSame(groups.getFirst(), group);
+        }
+        distinct.add(groups.getFirst());
+      }
+      assertEquals(numGroups, distinct.size());
+    }
+  }
+
+  public void testNestedTasksGetTheirOwnTaskGroup() throws Exception {
+    try (ExecutorService executor =
+        Executors.newFixedThreadPool(2, new NamedThreadFactory("TestTaskExecutor"))) {
+      TaskExecutor taskExecutor = new TaskExecutor(executor);
+      Callable<Void> task =
+          () -> {
+            TaskExecutor.TaskGroup outer = TaskExecutor.currentTaskGroup();
+            TaskExecutor.TaskGroup single =
+                taskExecutor
+                    .invokeAll(
+                        List.<Callable<TaskExecutor.TaskGroup>>of(TaskExecutor::currentTaskGroup))
+                    .getFirst();
+            assertNotSame(outer, single);
+            assertFalse(single.hasSiblings());
+            List<TaskExecutor.TaskGroup> siblings =
+                taskExecutor.invokeAll(
+                    List.of(TaskExecutor::currentTaskGroup, TaskExecutor::currentTaskGroup));
+            assertNotSame(outer, siblings.getFirst());
+            assertSame(siblings.getFirst(), siblings.getLast());
+            assertSame(outer, TaskExecutor.currentTaskGroup());
+            return null;
+          };
+      taskExecutor.invokeAll(List.of(task, task));
+    }
+  }
+
+  public void testExitingBecauseOfAnotherGroupIsAFailure() {
+    try (ExecutorService executor =
+        Executors.newFixedThreadPool(4, new NamedThreadFactory("TestTaskExecutor"))) {
+      TaskExecutor taskExecutor = new TaskExecutor(executor);
+      CountDownLatch running = new CountDownLatch(1);
+      List<Callable<Void>> tasks = new ArrayList<>();
+      tasks.add(
+          () -> {
+            TaskExecutor.TaskGroup outer = TaskExecutor.currentTaskGroup();
+            List<Callable<Void>> innerTasks = new ArrayList<>();
+            innerTasks.add(
+                () -> {
+                  running.countDown();
+                  // the inner group did not fail, so this must fail the inner group
+                  awaitTaskGroupFailure(outer).ensureNotFailed();
+                  throw new AssertionError("unreachable");
+                });
+            innerTasks.add(() -> null);
+            expectThrows(CancellationException.class, () -> taskExecutor.invokeAll(innerTasks));
+            outer.ensureNotFailed();
+            throw new AssertionError("unreachable");
+          });
+      tasks.add(
+          () -> {
+            assertTrue(running.await(30, TimeUnit.SECONDS));
+            throw new IOException("boom");
+          });
+      Collections.shuffle(tasks, random());
+      IOException e = expectThrows(IOException.class, () -> taskExecutor.invokeAll(tasks));
+      assertEquals("boom", e.getMessage());
+      assertEquals(0, e.getSuppressed().length);
+    }
+  }
+
+  /** Waits until another task of the given group fails. */
+  static TaskExecutor.TaskGroup awaitTaskGroupFailure(TaskExecutor.TaskGroup group) {
+    assertTrue(group.hasSiblings());
+    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
+    while (group.isFailed() == false) {
+      if (System.nanoTime() > deadline) {
+        throw new AssertionError("the failure of a sibling task was not observed");
+      }
+      LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(1));
+    }
+    return group;
   }
 }

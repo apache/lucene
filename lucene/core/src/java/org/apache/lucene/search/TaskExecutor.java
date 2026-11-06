@@ -23,6 +23,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
@@ -45,6 +46,8 @@ import org.apache.lucene.util.ThreadInterruptedException;
  * @lucene.experimental
  */
 public final class TaskExecutor {
+  private static final ScopedValue<TaskGroup> CURRENT_TASK_GROUP = ScopedValue.newInstance();
+
   private final Executor executor;
 
   /**
@@ -72,7 +75,8 @@ public final class TaskExecutor {
    * obtained results. If an exception is thrown by more than one callable, the subsequent ones will
    * be added as suppressed exceptions to the first one that was caught. Additionally, if one task
    * throws an exception, all other tasks from the same group are cancelled, to avoid needless
-   * computation as their results would not be exposed anyways.
+   * computation as their results would not be exposed anyways. Tasks that are already running are
+   * not interrupted, but {@link IndexSearcher} stops searching the slices of such tasks.
    *
    * @param callables the callables to execute
    * @return a list containing the results from the tasks execution
@@ -80,8 +84,9 @@ public final class TaskExecutor {
    */
   public <T> List<T> invokeAll(Collection<Callable<T>> callables) throws IOException {
     List<RunnableFuture<T>> futures = new ArrayList<>(callables.size());
+    final TaskGroup group = new TaskGroup(callables.size() > 1);
     for (Callable<T> callable : callables) {
-      futures.add(new Task<>(callable, futures));
+      futures.add(new Task<>(callable, futures, group));
     }
     final int count = futures.size();
     // taskId provides the first index of an un-executed task in #futures
@@ -154,28 +159,83 @@ public final class TaskExecutor {
     }
   }
 
+  /**
+   * Returns the group of the {@link #invokeAll(Collection)} task that is running on the current
+   * thread, or {@link TaskGroup#NONE} if the current thread is not running such a task.
+   */
+  static TaskGroup currentTaskGroup() {
+    return CURRENT_TASK_GROUP.orElse(TaskGroup.NONE);
+  }
+
+  /**
+   * The tasks of a single {@link #invokeAll(Collection)} call. Once one of them fails, the results
+   * of the others are discarded, so running tasks may stop early by calling {@link
+   * #ensureNotFailed()}.
+   */
+  static final class TaskGroup {
+    /** The group of code that does not run in a {@link #invokeAll(Collection)} task. */
+    static final TaskGroup NONE = new TaskGroup(false);
+
+    private final boolean hasSiblings;
+    private volatile boolean failed;
+
+    private TaskGroup(boolean hasSiblings) {
+      this.hasSiblings = hasSiblings;
+    }
+
+    /** Whether this group has more than one task, so that a task may fail while others run. */
+    boolean hasSiblings() {
+      return hasSiblings;
+    }
+
+    boolean isFailed() {
+      return failed;
+    }
+
+    /**
+     * Throws a {@link CancellationException} if a task of this group failed. When thrown by a task
+     * of this group, the exception is ignored: the caller of {@link #invokeAll(Collection)} gets
+     * the original failure.
+     */
+    void ensureNotFailed() {
+      if (failed) {
+        throw new CancellationException("Another task of the same group failed");
+      }
+    }
+  }
+
   private static class Task<T> extends FutureTask<T> {
 
     private final AtomicBoolean startedOrCancelled = new AtomicBoolean(false);
 
     private final Collection<? extends Future<T>> futures;
 
-    public Task(Callable<T> callable, Collection<? extends Future<T>> futures) {
+    private final TaskGroup group;
+
+    public Task(Callable<T> callable, Collection<? extends Future<T>> futures, TaskGroup group) {
       super(callable);
       this.futures = futures;
+      this.group = group;
     }
 
     @Override
     public void run() {
       if (startedOrCancelled.compareAndSet(false, true)) {
-        super.run();
+        ScopedValue.where(CURRENT_TASK_GROUP, group).run(super::run);
       }
     }
 
     @Override
     protected void setException(Throwable t) {
-      super.setException(t);
-      cancelAll(futures);
+      if (t instanceof CancellationException && group.isFailed()) {
+        // the task stopped because another one failed, its result is discarded like the one of a
+        // cancelled task
+        set(null);
+      } else {
+        group.failed = true;
+        super.setException(t);
+        cancelAll(futures);
+      }
     }
 
     @Override

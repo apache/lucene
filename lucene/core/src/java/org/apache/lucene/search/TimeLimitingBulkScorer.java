@@ -35,7 +35,7 @@ final class TimeLimitingBulkScorer extends BulkScorer {
   // every document we score.
   static final int INTERVAL = 100;
 
-  /** Thrown when elapsed search time exceeds allowed search time. */
+  /** Thrown when the {@link QueryTimeout} says that the search should exit. */
   @SuppressWarnings("serial")
   static class TimeExceededException extends RuntimeException {
 

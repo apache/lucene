@@ -827,10 +827,16 @@ public class IndexSearcher {
    * @param collector to receive hits
    * @throws TooManyClauses If a query would exceed {@link IndexSearcher#getMaxClauseCount()}
    *     clauses.
+   * @throws java.util.concurrent.CancellationException If another slice of the same concurrent
+   *     search failed.
    */
   protected void searchLeaf(
       LeafReaderContext ctx, int minDocId, int maxDocId, Weight weight, Collector collector)
       throws IOException {
+    // when searching a slice concurrently with others, stop as soon as another slice fails since
+    // the results of this one would be discarded
+    final TaskExecutor.TaskGroup taskGroup = TaskExecutor.currentTaskGroup();
+    taskGroup.ensureNotFailed();
     final LeafCollector leafCollector;
     try {
       leafCollector = collector.getLeafCollector(ctx);
@@ -842,10 +848,7 @@ public class IndexSearcher {
     ScorerSupplier scorerSupplier = weight.scorerSupplier(ctx);
     if (scorerSupplier != null) {
       scorerSupplier.setTopLevelScoringClause();
-      BulkScorer scorer = scorerSupplier.bulkScorer();
-      if (queryTimeout != null) {
-        scorer = new TimeLimitingBulkScorer(scorer, queryTimeout);
-      }
+      BulkScorer scorer = exitableBulkScorer(scorerSupplier.bulkScorer(), taskGroup);
       try {
         // Optimize for the case when live docs are stored in a FixedBitSet.
         Bits acceptDocs = ScorerUtil.likelyLiveDocs(ctx.reader().getLiveDocs());
@@ -854,12 +857,29 @@ public class IndexSearcher {
         // collection was terminated prematurely
         // continue with the following leaf
       } catch (TimeLimitingBulkScorer.TimeExceededException _) {
+        // a failure of another slice is not a timeout
+        taskGroup.ensureNotFailed();
         partialResult = true;
       }
     }
     // Note: this is called if collection ran successfully, including the above special cases of
     // CollectionTerminatedException and TimeExceededException, but no other exception.
     leafCollector.finish();
+  }
+
+  /**
+   * Wraps the given scorer if it must stop when the {@link #setTimeout(QueryTimeout) timeout} is
+   * exceeded or when another task of the given group failed, or returns it unchanged otherwise.
+   */
+  private BulkScorer exitableBulkScorer(BulkScorer scorer, TaskExecutor.TaskGroup taskGroup) {
+    // read once since setTimeout may be called concurrently
+    final QueryTimeout queryTimeout = this.queryTimeout;
+    if (taskGroup.hasSiblings()) {
+      return new TimeLimitingBulkScorer(
+          scorer,
+          () -> taskGroup.isFailed() || (queryTimeout != null && queryTimeout.shouldExit()));
+    }
+    return queryTimeout == null ? scorer : new TimeLimitingBulkScorer(scorer, queryTimeout);
   }
 
   /**
