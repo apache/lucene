@@ -2020,10 +2020,10 @@ public class TestDirectoryReaderReopen extends LuceneTestCase {
   }
 
   /**
-   * Code that writes commits with {@link SegmentInfos#commit}, like NRT replication in the
-   * replicator module, can write a new segments_N file without changing the version, for example to
-   * save new commit user data. A reader opened from the directory sees the same documents then, so
-   * it must stay current, and reopening it must not give a new reader with the same version.
+   * Code that writes commits with {@link SegmentInfos#commit} can write a new segments_N file
+   * without changing the version, for example to save new commit user data. A reader opened from
+   * the directory sees the same documents then, so it must stay current, and reopening it must not
+   * give a new reader with the same version.
    */
   public void testReaderStaysCurrentAfterCommitWithSameVersion() throws Exception {
     Directory dir = newDirectory();
