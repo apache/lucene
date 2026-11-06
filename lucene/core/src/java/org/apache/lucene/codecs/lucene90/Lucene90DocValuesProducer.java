@@ -1393,12 +1393,15 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
               int totalBytes = (int) (lastEnd - firstStart);
               byte[] bulk = new byte[totalBytes];
               bytesSlice.readBytes(firstStart, bulk, 0, totalBytes);
+              long startOffset = firstStart;
               for (int di = docsOffset, vi = valuesOffset, end = docsOffset + size;
                   di < end;
                   di++, vi++) {
-                int offset = (int) (addresses.get(docs[di]) - firstStart);
-                int len = (int) (addresses.get(docs[di] + 1L) - addresses.get(docs[di]));
+                long endOffset = addresses.get(docs[di] + 1L);
+                int offset = (int) (startOffset - firstStart);
+                int len = (int) (endOffset - startOffset);
                 values[vi] = new BytesRef(bulk, offset, len);
+                startOffset = endOffset;
               }
             } else {
               for (int di = docsOffset, vi = valuesOffset, end = docsOffset + size;
@@ -2243,13 +2246,14 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
             lo = minValue;
             hi = maxValue;
           }
+
+          long startOffset = addresses.get(disi.index());
           for (; currentDoc < endDoc; currentDoc = disi.nextDoc()) {
-            int index = disi.index();
-            long startOffset = addresses.get(index);
-            long endOffset = addresses.get(index + 1L);
+            long endOffset = addresses.get(disi.index() + 1L);
             if (sortedNumericMatchesRange(v, startOffset, endOffset, lo, hi)) {
               bitSet.set(currentDoc - offset);
             }
+            startOffset = endOffset;
           }
           set = false;
         }
