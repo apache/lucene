@@ -449,6 +449,8 @@ Bug Fixes
 
 * GITHUB#16971: Fix double DocValuesStats extrema initialization. (Simranjeet Singh)
 
+* GITHUB#16896: Fix long overflow in GCD-encoded DocValues range transform. (Ke Wei)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
