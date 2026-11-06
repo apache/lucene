@@ -18,6 +18,7 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.FixedBitSet;
 
 public class TestRangeDocIdStream extends LuceneTestCase {
 
@@ -53,6 +54,16 @@ public class TestRangeDocIdStream extends LuceneTestCase {
       assertEquals(i, array[o++]);
     }
     assertEquals(count, o);
+  }
+
+  public void testIntoBitSet() throws IOException {
+    RangeDocIdStream stream = new RangeDocIdStream(42, 100);
+    FixedBitSet bitSet = new FixedBitSet(58);
+
+    stream.intoBitSet(DocIdSetIterator.NO_MORE_DOCS, bitSet, 42);
+
+    assertEquals(58, bitSet.cardinality());
+    assertFalse(stream.mayHaveRemaining());
   }
 
   public void testForEachUpTo() throws IOException {
