@@ -15,6 +15,7 @@
 
 org.apache.lucene.codecs.blocktreeords.BlockTreeOrdsPostingsFormat
 org.apache.lucene.codecs.bloom.BloomFilteringPostingsFormat
+org.apache.lucene.codecs.fuse.BinaryFuseFilteringPostingsFormat
 org.apache.lucene.codecs.memory.DirectPostingsFormat
 org.apache.lucene.codecs.memory.FSTPostingsFormat
 org.apache.lucene.codecs.uniformsplit.UniformSplitPostingsFormat
