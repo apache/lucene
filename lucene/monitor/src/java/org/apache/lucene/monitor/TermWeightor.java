@@ -66,35 +66,16 @@ public interface TermWeightor extends ToDoubleFunction<Term> {
   /**
    * Combine weightors by multiplication
    *
-   * <p>The result uses the {@link #withNegation(DoubleUnaryOperator) negation} of its weightors, if
-   * any of them has one
-   *
-   * @throws IllegalArgumentException if weightors have different negations; use {@link
-   *     #combineWithNegation(DoubleUnaryOperator, TermWeightor...)} to choose one
+   * @throws IllegalArgumentException if a weightor has a {@link #withNegation(DoubleUnaryOperator)
+   *     negation}; apply it to the combined weightor instead
    */
   static TermWeightor combine(TermWeightor... weightors) {
-    DoubleUnaryOperator negation = null;
     for (TermWeightor w : weightors) {
-      if (w instanceof NegatingTermWeightor n) {
-        if (negation != null && negation != n.negation()) {
-          throw new IllegalArgumentException(
-              "Cannot combine weightors with different negations; use combineWithNegation");
-        }
-        negation = n.negation();
+      if (w instanceof NegatingTermWeightor) {
+        throw new IllegalArgumentException(
+            "Cannot combine weightors with a negation; apply withNegation to the combined weightor");
       }
     }
-    return negation == null ? multiply(weightors) : multiply(weightors).withNegation(negation);
-  }
-
-  /**
-   * Combine weightors by multiplication, weighing the absence of a term by {@code negation} instead
-   * of the negations of the weightors
-   */
-  static TermWeightor combineWithNegation(DoubleUnaryOperator negation, TermWeightor... weightors) {
-    return multiply(weightors).withNegation(negation);
-  }
-
-  private static TermWeightor multiply(TermWeightor... weightors) {
     return value -> {
       double r = 1;
       for (TermWeightor w : weightors) {

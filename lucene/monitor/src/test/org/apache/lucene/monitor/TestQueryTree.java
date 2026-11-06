@@ -87,28 +87,26 @@ public class TestQueryTree extends LuceneTestCase {
             < minTermWeight);
   }
 
-  public void testCombinedWeightorsKeepTheNegation() {
-    DoubleUnaryOperator half = w -> w / 2;
-    TermWeightor negating = TermWeightor.lengthWeightor(3, 0.3).withNegation(half);
-    TermWeightor field = TermWeightor.fieldWeightor(0.5, "f");
-    double halfOfCombined = 0.5 * negating.applyAsDouble(A) / 2;
+  public void testNegationAppliesToTheCombinedWeight() {
+    // The field weightor halves the weight of A, and the negation halves it again.
+    double half = 0.5;
+    DoubleUnaryOperator halve = w -> w * half;
+    TermWeightor length = TermWeightor.lengthWeightor(3, 0.3);
+    TermWeightor halvingField = TermWeightor.fieldWeightor(half, "f");
+    double halvedOnce = length.applyAsDouble(A) * half;
+    double halvedTwice = halvedOnce * half;
 
+    TermWeightor combined = TermWeightor.combine(halvingField, length).withNegation(halve);
+    assertEquals(halvedOnce, combined.applyAsDouble(A), 0);
+    assertEquals(halvedTwice, negativeDisjunctWeight(combined, A), 0);
+    // without a negation, the default one applies to the combined weight
     assertEquals(
-        halfOfCombined, negativeDisjunctWeight(TermWeightor.combine(field, negating), A), 1e-9);
-    TermWeightor nested = TermWeightor.combine(TermWeightor.combine(negating), field);
-    assertEquals(halfOfCombined, negativeDisjunctWeight(nested, A), 1e-9);
-    TermWeightor shared = TermWeightor.combine(negating, field.withNegation(half));
-    assertEquals(halfOfCombined, negativeDisjunctWeight(shared, A), 1e-9);
-    assertEquals(
-        TermWeightor.DEFAULT.negate(0.5),
-        negativeDisjunctWeight(TermWeightor.combine(field), A),
-        1e-9);
-
-    TermWeightor conflicting = field.withNegation(w -> w);
-    expectThrows(IllegalArgumentException.class, () -> TermWeightor.combine(negating, conflicting));
-    assertEquals(
-        4,
-        negativeDisjunctWeight(TermWeightor.combineWithNegation(_ -> 4, negating, conflicting), A),
+        TermWeightor.DEFAULT.negate(half),
+        negativeDisjunctWeight(TermWeightor.combine(halvingField), A),
         0);
+
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> TermWeightor.combine(halvingField, length.withNegation(halve)));
   }
 }
