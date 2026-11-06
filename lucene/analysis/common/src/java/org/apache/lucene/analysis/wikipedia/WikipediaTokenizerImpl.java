@@ -690,7 +690,7 @@ class WikipediaTokenizerImpl {
    * <p>Does not close the old reader.
    *
    * <p>All internal variables are reset, the old input stream <b>cannot</b> be reused (internal
-   * buffer is discarded and lost). Lexical state is set to {@code ZZ_INITIAL}.
+   * buffer is discarded and lost). Lexical state is set to {@code YYINITIAL}.
    *
    * <p>Internal scan buffer is resized down to its initial length, if it has grown.
    *

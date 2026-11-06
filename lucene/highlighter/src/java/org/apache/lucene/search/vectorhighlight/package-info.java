@@ -162,7 +162,7 @@
  *     float totalBoost = 0;
  *     List&lt;SubInfo&gt; subInfos = new ArrayList&lt;SubInfo&gt;();
  *     for( WeightedPhraseInfo phraseInfo : phraseInfoList ){
- *       subInfos.add( new SubInfo( phraseInfo.getText(), phraseInfo.getTermsOffsets(), phraseInfo.getSeqnum() ) );
+ *       subInfos.add( new SubInfo( phraseInfo.getText(), phraseInfo.getTermsOffsets(), phraseInfo.getSeqnum(), phraseInfo.getBoost() ) );
  *       totalBoost += phraseInfo.getBoost();
  *     }
  *     getFragInfos().add( new WeightedFragInfo( startOffset, endOffset, subInfos, totalBoost ) );
