@@ -1032,7 +1032,14 @@ public class TestNRTReaderDuringCommit extends LuceneTestCase {
           String id = Integer.toString(random().nextInt(20));
           switch (random().nextInt(4)) {
             case 0 -> writer.deleteDocuments(new Term("id", id));
-            case 1 -> writer.updateNumericDocValue(new Term("id", id), "dv", random().nextLong());
+            case 1 -> {
+              try {
+                writer.updateNumericDocValue(new Term("id", id), "dv", random().nextLong());
+              } catch (IllegalArgumentException e) {
+                // a new writer doesn't know the field if its commit has no documents
+                assertTrue(e.getMessage(), e.getMessage().contains("doesn't exist"));
+              }
+            }
             default -> writer.updateDocument(new Term("id", id), doc(id, random().nextLong()));
           }
         } else if (action < 8) {

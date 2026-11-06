@@ -1031,7 +1031,8 @@ public class TestIndexVersionInvariants extends LuceneTestCase {
         try {
           writer.updateNumericDocValue(new Term("id", id), "dv", random.nextLong());
         } catch (IllegalArgumentException e) {
-          // deleteAll and OpenMode.CREATE remove the field until a document adds it again
+          // the writer doesn't know the field after deleteAll or OpenMode.CREATE, or if it was
+          // opened on a commit without documents, until a document adds it again
           assertTrue(e.getMessage(), e.getMessage().contains("doesn't exist"));
         }
       }
