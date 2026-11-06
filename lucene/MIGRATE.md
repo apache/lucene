@@ -19,6 +19,24 @@
 
 ## Migration from Lucene 10.x to Lucene 11.0
 
+### Deprecated TokenSources methods have been removed (GITHUB#16985)
+
+The highlighter's `TokenSources` class now only has `getTokenStream(String field, Fields tvFields,
+String text, Analyzer analyzer, int maxStartOffset)` and `getTermVectorTokenStreamOrNull(String
+field, Fields tvFields, int maxStartOffset)`. The `getAnyTokenStream` and
+`getTokenStreamWithOffsets` methods and all other `getTokenStream` overloads are removed.
+Load the document's term vectors once with `reader.termVectors().get(docId)`, get the field value
+from the stored fields, and pass both to `getTokenStream`. Use `-1` as `maxStartOffset` for no limit.
+
+```java
+// before
+TokenStream ts = TokenSources.getAnyTokenStream(reader, docId, field, analyzer);
+// after
+Fields tvFields = reader.termVectors().get(docId);
+String text = reader.storedFields().document(docId).get(field);
+TokenStream ts = TokenSources.getTokenStream(field, tvFields, text, analyzer, -1);
+```
+
 ### TruncateTokenFilter constructor replaced by static factory methods (GITHUB#16984)
 
 The constructor `TruncateTokenFilter(TokenStream, int)` has been removed. To accomplish
