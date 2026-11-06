@@ -1373,6 +1373,9 @@ public class IndexWriter
    *       IllegalStateException} and the {@code IndexWriter} will not be closed.
    *   <li>If this method throws any other exception, the {@code IndexWriter} will be closed, but
    *       changes may have been lost.
+   *   <li>This method also commits without changes if a near real-time reader got a version that no
+   *       commit saved yet (see {@link DirectoryReader#getVersion()}), so that the next writer
+   *       doesn't give that version to a reader with different documents.
    * </ul>
    *
    * <p>Note that this may be a costly operation, so, try to re-use a single writer instead of

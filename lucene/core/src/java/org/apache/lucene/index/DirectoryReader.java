@@ -619,6 +619,12 @@ public abstract class DirectoryReader extends BaseCompositeReader<LeafReader> {
    *
    * <p>This method returns the version recorded in the commit that the reader opened. This version
    * is advanced every time a change is made with {@link IndexWriter}.
+   *
+   * <p>Readers with the same version see the same documents, unless uncommitted changes were lost,
+   * for example by {@link IndexWriter#rollback()}. A near real-time reader's version can be higher
+   * than the version of its commit ({@link #getIndexCommit()}): the reader can see changes that
+   * aren't committed yet, and the writer increases the version once more after a commit during
+   * which a near real-time reader was opened.
    */
   public abstract long getVersion();
 
