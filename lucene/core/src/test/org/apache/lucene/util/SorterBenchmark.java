@@ -46,17 +46,18 @@ public class SorterBenchmark {
         }),
     MERGE_SORTER(
         "MergeSorter",
-        (arr, _) -> new InPlaceMergeSorter() {
-          @Override
-          protected int compare(int i, int j) {
-            return arr[i].compareTo(arr[j]);
-          }
+        (arr, _) ->
+            new InPlaceMergeSorter() {
+              @Override
+              protected int compare(int i, int j) {
+                return arr[i].compareTo(arr[j]);
+              }
 
-          @Override
-          protected void swap(int i, int j) {
-            ArrayUtil.swap(arr, i, j);
-          }
-        }),
+              @Override
+              protected void swap(int i, int j) {
+                ArrayUtil.swap(arr, i, j);
+              }
+            }),
     ;
 
     final String name;
