@@ -158,6 +158,11 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
     return Collections.unmodifiableCollection(clauseSets.get(occur));
   }
 
+  boolean hasScoringClauses() {
+    return clauseSets.get(Occur.MUST).isEmpty() == false
+        || clauseSets.get(Occur.SHOULD).isEmpty() == false;
+  }
+
   /**
    * Whether this query is a pure disjunction, ie. it only has SHOULD clauses and it is enough for a
    * single clause to match for this boolean query to match.
