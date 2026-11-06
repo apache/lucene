@@ -90,7 +90,8 @@ final class DedupFlushContext implements Accountable {
   FlatFieldVectorsWriter<?> addField(FieldInfo fieldInfo) {
     GroupKey groupKey = new GroupKey(fieldInfo);
     DedupGroup<?> group = groups.computeIfAbsent(groupKey, DedupFlushContext::getGroup);
-    DedupFlatFieldVectorsWriter<?> fieldVectorsWriter = new DedupFlatFieldVectorsWriter<>(group);
+    DedupFlatFieldVectorsWriter<?> fieldVectorsWriter =
+        new DedupFlatFieldVectorsWriter<>(fieldInfo.name, group);
 
     fieldDataList.add(new FieldData(fieldInfo, groupKey, fieldVectorsWriter));
     return fieldVectorsWriter;
