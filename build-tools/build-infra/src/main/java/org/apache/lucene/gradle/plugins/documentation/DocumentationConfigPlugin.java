@@ -241,7 +241,9 @@ public class DocumentationConfigPlugin extends LuceneGradlePlugin {
                           () -> {
                             var regex =
                                 Pattern.compile(
-                                    "Codec defaultCodec = LOADER\\.lookup\\((?<codec>\"([^\"]+)\")\\);");
+                                    Pattern.quote("Codec defaultCodec = LOADER.lookup(\"")
+                                        + "(?<codec>\\w+)"
+                                        + Pattern.quote("\");"));
                             var matcher =
                                 regex.matcher(Files.readString(defaultCodecFile.toPath()));
                             if (!matcher.find()) {
