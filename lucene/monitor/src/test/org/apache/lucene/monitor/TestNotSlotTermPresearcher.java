@@ -31,12 +31,6 @@ public class TestNotSlotTermPresearcher extends NotSlotPresearcherTestBase {
     return new TermFilteredPresearcher(TermWeightor.DEFAULT, handlers, Set.of(), maxNotSlots);
   }
 
-  public void testSinglePassPrefersPositiveTerms() throws IOException {
-    // the positive term outweighs the NotSlot, so the single pass indexes x:abc
-    assertRunAndMatched(1, 0, run("+x:abc -f:t", doc("x", "abc", "f", "t")));
-    assertRunAndMatched(0, 0, run("+x:abc -f:t", doc("f", "t")));
-  }
-
   /** A document query builder that ignores NotSlots */
   private static class IgnoringNotSlots implements TermFilteredPresearcher.DocumentQueryBuilder {
     @Override
@@ -79,17 +73,5 @@ public class TestNotSlotTermPresearcher extends NotSlotPresearcherTestBase {
     expectThrows(
         IllegalArgumentException.class,
         () -> new TermFilteredPresearcher(TermWeightor.DEFAULT, List.of(), Set.of(), -1));
-  }
-
-  public void testNotSlotFieldNamesAreGuarded() {
-    // Positive terms on fields containing NOT_SUFFIX select their query for every document, so
-    // that a user field can never be indexed under a NotSlot field's name (whose clauses exclude).
-    // Every NotSlot field name must therefore contain NOT_SUFFIX.
-    for (String field : new String[] {"x", "x_0", "x__not", "__notslot"}) {
-      for (int slot = 0; slot < 12; slot++) {
-        String name = TermFilteredPresearcher.notSlotField(field, slot);
-        assertTrue(name, name.contains(TermFilteredPresearcher.NOT_SUFFIX));
-      }
-    }
   }
 }

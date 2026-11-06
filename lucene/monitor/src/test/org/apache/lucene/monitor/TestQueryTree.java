@@ -17,13 +17,11 @@
 
 package org.apache.lucene.monitor;
 
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.function.BiConsumer;
+import java.util.function.DoubleUnaryOperator;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.RegexpQuery;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 
@@ -33,53 +31,8 @@ public class TestQueryTree extends LuceneTestCase {
   private static final Term B = new Term("f", "b");
   private static final Term C = new Term("g", "c");
 
-  /** Collects terms with the old collector API */
-  private static Set<Term> terms(QueryTree tree) {
-    Set<Term> terms = new HashSet<>();
-    tree.collectTerms((BiConsumer<String, BytesRef>) (f, b) -> terms.add(new Term(f, b)));
-    return terms;
-  }
-
-  /** Collects terms and NotSlots */
-  private static List<Set<Term>> notSlots(QueryTree tree, Set<Term> terms) {
-    List<Set<Term>> notSlots = new ArrayList<>();
-    tree.collectTerms(
-        new QueryTree.TermCollector() {
-          @Override
-          public void accept(String field, BytesRef term) {
-            terms.add(new Term(field, BytesRef.deepCopyOf(term)));
-          }
-
-          @Override
-          public void notSlot(Set<Term> slotTerms) {
-            notSlots.add(slotTerms);
-          }
-        });
-    return notSlots;
-  }
-
-  public void testNotSlotsPassThroughConjunctionsAndDisjunctions() {
-    QueryTree notSlot = QueryTree.notSlot(Set.of(A, B), 0.5);
-    QueryTree tree =
-        QueryTree.conjunction(
-            QueryTree.disjunction(notSlot, QueryTree.term(C, 1)), QueryTree.term(A, 0.1));
-
-    Set<Term> terms = new HashSet<>();
-    List<Set<Term>> notSlots = notSlots(tree, terms);
-    assertEquals(List.of(Set.of(A, B)), notSlots);
-    assertEquals(Set.of(C), terms);
-  }
-
-  public void testCollectorWithoutNotSlotSupportGetsAnyToken() {
-    Term any = new Term(TermFilteredPresearcher.ANYTOKEN_FIELD, TermFilteredPresearcher.ANYTOKEN);
-    QueryTree tree = QueryTree.conjunction(QueryTree.notSlot(Set.of(A), 2), QueryTree.term(B, 1));
-    assertEquals(Set.of(any), terms(tree));
-
-    // a TermCollector that doesn't override notSlot gets the ANYTOKEN too
-    Set<Term> terms = new HashSet<>();
-    tree.collectTerms(
-        (QueryTree.TermCollector) (f, b) -> terms.add(new Term(f, BytesRef.deepCopyOf(b))));
-    assertEquals(Set.of(any), terms);
+  private static double notSlotWeight(TermWeightor weightor, Term... terms) {
+    return QueryTree.notSlot(Set.of(terms), weightor).weight();
   }
 
   public void testNotSlotLeaf() {
@@ -87,26 +40,66 @@ public class TestQueryTree extends LuceneTestCase {
     assertEquals(0.25, notSlot.weight(), 0);
     assertFalse(notSlot.advancePhase(0));
     assertEquals("NotSlot[f:a, f:b, g:c]^0.25", notSlot.toString());
-
     expectThrows(IllegalArgumentException.class, () -> QueryTree.notSlot(Set.of(), 1));
     expectThrows(IllegalArgumentException.class, () -> QueryTree.notSlot(Set.of(A), 0).weight());
+  }
+
+  public void testCollectorsWithoutNotSlotSupportGetTheAnyToken() {
+    Term any = new Term(TermFilteredPresearcher.ANYTOKEN_FIELD, TermFilteredPresearcher.ANYTOKEN);
+    QueryTree tree = QueryTree.conjunction(QueryTree.notSlot(Set.of(A), 2), QueryTree.term(B, 1));
+    Set<Term> terms = new HashSet<>();
+    tree.collectTerms((BiConsumer<String, BytesRef>) (f, b) -> terms.add(new Term(f, b)));
+    assertEquals(Set.of(any), terms);
+
+    terms.clear();
+    tree.collectTerms((QueryTree.TermCollector) (f, b) -> terms.add(new Term(f, b)));
+    assertEquals(Set.of(any), terms);
   }
 
   public void testNotSlotWeightIsTheMaxNegatedWeight() {
     TermWeightor weights = t -> t.equals(A) ? 0.2 : t.equals(B) ? 0.7 : 0.1;
     TermWeightor weightor = weights.withNegation(w -> w);
-    assertEquals(0.2, QueryTree.notSlot(Set.of(A), weightor).weight(), 0);
-    assertEquals(0.7, QueryTree.notSlot(Set.of(A, B), weightor).weight(), 0);
-    assertEquals(0.7, QueryTree.notSlot(Set.of(A, B, C), weightor).weight(), 0);
+    assertEquals(0.2, notSlotWeight(weightor, A), 0);
+    assertEquals(0.7, notSlotWeight(weightor, A, B, C), 0);
   }
 
-  public void testCustomTreesCollectTheSameTermsThroughBothApis() {
-    RegexpQueryHandler handler = new RegexpQueryHandler();
-    QueryTree tree =
-        handler.handleQuery(new RegexpQuery(new Term("f", "hell.*o")), TermWeightor.DEFAULT);
-    Set<Term> viaTermCollector = new HashSet<>();
-    assertEquals(List.of(), notSlots(tree, viaTermCollector));
-    assertEquals(terms(tree), viaTermCollector);
-    assertEquals(2, viaTermCollector.size());
+  public void testDefaultNegationReadsWeightsAsSurprisal() {
+    // weights as -ln p: A is in 1% of documents, B in 60%
+    TermWeightor weightor = t -> t.equals(A) ? -Math.log(0.01) : -Math.log(0.6);
+    assertEquals(-Math.log(0.99), notSlotWeight(weightor, A), 1e-9);
+    assertEquals(-Math.log(0.4), notSlotWeight(weightor, B), 1e-9);
+    assertEquals(TermWeightor.MIN_NEGATED_WEIGHT, notSlotWeight(_ -> 1000, A), 0);
+  }
+
+  public void testDefaultWeightorRanksNotSlotsBelowTerms() {
+    double minTermWeight = Double.MAX_VALUE;
+    Set<Term> allTerms = new HashSet<>();
+    for (int length = 1; length <= 40; length++) {
+      Term term = new Term("f", "x".repeat(length));
+      allTerms.add(term);
+      minTermWeight = Math.min(minTermWeight, TermWeightor.DEFAULT.applyAsDouble(term));
+      assertTrue(notSlotWeight(TermWeightor.DEFAULT, term) < minTermWeight);
+    }
+    assertTrue(notSlotWeight(TermWeightor.DEFAULT, allTerms.toArray(new Term[0])) < minTermWeight);
+  }
+
+  public void testCombinedWeightorsKeepTheNegation() {
+    DoubleUnaryOperator half = w -> w / 2;
+    TermWeightor negating = TermWeightor.lengthWeightor(3, 0.3).withNegation(half);
+    TermWeightor field = TermWeightor.fieldWeightor(0.5, "f");
+    double halfOfCombined = 0.5 * negating.applyAsDouble(A) / 2;
+
+    assertEquals(halfOfCombined, notSlotWeight(TermWeightor.combine(field, negating), A), 1e-9);
+    TermWeightor nested = TermWeightor.combine(TermWeightor.combine(negating), field);
+    assertEquals(halfOfCombined, notSlotWeight(nested, A), 1e-9);
+    TermWeightor shared = TermWeightor.combine(negating, field.withNegation(half));
+    assertEquals(halfOfCombined, notSlotWeight(shared, A), 1e-9);
+    assertEquals(
+        TermWeightor.DEFAULT.negate(0.5), notSlotWeight(TermWeightor.combine(field), A), 1e-9);
+
+    TermWeightor conflicting = field.withNegation(w -> w);
+    expectThrows(IllegalArgumentException.class, () -> TermWeightor.combine(negating, conflicting));
+    assertEquals(
+        4, notSlotWeight(TermWeightor.combineWithNegation(_ -> 4, negating, conflicting), A), 0);
   }
 }

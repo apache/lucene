@@ -78,7 +78,9 @@ public class MultipassTermFilteredPresearcher extends TermFilteredPresearcher {
    * Construct a new MultipassTermFilteredPresearcher that also filters on negated clauses
    *
    * @param passes the number of times a query should be indexed
-   * @param minWeight the minimum weight a querytree should be advanced over
+   * @param minWeight the minimum weight a querytree should be advanced over. NotSlots usually weigh
+   *     less than terms (see {@link TermWeightor#negate(double)}), so a minimum above 0 can keep
+   *     later passes from using them
    * @param weightor the TreeWeightor to use
    * @param queryHandlers a list of custom query handlers
    * @param filterFields a set of fields to use as filters
