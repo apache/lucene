@@ -2018,4 +2018,32 @@ public class TestDirectoryReaderReopen extends LuceneTestCase {
       executorService.shutdown();
     }
   }
+
+  /**
+   * Code that writes commits with {@link SegmentInfos#commit}, like NRT replication in the
+   * replicator module, can write a new segments_N file without changing the version, for example to
+   * save new commit user data. A reader opened from the directory sees the same documents then, so
+   * it must stay current, and reopening it must not give a new reader with the same version.
+   */
+  public void testReaderStaysCurrentAfterCommitWithSameVersion() throws Exception {
+    Directory dir = newDirectory();
+    try (IndexWriter writer =
+        new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())))) {
+      Document doc = new Document();
+      doc.add(newStringField("id", "0", Field.Store.NO));
+      writer.addDocument(doc);
+    }
+    DirectoryReader reader = DirectoryReader.open(dir);
+
+    SegmentInfos infos = SegmentInfos.readLatestCommit(dir);
+    infos.setUserData(Map.of("key", "value"), false);
+    infos.commit(dir);
+    SegmentInfos latest = SegmentInfos.readLatestCommit(dir);
+    assertEquals(reader.getVersion(), latest.getVersion());
+    assertNotEquals(reader.getIndexCommit().getSegmentsFileName(), latest.getSegmentsFileName());
+
+    assertTrue(reader.isCurrent());
+    assertNull(DirectoryReader.openIfChanged(reader));
+    IOUtils.close(reader, dir);
+  }
 }
