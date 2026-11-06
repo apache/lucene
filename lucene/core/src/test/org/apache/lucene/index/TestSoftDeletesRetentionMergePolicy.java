@@ -624,6 +624,77 @@ public class TestSoftDeletesRetentionMergePolicy extends LuceneTestCase {
     IOUtils.close(writer, dir);
   }
 
+  public void testUndeleteThenHardDelete() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig config =
+        newIndexWriterConfig()
+            .setSoftDeletesField("soft_delete")
+            .setMaxBufferedDocs(2)
+            .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
+            .setMergePolicy(NoMergePolicy.INSTANCE);
+    config.setReaderPooling(true);
+    IndexWriter writer = new IndexWriter(dir, config);
+    for (int i = 0; i < 2; i++) {
+      Document d = new Document();
+      d.add(new StringField("id", Integer.toString(i), Field.Store.YES));
+      writer.addDocument(d);
+    }
+    // the doc is live, so this changes nothing, but it still buffers a doc values update
+    writer.updateDocValues(new Term("id", "0"), new NumericDocValuesField("soft_delete", null));
+    // these two docs trigger a flush, which resolves the update but doesn't write it
+    for (int i = 2; i < 4; i++) {
+      Document d = new Document();
+      d.add(new StringField("id", Integer.toString(i), Field.Store.YES));
+      writer.addDocument(d);
+    }
+    writer.deleteDocuments(new Term("id", "0"));
+    try (DirectoryReader reader = DirectoryReader.open(writer)) {
+      assertEquals(4, reader.maxDoc());
+      assertEquals(3, reader.numDocs());
+    }
+    writer.commit();
+    SegmentCommitInfo si = writer.cloneSegmentInfos().info(0);
+    assertEquals(0, si.getSoftDelCount());
+    assertEquals(1, si.getDelCount());
+    IOUtils.close(writer, dir);
+  }
+
+  public void testTryUndeleteThenHardDelete() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig config =
+        newIndexWriterConfig()
+            .setSoftDeletesField("soft_delete")
+            .setMaxBufferedDocs(2)
+            .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
+            .setMergePolicy(NoMergePolicy.INSTANCE);
+    config.setReaderPooling(true);
+    IndexWriter writer = new IndexWriter(dir, config);
+    Document d = new Document();
+    d.add(new StringField("id", "0", Field.Store.YES));
+    d.add(new NumericDocValuesField("soft_delete", 1));
+    writer.addDocument(d);
+    d = new Document();
+    d.add(new StringField("id", "1", Field.Store.YES));
+    writer.addDocument(d);
+    try (DirectoryReader reader = DirectoryReader.open(writer)) {
+      assertEquals(2, reader.maxDoc());
+      assertEquals(1, reader.numDocs());
+      assertTrue(
+          writer.tryUpdateDocValue(reader, 0, new NumericDocValuesField("soft_delete", null)) > 0);
+    }
+    // hard delete the doc before the undelete is written
+    writer.deleteDocuments(new Term("id", "0"));
+    try (DirectoryReader reader = DirectoryReader.open(writer)) {
+      assertEquals(2, reader.maxDoc());
+      assertEquals(1, reader.numDocs());
+    }
+    writer.commit();
+    SegmentCommitInfo si = writer.cloneSegmentInfos().info(0);
+    assertEquals(0, si.getSoftDelCount());
+    assertEquals(1, si.getDelCount());
+    IOUtils.close(writer, dir);
+  }
+
   public void testMergeSoftDeleteAndHardDelete() throws Exception {
     Directory dir = newDirectory();
     String softDelete = "soft_delete";
