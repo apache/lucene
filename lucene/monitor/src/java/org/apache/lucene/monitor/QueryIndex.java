@@ -20,10 +20,14 @@ package org.apache.lucene.monitor;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiPredicate;
+import java.util.function.Function;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
@@ -32,6 +36,8 @@ import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.search.Collector;
+import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreMode;
@@ -53,7 +59,7 @@ abstract class QueryIndex implements Closeable {
   protected MonitorQuerySerializer serializer;
 
   // package-private for testing
-  final Map<IndexReader.CacheKey, QueryTermFilter> termFilters = new HashMap<>();
+  final Map<IndexReader.CacheKey, QueryTermFilter> termFilters = new ConcurrentHashMap<>();
 
   protected final List<MonitorUpdateListener> listeners = new ArrayList<>();
 
@@ -64,23 +70,44 @@ abstract class QueryIndex implements Closeable {
       throw new IllegalStateException(
           "Cannot get queries from an index with no MonitorQuerySerializer");
     }
-    BytesRef[] bytesHolder = new BytesRef[1];
+    AtomicReference<BytesRef> bytesHolder = new AtomicReference<>();
     search(
         new TermQuery(new Term(FIELDS.query_id, queryId)),
-        (_, _, dataValues) -> bytesHolder[0] = dataValues.mq.binaryValue());
-    return bytesHolder[0] != null ? serializer.deserialize(bytesHolder[0]) : null;
+        (_, _, dataValues) -> bytesHolder.set(BytesRef.deepCopyOf(dataValues.mq.binaryValue())));
+    return bytesHolder.get() != null ? serializer.deserialize(bytesHolder.get()) : null;
   }
 
-  public void scan(QueryCollector matcher) throws IOException {
-    search(MatchAllDocsQuery.INSTANCE, matcher);
+  /**
+   * Calls the collector for every query in the index. The collector may be called from multiple
+   * threads at once.
+   */
+  public void scan(QueryCollector collector) throws IOException {
+    search(MatchAllDocsQuery.INSTANCE, collector);
   }
 
-  long search(final Query query, QueryCollector matcher) throws IOException {
+  /** Searches the index with a single collector, which may be called from multiple threads. */
+  long search(final Query query, QueryCollector collector) throws IOException {
     QueryBuilder builder = _ -> query;
-    return search(builder, matcher);
+    return search(
+        builder,
+        new QueryCollectorManager<>() {
+          @Override
+          public QueryCollector newCollector() {
+            return collector;
+          }
+
+          @Override
+          public void reduce(List<QueryCollector> collectors) {}
+        });
   }
 
-  abstract long search(QueryBuilder queryBuilder, QueryCollector matcher) throws IOException;
+  /**
+   * Searches the index, using a separate collector for each slice of the index that is searched.
+   *
+   * @return how long it took to build the query, in nanoseconds
+   */
+  abstract <C extends QueryCollector> long search(
+      QueryBuilder queryBuilder, QueryCollectorManager<C> collectorManager) throws IOException;
 
   public abstract void purgeCache() throws IOException;
 
@@ -107,6 +134,43 @@ abstract class QueryIndex implements Closeable {
     default ScoreMode scoreMode() {
       return ScoreMode.COMPLETE_NO_SCORES;
     }
+  }
+
+  /**
+   * Creates a {@link QueryCollector} for each slice of the index that is searched, and combines
+   * their results once the search completes.
+   *
+   * <p>Like {@link CollectorManager}, but for the {@link QueryCollector}s that the index collectors
+   * wrap.
+   */
+  interface QueryCollectorManager<C extends QueryCollector> {
+
+    C newCollector() throws IOException;
+
+    void reduce(List<C> collectors) throws IOException;
+  }
+
+  /** Adapts a {@link QueryCollectorManager} to a Lucene {@link CollectorManager}. */
+  static <C extends QueryCollector, L extends Collector> CollectorManager<L, Void> collectorManager(
+      QueryCollectorManager<C> queryCollectorManager,
+      Function<C, L> toLuceneCollector,
+      Function<L, C> toQueryCollector) {
+    return new CollectorManager<>() {
+      @Override
+      public L newCollector() throws IOException {
+        return toLuceneCollector.apply(queryCollectorManager.newCollector());
+      }
+
+      @Override
+      public Void reduce(Collection<L> collectors) throws IOException {
+        List<C> queryCollectors = new ArrayList<>(collectors.size());
+        for (L collector : collectors) {
+          queryCollectors.add(toQueryCollector.apply(collector));
+        }
+        queryCollectorManager.reduce(queryCollectors);
+        return null;
+      }
+    };
   }
 
   interface QueryBuilder {

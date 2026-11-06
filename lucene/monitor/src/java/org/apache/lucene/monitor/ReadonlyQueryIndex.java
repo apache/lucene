@@ -18,12 +18,10 @@
 package org.apache.lucene.monitor;
 
 import java.io.IOException;
-import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreMode;
@@ -45,7 +43,7 @@ class ReadonlyQueryIndex extends QueryIndex {
           "You must specify a Directory when configuring a Monitor as read-only.");
     }
     Directory directory = configuration.getDirectoryProvider().get();
-    this.manager = new SearcherManager(directory, new TermsHashBuilder(termFilters));
+    this.manager = new SearcherManager(directory, new TermsHashBuilder(termFilters, configuration));
     this.decomposer = configuration.getQueryDecomposer();
     this.serializer = configuration.getQuerySerializer();
     this.refreshExecutor =
@@ -70,12 +68,11 @@ class ReadonlyQueryIndex extends QueryIndex {
   }
 
   @Override
-  public long search(QueryBuilder queryBuilder, QueryCollector matcher) throws IOException {
+  <C extends QueryCollector> long search(
+      QueryBuilder queryBuilder, QueryCollectorManager<C> collectorManager) throws IOException {
     IndexSearcher searcher = null;
     try {
       searcher = manager.acquire();
-      LazyMonitorQueryCollector collector =
-          new LazyMonitorQueryCollector(matcher, serializer, decomposer);
       long buildTime = System.nanoTime();
       Query query =
           queryBuilder.buildQuery(
@@ -83,19 +80,10 @@ class ReadonlyQueryIndex extends QueryIndex {
       buildTime = System.nanoTime() - buildTime;
       searcher.search(
           query,
-          new CollectorManager<LazyMonitorQueryCollector, Void>() {
-            @Override
-            public LazyMonitorQueryCollector newCollector() {
-              return collector;
-            }
-
-            @Override
-            public Void reduce(Collection<LazyMonitorQueryCollector> collectors) {
-              assert collectors.size() == 1
-                  : "QueryCollector needs to be made thread-safe before an executor can be provided to the index searcher used by monitor";
-              return null;
-            }
-          });
+          collectorManager(
+              collectorManager,
+              matcher -> new LazyMonitorQueryCollector<>(matcher, serializer, decomposer),
+              collector -> collector.matcher));
       return buildTime;
     } finally {
       if (searcher != null) {
@@ -161,16 +149,14 @@ class ReadonlyQueryIndex extends QueryIndex {
   // ---------------------------------------------
 
   /** A Collector that decodes the stored query for each document hit reparsing them everytime. */
-  static final class LazyMonitorQueryCollector extends SimpleCollector {
-    private final QueryIndex.QueryCollector matcher;
+  static final class LazyMonitorQueryCollector<C extends QueryCollector> extends SimpleCollector {
+    private final C matcher;
     private final QueryIndex.DataValues dataValues = new QueryIndex.DataValues();
     private final MonitorQuerySerializer serializer;
     private final QueryDecomposer decomposer;
 
     LazyMonitorQueryCollector(
-        QueryIndex.QueryCollector matcher,
-        MonitorQuerySerializer serializer,
-        QueryDecomposer decomposer) {
+        C matcher, MonitorQuerySerializer serializer, QueryDecomposer decomposer) {
       this.matcher = matcher;
       this.serializer = serializer;
       this.decomposer = decomposer;
