@@ -111,7 +111,8 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
     phrasePositions = new PhrasePositions[postings.length];
     for (int i = 0; i < postings.length; ++i) {
       phrasePositions[i] =
-          new PhrasePositions(postings[i].postings, postings[i].position, i, postings[i].terms);
+          new PhrasePositions(
+              postings[i].postings, postings[i].position, i, postings[i].terms, captureLeadMatch);
     }
 
     approximation =
@@ -206,12 +207,24 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
     if (!positioned) {
       return false;
     }
+    if (captureLeadMatch) {
+      // Each PhrasePositions' bumped flag marks whether its current offsets were clobbered by a
+      // forced advance resolving a repeater collision (see advanceRpts) rather than reflecting a
+      // position it is actually contributing to a candidate match. That only matters for the
+      // match currently being assembled; now that any previous match has already been reported
+      // (via startOffset()/endOffset()), start the new one with a clean slate.
+      for (PhrasePositions pp : phrasePositions) {
+        pp.bumped = false;
+      }
+    }
     PhrasePositions pp = pq.pop();
     assert pp != null; // if the pq is not full, then positioned == false
     captureLead(pp);
     matchLength = end - pp.position;
     int next = pq.top().position;
     while (advancePP(pp)) {
+      pp.bumped = false; // this is a deliberate advance of the pp driving minimization, not a
+      // forced collision resolution; its new offsets are trustworthy.
       if (hasRpts && !advanceRpts(pp)) {
         break; // pps exhausted
       }
@@ -242,8 +255,8 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
     }
     leadOrd = pp.ord;
     leadPosition = pp.position + pp.offset;
-    leadOffset = pp.postings.startOffset();
-    leadEndOffset = pp.postings.endOffset();
+    leadOffset = pp.startOffset;
+    leadEndOffset = pp.endOffset;
   }
 
   @Override
@@ -254,9 +267,14 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
     // However, the priority queue doesn't guarantee that the top postings is in fact the
     // earliest in the list, so we need to cycle through all terms to check.
     // this is slow, but Matches is slow anyway...
+    //
+    // See startOffset() for why non-lead PhrasePositions must consult `bumped`: a repeated query
+    // term's PhrasePositions can be forcibly advanced by advanceRpts() to resolve a position
+    // collision with a sibling repetition, even though it isn't the one driving minimization.
     int leadPosition = this.leadPosition;
     for (PhrasePositions pp : phrasePositions) {
-      leadPosition = Math.min(leadPosition, pp.position + pp.offset);
+      int p = pp.bumped ? pp.priorPosition : pp.position;
+      leadPosition = Math.min(leadPosition, p + pp.offset);
     }
     return leadPosition;
   }
@@ -266,7 +284,8 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
     int endPosition = leadPosition;
     for (PhrasePositions pp : phrasePositions) {
       if (pp.ord != leadOrd) {
-        endPosition = Math.max(endPosition, pp.position + pp.offset);
+        int p = pp.bumped ? pp.priorPosition : pp.position;
+        endPosition = Math.max(endPosition, p + pp.offset);
       }
     }
     return endPosition;
@@ -280,9 +299,19 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
     // However, the priority queue doesn't guarantee that the top postings is in fact the
     // earliest in the list, so we need to cycle through all terms to check
     // this is slow, but Matches is slow anyway...
+    //
+    // Non-lead PhrasePositions normally still sit at the offsets that were part of the match
+    // (they weren't advanced), so their current startOffset is reportable as-is. But a repeated
+    // query term's PhrasePositions can be forcibly advanced by advanceRpts() to resolve a
+    // position collision with a sibling repetition, even though it isn't the one driving
+    // minimization. When that happens (pp.bumped), its *prior* offset is the one actually part
+    // of this match, not its current (post-advance) one.
     int leadOffset = this.leadOffset;
     for (PhrasePositions pp : phrasePositions) {
-      leadOffset = Math.min(leadOffset, pp.postings.startOffset());
+      if (pp.ord != leadOrd) {
+        int so = pp.bumped ? pp.priorStartOffset : pp.startOffset;
+        leadOffset = Math.min(leadOffset, so);
+      }
     }
     return leadOffset;
   }
@@ -292,7 +321,8 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
     int endOffset = leadEndOffset;
     for (PhrasePositions pp : phrasePositions) {
       if (pp.ord != leadOrd) {
-        endOffset = Math.max(endOffset, pp.postings.endOffset());
+        int eo = pp.bumped ? pp.priorEndOffset : pp.endOffset;
+        endOffset = Math.max(endOffset, eo);
       }
     }
     return endOffset;
@@ -327,6 +357,10 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
       if (!advancePP(pp)) {
         return false; // exhausted
       }
+      // pp is being forced ahead to resolve a collision with its repeating sibling, not because
+      // it is itself contributing a new position to the match being assembled. Its *prior*
+      // offset -- not this new one -- is what's actually part of that match.
+      pp.bumped = true;
       if (k != k0) { // careful: mark only those currently in the queue
         bits = FixedBitSet.ensureCapacity(bits, k);
         bits.set(k); // mark that pp2 need to be re-queued
