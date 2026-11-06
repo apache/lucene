@@ -409,7 +409,8 @@ public class TermFilteredPresearcher extends Presearcher {
       String field = fields.map(entry.getKey());
       addField(doc, field, entry.getValue());
       if (!field.equals(entry.getKey())) {
-        // the term filter checks document terms under their own field names
+        // the term filter looks terms up under the document's field names, so a renamed field is
+        // also indexed under its own name
         addField(doc, entry.getKey(), entry.getValue());
       }
     }
