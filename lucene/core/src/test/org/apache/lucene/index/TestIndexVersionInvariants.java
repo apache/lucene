@@ -55,9 +55,9 @@ import org.apache.lucene.util.ThreadInterruptedException;
  *
  * <ol>
  *   <li>Readers with the same version see the same documents, also across writers. The only
- *       exception is after a rollback, or after closing a writer that doesn't commit on close: the
- *       writer's uncommitted changes are lost, so versions above the latest commit's may be used
- *       again, for different documents.
+ *       exception is after a rollback, or after closing a writer that doesn't commit on close:
+ *       versions above the latest commit's may be used again, for different documents, even if all
+ *       changes were committed.
  *   <li>Versions never go down: reopening a reader gives a higher version, each reader of a writer
  *       has at least the version of its earlier readers, and after a writer is closed normally, so
  *       do the next writer's readers.
