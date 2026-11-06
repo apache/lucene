@@ -42,8 +42,11 @@ public class TestSoftDeletesFromReaderInvariants extends LuceneTestCase {
 
   private static final String SOFT = "soft_delete";
 
-  /** Merges drop soft deleted docs unless they are retained, so only then compare versions. */
-  private boolean compareVersions;
+  /**
+   * Whether merges keep soft deleted docs. Only then can soft deleted docs be undeleted, and only
+   * then do the versions of an id stay the same across merges.
+   */
+  private boolean retainAll;
 
   /** Per id: docs that aren't hard deleted, and docs that are neither hard nor soft deleted. */
   private static final class State {
@@ -141,7 +144,7 @@ public class TestSoftDeletesFromReaderInvariants extends LuceneTestCase {
     State a = expected.copy(), b = actual.copy();
     a.normalize();
     b.normalize();
-    if (compareVersions) {
+    if (retainAll) {
       assertEquals("versions", a.versions, b.versions);
     }
     assertEquals("live", a.live, b.live);
@@ -165,6 +168,42 @@ public class TestSoftDeletesFromReaderInvariants extends LuceneTestCase {
 
   private int nextId;
 
+  /**
+   * Undeletes the versions of id that aren't hard deleted. Lucene has no undelete by term:
+   * updateDocValues skips documents that are already soft deleted, so this uses tryUpdateDocValue.
+   */
+  private static void undelete(IndexWriter w, String id) throws IOException {
+    while (tryUndelete(w, id) == false) {
+      // a merge replaced a segment of the reader, so try again with a new reader
+    }
+    // Write the reset right away. Until it's written, a later soft delete of the same document
+    // still sees the document as deleted, and is lost.
+    w.flush();
+  }
+
+  private static boolean tryUndelete(IndexWriter w, String id) throws IOException {
+    try (DirectoryReader r = DirectoryReader.open(w)) {
+      for (LeafReaderContext ctx : r.leaves()) {
+        SegmentReader sr = (SegmentReader) ctx.reader();
+        Bits hardLiveDocs = sr.getHardLiveDocs();
+        // the postings include deleted documents, so skip the hard deleted ones
+        PostingsEnum postings = sr.postings(new Term("id", id));
+        if (postings == null) {
+          continue;
+        }
+        for (int doc = postings.nextDoc();
+            doc != DocIdSetIterator.NO_MORE_DOCS;
+            doc = postings.nextDoc()) {
+          if ((hardLiveDocs == null || hardLiveDocs.get(doc))
+              && w.tryUpdateDocValue(sr, doc, new NumericDocValuesField(SOFT, null)) == -1) {
+            return false;
+          }
+        }
+      }
+      return true;
+    }
+  }
+
   /** Applies a random update op to w and the model. */
   private void randomUpdate(IndexWriter w, State m) throws IOException {
     List<String> ids = new ArrayList<>(m.versions.keySet());
@@ -183,6 +222,9 @@ public class TestSoftDeletesFromReaderInvariants extends LuceneTestCase {
     } else if (x < 62) {
       w.updateDocValues(new Term("id", id), softDelete);
       m.live.put(id, 0);
+    } else if (retainAll && x < 68) {
+      undelete(w, id);
+      m.live.put(id, m.versions.getOrDefault(id, 0));
     } else if (x < 75) {
       w.deleteDocuments(new Term("id", id));
       m.versions.put(id, 0);
@@ -198,8 +240,7 @@ public class TestSoftDeletesFromReaderInvariants extends LuceneTestCase {
   }
 
   public void testRandom() throws Exception {
-    boolean retainAll = random().nextBoolean();
-    compareVersions = retainAll;
+    retainAll = random().nextBoolean();
     Map<Long, State> commits = new TreeMap<>();
     try (Directory dir = newDirectory()) {
       IndexWriter w = new IndexWriter(dir, iwc(retainAll));
