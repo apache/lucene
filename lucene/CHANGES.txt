@@ -449,6 +449,9 @@ Bug Fixes
 
 * GITHUB#16971: Fix double DocValuesStats extrema initialization. (Simranjeet Singh)
 
+* GITHUB#16996: A writer opened on an NRT reader's commit got wrong delete counts when the index
+  uses soft deletes, because it counted the reader's soft deletes again. (Di Wu)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
