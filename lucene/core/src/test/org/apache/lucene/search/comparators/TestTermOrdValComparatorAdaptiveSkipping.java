@@ -216,6 +216,9 @@ public class TestTermOrdValComparatorAdaptiveSkipping extends LuceneTestCase {
     // layout. Random merge policies like MockRandomMergePolicy can reorder segments during
     // forceMerge, which would interleave clustered values and break test assertions.
     config.setMergePolicy(newLogMergePolicy());
+    // A random tiny maxBufferedDocs creates tens of thousands of segments to merge
+    config.setMaxBufferedDocs(IndexWriterConfig.DISABLE_AUTO_FLUSH);
+    config.setRAMBufferSizeMB(256);
     try (IndexWriter writer = new IndexWriter(dir, config)) {
       for (int i = 0; i < NUM_DOCS; i++) {
         Document doc = new Document();
