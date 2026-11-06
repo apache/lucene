@@ -914,6 +914,20 @@ final class ReadersAndUpdates {
         // create new fields with the right DV type
         for (List<DocValuesFieldUpdates> updates : pendingDVUpdates.values()) {
           DocValuesFieldUpdates update = updates.get(0);
+          // Only register a field that handleDVUpdates will actually write values for, i.e. one with an
+          // update applicable in this generation (delGen <= maxDelGen). Registering a field whose updates are
+          // all newer would list it in the field infos with no doc-values data, and a later merge of the
+          // segment would read a null producer for it and fail.
+          boolean anyApplicable = false;
+          for (DocValuesFieldUpdates u : updates) {
+            if (u.delGen <= maxDelGen) {
+              anyApplicable = true;
+              break;
+            }
+          }
+          if (anyApplicable == false) {
+            continue;
+          }
           if (byName.containsKey(update.field)) {
             // the field already exists in this segment
             FieldInfo fi = byName.get(update.field);
