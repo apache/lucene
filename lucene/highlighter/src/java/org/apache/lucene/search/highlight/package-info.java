@@ -27,7 +27,7 @@
  *
  * <pre><code class="language-java">
  * //... Above, create documents with two fields, one with term vectors (tv) and one without (notv)
- * IndexSearcher searcher = new IndexSearcher(directory);
+ * IndexSearcher searcher = new IndexSearcher(DirectoryReader.open(directory));
  * QueryParser parser = new QueryParser("notv", analyzer);
  * Query query = parser.parse("million");
  *
@@ -37,7 +37,7 @@
  *   Highlighter highlighter = new Highlighter(htmlFormatter, new QueryScorer(query));
  *   for (int i = 0; i &lt; 10; i++) {
  *     int id = hits.scoreDocs[i].doc;
- *     Document doc = searcher.doc(id);
+ *     Document doc = searcher.storedFields().document(id);
  *     String text = doc.get("notv");
  *     TokenStream tokenStream = TokenSources.getAnyTokenStream(searcher.getIndexReader(), id, "notv", analyzer);
  *     TextFragment[] frag = highlighter.getBestTextFragments(tokenStream, text, false, 10);//highlighter.getBestFragments(tokenStream, text, 3, "...");
