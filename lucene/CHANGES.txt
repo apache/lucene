@@ -449,6 +449,17 @@ Bug Fixes
 
 * GITHUB#16971: Fix double DocValuesStats extrema initialization. (Simranjeet Singh)
 
+* GITHUB#16900: An NRT reader stayed current after doc values updates were written to disk without
+  a commit, for example on flush(), so openIfChanged returned null and the updates were missed.
+  (Di Wu)
+
+* GITHUB#16923: An NRT reader opened while a commit was in progress stayed current after the
+  commit, even though it still used the previous segments_N file, which may be deleted. (Di Wu)
+
+* GITHUB#16923: IndexWriter#rollback could throw NoSuchFileException if the writer was opened on an
+  older commit or from an NRT reader, because the deletion policy could delete the files it rolls
+  back to. (Di Wu)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)

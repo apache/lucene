@@ -272,11 +272,20 @@ public class IndexWriter
   private final AtomicLong changeCount = new AtomicLong();
   private volatile long lastCommitChangeCount; // last changeCount that was committed
 
-  // list of segmentInfo we will fallback to if the commit fails
+  // list of segmentInfo we will fallback to if the commit fails. We keep their files from being
+  // deleted, because the deletion policy may delete the commit they come from:
   private List<SegmentCommitInfo> rollbackSegments;
+  // the files of rollbackSegments, which this writer holds a reference to:
+  private Collection<String> rollbackFiles = List.of();
 
   // set when a commit is pending (after prepareCommit() & before commit())
   private volatile SegmentInfos pendingCommit;
+  // Highest version of any NRT reader this writer opened. finishCommit uses it to tell whether a
+  // reader was opened during the commit. Only accessed while synchronized on this writer:
+  private long lastNRTReaderVersion = -1;
+  // Version of the last commit this writer wrote, or of the index it started from. close() commits
+  // if a reader got a higher version. Only accessed while synchronized on this writer:
+  private long lastCommitVersion;
   private volatile long pendingSeqNo;
   private volatile long pendingCommitChangeCount;
 
@@ -613,6 +622,7 @@ public class IndexWriter
             r =
                 StandardDirectoryReader.open(
                     this, readerFactory, segmentInfos, applyAllDeletes, writeAllDeletes);
+            lastNRTReaderVersion = Math.max(lastNRTReaderVersion, r.getVersion());
             if (infoStream.isEnabled("IW")) {
               infoStream.message("IW", "return reader version=" + r.getVersion() + " reader=" + r);
             }
@@ -856,7 +866,9 @@ public class IndexWriter
                     globalFieldNumberMap,
                     bufferedUpdatesStream.getCompletedDelGen(),
                     infoStream)) {
-                  checkpointNoSIS();
+                  // also increase the version: NRT readers only see doc values updates once they
+                  // are written
+                  checkpoint();
                 }
               }
               long bytesUsedAfter = rld.ramBytesUsed.get();
@@ -1012,7 +1024,6 @@ public class IndexWriter
           sis.updateGenerationVersionAndCounter(previous);
         }
         segmentInfos = sis;
-        rollbackSegments = segmentInfos.createBackupSegmentInfos();
 
         // Record that we have a change (zero out all
         // segments) pending:
@@ -1048,9 +1059,8 @@ public class IndexWriter
         // Must clone because we don't want the incoming NRT reader to "see" any changes this writer
         // now makes:
         segmentInfos = reader.segmentInfos.clone();
-        SegmentInfos lastCommit;
         try {
-          lastCommit = SegmentInfos.readCommit(directoryOrig, segmentInfos.getSegmentsFileName());
+          SegmentInfos.readCommit(directoryOrig, segmentInfos.getSegmentsFileName());
         } catch (IOException ioe) {
           throw new IllegalArgumentException(
               "the provided reader is stale: its prior commit file \""
@@ -1067,10 +1077,7 @@ public class IndexWriter
           // In case the old writer wrote further segments (which we are now dropping),
           // update SIS metadata so we remain write-once:
           segmentInfos.updateGenerationVersionAndCounter(reader.writer.segmentInfos);
-          lastCommit.updateGenerationVersionAndCounter(reader.writer.segmentInfos);
         }
-
-        rollbackSegments = lastCommit.createBackupSegmentInfos();
       } else {
         // Init from either the latest commit point, or an explicit prior commit point:
 
@@ -1108,8 +1115,6 @@ public class IndexWriter
                 "IW", "init: loaded commit \"" + commit.getSegmentsFileName() + "\"");
           }
         }
-
-        rollbackSegments = segmentInfos.createBackupSegmentInfos();
       }
       if (infoStream.isEnabled("IW")) {
         infoStream.message("IW", "init " + segmentInfos.toStringVerbose());
@@ -1179,6 +1184,10 @@ public class IndexWriter
         // We incRef all files when we return an NRT reader from IW, so all files must exist even in
         // the NRT case:
         assert create || filesExist(segmentInfos);
+        // rollback() returns to the segments we start from, also when we start from an NRT reader
+        // and not from its commit. The deletion policy may delete the commit we started from, so
+        // keep their files:
+        setRollbackSegments(segmentInfos.createBackupSegmentInfos());
       }
 
       if (deleter.startingCommitDeleted) {
@@ -1194,6 +1203,7 @@ public class IndexWriter
         segmentInfos.changed();
         changed();
       }
+      lastCommitVersion = segmentInfos.getVersion();
 
       if (infoStream.isEnabled("IW")) {
         infoStream.message("IW", "init: create=" + create + " reader=" + reader);
@@ -1324,6 +1334,15 @@ public class IndexWriter
 
         flush(true, true);
         waitForMerges();
+        synchronized (this) {
+          // If an NRT reader got a version that no commit saved yet (see finishCommit), commit even
+          // without other changes. Otherwise the next writer on this index would start from the
+          // older saved version, and could give the same version to a reader with different
+          // documents:
+          if (lastNRTReaderVersion > lastCommitVersion) {
+            changed();
+          }
+        }
         commitInternal(config.getMergePolicy());
       } catch (Throwable t) {
         // Be certain to close the index on any exception
@@ -1350,6 +1369,9 @@ public class IndexWriter
    *       IllegalStateException} and the {@code IndexWriter} will not be closed.
    *   <li>If this method throws any other exception, the {@code IndexWriter} will be closed, but
    *       changes may have been lost.
+   *   <li>This method also commits without changes if a near real-time reader got a version that no
+   *       commit saved yet (see {@link DirectoryReader#getVersion()}), so that the next writer
+   *       doesn't give that version to a reader with different documents.
    * </ul>
    *
    * <p>Note that this may be a costly operation, so, try to re-use a single writer instead of
@@ -2668,6 +2690,7 @@ public class IndexWriter
         // these methods throw ACE:
         if (tragedy.get() == null) {
           deleter.checkpoint(segmentInfos, false);
+          deleter.decRef(rollbackFiles);
           deleter.refresh();
           deleter.close();
         }
@@ -4115,14 +4138,12 @@ public class IndexWriter
    */
   private void writeReaderPool(boolean writeDeletes) throws IOException {
     assert Thread.holdsLock(this);
-    if (writeDeletes) {
-      if (readerPool.commit(segmentInfos)) {
-        checkpointNoSIS();
-      }
-    } else { // only write the docValues
-      if (readerPool.writeAllDocValuesUpdates()) {
-        checkpoint();
-      }
+    // NRT readers only see doc values updates once they are written, so increase the version:
+    if (readerPool.writeAllDocValuesUpdates()) {
+      checkpoint();
+    }
+    if (writeDeletes && readerPool.commit(segmentInfos)) {
+      checkpointNoSIS();
     }
     // now do some best effort to check if a segment is fully deleted
     List<SegmentCommitInfo> toDrop = new ArrayList<>(); // don't modify segmentInfos in-place
@@ -4307,9 +4328,17 @@ public class IndexWriter
 
             // Carry over generation to our master SegmentInfos:
             segmentInfos.updateGeneration(pendingCommit);
+            // A reader opened during this commit has the commit's version but uses the previous
+            // segments_N, so increase the version to make that reader no longer current. This
+            // isn't a change, so an idle index doesn't keep committing. close() saves the version
+            // if a reader got it.
+            lastCommitVersion = pendingCommit.getVersion();
+            if (lastNRTReaderVersion >= lastCommitVersion) {
+              segmentInfos.changed();
+            }
 
             lastCommitChangeCount = pendingCommitChangeCount;
-            rollbackSegments = pendingCommit.createBackupSegmentInfos();
+            setRollbackSegments(pendingCommit.createBackupSegmentInfos());
 
           } finally {
             notifyAll();
@@ -6116,6 +6145,18 @@ public class IndexWriter
     return closing == false && closed == false;
   }
 
+  /** Sets the segments that rollback() returns to, and keeps their files until the next call. */
+  private void setRollbackSegments(List<SegmentCommitInfo> segments) throws IOException {
+    Set<String> files = new HashSet<>();
+    for (SegmentCommitInfo info : segments) {
+      files.addAll(info.files());
+    }
+    deleter.incRef(files);
+    deleter.decRef(rollbackFiles);
+    rollbackSegments = segments;
+    rollbackFiles = files;
+  }
+
   // Used for testing.  Current points:
   //   startDoFlush
   //   startCommitMerge
@@ -6150,7 +6191,9 @@ public class IndexWriter
                 + "; DW changes: "
                 + docWriter.anyChanges()
                 + "; BD changes: "
-                + bufferedUpdatesStream.any());
+                + bufferedUpdatesStream.any()
+                + "; DV changes: "
+                + readerPool.anyDocValuesChanges());
       }
     }
     return isCurrent;
