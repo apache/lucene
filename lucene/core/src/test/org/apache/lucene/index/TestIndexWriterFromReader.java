@@ -559,6 +559,64 @@ public class TestIndexWriterFromReader extends LuceneTestCase {
     dir.close();
   }
 
+  /**
+   * The live docs of a reader opened from disk don't include the soft deletes. A writer opened on
+   * the reader's commit must apply them.
+   */
+  public void testSoftDeletesFromDiskReader() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc =
+        newIndexWriterConfig()
+            .setSoftDeletesField("soft_delete")
+            .setMergePolicy(NoMergePolicy.INSTANCE);
+    IndexWriter w = new IndexWriter(dir, iwc);
+    for (int i = 0; i < 5; i++) {
+      w.addDocument(doc(Integer.toString(i)));
+    }
+    w.commit();
+    Field softDelete = new NumericDocValuesField("soft_delete", 1);
+    w.softUpdateDocument(new Term("id", "0"), doc("0-new"), softDelete);
+    w.softUpdateDocument(new Term("id", "2"), doc("2-new"), softDelete);
+    Document tombstone = doc("tombstone");
+    tombstone.add(softDelete);
+    w.addDocument(tombstone);
+    w.deleteDocuments(new Term("id", "1"));
+    w.close();
+    int softDelCount = 0;
+    for (SegmentCommitInfo info : SegmentInfos.readLatestCommit(dir)) {
+      softDelCount += info.getSoftDelCount();
+    }
+    assertEquals(3, softDelCount);
+
+    DirectoryReader r = DirectoryReader.open(dir);
+    IndexWriter w2 =
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig()
+                .setSoftDeletesField("soft_delete")
+                .setMergePolicy(NoMergePolicy.INSTANCE)
+                .setIndexCommit(r.getIndexCommit()));
+    r.close();
+    List<String> expected = List.of("0-new", "2-new", "3", "4");
+    assertEquals(expected.size(), w2.getDocStats().numDocs);
+    try (DirectoryReader r2 = DirectoryReader.open(w2)) {
+      assertEquals(expected.size(), r2.numDocs());
+      assertEquals(expected, ids(r2));
+    }
+    // add a document so the commit is written
+    w2.addDocument(doc("5"));
+    w2.close();
+    int newSoftDelCount = 0;
+    for (SegmentCommitInfo info : SegmentInfos.readLatestCommit(dir)) {
+      newSoftDelCount += info.getSoftDelCount();
+    }
+    assertEquals(softDelCount, newSoftDelCount);
+    try (DirectoryReader r3 = DirectoryReader.open(dir)) {
+      assertEquals(List.of("0-new", "2-new", "3", "4", "5"), ids(r3));
+    }
+    dir.close();
+  }
+
   private static Document doc(String id) {
     Document doc = new Document();
     doc.add(new StringField("id", id, Field.Store.YES));
