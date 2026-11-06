@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.index;
 
+import static org.apache.lucene.index.TestNRTReaderDuringCommit.SOFT_DELETES_FIELD;
 import static org.apache.lucene.index.TestNRTReaderDuringCommit.contents;
 import static org.apache.lucene.index.TestNRTReaderDuringCommit.doc;
 import static org.apache.lucene.index.TestNRTReaderDuringCommit.latestCommit;
@@ -30,6 +31,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.index.TestNRTReaderDuringCommit.BackgroundCommit;
 import org.apache.lucene.index.TestNRTReaderDuringCommit.BlockingSyncDirectory;
@@ -140,6 +142,8 @@ public class TestIndexVersionInvariants extends LuceneTestCase {
     DELETE_BY_TERM(15, false),
     DELETE_BY_QUERY(5, false),
     UPDATE_DOC_VALUE(15, false),
+    /** Soft deletes the document and adds a new one, if the index uses soft deletes. */
+    SOFT_UPDATE_DOCUMENT(15, false),
     FLUSH(7, false),
     SET_COMMIT_DATA(6, false),
     FORCE_MERGE(5, true),
@@ -344,7 +348,7 @@ public class TestIndexVersionInvariants extends LuceneTestCase {
 
   /** A randomized config, including merges on commit and on getReader. */
   private static IndexWriterConfig newConfig(
-      WriterOptions options, IndexWriterEventListener listener) {
+      WriterOptions options, boolean softDeletes, IndexWriterEventListener listener) {
     IndexWriterConfig config =
         newIndexWriterConfig(new MockAnalyzer(random()))
             .setCommitOnClose(options.commitOnClose())
@@ -353,6 +357,9 @@ public class TestIndexVersionInvariants extends LuceneTestCase {
                     ? NoDeletionPolicy.INSTANCE
                     : new KeepOnlyLastCommitDeletionPolicy())
             .setIndexWriterEventListener(listener);
+    if (softDeletes) {
+      config.setSoftDeletesField(SOFT_DELETES_FIELD);
+    }
     if (options.mergeOnCommit()) {
       config
           .setMergePolicy(new MergeOnTriggerPolicy(config.getMergePolicy(), MergeTrigger.COMMIT))
@@ -388,6 +395,10 @@ public class TestIndexVersionInvariants extends LuceneTestCase {
    */
   private static final class RandomOperations {
     private final BlockingSyncDirectory dir;
+
+    /** Whether the index uses soft deletes. All writers on an index must agree on this. */
+    private final boolean softDeletes = random().nextBoolean();
+
     private final MergeWaitPause mergeWaitPause = new MergeWaitPause();
     private final VersionHistory history = new VersionHistory();
     private WriterOptions options = randomOptions();
@@ -419,7 +430,7 @@ public class TestIndexVersionInvariants extends LuceneTestCase {
 
     RandomOperations(BlockingSyncDirectory dir) throws IOException {
       this.dir = dir;
-      writer = new IndexWriter(dir, newConfig(options, mergeWaitPause));
+      writer = new IndexWriter(dir, newConfig(options, softDeletes, mergeWaitPause));
       writer.addDocument(doc("0", 0));
       writer.commit();
       reader = DirectoryReader.open(writer);
@@ -647,7 +658,7 @@ public class TestIndexVersionInvariants extends LuceneTestCase {
       }
 
       options = randomOptions();
-      IndexWriterConfig config = newConfig(options, mergeWaitPause);
+      IndexWriterConfig config = newConfig(options, softDeletes, mergeWaitPause);
       openedOnCommit = null;
       latestCommitAtOpen = latestCommit(dir);
       String expectedDocs = null; // the documents the next writer's first reader must see, if known
@@ -658,7 +669,10 @@ public class TestIndexVersionInvariants extends LuceneTestCase {
       }
       // Only from a current reader, whose commit is the latest one: then the new writer continues
       // from the earlier writer's generation, and its readers use the latest commit.
-      if (next == NextWriter.READER_COMMIT && (changesLost || readerWasCurrent == false)) {
+      // With soft deletes, a writer opened on the commit of an NRT reader that saw soft deletes
+      // that weren't written yet fails with "softDeleteCount doesn't match", a separate bug.
+      if (next == NextWriter.READER_COMMIT
+          && (changesLost || readerWasCurrent == false || softDeletes)) {
         next = NextWriter.LATEST_COMMIT;
       }
       switch (next) {
@@ -693,7 +707,7 @@ public class TestIndexVersionInvariants extends LuceneTestCase {
         for (IndexCommit commit : DirectoryReader.listCommits(dir)) {
           assertNotEquals(segmentsFile, commit.getSegmentsFileName());
         }
-        writer = new IndexWriter(dir, newConfig(options, mergeWaitPause));
+        writer = new IndexWriter(dir, newConfig(options, softDeletes, mergeWaitPause));
         expectedDocs = null;
       }
       writerRestarts++;
@@ -825,7 +839,8 @@ public class TestIndexVersionInvariants extends LuceneTestCase {
   public void testConcurrentIndexingRefreshesAndCommits() throws Exception {
     Directory dir = newDirectory();
     VersionHistory history = new VersionHistory();
-    try (IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig())) {
+    try (IndexWriter writer =
+        new IndexWriter(dir, newIndexWriterConfig().setSoftDeletesField(SOFT_DELETES_FIELD))) {
       writer.addDocument(doc("0", 0));
     }
     long minVersion = -1; // the next writer's readers must have at least this version
@@ -834,7 +849,7 @@ public class TestIndexVersionInvariants extends LuceneTestCase {
       // keeping all commits would keep every one of the many commits here
       WriterOptions options = new WriterOptions(false, random().nextBoolean(), true);
       IndexWriter writer =
-          new IndexWriter(dir, newConfig(options, IndexWriterEventListener.NO_OP_LISTENER));
+          new IndexWriter(dir, newConfig(options, true, IndexWriterEventListener.NO_OP_LISTENER));
       try (SearcherManager searcherManager = new SearcherManager(writer, null);
           SearcherLifetimeManager lifetimeManager = new SearcherLifetimeManager()) {
         Refresher refresher = new Refresher(searcherManager, lifetimeManager, history, minVersion);
@@ -1025,6 +1040,16 @@ public class TestIndexVersionInvariants extends LuceneTestCase {
     }
     switch (change) {
       case UPDATE_DOCUMENT -> writer.updateDocument(new Term("id", id), doc(id, random.nextLong()));
+      case SOFT_UPDATE_DOCUMENT -> {
+        if (writer.getConfig().getSoftDeletesField() != null) {
+          writer.softUpdateDocument(
+              new Term("id", id),
+              doc(id, random.nextLong()),
+              new NumericDocValuesField(SOFT_DELETES_FIELD, 1));
+        } else {
+          writer.updateDocument(new Term("id", id), doc(id, random.nextLong()));
+        }
+      }
       case DELETE_BY_TERM -> writer.deleteDocuments(new Term("id", id));
       case DELETE_BY_QUERY -> writer.deleteDocuments(new TermQuery(new Term("id", id)));
       case UPDATE_DOC_VALUE -> {

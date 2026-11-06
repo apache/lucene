@@ -167,6 +167,9 @@ public class TestNRTReaderDuringCommit extends LuceneTestCase {
     }
   }
 
+  /** The soft deletes field of the indexes that use soft deletes. */
+  static final String SOFT_DELETES_FIELD = "soft_deletes";
+
   static Document doc(String id, long value) {
     Document doc = new Document();
     doc.add(new StringField("id", id, Field.Store.NO));
@@ -210,11 +213,14 @@ public class TestNRTReaderDuringCommit extends LuceneTestCase {
    * Describes the documents a reader sees: the id and doc value of each live document, sorted by
    * id. Doesn't depend on how the documents are split into segments, because a reader can see a
    * merge without getting a new version (for example, a merge when opening a reader, see {@link
-   * IndexWriterConfig#setMaxFullFlushMergeWaitMillis}).
+   * IndexWriterConfig#setMaxFullFlushMergeWaitMillis}). Soft deleted documents don't count.
    */
   static String contents(DirectoryReader reader) throws IOException {
     TreeMap<String, Long> docs = new TreeMap<>();
-    for (LeafReaderContext ctx : reader.leaves()) {
+    // hides soft deleted documents, like applications that use soft deletes do:
+    DirectoryReader withoutSoftDeletes =
+        new SoftDeletesDirectoryReaderWrapper(reader, SOFT_DELETES_FIELD);
+    for (LeafReaderContext ctx : withoutSoftDeletes.leaves()) {
       LeafReader leaf = ctx.reader();
       Bits liveDocs = leaf.getLiveDocs();
       String[] ids = new String[leaf.maxDoc()];
