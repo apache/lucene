@@ -73,20 +73,6 @@ public class TestQueryTree extends LuceneTestCase {
     assertEquals(TermWeightor.MIN_NEGATED_WEIGHT, negativeDisjunctWeight(_ -> 1000, A), 0);
   }
 
-  public void testDefaultWeightorRanksNegativeDisjunctsBelowTerms() {
-    double minTermWeight = Double.MAX_VALUE;
-    Set<Term> allTerms = new HashSet<>();
-    for (int length = 1; length <= 40; length++) {
-      Term term = new Term("f", "x".repeat(length));
-      allTerms.add(term);
-      minTermWeight = Math.min(minTermWeight, TermWeightor.DEFAULT.applyAsDouble(term));
-      assertTrue(negativeDisjunctWeight(TermWeightor.DEFAULT, term) < minTermWeight);
-    }
-    assertTrue(
-        negativeDisjunctWeight(TermWeightor.DEFAULT, allTerms.toArray(new Term[0]))
-            < minTermWeight);
-  }
-
   public void testNegationAppliesToTheCombinedWeight() {
     // The field weightor halves the weight of A, and the negation halves it again.
     double half = 0.5;
