@@ -444,7 +444,18 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+* GITHUB#16900: An NRT reader stayed current after doc values updates were written to disk without
+  a commit, for example on flush(), so openIfChanged returned null and the updates were missed.
+  (Di Wu)
+
+* GITHUB#16923: An NRT reader opened while a commit was syncing files stayed current after the
+  commit, even though it still used the previous segments_N file, which may be deleted.
+  IndexWriter now increases the version again after such a commit, and close() commits if a reader
+  got that version. (Di Wu)
+
+* GITHUB#16923: IndexWriter#rollback could throw NoSuchFileException if the writer was opened on an
+  older commit or from an NRT reader, because the deletion policy could delete the files it rolls
+  back to. (Di Wu)
 
 Other
 ---------------------
