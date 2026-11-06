@@ -16,14 +16,14 @@
  */
 package org.apache.lucene.analysis.miscellaneous;
 
+import static org.hamcrest.Matchers.stringContainsInOrder;
+
 import java.io.Reader;
 import java.io.StringReader;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.util.Version;
-
-import static org.hamcrest.Matchers.stringContainsInOrder;
 
 /** Simple tests to ensure the simple truncation filter factory is working. */
 public class TestTruncateTokenFilterFactory extends BaseTokenStreamFactoryTestCase {
@@ -127,12 +127,10 @@ public class TestTruncateTokenFilterFactory extends BaseTokenStreamFactoryTestCa
         expectThrows(
             IllegalArgumentException.class,
             () -> {
-              tokenFilterFactory(
-                  "Truncate",
-                  "prefixLength",
-                  "3");
+              tokenFilterFactory("Truncate", "prefixLength", "3");
             });
-    assertThat(expected.getMessage(), stringContainsInOrder("Unknown parameter(s):", "prefixLength"));
+    assertThat(
+        expected.getMessage(), stringContainsInOrder("Unknown parameter(s):", "prefixLength"));
   }
 
   /** Test that negative prefix length result in exception */
