@@ -23,7 +23,6 @@ import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.RamUsageEstimator;
-import org.apache.lucene.util.StringHelper;
 
 /**
  * An 8-bit Binary Fuse Filter implementation based on Graf &amp; Lemire (ACM JEA 2022).
@@ -56,8 +55,7 @@ public final class BinaryFuse8 implements MembershipFilter {
   /** Checks if the given term might be in the set. */
   @Override
   public boolean contains(BytesRef term) {
-    long[] h = StringHelper.murmurhash3_x64_128(term);
-    return contains(h[0] ^ Long.rotateLeft(h[1], 32));
+    return contains(FuseHash.hash(term));
   }
 
   /** Checks if the given 64-bit hash might be in the set. */
@@ -106,7 +104,14 @@ public final class BinaryFuse8 implements MembershipFilter {
 
   /** Constructs a new BinaryFuse8 filter from an array of 64-bit hashes. */
   public static BinaryFuse8 construct(long[] keys) {
-    int size = keys.length;
+    return construct(keys, keys.length);
+  }
+
+  /**
+   * Constructs a new filter from the first {@code size} 64-bit hashes. Duplicates are allowed, in
+   * which case {@code keys} may be reordered.
+   */
+  public static BinaryFuse8 construct(long[] keys, int size) {
     if (size == 0) {
       return new BinaryFuse8(1, 1, 0L, new byte[ARITY]);
     }
@@ -139,6 +144,7 @@ public final class BinaryFuse8 implements MembershipFilter {
     SplittableRandom random = new SplittableRandom(size ^ 0x9e3779b97f4a7c15L);
     long currentSeed = random.nextLong();
 
+    boolean deduplicated = false;
     for (int attempts = 0; attempts < 100; attempts++) {
       Arrays.fill(t2count, (byte) 0);
       Arrays.fill(t2hash, 0L);
@@ -231,6 +237,18 @@ public final class BinaryFuse8 implements MembershipFilter {
         return new BinaryFuse8(segmentLength, segmentCountLength, currentSeed, fingerprints);
       }
 
+      if (deduplicated == false) {
+        // Peeling fails if there are duplicate keys: sort and de-duplicate once, then retry.
+        deduplicated = true;
+        Arrays.sort(keys, 0, size);
+        int unique = 0;
+        for (int i = 0; i < size; i++) {
+          if (i == 0 || keys[i] != keys[i - 1]) {
+            keys[unique++] = keys[i];
+          }
+        }
+        size = unique;
+      }
       currentSeed = random.nextLong();
     }
 

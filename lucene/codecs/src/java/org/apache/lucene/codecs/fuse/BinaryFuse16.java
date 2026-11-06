@@ -21,9 +21,9 @@ import java.util.Arrays;
 import java.util.SplittableRandom;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
+import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.RamUsageEstimator;
-import org.apache.lucene.util.StringHelper;
 
 /**
  * A 16-bit Binary Fuse Filter implementation based on Graf &amp; Lemire (ACM JEA 2022).
@@ -55,8 +55,7 @@ public final class BinaryFuse16 implements MembershipFilter {
 
   @Override
   public boolean contains(BytesRef term) {
-    long[] h = StringHelper.murmurhash3_x64_128(term);
-    return contains(h[0] ^ Long.rotateLeft(h[1], 32));
+    return contains(FuseHash.hash(term));
   }
 
   public boolean contains(long hash) {
@@ -98,14 +97,28 @@ public final class BinaryFuse16 implements MembershipFilter {
     long seed = in.readLong();
     int len = in.readInt();
     short[] fingerprints = new short[len];
-    for (int i = 0; i < len; i++) {
-      fingerprints[i] = in.readShort();
+    // Bulk-read little-endian bytes: much faster than readShort() per element, and
+    // DataInput#readShorts is not bulk on checksum inputs.
+    byte[] buffer = new byte[2 * Math.min(4096, len)];
+    for (int i = 0; i < len; i += 4096) {
+      int n = Math.min(4096, len - i);
+      in.readBytes(buffer, 0, 2 * n);
+      for (int j = 0; j < n; j++) {
+        fingerprints[i + j] = (short) BitUtil.VH_LE_SHORT.get(buffer, 2 * j);
+      }
     }
     return new BinaryFuse16(segmentLength, segmentCountLength, seed, fingerprints);
   }
 
   public static BinaryFuse16 construct(long[] keys) {
-    int size = keys.length;
+    return construct(keys, keys.length);
+  }
+
+  /**
+   * Constructs a new filter from the first {@code size} 64-bit hashes. Duplicates are allowed, in
+   * which case {@code keys} may be reordered.
+   */
+  public static BinaryFuse16 construct(long[] keys, int size) {
     if (size == 0) {
       return new BinaryFuse16(1, 1, 0L, new short[ARITY]);
     }
@@ -138,6 +151,7 @@ public final class BinaryFuse16 implements MembershipFilter {
     SplittableRandom random = new SplittableRandom(size ^ 0x9e3779b97f4a7c15L);
     long currentSeed = random.nextLong();
 
+    boolean deduplicated = false;
     for (int attempts = 0; attempts < 100; attempts++) {
       Arrays.fill(t2count, (byte) 0);
       Arrays.fill(t2hash, 0L);
@@ -230,6 +244,18 @@ public final class BinaryFuse16 implements MembershipFilter {
         return new BinaryFuse16(segmentLength, segmentCountLength, currentSeed, fingerprints);
       }
 
+      if (deduplicated == false) {
+        // Peeling fails if there are duplicate keys: sort and de-duplicate once, then retry.
+        deduplicated = true;
+        Arrays.sort(keys, 0, size);
+        int unique = 0;
+        for (int i = 0; i < size; i++) {
+          if (i == 0 || keys[i] != keys[i - 1]) {
+            keys[unique++] = keys[i];
+          }
+        }
+        size = unique;
+      }
       currentSeed = random.nextLong();
     }
 

@@ -17,7 +17,6 @@
 package org.apache.lucene.codecs.fuse;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -26,7 +25,6 @@ import org.apache.lucene.codecs.FieldsConsumer;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PostingsFormat;
-import org.apache.lucene.codecs.bloom.FuzzySet;
 import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
@@ -45,15 +43,13 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOBooleanSupplier;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 
 /**
  * A {@link PostingsFormat} that maintains an approximate membership filter in a ".bff" file for
  * fast-fail exact term lookups.
  *
- * <p>Uses {@link BinaryFuse8} by default (or {@link BinaryFuse16}), and falls back to {@link
- * FuzzySet} Bloom filter for small segments (&lt; 1,000 terms).
+ * <p>Uses {@link BinaryFuse8} by default (or {@link BinaryFuse16}).
  *
  * @lucene.experimental
  */
@@ -64,28 +60,28 @@ public final class BinaryFuseFilteringPostingsFormat extends PostingsFormat {
   public static final int VERSION_CURRENT = VERSION_START;
   public static final String EXTENSION = "bff";
 
-  private static final int DEFAULT_THRESHOLD = 1000;
   private static final int DEFAULT_FINGERPRINT_BITS = 8;
 
   private final PostingsFormat delegatePostingsFormat;
   private final int fingerprintBits;
-  private final int threshold;
 
   public BinaryFuseFilteringPostingsFormat(
-      PostingsFormat delegatePostingsFormat, int fingerprintBits, int threshold) {
+      PostingsFormat delegatePostingsFormat, int fingerprintBits) {
     super(CODEC_NAME);
+    if (fingerprintBits != 8 && fingerprintBits != 16) {
+      throw new IllegalArgumentException("fingerprintBits must be 8 or 16, got " + fingerprintBits);
+    }
     this.delegatePostingsFormat = delegatePostingsFormat;
     this.fingerprintBits = fingerprintBits;
-    this.threshold = threshold;
   }
 
   public BinaryFuseFilteringPostingsFormat(PostingsFormat delegatePostingsFormat) {
-    this(delegatePostingsFormat, DEFAULT_FINGERPRINT_BITS, DEFAULT_THRESHOLD);
+    this(delegatePostingsFormat, DEFAULT_FINGERPRINT_BITS);
   }
 
   /** SPI read-time constructor. */
   public BinaryFuseFilteringPostingsFormat() {
-    this(null, DEFAULT_FINGERPRINT_BITS, DEFAULT_THRESHOLD);
+    this(null, DEFAULT_FINGERPRINT_BITS);
   }
 
   @Override
@@ -135,8 +131,7 @@ public final class BinaryFuseFilteringPostingsFormat extends PostingsFormat {
           if (term == null) {
             break;
           }
-          long[] h = StringHelper.murmurhash3_x64_128(term);
-          long hash = h[0] ^ Long.rotateLeft(h[1], 32);
+          long hash = FuseHash.hash(term);
 
           if (count == hashes.length) {
             hashes = ArrayUtil.grow(hashes, count + 1);
@@ -148,35 +143,12 @@ public final class BinaryFuseFilteringPostingsFormat extends PostingsFormat {
           continue;
         }
 
-        // Deduplicate 64-bit hashes to ensure unique keys for peeling
-        Arrays.sort(hashes, 0, count);
-        int unique = 0;
-        for (int i = 0; i < count; i++) {
-          if (i == 0 || hashes[i] != hashes[i - 1]) {
-            hashes[unique++] = hashes[i];
-          }
-        }
-        long[] uniqueHashes = ArrayUtil.copyOfSubArray(hashes, 0, unique);
-
-        MembershipFilter filter;
-        if (unique >= threshold) {
-          filter =
-              (fingerprintBits == 16)
-                  ? BinaryFuse16.construct(uniqueHashes)
-                  : BinaryFuse8.construct(uniqueHashes);
-        } else {
-          // Bloom fallback for small segments
-          FuzzySet fuzzySet = FuzzySet.createOptimalSet(unique, 0.01f);
-          termsEnum = terms.iterator();
-          while (true) {
-            BytesRef term = termsEnum.next();
-            if (term == null) {
-              break;
-            }
-            fuzzySet.addValue(term);
-          }
-          filter = new FuzzySetAdapter(fuzzySet);
-        }
+        // Terms are distinct, so their hashes almost surely are: construct() only de-duplicates
+        // if peeling fails.
+        MembershipFilter filter =
+            (fingerprintBits == 16)
+                ? BinaryFuse16.construct(hashes, count)
+                : BinaryFuse8.construct(hashes, count);
         filters.put(fieldInfo, filter);
       }
     }
@@ -207,9 +179,6 @@ public final class BinaryFuseFilteringPostingsFormat extends PostingsFormat {
           } else if (filter instanceof BinaryFuse16 f16) {
             out.writeByte((byte) 2);
             f16.serialize(out);
-          } else if (filter instanceof FuzzySetAdapter fsa) {
-            out.writeByte((byte) 3);
-            fsa.getSet().serialize(out);
           }
         }
         CodecUtil.writeFooter(out);
@@ -246,7 +215,6 @@ public final class BinaryFuseFilteringPostingsFormat extends PostingsFormat {
               switch (type) {
                 case 1 -> BinaryFuse8.deserialize(in);
                 case 2 -> BinaryFuse16.deserialize(in);
-                case 3 -> new FuzzySetAdapter(FuzzySet.deserialize(in));
                 default -> throw new CorruptIndexException("Unknown filter type: " + type, in);
               };
           filtersByName.put(fieldInfo.name, filter);
