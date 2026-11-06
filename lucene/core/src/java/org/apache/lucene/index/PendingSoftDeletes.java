@@ -124,6 +124,17 @@ final class PendingSoftDeletes extends PendingDeletes {
    * @return the number of bits changed by this function
    */
   static int applySoftDeletes(DocIdSetIterator iterator, FixedBitSet bits) throws IOException {
+    return applySoftDeletes(iterator, bits, null);
+  }
+
+  /**
+   * Like {@link #applySoftDeletes(DocIdSetIterator, FixedBitSet)}, but a doc values update that
+   * removes the value of a document only sets its bit if the document is not hard deleted.
+   *
+   * @param hardLiveDocs the hard live docs, or <code>null</code> if no document is hard deleted
+   */
+  static int applySoftDeletes(DocIdSetIterator iterator, FixedBitSet bits, Bits hardLiveDocs)
+      throws IOException {
     assert iterator != null;
     int newDeletes = 0;
     int docID;
@@ -140,7 +151,7 @@ final class PendingSoftDeletes extends PendingDeletes {
           // below.
         }
       } else {
-        if (bits.getAndSet(docID) == false) {
+        if ((hardLiveDocs == null || hardLiveDocs.get(docID)) && bits.getAndSet(docID) == false) {
           newDeletes--;
         }
       }
@@ -152,7 +163,7 @@ final class PendingSoftDeletes extends PendingDeletes {
   void onDocValuesUpdate(FieldInfo info, DocValuesFieldUpdates.Iterator iterator)
       throws IOException {
     if (this.field.equals(info.name)) {
-      pendingDeleteCount += applySoftDeletes(iterator, getMutableBits());
+      pendingDeleteCount += applySoftDeletes(iterator, getMutableBits(), getHardLiveDocs());
       assert assertPendingDeletes();
       this.info.setSoftDelCount(this.info.getSoftDelCount() + pendingDeleteCount);
       super.dropChanges();
