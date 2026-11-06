@@ -181,6 +181,62 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
     }
   }
 
+  /** Only random and sequential reads get inputs of their own. */
+  public void testIsEfficientFor() throws IOException {
+    var random = new DefaultIOContext(DataAccessHint.RANDOM);
+    var sequential = new DefaultIOContext(DataAccessHint.SEQUENTIAL);
+    // larger than a page, so that slices get advised
+    final int size = 1 << 17;
+    try (MMapDirectory dir = new MMapDirectory(createTempDir("testIsEfficientFor"))) {
+      try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
+        out.writeBytes(new byte[size], 0, size);
+      }
+      try (IndexInput in = dir.openInput("test", random)) {
+        assertTrue("one advice for every context", in.isEfficientFor(sequential));
+      }
+
+      dir.setReadAdvice(MMapDirectory.ADVISE_BY_CONTEXT);
+      boolean advises = MMapDirectory.supportsMadvise();
+      try (IndexInput in = dir.openInput("test", random)) {
+        assertTrue(in.isEfficientFor(random));
+        assertTrue("normal reads share a random input", in.isEfficientFor(IOContext.DEFAULT));
+        assertEquals(advises == false, in.isEfficientFor(sequential));
+        assertEquals(
+            "a clone reads the same pages",
+            advises == false,
+            in.clone().isEfficientFor(sequential));
+        assertEquals(
+            "a slice reads the same pages",
+            advises == false,
+            in.slice("slice", 0, size).isEfficientFor(sequential));
+        dir.setReadAdvice((_, _) -> Optional.of(ReadAdvice.NORMAL));
+        assertEquals(
+            "an input keeps the function it was opened with",
+            advises == false,
+            in.isEfficientFor(sequential));
+        dir.setReadAdvice(MMapDirectory.ADVISE_BY_CONTEXT);
+
+        IndexInput advised = in.slice("advised", 0, size, sequential);
+        assertTrue(advised.isEfficientFor(sequential));
+        assertEquals(advises == false, advised.isEfficientFor(random));
+        assertTrue(
+            "too small to be advised", in.slice("small", 0, 1, sequential).isEfficientFor(random));
+      }
+
+      try (IndexOutput out = dir.createOutput("small", IOContext.DEFAULT)) {
+        out.writeByte((byte) 0);
+      }
+      try (IndexInput in = dir.openInput("small", random)) {
+        assertTrue("a file within a page is not opened again", in.isEfficientFor(sequential));
+      }
+
+      dir.setPreload((_, _) -> true);
+      try (IndexInput in = dir.openInput("test", random)) {
+        assertTrue("preloaded pages are resident", in.isEfficientFor(sequential));
+      }
+    }
+  }
+
   public void testPreload() throws Exception {
     assumeTrue("madvise for preloading only works on linux/mac", MMapDirectory.supportsMadvise());
 

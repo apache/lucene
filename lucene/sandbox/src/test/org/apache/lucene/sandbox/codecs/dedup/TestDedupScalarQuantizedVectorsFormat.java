@@ -472,6 +472,17 @@ public class TestDedupScalarQuantizedVectorsFormat extends LuceneTestCase {
     }
     for (ScalarEncoding encoding : ScalarEncoding.values()) {
       for (VectorSimilarityFunction function : VectorSimilarityFunction.values()) {
+        float[][] vectors;
+        if (function == DOT_PRODUCT) {
+          // normalize a copy of the vectors
+          vectors = distinct.clone();
+          for (int i = 0; i < numDistinct; i++) {
+            vectors[i] = VectorUtil.l2normalize(vectors[i].clone());
+          }
+        } else {
+          vectors = distinct;
+        }
+
         IndexWriterConfig config =
             newIndexWriterConfig()
                 .setCodec(
@@ -488,11 +499,7 @@ public class TestDedupScalarQuantizedVectorsFormat extends LuceneTestCase {
           for (int segment = 0; segment < 2; segment++) { // duplicates across segments
             for (int i = 0; i < numDistinct; i++) {
               Document doc = new Document();
-              float[] vector =
-                  function == DOT_PRODUCT
-                      ? VectorUtil.l2normalize(distinct[i].clone())
-                      : distinct[i];
-              doc.add(new KnnFloatVectorField("f", vector, function));
+              doc.add(new KnnFloatVectorField("f", vectors[i], function));
               w.addDocument(doc);
             }
             w.commit();
@@ -500,14 +507,16 @@ public class TestDedupScalarQuantizedVectorsFormat extends LuceneTestCase {
           w.forceMerge(1); // exercises the merge-time graph construction scorer
 
           try (DirectoryReader reader = DirectoryReader.open(w)) {
+            String context = "encoding=" + encoding + ", function=" + function;
+
             LeafReader leafReader = getOnlyLeafReader(reader);
             FloatVectorValues values = leafReader.getFloatVectorValues("f");
-            assertEquals(2 * numDistinct, values.size());
-            assertEquals(numDistinct, groupNumVectors(values)); // de-duplicated across segments
+            assertEquals(context, 2 * numDistinct, values.size());
+            assertEquals(
+                context, numDistinct, groupNumVectors(values)); // de-duplicated across segments
             assertGraphBuilt(leafReader, "f"); // threshold=0 forced the merge-time graph build
 
-            float[] query =
-                function == DOT_PRODUCT ? VectorUtil.l2normalize(distinct[0].clone()) : distinct[0];
+            float[] query = vectors[0];
             TopDocs topDocs =
                 leafReader.searchNearestVectors(
                     "f",
@@ -515,7 +524,6 @@ public class TestDedupScalarQuantizedVectorsFormat extends LuceneTestCase {
                     2,
                     AcceptDocs.fromLiveDocs(null, leafReader.maxDoc()),
                     Integer.MAX_VALUE);
-            String context = "encoding=" + encoding + ", function=" + function;
             assertEquals(context, 2, topDocs.scoreDocs.length);
             // the two duplicates of the query vector share the (top) score
             assertEquals(context, topDocs.scoreDocs[0].score, topDocs.scoreDocs[1].score, 0f);
