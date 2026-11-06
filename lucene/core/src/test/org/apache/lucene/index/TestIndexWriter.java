@@ -62,6 +62,7 @@ import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.LongField;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
@@ -196,6 +197,96 @@ public class TestIndexWriter extends LuceneTestCase {
     docStats = writer.getDocStats();
     assertEquals(0, docStats.maxDoc);
     assertEquals(0, docStats.numDocs);
+    writer.close();
+    dir.close();
+  }
+
+  public void testDeleteByQueries() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter writer =
+        new IndexWriter(
+            dir,
+            new IndexWriterConfig(new MockAnalyzer(random()))
+                .setMergePolicy(NoMergePolicy.INSTANCE));
+
+    Document doc;
+    for (int i = 0; i < 10; i++) {
+      doc = new Document();
+      doc.add(new LongField("content", i, Field.Store.NO));
+      writer.addDocument(doc);
+    }
+    writer.flush();
+
+    for (int i = 10; i < 20; i++) {
+      doc = new Document();
+      doc.add(new LongField("content", i, Field.Store.NO));
+      writer.addDocument(doc);
+    }
+    writer.flush();
+
+    for (int i = 20; i < 30; i++) {
+      doc = new Document();
+      doc.add(new LongField("content", i, Field.Store.NO));
+      writer.addDocument(doc);
+    }
+    writer.flush();
+    // Match all docs in 2nd segment.
+    writer.deleteDocuments(LongPoint.newRangeQuery("content", 10, 19));
+    // This query can not be applied on 2nd segment, since it is fully deleted by prior query.
+    writer.deleteDocuments(LongPoint.newRangeQuery("content", 12, 15));
+
+    DirectoryReader reader = DirectoryReader.open(writer);
+    IndexSearcher searcher = newSearcher(reader);
+    assertEquals(
+        0, searcher.search(LongPoint.newRangeQuery("content", 10, 19), 100).totalHits.value());
+    assertEquals(
+        20, searcher.search(LongPoint.newRangeQuery("content", 0, 30), 100).totalHits.value());
+
+    reader.close();
+    writer.close();
+    dir.close();
+  }
+
+  public void testDeleteByTerms() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter writer =
+        new IndexWriter(
+            dir,
+            new IndexWriterConfig(new MockAnalyzer(random()))
+                .setMergePolicy(NoMergePolicy.INSTANCE));
+
+    Document doc;
+    doc = new Document();
+    doc.add(new TextField("f", "foo bar tea", Field.Store.NO));
+    writer.addDocument(doc);
+    writer.flush();
+
+    doc = new Document();
+    doc.add(new TextField("f", "foo bar", Field.Store.NO));
+    writer.addDocument(doc);
+    writer.flush();
+
+    doc = new Document();
+    doc.add(new TextField("f", "foo tea", Field.Store.NO));
+    writer.addDocument(doc);
+    writer.flush();
+
+    Term[] delTerms = new Term[3];
+    // This query only can be applied on 3rd segment, since segment 1, 2 are fully deleted by prior
+    // query.
+    delTerms[0] = new Term("f", "foo");
+    // This query can be applied on every segment, since it is executed firstly.
+    delTerms[1] = new Term("f", "bar");
+    // This query can not be applied, since all segments are fully deleted by prior query.
+    delTerms[2] = new Term("f", "tea");
+
+    writer.deleteDocuments(delTerms);
+
+    DirectoryReader reader = DirectoryReader.open(writer);
+    IndexSearcher searcher = newSearcher(reader);
+    assertEquals(0, searcher.search(new MatchAllDocsQuery(), 10).totalHits.value());
+
+    reader.close();
     writer.close();
     dir.close();
   }
