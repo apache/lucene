@@ -173,6 +173,68 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
+  public void dotProducts(
+      float[] a,
+      int aOffset,
+      int aCount,
+      float[] b,
+      int bOffset,
+      int bCount,
+      int dim,
+      int stride,
+      float[] out) {
+    // 2x2 tile: every loaded element takes part in two products
+    int i = 0;
+    for (; i + 1 < aCount; i += 2) {
+      int a0 = aOffset + i * stride;
+      int a1 = a0 + stride;
+      int j = 0;
+      for (; j + 1 < bCount; j += 2) {
+        int b0 = bOffset + j * stride;
+        int b1 = b0 + stride;
+        float acc00 = 0, acc01 = 0, acc10 = 0, acc11 = 0;
+        for (int k = 0; k < dim; k++) {
+          float x0 = a[a0 + k];
+          float x1 = a[a1 + k];
+          float y0 = b[b0 + k];
+          float y1 = b[b1 + k];
+          acc00 = fma(x0, y0, acc00);
+          acc01 = fma(x0, y1, acc01);
+          acc10 = fma(x1, y0, acc10);
+          acc11 = fma(x1, y1, acc11);
+        }
+        int o = i * bCount + j;
+        out[o] = acc00;
+        out[o + 1] = acc01;
+        out[o + bCount] = acc10;
+        out[o + bCount + 1] = acc11;
+      }
+      for (; j < bCount; j++) {
+        int b0 = bOffset + j * stride;
+        float acc0 = 0, acc1 = 0;
+        for (int k = 0; k < dim; k++) {
+          float y = b[b0 + k];
+          acc0 = fma(a[a0 + k], y, acc0);
+          acc1 = fma(a[a1 + k], y, acc1);
+        }
+        out[i * bCount + j] = acc0;
+        out[(i + 1) * bCount + j] = acc1;
+      }
+    }
+    for (; i < aCount; i++) {
+      int a0 = aOffset + i * stride;
+      for (int j = 0; j < bCount; j++) {
+        int b0 = bOffset + j * stride;
+        float acc = 0;
+        for (int k = 0; k < dim; k++) {
+          acc = fma(a[a0 + k], b[b0 + k], acc);
+        }
+        out[i * bCount + j] = acc;
+      }
+    }
+  }
+
+  @Override
   public float squareDistance(short[] a, short[] b) {
     float res = 0f; // Accumulate in float32 for precision
     for (int i = 0; i < a.length; i++) {
