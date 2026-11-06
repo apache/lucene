@@ -96,6 +96,9 @@ public class SortedNumericDocValuesRangeQueryBenchmark {
     @Param({DENSE, SPARSE})
     public String density;
 
+    @Param({"true", "false"})
+    public boolean skipIndex;
+
     @Param({"0.01", "0.1", "0.5"})
     public double selectivity;
 
@@ -123,7 +126,10 @@ public class SortedNumericDocValuesRangeQueryBenchmark {
                 : 1 + random.nextInt(params.valuesPerDoc);
         fillValues(values, valueCount, params.dataPattern, docID, params.docCount, random);
         for (int i = 0; i < valueCount; i++) {
-          doc.add(SortedNumericDocValuesField.indexedField("sn", values[i]));
+          doc.add(
+              params.skipIndex
+                  ? SortedNumericDocValuesField.indexedField("sn", values[i])
+                  : new SortedNumericDocValuesField("sn", values[i]));
         }
       }
       writer.addDocument(doc);
@@ -131,6 +137,10 @@ public class SortedNumericDocValuesRangeQueryBenchmark {
     writer.forceMerge(1);
     reader = DirectoryReader.open(writer);
     writer.close();
+    if ((reader.leaves().getFirst().reader().getDocValuesSkipper("sn") != null)
+        != params.skipIndex) {
+      throw new IllegalStateException("unexpected doc-values skipper state");
+    }
 
     long rangeWidth = Math.max(1L, (long) (VALUE_SPACE * params.selectivity));
     long rangeStart = (VALUE_SPACE - rangeWidth) / 2;
