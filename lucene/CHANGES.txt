@@ -7,14 +7,14 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
+* GITHUB#16997: Monitor's QueryTree subclasses now implement collectTerms(TermCollector), and
+  collectTerms(BiConsumer) is final. (Luke Kot-Zaniewski)
+
 * GITHUB#15113: Move long[] group varint support from core to backward-codecs. The legacy long[]
   GroupVIntUtil and DataOutput APIs were removed from core and are now only available for backward
   codecs. (Subhramit Basu)
 
 * GITHUB#15929: Rename CollectionStatistics to FieldStats and TermStatistics to TermStats. (Zhou Hui)
-
-* GITHUB#TBD: Monitor's QueryTree subclasses now implement collectTerms(TermCollector), and
-  collectTerms(BiConsumer) is final. (lkotzaniewsk)
 
 * GITHUB#15763: Deprecate Operations.complement() method. This operation can be slow and is not
   recommended for production use. It will be removed in Lucene 12. (Saurabh Singh)
@@ -126,7 +126,7 @@ API Changes
 
 New Features
 ---------------------
-* GITHUB#TBD: Monitor's TermFilteredPresearcher and MultipassTermFilteredPresearcher can now filter
+* GITHUB#16997: Monitor's TermFilteredPresearcher and MultipassTermFilteredPresearcher can now filter
   on negated clauses. With a maximum number of negative disjuncts greater than 0, the negated terms
   of a query are indexed so that, for example, "*:* -flag:true" is only selected for documents
   without flag:true. TermWeightor gains negate and withNegation to weigh the absence of a term, and
