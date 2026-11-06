@@ -1004,6 +1004,9 @@ public class TestIndexVersionInvariants extends LuceneTestCase {
         lastVersion = reader.getVersion();
         history.record(reader);
         lifetimeManager.record(searcher);
+        // Keeps only the newest searcher, so old segments don't stay open. Versions don't go down,
+        // so a new searcher can only have the same version as the newest one.
+        lifetimeManager.prune(new SearcherLifetimeManager.PruneByAge(0));
       } finally {
         searcherManager.release(searcher);
       }
