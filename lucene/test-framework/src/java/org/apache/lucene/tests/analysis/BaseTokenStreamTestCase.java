@@ -1576,7 +1576,7 @@ public abstract class BaseTokenStreamTestCase extends LuceneTestCase {
    * TokenStreamToAutomaton} to create an automaton. Asserts the finite strings of the automaton are
    * all and only the given valid strings.
    *
-   * @param analyzer analyzer containing the SynonymFilter under test.
+   * @param analyzer analyzer containing the SynonymGraphFilter under test.
    * @param text text to be analyzed.
    * @param expectedStrings all expected finite strings.
    */

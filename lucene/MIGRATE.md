@@ -98,6 +98,15 @@ The deprecated `FixBrokenOffsetsFilter` and its factory (SPI name `fixBrokenOffs
 Offsets that go backwards are rejected at index time; fix the upstream token filter or tokenizer
 that produces them instead.
 
+### SynonymFilter and SynonymFilterFactory have been removed (GITHUB#16966)
+
+The deprecated `SynonymFilter` and its factory (SPI name `synonym`) are gone. Use
+`SynonymGraphFilter` and `SynonymGraphFilterFactory` (SPI name `synonymGraph`) instead, which
+accept the same `SynonymMap` and factory arguments, followed by `FlattenGraphFilter` at index
+time. The output differs (token order, and positions of multi-token synonyms), so existing
+indexes built with `SynonymFilter` should be reindexed so search-time analysis matches indexed
+tokens.
+
 ### MergePolicy.MergeSpecification#segString(Directory) has been removed (GITHUB#16963)
 
 The deprecated `MergePolicy.MergeSpecification#segString(Directory)` method is gone. The `Directory`

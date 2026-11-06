@@ -193,7 +193,6 @@ public class SynonymGraphFilterFactory extends TokenFilterFactory implements Res
     return parser.build();
   }
 
-  // (there are no tests for this functionality)
   private TokenizerFactory loadTokenizerFactory(ResourceLoader loader, String cname)
       throws IOException {
     Class<? extends TokenizerFactory> clazz = loader.findClass(cname, TokenizerFactory.class);

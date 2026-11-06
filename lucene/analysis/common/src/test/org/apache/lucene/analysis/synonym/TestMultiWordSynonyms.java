@@ -33,7 +33,7 @@ public class TestMultiWordSynonyms extends BaseTokenStreamFactoryTestCase {
     TokenStream stream = whitespaceMockTokenizer(reader);
     stream =
         tokenFilterFactory(
-                "Synonym",
+                "SynonymGraph",
                 Version.LATEST,
                 new StringMockResourceLoader("a b c,d"),
                 "synonyms",

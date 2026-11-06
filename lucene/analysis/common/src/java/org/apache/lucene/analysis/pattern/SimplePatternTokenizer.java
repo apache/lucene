@@ -50,7 +50,7 @@ import org.apache.lucene.util.automaton.RegExp;
 // (http://en.wikipedia.org/wiki/Aho%E2%80%93Corasick_string_matching_algorithm).
 // But we cannot implement this (I think?) until/unless Lucene regexps support sub-group capture, so
 // we could know
-// which specific characters the pattern matched.  SynonymFilter has this same limitation.
+// which specific characters the pattern matched.
 
 public final class SimplePatternTokenizer extends Tokenizer {
 
