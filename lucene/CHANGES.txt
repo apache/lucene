@@ -364,6 +364,8 @@ Optimizations
   IOContext, allowing MMapDirectory to open them with confined areas and avoiding JVM-wide
   handshakes when the files are closed. (Alan Woodward)
 
+* GITHUB#16835: Speed up rangeIntoBitSet for table-encoded numeric and sorted numeric DocValues. (Ke Wei)
+
 Bug Fixes
 ---------------------
 * GITHUB#16983: UnifiedHighlighter.Builder#withFlags is no longer ignored when building the

@@ -32,6 +32,7 @@ import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.PostingsFormat;
+import org.apache.lucene.codecs.lucene104.Lucene104Codec;
 import org.apache.lucene.codecs.perfield.PerFieldDocValuesFormat;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
@@ -76,6 +77,7 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
+import org.apache.lucene.util.FixedBitSet;
 
 /** Tests Lucene90DocValuesFormat */
 public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatTestCase {
@@ -1345,6 +1347,94 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
     assertNull(termsEnum.next());
     reader.close();
     directory.close();
+  }
+
+  public void testTableEncodedRangeIntoBitSet() throws Exception {
+    int tableSize = TestUtil.nextInt(random(), 3, 256);
+    TreeSet<Long> tableValues = new TreeSet<>();
+    tableValues.add(0L);
+    tableValues.add(1L);
+    while (tableValues.size() < tableSize) {
+      tableValues.add(TestUtil.nextLong(random(), 100, 100000));
+    }
+    long[] table = tableValues.stream().mapToLong(Long::longValue).toArray();
+    String[] fields = {
+      "numeric_dense", "numeric_sparse", "sorted_numeric_dense", "sorted_numeric_sparse"
+    };
+    int numDocs = TestUtil.nextInt(random(), 2 * tableSize, 2 * tableSize + 1000);
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter writer =
+          new IndexWriter(dir, new IndexWriterConfig().setCodec(new Lucene104Codec()))) {
+        for (int docID = 0; docID < numDocs; docID++) {
+          Document doc = new Document();
+          int denseOrd = docID % table.length;
+          long value = table[denseOrd];
+          long nextValue = table[(denseOrd + 1) % table.length];
+          doc.add(NumericDocValuesField.indexedField("numeric_dense", value));
+          doc.add(SortedNumericDocValuesField.indexedField("sorted_numeric_dense", value));
+          doc.add(SortedNumericDocValuesField.indexedField("sorted_numeric_dense", nextValue));
+          if (docID % 2 != 0) {
+            int sparseOrd = (docID / 2) % table.length;
+            value = table[sparseOrd];
+            nextValue = table[(sparseOrd + 1) % table.length];
+            doc.add(NumericDocValuesField.indexedField("numeric_sparse", value));
+            doc.add(SortedNumericDocValuesField.indexedField("sorted_numeric_sparse", value));
+            doc.add(SortedNumericDocValuesField.indexedField("sorted_numeric_sparse", nextValue));
+          }
+          writer.addDocument(doc);
+        }
+        writer.forceMerge(1);
+      }
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        LeafReader leaf = getOnlyLeafReader(reader);
+        int mid = table.length / 2;
+        long[][] ranges = {
+          {table[0], table[mid]},
+          {table[0], table[0]},
+          {table[mid], table[mid]},
+          {table[0], table[1]},
+          {table[1] + 1, table[2] - 1},
+          {table[table.length - 1] + 1, table[table.length - 1] + 2},
+          {table[mid], table[mid] - 1}
+        };
+        int fixedRangeCount = ranges.length;
+        ranges = Arrays.copyOf(ranges, fixedRangeCount + 10);
+        for (int i = fixedRangeCount; i < ranges.length; i++) {
+          ranges[i] =
+              new long[] {
+                TestUtil.nextLong(random(), table[0] - 5, table[table.length - 1] + 5),
+                TestUtil.nextLong(random(), table[0] - 5, table[table.length - 1] + 5)
+              };
+        }
+        for (String field : fields) {
+          for (long[] range : ranges) {
+            assertTableEncodedRange(leaf, field, 0, numDocs, range[0], range[1]);
+          }
+        }
+      }
+    }
+  }
+
+  private void assertTableEncodedRange(
+      LeafReader leaf, String field, int fromDoc, int toDoc, long minValue, long maxValue)
+      throws IOException {
+    FixedBitSet expected = new FixedBitSet(toDoc - fromDoc);
+    SortedNumericDocValues slow = DocValues.getSortedNumeric(leaf, field);
+    for (int docID = fromDoc; docID < toDoc; docID++) {
+      if (slow.advanceExact(docID)) {
+        for (int i = 0, count = slow.docValueCount(); i < count; i++) {
+          long value = slow.nextValue();
+          if (value >= minValue && value <= maxValue) {
+            expected.set(docID - fromDoc);
+          }
+        }
+      }
+    }
+    FixedBitSet actual = new FixedBitSet(toDoc - fromDoc);
+    SortedNumericDocValues fast = DocValues.getSortedNumeric(leaf, field);
+    fast.advanceExact(fromDoc);
+    fast.rangeIntoBitSet(fromDoc, toDoc, minValue, maxValue, actual, fromDoc);
+    assertEquals(field + " range=[" + minValue + "," + maxValue + "]", expected, actual);
   }
 
   public void testSkipIndexStoredSeparately() throws IOException {
