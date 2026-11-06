@@ -267,6 +267,24 @@ public class TestQueryAnalyzer extends LuceneTestCase {
         negativeDisjunctPass("+(*:* -a) +(*:* -b)"));
   }
 
+  public void testNegatedDisjunctionsMergeAcrossNestingLevels() {
+    // NOT (a OR (b OR c)) = NOT a AND NOT b AND NOT c
+    assertEquals(
+        new Pass(Set.of(), List.of(Set.of(t("a"), t("b"), t("c")))),
+        negativeDisjunctPass("*:* -(a OR (b OR c))"));
+    Pass pass = negativeDisjunctPass("(*:* -(a OR (b OR c))) OR (*:* -(d OR (e OR f)))");
+    assertEquals(
+        Set.of(Set.of(t("a"), t("b"), t("c")), Set.of(t("d"), t("e"), t("f"))),
+        new HashSet<>(pass.negativeDisjuncts()));
+
+    // NOT (a AND (b AND c)) = NOT a OR NOT b OR NOT c: nothing to merge
+    pass = negativeDisjunctPass("(*:* -(a AND (b AND c))) OR (*:* -(d AND (e AND f)))");
+    assertEquals(6, pass.negativeDisjuncts().size());
+    for (Set<Term> negativeDisjunct : pass.negativeDisjuncts()) {
+      assertEquals(1, negativeDisjunct.size());
+    }
+  }
+
   public void testNegatedConjunctionIsADisjunctionOfNegativeDisjuncts() {
     Pass pass = negativeDisjunctPass("*:* -(+b +c)");
     assertEquals(Set.of(), pass.terms());

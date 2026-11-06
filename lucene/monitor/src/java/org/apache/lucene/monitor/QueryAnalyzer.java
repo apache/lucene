@@ -59,7 +59,7 @@ class QueryAnalyzer {
   }
 
   /** The first non-null tree the custom handlers build for {@code query}, or null */
-  private QueryTree handle(Query query, TermWeightor weightor, boolean negated) {
+  private QueryTree handleCustomQuery(Query query, TermWeightor weightor, boolean negated) {
     for (CustomQueryHandler handler : handlers) {
       QueryTree tree =
           negated
@@ -81,11 +81,17 @@ class QueryAnalyzer {
   QueryTree buildTree(Query luceneQuery, TermWeightor weightor) {
     QueryBuilder builder = new QueryBuilder();
     luceneQuery.visit(builder);
-    return builder.apply(weightor);
+    return builder.build(weightor);
   }
 
+  /** A clause of a {@link QueryBuilder}: a leaf of the tree, or a nested builder */
+  private sealed interface Clause permits Leaf, QueryBuilder {}
+
+  /** A leaf, built once the weightor is known */
+  private record Leaf(Function<TermWeightor, QueryTree> tree) implements Clause {}
+
   /** Builds the tree for a group of clauses; under negation its operator flips (De Morgan) */
-  private class QueryBuilder extends QueryVisitor implements Function<TermWeightor, QueryTree> {
+  private final class QueryBuilder extends QueryVisitor implements Clause {
 
     /** Whether the query this builder visits is negated */
     final boolean isNegated;
@@ -96,7 +102,7 @@ class QueryAnalyzer {
      */
     final boolean buildsDisjunction;
 
-    final List<Function<TermWeightor, QueryTree>> children = new ArrayList<>();
+    final List<Clause> clauses = new ArrayList<>();
     final Set<Term> negatedTerms = new LinkedHashSet<>();
 
     /** The root builder: positive */
@@ -125,14 +131,14 @@ class QueryAnalyzer {
     }
 
     private QueryBuilder addChild(QueryBuilder child) {
-      children.add(child);
+      clauses.add(child);
       return child;
     }
 
     @Override
     public QueryVisitor getSubVisitor(BooleanClause.Occur occur, Query parent) {
       if (isNegated && !isExactUnderNegation(parent, occur)) {
-        children.add(_ -> QueryTree.anyTerm("NOT " + parent));
+        clauses.add(new Leaf(_ -> QueryTree.anyTerm("NOT " + parent)));
         return QueryVisitor.EMPTY_VISITOR;
       }
       if (occur == BooleanClause.Occur.MUST || occur == BooleanClause.Occur.FILTER) {
@@ -146,7 +152,7 @@ class QueryAnalyzer {
         if (parent instanceof BooleanQuery bq
             && isPureNegative(bq)
             && (!isNegationOptimized || isNegated)) {
-          children.add(_ -> QueryTree.anyTerm("PURE NEGATIVE QUERY[" + parent + "]"));
+          clauses.add(new Leaf(_ -> QueryTree.anyTerm("PURE NEGATIVE QUERY[" + parent + "]")));
           return QueryVisitor.EMPTY_VISITOR;
         }
         if (!isNegationOptimized) {
@@ -171,12 +177,12 @@ class QueryAnalyzer {
             || query instanceof PhraseQuery) {
           negatedTerms.addAll(Arrays.asList(terms));
         } else {
-          children.add(_ -> QueryTree.anyTerm("NOT " + query));
+          clauses.add(new Leaf(_ -> QueryTree.anyTerm("NOT " + query)));
         }
         return;
       }
       for (Term term : terms) {
-        children.add(w -> QueryTree.term(term, w));
+        clauses.add(new Leaf(w -> QueryTree.term(term, w)));
       }
     }
 
@@ -184,42 +190,55 @@ class QueryAnalyzer {
     public void visitLeaf(Query query) {
       // Under negation only handleNegatedQuery is used: a handler's positive tree may select more
       // documents than the query matches, so negating it would be unsound
-      children.add(
-          w -> {
-            QueryTree q = handle(query, w, isNegated);
-            if (q == null) {
-              return QueryTree.anyTerm(isNegated ? "NOT " + query : query.toString());
-            }
-            return q;
-          });
+      clauses.add(
+          new Leaf(
+              w -> {
+                QueryTree q = handleCustomQuery(query, w, isNegated);
+                if (q == null) {
+                  return QueryTree.anyTerm(isNegated ? "NOT " + query : query.toString());
+                }
+                return q;
+              }));
+    }
+
+    /** Whether this combines its clauses with AND; a single clause counts as either */
+    private boolean isConjunctive() {
+      return !buildsDisjunction || clauses.size() + negatedTerms.size() == 1;
     }
 
     /**
-     * Moves the negated terms of the conjunctions nested in this one into this one, and removes the
-     * builders left empty: (a AND NOT x) AND NOT y = a AND NOT (x OR y), one negative disjunct
+     * Moves the negated terms of the conjunctions nested in this one into {@code into}, and removes
+     * the builders left empty: (a AND NOT x) AND NOT y = a AND NOT (x OR y), one negative disjunct
      */
-    private void mergeNestedNegatedConjuncts() {
-      Iterator<Function<TermWeightor, QueryTree>> it = children.iterator();
+    private void mergeNestedNegatedConjuncts(QueryBuilder into) {
+      Iterator<Clause> it = clauses.iterator();
       while (it.hasNext()) {
-        if (it.next() instanceof QueryBuilder child && !child.buildsDisjunction) {
-          child.mergeNestedNegatedConjuncts();
-          negatedTerms.addAll(child.negatedTerms);
+        if (it.next() instanceof QueryBuilder child && child.isConjunctive()) {
+          into.negatedTerms.addAll(child.negatedTerms);
           child.negatedTerms.clear();
-          if (child.children.isEmpty()) {
+          child.mergeNestedNegatedConjuncts(into);
+          if (child.clauses.isEmpty()) {
             it.remove();
           }
         }
       }
     }
 
-    @Override
-    public QueryTree apply(TermWeightor termWeightor) {
+    /** Builds the tree of this builder's clauses */
+    QueryTree build(TermWeightor termWeightor) {
       if (isNegationOptimized && !buildsDisjunction) {
-        mergeNestedNegatedConjuncts();
+        mergeNestedNegatedConjuncts(this);
       }
-      List<Function<TermWeightor, QueryTree>> all = children;
+      List<Function<TermWeightor, QueryTree>> all = new ArrayList<>();
+      for (Clause clause : clauses) {
+        Function<TermWeightor, QueryTree> tree =
+            switch (clause) {
+              case Leaf leaf -> leaf.tree();
+              case QueryBuilder child -> child::build;
+            };
+        all.add(tree);
+      }
       if (!negatedTerms.isEmpty()) {
-        all = new ArrayList<>(children);
         if (buildsDisjunction) {
           // NOT a OR NOT b: each term is a negative disjunct of its own
           for (Term term : negatedTerms) {
