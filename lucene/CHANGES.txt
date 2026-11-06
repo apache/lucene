@@ -361,6 +361,10 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#16950: Classic QueryParser: a word that the analyzer drops, such as a stopword, before AND
+  or OR no longer makes the operator apply to the whole run of preceding words instead of the last
+  one. The words of a run are added as separate clauses again, as before 10.6.0. (sakshichitnis27)
+
 * GITHUB#16983: UnifiedHighlighter.Builder#withFlags is no longer ignored when building the
   highlighter. (Christoph Büscher)
 
