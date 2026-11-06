@@ -80,7 +80,7 @@ final class PendingSoftDeletes extends PendingDeletes {
       var iterator = FieldExistsQuery.getDocValuesDocIdSetIterator(field, reader);
       if (iterator != null && iterator.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
         iterator = FieldExistsQuery.getDocValuesDocIdSetIterator(field, reader);
-        newDelCount = applySoftDeletes(iterator, getMutableBits());
+        newDelCount = applySoftDeletes(iterator, getMutableBits(), getHardLiveDocs());
         assert newDelCount >= 0 : " illegal pending delete count: " + newDelCount;
       } else {
         // nothing is deleted we don't have a soft deletes field in this segment
@@ -117,21 +117,14 @@ final class PendingSoftDeletes extends PendingDeletes {
   }
 
   /**
-   * Clears all bits in the given bitset that are set and are also in the given DocIdSetIterator.
+   * Clears all bits in the given bitset that are set and are also in the given DocIdSetIterator. If
+   * the iterator is a {@link DocValuesFieldUpdates.Iterator}, a document without a value is
+   * undeleted: its bit is set again, unless the document is hard deleted.
    *
    * @param iterator the doc ID set iterator for apply
    * @param bits the bit set to apply the deletes to
-   * @return the number of bits changed by this function
-   */
-  static int applySoftDeletes(DocIdSetIterator iterator, FixedBitSet bits) throws IOException {
-    return applySoftDeletes(iterator, bits, null);
-  }
-
-  /**
-   * Like {@link #applySoftDeletes(DocIdSetIterator, FixedBitSet)}, but a doc values update that
-   * removes the value of a document only sets its bit if the document is not hard deleted.
-   *
    * @param hardLiveDocs the hard live docs, or <code>null</code> if no document is hard deleted
+   * @return the number of bits cleared minus the number of bits set by this function
    */
   static int applySoftDeletes(DocIdSetIterator iterator, FixedBitSet bits, Bits hardLiveDocs)
       throws IOException {

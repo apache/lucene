@@ -139,7 +139,7 @@ public final class SoftDeletesDirectoryReaderWrapper extends FilterDirectoryRead
       bits = new FixedBitSet(reader.maxDoc());
       bits.set(0, reader.maxDoc());
     }
-    int numSoftDeletes = PendingSoftDeletes.applySoftDeletes(iterator, bits);
+    int numSoftDeletes = PendingSoftDeletes.applySoftDeletes(iterator, bits, null);
     if (numSoftDeletes == 0) {
       return reader;
     }
