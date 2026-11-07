@@ -216,7 +216,7 @@
  *
  * <h3 class="boxed">Proximity Searches</h3>
  *
- * <p>Lucene supports finding words are a within a specific distance away. To do a proximity search
+ * <p>Lucene supports finding words which are within a specific distance away. To do a proximity search
  * use the tilde, "~", symbol at the end of a Phrase. For example to search for a "apache" and
  * "jakarta" within 10 words of each other in a document use the search:
  *
@@ -309,8 +309,7 @@
  *
  * <h3 class="boxed">+</h3>
  *
- * <p>The "+" or required operator requires that the term after the "+" symbol exist somewhere in a
- * the field of a single document.
+ * <p>The "+" or required operator requires that the term after the "+" symbol exists in the document.
  *
  * <p>To search for documents that must contain "jakarta" and may contain "lucene" use the query:
  *
@@ -357,7 +356,7 @@
  *
  * <pre class="code">(jakarta OR apache) AND website</pre>
  *
- * <p>This eliminates any confusion and makes sure you that website must exist and either term
+ * <p>This eliminates any confusion and makes sure that website must exist and either term
  * jakarta or apache may exist. </div>
  *
  * <p><a id="N10170"></a><a id="Field_Grouping"></a>
