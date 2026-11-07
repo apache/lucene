@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
@@ -33,6 +34,7 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.codecs.hnsw.HnswGraphMergeSources;
 import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
@@ -620,7 +622,8 @@ public final class SortingCodecReader extends FilterCodecReader {
     if (delegate == null) {
       return null;
     }
-    return new KnnVectorsReader() {
+    // vector values keep the ordinals of the delegate, so its graphs remain valid for merging
+    class SortingKnnVectorsReader extends KnnVectorsReader implements HnswGraphMergeSources {
       @Override
       public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
         delegate.checkIntegrity(merge);
@@ -671,10 +674,16 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
+      public List<Source> getMergeSources(String field) {
+        return List.of(new Source(delegate, docMap::oldToNew, in.maxDoc()));
+      }
+
+      @Override
       public void close() throws IOException {
         delegate.close();
       }
-    };
+    }
+    return new SortingKnnVectorsReader();
   }
 
   @Override
