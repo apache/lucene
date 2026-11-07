@@ -26,14 +26,14 @@ The constructor `HnswGraphSearcher(NeighborQueue, BitSet)` is now
 `VisitedSet`. This interface has the `set`, `getAndSet` and `clear` methods of `BitSet`; create one
 with `VisitedSet.create(expectedVisitedNodes, graphSize)`.
 
+## Migration from Lucene 10.x to Lucene 11.0
+
 ### Monitor's QueryTree subclasses implement collectTerms(TermCollector) (GITHUB#16997)
 
 `QueryTree#collectTerms(TermCollector)` is now the abstract method, and
 `collectTerms(BiConsumer)` is final. Subclasses, such as trees returned by a `CustomQueryHandler`,
 must override `collectTerms(TermCollector)` instead; `TermCollector` extends
 `BiConsumer<String, BytesRef>`, so the body usually stays the same.
-
-## Migration from Lucene 10.x to Lucene 11.0
 
 ### Deprecated TokenSources methods have been removed (GITHUB#16985)
 

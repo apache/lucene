@@ -7,16 +7,11 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
-* GITHUB#16997: Monitor's QueryTree subclasses now implement collectTerms(TermCollector), and
-  collectTerms(BiConsumer) is final. (Luke Kot-Zaniewski)
+(No changes)
 
 New Features
 ---------------------
-* GITHUB#16997: Monitor's TermFilteredPresearcher and MultipassTermFilteredPresearcher can now
-  filter on negated clauses. With a maximum number of negative disjuncts greater than 0, the negated
-  terms of a query are indexed so that, for example, "*:* -flag:true" is only selected for documents
-  without flag:true. TermWeightor gains negate and withNegation to weigh the absence of a term, and
-  CustomQueryHandler gains handleNegatedQuery. (Luke Kot-Zaniewski)
+(No changes)
 
 Improvements
 ---------------------
@@ -42,6 +37,9 @@ Other
 
 API Changes
 ---------------------
+* GITHUB#16997: Monitor's QueryTree subclasses now implement collectTerms(TermCollector), and
+  collectTerms(BiConsumer) is final. (Luke Kot-Zaniewski)
+
 * GITHUB#16985: Remove the deprecated TokenSources methods in the highlighter module
   (getAnyTokenStream, getTokenStreamWithOffsets and the getTokenStream overloads taking a Terms,
   IndexReader, Document or plain text). Use TokenSources#getTokenStream(String, Fields, String,
@@ -233,6 +231,12 @@ API Changes
 
 New Features
 ---------------------
+* GITHUB#16997: Monitor's TermFilteredPresearcher and MultipassTermFilteredPresearcher can now
+  filter on negated clauses. With a maximum number of negative disjuncts greater than 0, the negated
+  terms of a query are indexed so that, for example, "*:* -flag:true" is only selected for documents
+  without flag:true. TermWeightor gains negate and withNegation to weigh the absence of a term, and
+  CustomQueryHandler gains handleNegatedQuery. (Luke Kot-Zaniewski)
+
 * GITHUB#16723: Support SIMD Faiss library variants with runtime fallback. (Abhinav Chinnala)
 
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
