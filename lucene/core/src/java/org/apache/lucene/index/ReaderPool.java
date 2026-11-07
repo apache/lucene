@@ -150,19 +150,6 @@ final class ReaderPool implements Closeable {
   }
 
   /**
-   * Returns <code>true</code> iff any of the buffered readers and updates has at least one pending
-   * delete
-   */
-  synchronized boolean anyDeletions() {
-    for (ReadersAndUpdates rld : readerMap.values()) {
-      if (rld.getDelCount() > 0 || rld.getDelCountWithUnwrittenSoftDeletes() > 0) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /**
    * Enables reader pooling for this pool. This should be called once the readers in this pool are
    * shared with an outside resource like an NRT reader. Once reader pooling is enabled a {@link
    * ReadersAndUpdates} will be kept around in the reader pool on calling {@link

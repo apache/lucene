@@ -1450,12 +1450,12 @@ public class IndexWriter
    */
   public synchronized boolean hasDeletions() {
     ensureOpen();
-    if (bufferedUpdatesStream.any() || docWriter.anyDeletions() || readerPool.anyDeletions()) {
+    if (bufferedUpdatesStream.any() || docWriter.anyDeletions()) {
       return true;
     }
     for (final SegmentCommitInfo info : segmentInfos) {
-      // a segment with only soft deletes has no live docs file
-      if (info.hasDeletions() || info.getSoftDelCount() > 0) {
+      // counts soft deletes too, also the ones that aren't written yet
+      if (numDeletedDocs(info) > 0) {
         return true;
       }
     }
