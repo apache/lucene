@@ -597,6 +597,28 @@ public final class FieldInfo {
     return docValuesSkipIndex;
   }
 
+  /** Returns true if every property of this field, including its attributes, equals {@code o}'s. */
+  boolean hasSameState(FieldInfo o) {
+    return number == o.number
+        && name.equals(o.name)
+        && indexOptions == o.indexOptions
+        && docValuesType == o.docValuesType
+        && docValuesSkipIndex == o.docValuesSkipIndex
+        && dvGen == o.dvGen
+        && storeTermVector == o.storeTermVector
+        && omitNorms == o.omitNorms
+        && storePayloads == o.storePayloads
+        && pointDimensionCount == o.pointDimensionCount
+        && pointIndexDimensionCount == o.pointIndexDimensionCount
+        && pointNumBytes == o.pointNumBytes
+        && vectorDimension == o.vectorDimension
+        && vectorEncoding == o.vectorEncoding
+        && vectorSimilarityFunction == o.vectorSimilarityFunction
+        && softDeletesField == o.softDeletesField
+        && isParentField == o.isParentField
+        && attributes().equals(o.attributes());
+  }
+
   /** Sets the docValues generation of this field. */
   void setDocValuesGen(long dvGen) {
     this.dvGen = dvGen;
