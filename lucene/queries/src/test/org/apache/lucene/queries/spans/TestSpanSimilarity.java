@@ -18,7 +18,9 @@
 package org.apache.lucene.queries.spans;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.TextField;
@@ -134,6 +136,62 @@ public class TestSpanSimilarity extends LuceneTestCase {
     for (Independence independence : INDEPENDENCE_MEASURES) {
       sims.add(new DFISimilarity(independence));
     }
+  }
+
+  /**
+   * Verify that SpanOrQuery scores each document using only the IDF of the term that matched, not
+   * the combined IDF of all clauses. With two docs (foo:bar, foo:baz) and a spanOr([foo:bar,
+   * foo:baz]) query, each doc should score the same as the equivalent bool-should query (i.e.
+   * single-term IDF, not summed IDF).
+   */
+  public void testSpanOrScoresWithPerClauseIdf() throws Exception {
+    Directory dir = newDirectory();
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
+    FieldType ft = new FieldType(TextField.TYPE_NOT_STORED);
+    Document doc1 = new Document();
+    doc1.add(newField("foo", "bar", ft));
+    iw.addDocument(doc1);
+    Document doc2 = new Document();
+    doc2.add(newField("foo", "baz", ft));
+    iw.addDocument(doc2);
+    IndexReader ir = iw.getReader();
+    iw.close();
+
+    IndexSearcher is = newSearcher(ir);
+    is.setSimilarity(new BM25Similarity());
+
+    SpanTermQuery spanBar = new SpanTermQuery(new Term("foo", "bar"));
+    SpanTermQuery spanBaz = new SpanTermQuery(new Term("foo", "baz"));
+
+    // Score each term individually to get the expected single-term score
+    float scoreBar = is.search(spanBar, 10).scoreDocs[0].score;
+    float scoreBaz = is.search(spanBaz, 10).scoreDocs[0].score;
+
+    // SpanOrQuery should score each doc the same as its individual SpanTermQuery
+    TopDocs spanOrResults = is.search(new SpanOrQuery(spanBar, spanBaz), 10);
+    assertEquals(2, spanOrResults.totalHits.value());
+
+    Map<Integer, Float> spanOrScores = new HashMap<>();
+    for (var sd : spanOrResults.scoreDocs) {
+      spanOrScores.put(sd.doc, sd.score);
+    }
+
+    int docBar = is.search(spanBar, 10).scoreDocs[0].doc;
+    int docBaz = is.search(spanBaz, 10).scoreDocs[0].doc;
+
+    assertEquals(
+        "foo:bar doc score should equal single SpanTermQuery score, not combined-IDF score",
+        scoreBar,
+        spanOrScores.get(docBar),
+        1e-5f);
+    assertEquals(
+        "foo:baz doc score should equal single SpanTermQuery score, not combined-IDF score",
+        scoreBaz,
+        spanOrScores.get(docBaz),
+        1e-5f);
+
+    ir.close();
+    dir.close();
   }
 
   /** make sure all sims work with spanOR(termX, termY) where termY does not exist */
