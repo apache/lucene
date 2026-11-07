@@ -342,9 +342,9 @@ public class TestSortOptimization extends LuceneTestCase {
     }
     { // Test that sort on sorted numeric field without sort optimization and with sort optimization
       // produce the same results
-      final SortField sortField = new SortField("my_field", SortField.Type.LONG, true, 0L);
+      final SortField sortField =
+          SortField.withoutPruning(new SortField("my_field", SortField.Type.LONG, true, 0L));
       final Sort sort = new Sort(sortField);
-      sortField.setOptimizeSortWithPoints(false);
       topDocs2 = assertSearchHits(reader, sort, numHits, null);
       // assert that the resulting hits are the same
       assertEquals(topDocs1.scoreDocs.length, topDocs2.scoreDocs.length);
@@ -703,7 +703,7 @@ public class TestSortOptimization extends LuceneTestCase {
         assertEquals(i, topDocs.scoreDocs[i].doc);
       }
       assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation());
-      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value(), 10);
+      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value(), numDocs);
     }
 
     // sort by _doc with a bool query should skip all non-competitive documents
@@ -796,24 +796,24 @@ public class TestSortOptimization extends LuceneTestCase {
         IllegalArgumentException.class,
         () -> searcher.search(MatchAllDocsQuery.INSTANCE, 1, new Sort(longSortOnIntField)));
     // assert that when sort optimization is disabled we can use LONG sort on int field
-    longSortOnIntField.setOptimizeSortWithIndexedData(false);
-    searcher.search(MatchAllDocsQuery.INSTANCE, 1, new Sort(longSortOnIntField));
+    searcher.search(
+        MatchAllDocsQuery.INSTANCE, 1, new Sort(SortField.withoutPruning(longSortOnIntField)));
 
     SortField intSortOnLongField = new SortField("longField", SortField.Type.INT);
     assertThrows(
         IllegalArgumentException.class,
         () -> searcher.search(MatchAllDocsQuery.INSTANCE, 1, new Sort(intSortOnLongField)));
     // assert that when sort optimization is disabled we can use INT sort on long field
-    intSortOnLongField.setOptimizeSortWithIndexedData(false);
-    searcher.search(MatchAllDocsQuery.INSTANCE, 1, new Sort(intSortOnLongField));
+    searcher.search(
+        MatchAllDocsQuery.INSTANCE, 1, new Sort(SortField.withoutPruning(intSortOnLongField)));
 
     SortField intSortOnIntRangeField = new SortField("intRange", SortField.Type.INT);
     assertThrows(
         IllegalArgumentException.class,
         () -> searcher.search(MatchAllDocsQuery.INSTANCE, 1, new Sort(intSortOnIntRangeField)));
     // assert that when sort optimization is disabled we can use INT sort on intRange field
-    intSortOnIntRangeField.setOptimizeSortWithIndexedData(false);
-    searcher.search(MatchAllDocsQuery.INSTANCE, 1, new Sort(intSortOnIntRangeField));
+    searcher.search(
+        MatchAllDocsQuery.INSTANCE, 1, new Sort(SortField.withoutPruning(intSortOnIntRangeField)));
 
     reader.close();
     dir.close();
@@ -947,8 +947,8 @@ public class TestSortOptimization extends LuceneTestCase {
     SortedNumericSelector.Type type =
         RandomPicks.randomFrom(random(), SortedNumericSelector.Type.values());
     boolean reverse = random().nextBoolean();
-    final SortField sortField = LongField.newSortField("my_field", reverse, type);
-    sortField.setOptimizeSortWithIndexedData(false);
+    final SortField sortField =
+        SortField.withoutPruning(LongField.newSortField("my_field", reverse, type));
     final Sort sort = new Sort(sortField); // sort without sort optimization
     final SortField sortField2 = LongField.newSortField("my_field", reverse, type);
     final Sort sort2 = new Sort(sortField2); // sort with sort optimization
@@ -1204,8 +1204,7 @@ public class TestSortOptimization extends LuceneTestCase {
       Sort sort = new Sort(sortField);
       TopDocs topDocs = assertSearchHits(reader, sort, numHits, null);
 
-      sortField.setOptimizeSortWithIndexedData(false);
-      sort = new Sort(sortField);
+      sort = new Sort(SortField.withoutPruning(sortField));
       TopDocs unpruned = assertSearchHits(reader, sort, numHits, null);
 
       CheckHits.checkEqual(MatchAllDocsQuery.INSTANCE, topDocs.scoreDocs, unpruned.scoreDocs);
@@ -1228,8 +1227,7 @@ public class TestSortOptimization extends LuceneTestCase {
       Sort sort = new Sort(sortField);
       TopDocs topDocs = assertSearchHits(reader, sort, numHits, null);
 
-      sortField.setOptimizeSortWithIndexedData(false);
-      sort = new Sort(sortField);
+      sort = new Sort(SortField.withoutPruning(sortField));
       TopDocs unpruned = assertSearchHits(reader, sort, numHits, null);
 
       CheckHits.checkEqual(MatchAllDocsQuery.INSTANCE, topDocs.scoreDocs, unpruned.scoreDocs);
@@ -1462,9 +1460,9 @@ public class TestSortOptimization extends LuceneTestCase {
 
   public void doTestStringSortOptimizationDisabled(DirectoryReader reader) throws IOException {
     SortField sortField =
-        KeywordField.newSortField(
-            "my_field", false, SortedSetSelector.Type.MIN, SortField.STRING_LAST);
-    sortField.setOptimizeSortWithIndexedData(false);
+        SortField.withoutPruning(
+            KeywordField.newSortField(
+                "my_field", false, SortedSetSelector.Type.MIN, SortField.STRING_LAST));
 
     Sort sort = new Sort(sortField);
     final int numDocs = reader.numDocs();

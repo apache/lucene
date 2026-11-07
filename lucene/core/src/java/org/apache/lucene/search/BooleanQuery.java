@@ -28,7 +28,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.function.Predicate;
 import org.apache.lucene.index.TermStates;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.similarities.Similarity;
@@ -365,9 +364,20 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
     // Check whether some clauses are both required and excluded
     final Collection<Query> mustNotClauses = clauseSets.get(Occur.MUST_NOT);
     if (!mustNotClauses.isEmpty()) {
-      final Predicate<Query> p = clauseSets.get(Occur.MUST)::contains;
-      if (mustNotClauses.stream().anyMatch(p.or(clauseSets.get(Occur.FILTER)::contains))) {
-        return new MatchNoDocsQuery("FILTER or MUST clause also in MUST_NOT");
+      if (mustNotClauses.stream().anyMatch(clauseSets.get(Occur.FILTER)::contains)) {
+        return new MatchNoDocsQuery("FILTER clause also in MUST_NOT");
+      }
+      for (Query q : clauseSets.get(Occur.MUST)) {
+        Query unwrapped = q;
+        if (q instanceof BoostQuery boostQuery) {
+          unwrapped = boostQuery.getQuery();
+        }
+        if (unwrapped instanceof ConstantScoreQuery csq) {
+          unwrapped = csq.getQuery();
+        }
+        if (mustNotClauses.contains(unwrapped)) {
+          return new MatchNoDocsQuery("MUST clause also in MUST_NOT");
+        }
       }
       if (mustNotClauses.contains(MatchAllDocsQuery.INSTANCE)) {
         return new MatchNoDocsQuery("MUST_NOT clause is MatchAllDocsQuery");

@@ -125,8 +125,8 @@ public class TestLuceneTestCaseJupiter {
     }
   }
 
-  /// Test cases should use parameter-injected [java.util.Random] or a supplier
-  /// of [java.util.Random]. Avoid using static methods.
+  /// Test cases should use parameter-injected [java.util.Random] or a supplier of
+  /// [java.util.Random]. Avoid using static methods.
   @Nested
   class RandomInjection {
     @Test
@@ -298,8 +298,8 @@ public class TestLuceneTestCaseJupiter {
     }
   }
 
-  /// Verifies that failing to close a [org.apache.lucene.store.Directory] created during
-  /// a test causes a test failure, mirroring the behavior of [TestFailIfDirectoryNotClosed]
+  /// Verifies that failing to close a [org.apache.lucene.store.Directory] created during a test
+  /// causes a test failure, mirroring the behavior of [TestFailIfDirectoryNotClosed]
   @Nested
   class UnclosedDirectoryTracking {
     @Test

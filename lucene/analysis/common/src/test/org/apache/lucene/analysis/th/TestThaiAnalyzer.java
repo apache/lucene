@@ -146,4 +146,46 @@ public class TestThaiAnalyzer extends BaseTokenStreamTestCase {
         new int[] {4, 7, 9, 14, 19, 22, 25, 29, 33, 36, 39, 41});
     analyzer.close();
   }
+
+  public void testMaiyamok() throws Exception {
+    Analyzer analyzer = new ThaiAnalyzer(CharArraySet.EMPTY_SET);
+    assertAnalyzesTo(analyzer, "วิ่งเร็วๆ", new String[] {"วิ่ง", "เร็ว", "เร็ว"});
+    assertAnalyzesTo(analyzer, "พูดมากๆ นะ", new String[] {"พูด", "มาก", "มาก", "นะ"});
+    analyzer.close();
+  }
+
+  /** LUCENE-4253, #14730: Test that common content words in compounds are not over-filtered */
+  public void testCompoundAndContentWordsNotOverFiltered() throws Exception {
+    Analyzer analyzer = new ThaiAnalyzer();
+    // Issue #14730: "ที่ผ่านมา" should retain "ผ่าน" and "มา"
+    assertAnalyzesTo(analyzer, "ที่ผ่านมา", new String[] {"ผ่าน", "มา"});
+    // "เปิดตัวสินค้า" should retain "เปิด"
+    assertAnalyzesTo(analyzer, "เปิดตัวสินค้า", new String[] {"เปิด", "ตัว", "สินค้า"});
+    // "ส่งออก" should retain both "ส่ง" and "ออก"
+    assertAnalyzesTo(analyzer, "ส่งออก", new String[] {"ส่ง", "ออก"});
+    // "วันหยุด" should retain "วัน"
+    assertAnalyzesTo(analyzer, "วันหยุด", new String[] {"วัน", "หยุด"});
+    // "ผลการเรียน" should retain "ผล" and "เรียน"
+    assertAnalyzesTo(analyzer, "ผลการเรียน", new String[] {"ผล", "เรียน"});
+    analyzer.close();
+  }
+
+  public void testNormalization() throws Exception {
+    Analyzer analyzer = new ThaiAnalyzer(CharArraySet.EMPTY_SET);
+    // Double Sara E -> Sara Ae
+    assertAnalyzesTo(
+        analyzer, "\u0E40\u0E40\u0E1B\u0E25\u0E01", new String[] {"\u0E41\u0E1B\u0E25\u0E01"});
+    // Decomposed Sara Am -> Sara Am (pre-tokenization allows BreakIterator to properly segment ทำ
+    // and งาน)
+    assertAnalyzesTo(
+        analyzer,
+        "\u0E17\u0E4D\u0E32\u0E07\u0E32\u0E19",
+        new String[] {"\u0E17\u0E33", "\u0E07\u0E32\u0E19"});
+    // Sentence with double Sara E properly segmented into individual words thanks to ThaiCharFilter
+    assertAnalyzesTo(
+        analyzer, "ฉันรัก\u0E40\u0E40มวมาก", new String[] {"ฉัน", "รัก", "แมว", "มาก"});
+    // Duplicate vowels
+    assertAnalyzesTo(analyzer, "\u0E14\u0E35\u0E35", new String[] {"\u0E14\u0E35"});
+    analyzer.close();
+  }
 }

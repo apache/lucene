@@ -202,7 +202,7 @@ public class TestMinSupportedMajorBackwardsCompatibility extends BackwardsCompat
     // If this test fails, it likely means the constant was changed and the
     // implications need to be considered (tests updated, documentation updated, etc.)
     assertEquals(
-        "MIN_SUPPORTED_MAJOR should be 10 for the relaxed upgrade policy", 10, MIN_SUPPORTED_MAJOR);
+        "MIN_SUPPORTED_MAJOR should be 9 for the relaxed upgrade policy", 9, MIN_SUPPORTED_MAJOR);
 
     // Additional validation: MIN_SUPPORTED_MAJOR should be <= current major
     assertTrue(

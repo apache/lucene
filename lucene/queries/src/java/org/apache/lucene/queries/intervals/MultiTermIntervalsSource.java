@@ -67,12 +67,7 @@ class MultiTermIntervalsSource extends IntervalsSource {
     while ((term = te.next()) != null) {
       subSources.add(TermIntervalsSource.intervals(term, te));
       if (++count > maxExpansions) {
-        throw new IllegalStateException(
-            "Automaton ["
-                + this.pattern
-                + "] expanded to too many terms (limit "
-                + maxExpansions
-                + ")");
+        throw tooManyTerms();
       }
     }
     if (subSources.size() == 0) {
@@ -90,15 +85,13 @@ class MultiTermIntervalsSource extends IntervalsSource {
     }
     List<MatchesIterator> subMatches = new ArrayList<>();
     TermsEnum te = automaton.getTermsEnum(terms);
-    BytesRef term;
     int count = 0;
-    while ((term = te.next()) != null) {
+    while (te.next() != null) {
       MatchesIterator mi = TermIntervalsSource.matches(te, doc, field);
       if (mi != null) {
         subMatches.add(mi);
         if (count++ > maxExpansions) {
-          throw new IllegalStateException(
-              "Automaton " + term + " expanded to too many terms (limit " + maxExpansions + ")");
+          throw tooManyTerms();
         }
       }
     }
@@ -152,6 +145,11 @@ class MultiTermIntervalsSource extends IntervalsSource {
         return mi.getQuery();
       }
     };
+  }
+
+  private IndexSearcher.TooManyClauses tooManyTerms() {
+    return new IndexSearcher.TooManyClauses(
+        "Automaton [" + pattern + "] expanded to too many terms (limit " + maxExpansions + ")");
   }
 
   @Override

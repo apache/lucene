@@ -22,8 +22,6 @@ import java.util.Deque;
 import java.util.Enumeration;
 
 /**
- *
- *
  * <h2>Ternary Search Tree.</h2>
  *
  * <p>A ternary search tree is a hybrid between a binary tree and a digital search tree (trie). Keys

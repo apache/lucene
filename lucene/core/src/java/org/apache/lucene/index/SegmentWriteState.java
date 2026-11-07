@@ -113,6 +113,19 @@ public class SegmentWriteState {
     this.context = context;
   }
 
+  /** Create a shallow copy of {@link SegmentWriteState} with a new {@link IOContext}. */
+  public SegmentWriteState(SegmentWriteState state, IOContext context) {
+    infoStream = state.infoStream;
+    directory = state.directory;
+    segmentInfo = state.segmentInfo;
+    fieldInfos = state.fieldInfos;
+    this.context = context;
+    segmentSuffix = state.segmentSuffix;
+    segUpdates = state.segUpdates;
+    delCountOnFlush = state.delCountOnFlush;
+    liveDocs = state.liveDocs;
+  }
+
   /** Create a shallow copy of {@link SegmentWriteState} with a new segment suffix. */
   public SegmentWriteState(SegmentWriteState state, String segmentSuffix) {
     infoStream = state.infoStream;
@@ -143,5 +156,10 @@ public class SegmentWriteState {
       return false; // invalid
     }
     return true;
+  }
+
+  /** Returns a copy of this state whose context carries the given hints in place of its own. */
+  public SegmentWriteState withHints(IOContext.FileOpenHint... hints) {
+    return new SegmentWriteState(this, context.withHints(hints));
   }
 }
