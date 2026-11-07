@@ -107,6 +107,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOConsumer;
 import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
@@ -5134,5 +5135,137 @@ public class TestIndexWriter extends LuceneTestCase {
     reader.close();
     writer.close();
     dir.close();
+  }
+
+  public void testSoftDeleteCountsAfterAutoFlush() throws Exception {
+    doTestDeleteCountsAfterAutoFlush(
+        writer ->
+            writer.updateDocValues(
+                new Term("id", "0"), new NumericDocValuesField("soft_delete", 1)));
+  }
+
+  public void testSoftUpdateCountsAfterAutoFlush() throws Exception {
+    doTestDeleteCountsAfterAutoFlush(
+        writer ->
+            writer.softUpdateDocument(
+                new Term("id", "0"), List.of(), new NumericDocValuesField("soft_delete", 1)));
+  }
+
+  public void testHardDeleteCountsAfterAutoFlush() throws Exception {
+    doTestDeleteCountsAfterAutoFlush(writer -> writer.deleteDocuments(new Term("id", "0")));
+  }
+
+  /**
+   * Deletes the document with id 0, and adds documents until an auto flush resolves the delete.
+   * Checks that {@link IndexWriter#getDocStats()} and {@link IndexWriter#hasDeletions()} count the
+   * delete. An auto flush doesn't write doc values updates, so for soft deletes they must also
+   * count updates that aren't written yet.
+   */
+  private void doTestDeleteCountsAfterAutoFlush(IOConsumer<IndexWriter> delete) throws Exception {
+    try (Directory dir = newDirectory();
+        IndexWriter writer =
+            new IndexWriter(
+                dir,
+                newIndexWriterConfig()
+                    .setSoftDeletesField("soft_delete")
+                    .setMergePolicy(NoMergePolicy.INSTANCE)
+                    .setMaxBufferedDocs(2)
+                    .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH))) {
+      for (String id : List.of("0", "1")) {
+        Document doc = new Document();
+        doc.add(new StringField("id", id, Field.Store.NO));
+        writer.addDocument(doc);
+      }
+      writer.commit();
+      if (random().nextBoolean()) {
+        // makes the writer pool its readers
+        DirectoryReader.open(writer).close();
+      }
+      delete.accept(writer);
+      int numSegments = writer.getSegmentCount();
+      int numDocs = writer.getDocStats().numDocs;
+      for (String id : List.of("2", "3")) {
+        Document doc = new Document();
+        doc.add(new StringField("id", id, Field.Store.NO));
+        writer.addDocument(doc);
+      }
+      assertEquals("expected an auto flush", numSegments + 1, writer.getSegmentCount());
+      // the auto flush resolved the delete, and the two new docs are counted
+      assertEquals(numDocs - 1 + 2, writer.getDocStats().numDocs);
+      assertTrue(writer.hasDeletions());
+      try (DirectoryReader reader = DirectoryReader.open(writer)) {
+        assertEquals(reader.numDocs(), writer.getDocStats().numDocs);
+      }
+    }
+  }
+
+  /**
+   * Undeleting a soft deleted document with {@link IndexWriter#tryUpdateDocValue} must count right
+   * away, before the doc values update is written.
+   */
+  public void testSoftUndeleteCountsBeforeWrite() throws Exception {
+    try (Directory dir = newDirectory();
+        IndexWriter writer =
+            new IndexWriter(
+                dir,
+                newIndexWriterConfig()
+                    .setSoftDeletesField("soft_delete")
+                    .setMergePolicy(NoMergePolicy.INSTANCE))) {
+      for (String id : List.of("0", "1")) {
+        Document doc = new Document();
+        doc.add(new StringField("id", id, Field.Store.NO));
+        writer.addDocument(doc);
+      }
+      writer.updateDocValues(new Term("id", "0"), new NumericDocValuesField("soft_delete", 1));
+      try (DirectoryReader reader = DirectoryReader.open(writer)) {
+        assertEquals(1, reader.numDocs());
+        assertEquals(1, writer.getDocStats().numDocs);
+        int docID = -1;
+        for (int i = 0; i < reader.maxDoc(); i++) {
+          if (reader.leaves().get(0).reader().getLiveDocs().get(i) == false) {
+            docID = i;
+          }
+        }
+        assertTrue(
+            writer.tryUpdateDocValue(reader, docID, new NumericDocValuesField("soft_delete", null))
+                != -1);
+      }
+      assertEquals(2, writer.getDocStats().numDocs);
+      try (DirectoryReader reader = DirectoryReader.open(writer)) {
+        assertEquals(2, reader.numDocs());
+      }
+      assertEquals(2, writer.getDocStats().numDocs);
+    }
+  }
+
+  /**
+   * A segment whose only deletes are soft deletes has no live docs file. {@link
+   * IndexWriter#hasDeletions()} must still see its deletes when the writer has no reader on it.
+   */
+  public void testHasDeletionsWithOnlySoftDeletes() throws Exception {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig config =
+          newIndexWriterConfig()
+              .setSoftDeletesField("soft_delete")
+              .setMergePolicy(NoMergePolicy.INSTANCE);
+      try (IndexWriter writer = new IndexWriter(dir, config)) {
+        for (String id : List.of("0", "1")) {
+          Document doc = new Document();
+          doc.add(new StringField("id", id, Field.Store.NO));
+          writer.addDocument(doc);
+        }
+        writer.updateDocValues(new Term("id", "0"), new NumericDocValuesField("soft_delete", 1));
+        writer.commit();
+      }
+      try (IndexWriter writer =
+          new IndexWriter(
+              dir,
+              newIndexWriterConfig()
+                  .setSoftDeletesField("soft_delete")
+                  .setMergePolicy(NoMergePolicy.INSTANCE))) {
+        assertEquals(1, writer.getDocStats().numDocs);
+        assertTrue(writer.hasDeletions());
+      }
+    }
   }
 }

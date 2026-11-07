@@ -17,6 +17,7 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -132,6 +133,44 @@ final class ReadersAndUpdates {
 
   public synchronized int getDelCount() {
     return pendingDeletes.getDelCount();
+  }
+
+  /**
+   * Like {@link #getDelCount()}, but also counts soft deletes whose doc values updates are resolved
+   * but not written yet. {@link #getDelCount()} only counts a soft delete once its update is
+   * written, because it must match the live docs that readers of this segment see.
+   */
+  synchronized int getDelCountWithUnwrittenSoftDeletes() {
+    int delCount = pendingDeletes.getDelCount();
+    String softDeletesField = config.getSoftDeletesField();
+    List<DocValuesFieldUpdates> updates =
+        softDeletesField == null ? null : pendingDVUpdates.get(softDeletesField);
+    if (updates == null || updates.isEmpty() || pendingDeletes.liveDocsInitialized == false) {
+      return delCount;
+    }
+    DocValuesFieldUpdates.Iterator[] subs = new DocValuesFieldUpdates.Iterator[updates.size()];
+    for (int i = 0; i < subs.length; i++) {
+      subs[i] = updates.get(i).iterator();
+    }
+    DocValuesFieldUpdates.Iterator iterator = DocValuesFieldUpdates.mergedIterator(subs);
+    if (iterator == null) {
+      return delCount;
+    }
+    // Count what writing the updates would change by applying them to a copy of the live docs
+    Bits liveDocs = pendingDeletes.getLiveDocs();
+    FixedBitSet bits;
+    if (liveDocs == null) {
+      bits = new FixedBitSet(info.info.maxDoc());
+      bits.set(0, info.info.maxDoc());
+    } else {
+      bits = FixedBitSet.copyOf(liveDocs);
+    }
+    try {
+      return delCount + PendingSoftDeletes.applySoftDeletes(iterator, bits);
+    } catch (IOException e) {
+      // can't happen: the updates are in memory
+      throw new UncheckedIOException(e);
+    }
   }
 
   private synchronized boolean assertNoDupGen(
