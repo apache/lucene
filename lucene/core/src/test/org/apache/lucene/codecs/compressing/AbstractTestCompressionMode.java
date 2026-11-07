@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Random;
+import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.store.ByteBuffersDataInput;
@@ -69,6 +70,16 @@ public abstract class AbstractTestCompressionMode extends LuceneTestCase {
   byte[] decompress(byte[] compressed, int originalLength) throws IOException {
     Decompressor decompressor = mode.newDecompressor();
     return decompress(decompressor, compressed, originalLength);
+  }
+
+  /** Checks that a preset-dict block header with the given lengths is rejected as corrupt. */
+  void assertCorruptHeader(int originalLength, int dictLength, int blockLength) throws IOException {
+    byte[] header = new byte[10];
+    ByteArrayDataOutput out = new ByteArrayDataOutput(header);
+    out.writeVInt(dictLength);
+    out.writeVInt(blockLength);
+    byte[] compressed = ArrayUtil.copyOfSubArray(header, 0, out.getPosition());
+    expectThrows(CorruptIndexException.class, () -> decompress(compressed, originalLength));
   }
 
   static byte[] decompress(Decompressor decompressor, byte[] compressed, int originalLength)
