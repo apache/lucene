@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicIntegerArray;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnFloatVectorField;
@@ -34,6 +35,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -317,6 +319,212 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
       System.arraycopy(topDocs.scoreDocs, 0, scoreDocs, 0, scoreDocs.length);
 
       return new TopDocs(new TotalHits(results, TotalHits.Relation.EQUAL_TO), scoreDocs);
+    }
+  }
+
+  /**
+   * The optimistic re-entry pass must reuse each leaf's accept docs rather than re-running the
+   * filter, and must not re-enter leaves that already fell back to exact search.
+   */
+  public void testReentryDoesNotReevaluateFilter() throws IOException {
+    int numSegments = 10;
+    int docsPerSegment = 500;
+    try (Directory d = newDirectory()) {
+      try (IndexWriter w =
+          new IndexWriter(d, new IndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE))) {
+        for (int seg = 0; seg < numSegments; seg++) {
+          for (int i = 0; i < docsPerSegment; i++) {
+            Document doc = new Document();
+            // all the nearest neighbours live in the first segment, so it gets re-entered
+            float center = seg == 0 ? 1 : -1;
+            doc.add(
+                new KnnFloatVectorField(
+                    "field",
+                    new float[] {center + random().nextFloat() * 0.1f, random().nextFloat() * 0.1f},
+                    VectorSimilarityFunction.EUCLIDEAN));
+            if (i % 10 != 0) {
+              doc.add(new StringField("tag", "keep", Field.Store.NO));
+            }
+            w.addDocument(doc);
+          }
+          w.flush();
+        }
+      }
+      try (IndexReader reader = DirectoryReader.open(d)) {
+        assertEquals(numSegments, reader.leaves().size());
+        IndexSearcher searcher = new IndexSearcher(reader);
+        searcher.setQueryCache(null);
+        AtomicIntegerArray filterScorers = new AtomicIntegerArray(numSegments);
+        AtomicIntegerArray exactSearches = new AtomicIntegerArray(numSegments);
+        Query filter =
+            new CountingScorersQuery(new TermQuery(new Term("tag", "keep")), filterScorers);
+        KnnFloatVectorQuery query =
+            new KnnFloatVectorQuery("field", new float[] {1, 0}, 50, filter) {
+              @Override
+              protected TopDocs exactSearch(
+                  LeafReaderContext context,
+                  DocIdSetIterator acceptIterator,
+                  QueryTimeout queryTimeout)
+                  throws IOException {
+                exactSearches.incrementAndGet(context.ord);
+                return super.exactSearch(context, acceptIterator, queryTimeout);
+              }
+            };
+        Query rewritten = searcher.rewrite(query);
+        // Segment 0 holds all the nearest neighbours and keeps 450 (of 500) filtered candidates,
+        // far more than perLeafTopK, so it runs approximate search and must be re-entered.
+        assertEquals("segment 0 should not fall back to exact search", 0, exactSearches.get(0));
+        assertTrue(
+            "rewrite should produce a DocAndScoreQuery", rewritten instanceof DocAndScoreQuery);
+        DocAndScoreQuery docAndScoreQuery = (DocAndScoreQuery) rewritten;
+        assertTrue(
+            "the competitive segment must be re-entered", docAndScoreQuery.reentryCount() > 0);
+        for (int i = 0; i < numSegments; i++) {
+          assertEquals("filter scorers for leaf " + i, 1, filterScorers.get(i));
+          assertTrue("exact searches for leaf " + i, exactSearches.get(i) <= 1);
+        }
+      }
+    }
+  }
+
+  /**
+   * A leaf that falls back to exact search must not be re-entered by the optimistic second pass,
+   * even when its hits are competitive enough to otherwise qualify for re-entry. This isolates the
+   * {@code searchedExhaustively} guard: the first segment stays on approximate search and is
+   * re-entered, while a small segment whose vectors are also near the query has so few filtered
+   * candidates that it runs exact search, and so must be searched exactly once and never again.
+   */
+  public void testExactLeafIsNotReentered() throws IOException {
+    int numFullSegments = 10;
+    int docsPerFullSegment = 500;
+    int smallSegmentDocs = 30;
+    // The small segment's vectors sit right next to the query, so without the guard its hits would
+    // qualify it for re-entry. But only a handful of its docs pass the filter, which is below its
+    // perLeafTopK, so it short-circuits to exact search and must not be re-entered afterwards.
+    try (Directory d = newDirectory()) {
+      try (IndexWriter w =
+          new IndexWriter(d, new IndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE))) {
+        for (int seg = 0; seg < numFullSegments; seg++) {
+          for (int i = 0; i < docsPerFullSegment; i++) {
+            Document doc = new Document();
+            // all the nearest neighbours live in the first segment, so it gets re-entered
+            float center = seg == 0 ? 1 : -1;
+            doc.add(
+                new KnnFloatVectorField(
+                    "field",
+                    new float[] {center + random().nextFloat() * 0.1f, random().nextFloat() * 0.1f},
+                    VectorSimilarityFunction.EUCLIDEAN));
+            if (i % 10 != 0) {
+              doc.add(new StringField("tag", "keep", Field.Store.NO));
+            }
+            w.addDocument(doc);
+          }
+          w.flush();
+        }
+        // The final, small segment: vectors near the query (competitive), but only every 10th doc
+        // passes the filter -> tiny cost -> exact search.
+        for (int i = 0; i < smallSegmentDocs; i++) {
+          Document doc = new Document();
+          doc.add(
+              new KnnFloatVectorField(
+                  "field",
+                  new float[] {1 + random().nextFloat() * 0.1f, random().nextFloat() * 0.1f},
+                  VectorSimilarityFunction.EUCLIDEAN));
+          if (i % 10 == 0) {
+            doc.add(new StringField("tag", "keep", Field.Store.NO));
+          }
+          w.addDocument(doc);
+        }
+        w.flush();
+      }
+      try (IndexReader reader = DirectoryReader.open(d)) {
+        int numSegments = numFullSegments + 1;
+        assertEquals(numSegments, reader.leaves().size());
+        int smallSegmentOrd = numFullSegments;
+        IndexSearcher searcher = new IndexSearcher(reader);
+        searcher.setQueryCache(null);
+        AtomicIntegerArray filterScorers = new AtomicIntegerArray(numSegments);
+        AtomicIntegerArray exactSearches = new AtomicIntegerArray(numSegments);
+        Query filter =
+            new CountingScorersQuery(new TermQuery(new Term("tag", "keep")), filterScorers);
+        KnnFloatVectorQuery query =
+            new KnnFloatVectorQuery("field", new float[] {1, 0}, 50, filter) {
+              @Override
+              protected TopDocs exactSearch(
+                  LeafReaderContext context,
+                  DocIdSetIterator acceptIterator,
+                  QueryTimeout queryTimeout)
+                  throws IOException {
+                exactSearches.incrementAndGet(context.ord);
+                return super.exactSearch(context, acceptIterator, queryTimeout);
+              }
+            };
+        Query rewritten = searcher.rewrite(query);
+        assertTrue(
+            "rewrite should produce a DocAndScoreQuery", rewritten instanceof DocAndScoreQuery);
+        DocAndScoreQuery docAndScoreQuery = (DocAndScoreQuery) rewritten;
+        // The segment holding the neighbours stays on approximate search and must be re-entered...
+        assertTrue(
+            "the approximate segment must be re-entered", docAndScoreQuery.reentryCount() > 0);
+        assertEquals("segment 0 must stay on approximate search", 0, exactSearches.get(0));
+        // ...while the small, competitive segment went exact exactly once and was not re-entered.
+        assertEquals(
+            "small segment must fall back to exact search exactly once",
+            1,
+            exactSearches.get(smallSegmentOrd));
+        // The filter is still evaluated exactly once per leaf, re-entry or not.
+        for (int i = 0; i < numSegments; i++) {
+          assertEquals("filter scorers for leaf " + i, 1, filterScorers.get(i));
+        }
+      }
+    }
+  }
+
+  /** Wraps a query and counts the scorer suppliers it creates for each leaf. */
+  private static class CountingScorersQuery extends Query {
+    private final Query in;
+    private final AtomicIntegerArray counts;
+
+    CountingScorersQuery(Query in, AtomicIntegerArray counts) {
+      this.in = in;
+      this.counts = counts;
+    }
+
+    @Override
+    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
+        throws IOException {
+      return new FilterWeight(this, in.createWeight(searcher, scoreMode, boost)) {
+        @Override
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+          counts.incrementAndGet(context.ord);
+          return super.scorerSupplier(context);
+        }
+
+        @Override
+        public boolean isCacheable(LeafReaderContext ctx) {
+          return false;
+        }
+      };
+    }
+
+    @Override
+    public String toString(String field) {
+      return "counting(" + in.toString(field) + ")";
+    }
+
+    @Override
+    public void visit(QueryVisitor visitor) {
+      in.visit(visitor);
+    }
+
+    @Override
+    public boolean equals(Object other) {
+      return sameClassAs(other) && in.equals(((CountingScorersQuery) other).in);
+    }
+
+    @Override
+    public int hashCode() {
+      return 31 * classHash() + in.hashCode();
     }
   }
 }
