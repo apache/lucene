@@ -449,8 +449,8 @@ Bug Fixes
 
 * GITHUB#16971: Fix double DocValuesStats extrema initialization. (Simranjeet Singh)
 
-* GITHUB#17006: IndexWriter#getDocStats and IndexWriter#hasDeletions now count soft deletes whose doc
-  values updates aren't written yet, for example after an auto flush or a merge. (Di Wu)
+* GITHUB#17006: IndexWriter#getDocStats and IndexWriter#hasDeletions now count soft deletes whose
+  doc values updates aren't written yet, for example after an auto flush or a merge. (Di Wu)
 
 Changes in Runtime Behavior
 ---------------------
