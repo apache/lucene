@@ -17,6 +17,8 @@
 package org.apache.lucene.queries.spans;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import org.apache.lucene.util.PriorityQueue;
@@ -48,17 +50,28 @@ public class NearSpansUnordered extends ConjunctionSpans {
     spanWindow.clear();
     totalSpanLength = 0;
     maxEndPosition = -1;
-    for (Spans spans : subSpans) {
-      assert spans.startPosition() == -1;
-      spans.nextStartPosition();
-      assert spans.startPosition() != NO_MORE_POSITIONS;
-      spanWindow.add(spans);
-      if (spans.endPosition() > maxEndPosition) {
-        maxEndPosition = spans.endPosition();
-      }
-      int spanLength = spans.endPosition() - spans.startPosition();
-      assert spanLength >= 0;
-      totalSpanLength += spanLength;
+    try {
+      spanWindow.addAll(
+          Arrays.stream(subSpans)
+              .map(
+                  spans -> {
+                    assert spans.startPosition() == -1;
+                    try {
+                      spans.nextStartPosition();
+                    } catch (IOException e) {
+                      throw new UncheckedIOException(e);
+                    }
+                    assert spans.startPosition() != NO_MORE_POSITIONS;
+                    if (spans.endPosition() > maxEndPosition) {
+                      maxEndPosition = spans.endPosition();
+                    }
+                    int spanLength = spans.endPosition() - spans.startPosition();
+                    assert spanLength >= 0;
+                    totalSpanLength += spanLength;
+                    return spans;
+                  }));
+    } catch (UncheckedIOException e) {
+      throw e.getCause();
     }
   }
 

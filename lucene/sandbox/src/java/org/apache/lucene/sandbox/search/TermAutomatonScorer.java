@@ -17,6 +17,7 @@
 package org.apache.lucene.sandbox.search;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Comparator;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.sandbox.search.TermAutomatonQuery.EnumAndScorer;
@@ -111,6 +112,7 @@ class TermAutomatonScorer extends Scorer {
 
   /** Pushes all previously pop'd enums back into the docIDQueue */
   private void pushCurrentDoc() {
+    // TODO: Since addAll need adjusts all heap, and pq may not empty here. we use add here.
     for (int i = 0; i < numSubsOnDoc; i++) {
       docIDQueue.add(subsOnDoc[i]);
     }
@@ -214,9 +216,9 @@ class TermAutomatonScorer extends Scorer {
 
   private void countMatches() throws IOException {
     freq = 0;
-    for (int i = 0; i < numSubsOnDoc; i++) {
-      posQueue.add(subsOnDoc[i]);
-    }
+    // posQueue is empty since we pop it until its size is 0 later.
+    assert posQueue.size() == 0;
+    posQueue.addAll(Arrays.stream(subsOnDoc, 0, numSubsOnDoc));
     // System.out.println("\ncountMatches: " + numSubsOnDoc + " terms in doc=" + docID + "
     // anyTermID=" + anyTermID + " id=" + reader.document(docID).get("id"));
     // System.out.println("\ncountMatches: " + numSubsOnDoc + " terms in doc=" + docID + "
