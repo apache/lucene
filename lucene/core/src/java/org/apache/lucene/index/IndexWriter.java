@@ -884,8 +884,9 @@ public class IndexWriter
   }
 
   /**
-   * Obtain the number of deleted docs for a pooled reader. If the reader isn't being pooled, the
-   * segmentInfo's delCount is returned.
+   * Obtain the number of deleted docs for a pooled reader, including soft deletes whose doc values
+   * updates are not written yet. If the reader isn't being pooled, the segmentInfo's delCount is
+   * returned.
    */
   @Override
   public int numDeletedDocs(SegmentCommitInfo info) {
@@ -893,7 +894,8 @@ public class IndexWriter
     validate(info);
     final ReadersAndUpdates rld = getPooledInstance(info, false);
     if (rld != null) {
-      return rld.getDelCount(); // get the full count from here since SCI might change concurrently
+      // get the full count from here since SCI might change concurrently
+      return rld.getDelCountWithUnwrittenSoftDeletes();
     } else {
       final int delCount = info.getDelCount(softDeletesEnabled);
       assert delCount <= info.info.maxDoc()
@@ -1452,7 +1454,8 @@ public class IndexWriter
       return true;
     }
     for (final SegmentCommitInfo info : segmentInfos) {
-      if (info.hasDeletions()) {
+      // a segment with only soft deletes has no live docs file
+      if (info.hasDeletions() || info.getSoftDelCount() > 0) {
         return true;
       }
     }
@@ -4537,15 +4540,6 @@ public class IndexWriter
           mergedDeletesAndUpdates.addDVUpdate(updates.value);
           anyDVUpdates = true;
         }
-      }
-      if (softDeletesEnabled && mappedDVUpdates.containsKey(config.getSoftDeletesField())) {
-        // Soft deletes only count toward the merged segment's delete count once their doc values
-        // are written, and the source segments already counted them, so write them now.
-        mergedDeletesAndUpdates.writeFieldUpdates(
-            directory,
-            globalFieldNumberMap,
-            bufferedUpdatesStream.getCompletedDelGen(),
-            infoStream);
       }
     }
 

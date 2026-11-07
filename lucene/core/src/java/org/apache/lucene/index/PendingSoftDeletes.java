@@ -19,6 +19,8 @@ package org.apache.lucene.index;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 import org.apache.lucene.codecs.FieldInfosFormat;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FieldExistsQuery;
@@ -164,6 +166,41 @@ final class PendingSoftDeletes extends PendingDeletes {
             + info.getDocValuesGen();
     assert dvGeneration != -2 : "docValues generation is still uninitialized";
     dvGeneration = info.getDocValuesGen();
+  }
+
+  @Override
+  int numUnwrittenSoftDeletes(Map<String, List<DocValuesFieldUpdates>> pendingDVUpdates) {
+    List<DocValuesFieldUpdates> updates = pendingDVUpdates.get(field);
+    if (updates == null
+        || updates.isEmpty()
+        || liveDocsInitialized == false
+        || hardDeletes.liveDocsInitialized == false) {
+      return 0;
+    }
+    DocValuesFieldUpdates.Iterator[] subs = new DocValuesFieldUpdates.Iterator[updates.size()];
+    for (int i = 0; i < subs.length; i++) {
+      subs[i] = updates.get(i).iterator();
+    }
+    // Like applySoftDeletes, but only counts: the merged iterator has the newest update of each doc
+    DocValuesFieldUpdates.Iterator iterator = DocValuesFieldUpdates.mergedIterator(subs);
+    if (iterator == null) {
+      return 0;
+    }
+    Bits liveDocs = peekLiveDocs();
+    Bits hardLiveDocs = hardDeletes.peekLiveDocs();
+    int count = 0;
+    int docID;
+    while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+      boolean live = liveDocs == null || liveDocs.get(docID);
+      if (iterator.hasValue()) {
+        if (live) {
+          count++;
+        }
+      } else if (live == false && (hardLiveDocs == null || hardLiveDocs.get(docID))) {
+        count--;
+      }
+    }
+    return count;
   }
 
   private boolean assertPendingDeletes() {

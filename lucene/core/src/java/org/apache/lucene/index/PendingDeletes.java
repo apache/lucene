@@ -18,6 +18,8 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -109,6 +111,22 @@ class PendingDeletes {
     // Prevent modifications to the returned live docs
     writableLiveDocs = null;
     return liveDocs;
+  }
+
+  /**
+   * Returns the current live docs. Unlike {@link #getLiveDocs()}, this doesn't take a snapshot, so
+   * the caller must not keep the returned bits.
+   */
+  final Bits peekLiveDocs() {
+    return liveDocs;
+  }
+
+  /**
+   * Returns the number of documents that the given resolved but not yet written doc values updates
+   * soft delete, minus the number they undelete.
+   */
+  int numUnwrittenSoftDeletes(Map<String, List<DocValuesFieldUpdates>> pendingDVUpdates) {
+    return 0;
   }
 
   /** Returns a snapshot of the hard live docs. */

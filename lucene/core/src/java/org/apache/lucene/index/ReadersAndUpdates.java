@@ -134,6 +134,15 @@ final class ReadersAndUpdates {
     return pendingDeletes.getDelCount();
   }
 
+  /**
+   * Like {@link #getDelCount()}, but also counts soft deletes whose doc values updates are resolved
+   * but not written yet. {@link #getDelCount()} only counts a soft delete once its update is
+   * written, because it must match the live docs that readers of this segment see.
+   */
+  synchronized int getDelCountWithUnwrittenSoftDeletes() {
+    return pendingDeletes.getDelCount() + pendingDeletes.numUnwrittenSoftDeletes(pendingDVUpdates);
+  }
+
   private synchronized boolean assertNoDupGen(
       List<DocValuesFieldUpdates> fieldUpdates, DocValuesFieldUpdates update) {
     for (int i = 0; i < fieldUpdates.size(); i++) {

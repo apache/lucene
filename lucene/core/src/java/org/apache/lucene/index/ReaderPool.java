@@ -155,7 +155,7 @@ final class ReaderPool implements Closeable {
    */
   synchronized boolean anyDeletions() {
     for (ReadersAndUpdates rld : readerMap.values()) {
-      if (rld.getDelCount() > 0) {
+      if (rld.getDelCount() > 0 || rld.getDelCountWithUnwrittenSoftDeletes() > 0) {
         return true;
       }
     }
