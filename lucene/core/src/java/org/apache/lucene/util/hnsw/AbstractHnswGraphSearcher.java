@@ -18,7 +18,6 @@ package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
 import org.apache.lucene.search.KnnCollector;
-import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 
 /**
@@ -86,7 +85,7 @@ abstract class AbstractHnswGraphSearcher {
   protected static void scoreEntryPoints(
       KnnCollector results,
       RandomVectorScorer scorer,
-      BitSet visited,
+      VisitedSet visited,
       int[] eps,
       Bits acceptOrds,
       NeighborQueue candidates,
