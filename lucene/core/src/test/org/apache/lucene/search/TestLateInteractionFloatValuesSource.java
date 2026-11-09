@@ -35,6 +35,7 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.TestVectorUtil;
+import org.apache.lucene.util.VectorUtil;
 
 public class TestLateInteractionFloatValuesSource extends LuceneTestCase {
 
@@ -147,6 +148,117 @@ public class TestLateInteractionFloatValuesSource extends LuceneTestCase {
         LateInteractionFloatValuesSource.ScoreFunction.SUM_MAX_SIM.compare(
             queryVector, docVector, VectorSimilarityFunction.COSINE);
     assertEquals(queryVector.length, score, 1e-5);
+  }
+
+  public void testSumMaxSimEuclideanFollowsMaxSimOrder() {
+    // Best squared distances per query token: (0, 2) for docA, (0.9, 0.9) for docB. MaxSim prefers
+    // docB (1.8 < 2.0), while summing per-token 1 / (1 + d^2) would prefer docA (1.333 > 1.053).
+    float[][] queryVector = {{1, 0, 0}, {0, 1, 0}};
+    float[][] docA = {{1, 0, 0}};
+    float[][] docB = {{0.55f, 0.55f, (float) Math.sqrt(1 - 2 * 0.55 * 0.55)}};
+    float scoreA = sumMaxSim(queryVector, docA, VectorSimilarityFunction.EUCLIDEAN);
+    float scoreB = sumMaxSim(queryVector, docB, VectorSimilarityFunction.EUCLIDEAN);
+    // n / (1 + sum / n)
+    assertEquals(2 / (1 + 2f / 2), scoreA, 1e-5);
+    assertEquals(2 / (1 + 1.8f / 2), scoreB, 1e-5);
+    assertTrue(scoreB > scoreA);
+  }
+
+  public void testSumMaxSimMaxInnerProductFollowsMaxSimOrder() {
+    // Best dot products per query token: (0.9, -0.6) for docA, (0.2, 0.2) for docB. MaxSim prefers
+    // docB (0.4 > 0.3), while summing per-token scaled scores would prefer docA (2.525 > 2.4).
+    float[][] queryVector = {{1, 0}, {0, 1}};
+    float[][] docA = {{0.9f, -0.6f}};
+    float[][] docB = {{0.2f, 0.2f}};
+    float scoreA = sumMaxSim(queryVector, docA, VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT);
+    float scoreB = sumMaxSim(queryVector, docB, VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT);
+    // n * scaleMaxInnerProductScore(sum / n)
+    assertEquals(2 * (1 + 0.3f / 2), scoreA, 1e-5);
+    assertEquals(2 * (1 + 0.4f / 2), scoreB, 1e-5);
+    assertTrue(scoreB > scoreA);
+
+    // a negative MaxSim still yields a positive score
+    float[][] docC = {{-0.5f, -0.3f}};
+    assertEquals(
+        2 / (1 + 0.8f / 2),
+        sumMaxSim(queryVector, docC, VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT),
+        1e-5);
+  }
+
+  public void testSumMaxSimSingleQueryTokenMatchesVectorSimilarity() {
+    for (VectorSimilarityFunction function : VectorSimilarityFunction.values()) {
+      float[] q = TestVectorUtil.randomVector(DIMENSION);
+      float[][] docVector = createMultiVector();
+      float expected = Float.NEGATIVE_INFINITY;
+      for (float[] d : docVector) {
+        expected = Math.max(expected, function.compare(q, d));
+      }
+      assertEquals(
+          function.toString(), expected, sumMaxSim(new float[][] {q}, docVector, function), 1e-5);
+    }
+  }
+
+  public void testSumMaxSimRanksByRawMaxSim() {
+    for (VectorSimilarityFunction function : VectorSimilarityFunction.values()) {
+      // signed components, so that per-token maxima can be negative; unit length for DOT_PRODUCT
+      boolean normalize = function == VectorSimilarityFunction.DOT_PRODUCT;
+      float[][] queryVector = createSignedMultiVector(normalize);
+      for (int iter = 0; iter < 100; iter++) {
+        float[][] docA = createSignedMultiVector(normalize);
+        float[][] docB = createSignedMultiVector(normalize);
+        double rawA = rawMaxSim(queryVector, docA, function);
+        double rawB = rawMaxSim(queryVector, docB, function);
+        if (Math.abs(rawA - rawB) < 1e-3) {
+          continue;
+        }
+        float scoreA = sumMaxSim(queryVector, docA, function);
+        float scoreB = sumMaxSim(queryVector, docB, function);
+        assertEquals(
+            function + " raw=" + rawA + "," + rawB + " score=" + scoreA + "," + scoreB,
+            rawA > rawB,
+            scoreA > scoreB);
+      }
+    }
+  }
+
+  private static float sumMaxSim(
+      float[][] queryVector, float[][] docVector, VectorSimilarityFunction function) {
+    return LateInteractionFloatValuesSource.ScoreFunction.SUM_MAX_SIM.compare(
+        queryVector, docVector, function);
+  }
+
+  /** Sum over query tokens of the best raw similarity; squared distance is negated. */
+  private static double rawMaxSim(
+      float[][] queryVector, float[][] docVector, VectorSimilarityFunction function) {
+    double sum = 0;
+    for (float[] q : queryVector) {
+      double best = Double.NEGATIVE_INFINITY;
+      for (float[] d : docVector) {
+        double raw =
+            switch (function) {
+              case EUCLIDEAN -> -VectorUtil.squareDistance(q, d);
+              case DOT_PRODUCT, MAXIMUM_INNER_PRODUCT -> VectorUtil.dotProduct(q, d);
+              case COSINE -> VectorUtil.cosine(q, d);
+            };
+        best = Math.max(best, raw);
+      }
+      sum += best;
+    }
+    return sum;
+  }
+
+  private float[][] createSignedMultiVector(boolean normalize) {
+    float[][] value = new float[random().nextInt(2, 5)][];
+    for (int i = 0; i < value.length; i++) {
+      value[i] = new float[DIMENSION];
+      for (int j = 0; j < DIMENSION; j++) {
+        value[i][j] = random().nextFloat() * 2 - 1;
+      }
+      if (normalize) {
+        VectorUtil.l2normalize(value[i]);
+      }
+    }
+    return value;
   }
 
   private float[][] createMultiVector() {
