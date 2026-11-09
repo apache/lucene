@@ -285,6 +285,101 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
     return v;
   }
 
+  /** Reads the stored centroid of the single merged segment for {@code fieldName}. */
+  private float[] mergedCentroid(IndexReader reader, String fieldName) throws IOException {
+    LeafReader leaf = getOnlyLeafReader(reader);
+    FloatVectorValues vectorValues = leaf.getFloatVectorValues(fieldName);
+    return ((Lucene104ScalarQuantizedVectorsReader.ScalarQuantizedVectorValues) vectorValues)
+        .getQuantizedVectorValues()
+        .getCentroid();
+  }
+
+  /**
+   * The mean of the live vectors in the single merged segment, l2-normalized for COSINE. This
+   * mirrors how the writer recomputes the centroid, so it is the expected stored centroid.
+   */
+  private float[] meanOfLiveVectors(
+      IndexReader reader, String fieldName, int dims, VectorSimilarityFunction similarityFunction)
+      throws IOException {
+    LeafReader leaf = getOnlyLeafReader(reader);
+    FloatVectorValues vectorValues = leaf.getFloatVectorValues(fieldName);
+    float[] sum = new float[dims];
+    int count = 0;
+    KnnVectorValues.DocIndexIterator iterator = vectorValues.iterator();
+    for (int doc = iterator.nextDoc(); doc != NO_MORE_DOCS; doc = iterator.nextDoc()) {
+      float[] vector = vectorValues.vectorValue(iterator.index());
+      for (int j = 0; j < dims; j++) {
+        sum[j] += vector[j];
+      }
+      count++;
+    }
+    for (int j = 0; j < dims; j++) {
+      sum[j] /= count;
+    }
+    if (similarityFunction == VectorSimilarityFunction.COSINE) {
+      VectorUtil.l2normalize(sum);
+    }
+    return sum;
+  }
+
+  private static void assertCentroidsClose(float[] expected, float[] actual) {
+    assertEquals(expected.length, actual.length);
+    for (int j = 0; j < expected.length; j++) {
+      assertEquals(
+          "centroid component " + j,
+          expected[j],
+          actual[j],
+          Math.max(2e-3f, 2e-3f * Math.abs(expected[j])));
+    }
+  }
+
+  /**
+   * Property test for the merge centroid. For every similarity (so the COSINE recalculation gate is
+   * always exercised) and both below and above the 50%-deleted guardrail, the stored merged
+   * centroid must equal the mean of the live vectors.
+   */
+  public void testMergeCentroidEqualsMeanOfLiveVectors() throws IOException {
+    String fieldName = "field";
+    for (VectorSimilarityFunction sim : VectorSimilarityFunction.values()) {
+      for (double deleteProb : new double[] {0.1, 0.7}) { // below and above the guardrail
+        int dims = random().nextInt(4, 33);
+        int numDocs = random().nextInt(60, 200);
+        int commitEvery = Math.max(1, numDocs / random().nextInt(2, 5));
+        try (Directory dir = newDirectory()) {
+          List<String> toDelete = new ArrayList<>();
+          try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+            for (int i = 0; i < numDocs; i++) {
+              String id = "d" + i;
+              Document doc = new Document();
+              doc.add(new StringField("id", id, Field.Store.NO));
+              doc.add(new KnnFloatVectorField(fieldName, randomNormalizedVector(dims), sim));
+              w.addDocument(doc);
+              // Keep the first doc so at least one live vector always remains.
+              if (i != 0 && random().nextDouble() < deleteProb) {
+                toDelete.add(id);
+              }
+              if ((i + 1) % commitEvery == 0) {
+                w.commit();
+              }
+            }
+            w.commit();
+            for (String id : toDelete) {
+              w.deleteDocuments(new Term("id", id));
+            }
+            w.commit();
+            w.forceMerge(1);
+          }
+          try (IndexReader reader = DirectoryReader.open(dir)) {
+            assertEquals(1, reader.leaves().size());
+            float[] actual = mergedCentroid(reader, fieldName);
+            float[] expected = meanOfLiveVectors(reader, fieldName, dims, sim);
+            assertCentroidsClose(expected, actual);
+          }
+        }
+      }
+    }
+  }
+
   public void testQuantizedVectorsWriteAndRead() throws IOException {
     String fieldName = "field";
     int numVectors = random().nextInt(99, 500);
