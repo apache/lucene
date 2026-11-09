@@ -279,7 +279,6 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
     IOContext context = state.context.union(FileTypeHint.DATA, FileDataHint.KNN_VECTORS);
 
     IndexInput in = null;
-    boolean success = false;
     try {
       in = state.directory.openInput(fileName, context);
       int versionVectorData =
@@ -301,12 +300,10 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
             in);
       }
       CodecUtil.retrieveChecksum(in);
-      success = true;
       return in;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(in);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, in);
+      throw t;
     }
   }
 
