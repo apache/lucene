@@ -4616,12 +4616,10 @@ public class IndexWriter
           for (DocValuesFieldUpdates u : residual) {
             minResidual = Math.min(minResidual, u.delGen);
           }
-          // The carried-over on-disk value reflects every update already applied to the merged
-          // segments. Its delGen must sit below the smallest residual (still-buffered) update so a
-          // newer residual wins, but it must not sit at or below an update that completed before the
-          // merge: that older update is already folded into the on-disk value, and giving the disk
-          // value a delGen <= it would let the older update overwrite the newer merged value (and a
-          // tie trips assertNoDupGen). Clamp to the completed delGen so both bounds hold.
+          // The carried-over on-disk value already folds in every update applied before the
+          // merge, so its delGen must order below both the smallest still-buffered update and the
+          // last completed one. Otherwise an older update could overwrite it (and a tie trips
+          // assertNoDupGen). Clamp to the lower of the two.
           final long diskDelGen =
               minResidual != Long.MAX_VALUE
                   ? Math.min(minResidual - 1, bufferedUpdatesStream.getCompletedDelGen())

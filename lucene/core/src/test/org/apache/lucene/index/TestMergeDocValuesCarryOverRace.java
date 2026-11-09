@@ -35,7 +35,7 @@ import org.apache.lucene.util.InfoStream;
 
 public class TestMergeDocValuesCarryOverRace extends LuceneTestCase {
 
-  public void testLostUpdate() throws Exception {
+  public void testLatestUpdateSurvivesConcurrentMerge() throws Exception {
     CountDownLatch mergeWarming = new CountDownLatch(1);
     CountDownLatch releaseMerge = new CountDownLatch(1);
     CountDownLatch packetApplied = new CountDownLatch(1);
@@ -45,7 +45,8 @@ public class TestMergeDocValuesCarryOverRace extends LuceneTestCase {
     IndexWriterConfig iwc =
         new IndexWriterConfig()
             .setCodec(TestUtil.getDefaultCodec())
-            // The bug lives on the on-disk carry-over path, which runs only when maxDocValuesOverlays > 0.
+            // With overlays enabled, updates resolved during a merge are carried over from the
+            // on-disk columns, the path this test exercises.
             .setMaxDocValuesOverlays(16)
             .setMergeScheduler(
                 new MergeScheduler() {
@@ -58,7 +59,7 @@ public class TestMergeDocValuesCarryOverRace extends LuceneTestCase {
                   public void close() {}
                 })
             .setMergedSegmentWarmer(
-                reader -> {
+                _ -> {
                   mergeWarming.countDown();
                   await(releaseMerge);
                 })
@@ -115,7 +116,7 @@ public class TestMergeDocValuesCarryOverRace extends LuceneTestCase {
             new IndexSearcher(r).search(new TermQuery(new Term("key", "k0")), 1).scoreDocs[0].doc;
         NumericDocValues n = MultiDocValues.getNumericValues(r, "n");
         assertTrue(n.advanceExact(doc));
-        // expected: the last update of the k0 doc (n=2) survives the merge; actual: the older n=1
+        // The last acknowledged update to k0 (n=2) must survive the merge.
         assertEquals(2, n.longValue());
       }
     }
