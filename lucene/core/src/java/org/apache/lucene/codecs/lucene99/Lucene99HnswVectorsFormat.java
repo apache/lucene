@@ -276,9 +276,6 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
       int tinySegmentsThreshold,
       int writeVersion) {
     super("Lucene99HnswVectorsFormat");
-    if (writeVersion < VERSION_START || writeVersion > VERSION_CURRENT) {
-      throw new IllegalArgumentException("Invalid writeVersion: " + writeVersion);
-    }
     if (maxConn <= 0 || maxConn > MAXIMUM_MAX_CONN) {
       throw new IllegalArgumentException(
           "maxConn must be positive and less than or equal to "

@@ -328,8 +328,6 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     List<int[]> nodesByLevel = new ArrayList<>(graph.numLevels());
     nodesByLevel.add(null);
 
-    level0DegreeSum = 0;
-    level0NodeCount = 0;
     int maxOrd = graph.size();
     int[] scratch = new int[graph.maxConn() * 2];
     NodesIterator nodesOnLevel0 = graph.getNodesOnLevel(0);
