@@ -664,7 +664,7 @@ public final class CheckIndex implements Closeable {
           long genB = SegmentInfos.generationFromSegmentsFileName(b);
 
           // reversed natural sort (largest generation first):
-          return -Long.compare(genA, genB);
+          return Long.compare(genB, genA);
         });
 
     for (String fileName : allSegmentsFiles) {

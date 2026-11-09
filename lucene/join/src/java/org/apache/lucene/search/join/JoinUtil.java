@@ -153,64 +153,60 @@ public final class JoinUtil {
     LongObjectHashMap<ScoreCell> aggregatedScores = new LongObjectHashMap<>();
     LongIntHashMap occurrences = new LongIntHashMap();
     boolean needsScore = scoreMode != ScoreMode.None;
-    LongFloatProcedure scoreAggregator;
-    if (scoreMode == ScoreMode.Max) {
-      scoreAggregator =
-          (key, score) -> {
-            int index = aggregatedScores.indexOf(key);
-            if (index < 0) {
-              ScoreCell cell = new ScoreCell();
-              cell.value = score;
-              aggregatedScores.indexInsert(index, key, cell);
-            } else {
-              ScoreCell cell = aggregatedScores.indexGet(index);
-              cell.value = Math.max(cell.value, score);
-            }
-          };
-    } else if (scoreMode == ScoreMode.Min) {
-      scoreAggregator =
-          (key, score) -> {
-            int index = aggregatedScores.indexOf(key);
-            if (index < 0) {
-              ScoreCell cell = new ScoreCell();
-              cell.value = score;
-              aggregatedScores.indexInsert(index, key, cell);
-            } else {
-              ScoreCell cell = aggregatedScores.indexGet(index);
-              cell.value = Math.min(cell.value, score);
-            }
-          };
-    } else if (scoreMode == ScoreMode.Total) {
-      scoreAggregator =
-          (key, score) -> {
-            int index = aggregatedScores.indexOf(key);
-            if (index < 0) {
-              ScoreCell cell = new ScoreCell();
-              cell.value = score;
-              aggregatedScores.indexInsert(index, key, cell);
-            } else {
-              aggregatedScores.indexGet(index).value += score;
-            }
-          };
-    } else if (scoreMode == ScoreMode.Avg) {
-      scoreAggregator =
-          (key, score) -> {
-            int index = aggregatedScores.indexOf(key);
-            if (index < 0) {
-              ScoreCell cell = new ScoreCell();
-              cell.value = score;
-              aggregatedScores.indexInsert(index, key, cell);
-            } else {
-              aggregatedScores.indexGet(index).value += score;
-            }
-            occurrences.addTo(key, 1);
-          };
-    } else {
-      scoreAggregator =
-          (_, _) -> {
-            throw new UnsupportedOperationException();
-          };
-    }
+    LongFloatProcedure scoreAggregator =
+        switch (scoreMode) {
+          case Max ->
+              (key, score) -> {
+                int index = aggregatedScores.indexOf(key);
+                if (index < 0) {
+                  ScoreCell cell = new ScoreCell();
+                  cell.value = score;
+                  aggregatedScores.indexInsert(index, key, cell);
+                } else {
+                  ScoreCell cell = aggregatedScores.indexGet(index);
+                  cell.value = Math.max(cell.value, score);
+                }
+              };
+          case Min ->
+              (key, score) -> {
+                int index = aggregatedScores.indexOf(key);
+                if (index < 0) {
+                  ScoreCell cell = new ScoreCell();
+                  cell.value = score;
+                  aggregatedScores.indexInsert(index, key, cell);
+                } else {
+                  ScoreCell cell = aggregatedScores.indexGet(index);
+                  cell.value = Math.min(cell.value, score);
+                }
+              };
+          case Total ->
+              (key, score) -> {
+                int index = aggregatedScores.indexOf(key);
+                if (index < 0) {
+                  ScoreCell cell = new ScoreCell();
+                  cell.value = score;
+                  aggregatedScores.indexInsert(index, key, cell);
+                } else {
+                  aggregatedScores.indexGet(index).value += score;
+                }
+              };
+          case Avg ->
+              (key, score) -> {
+                int index = aggregatedScores.indexOf(key);
+                if (index < 0) {
+                  ScoreCell cell = new ScoreCell();
+                  cell.value = score;
+                  aggregatedScores.indexInsert(index, key, cell);
+                } else {
+                  aggregatedScores.indexGet(index).value += score;
+                }
+                occurrences.addTo(key, 1);
+              };
+          case None ->
+              (_, _) -> {
+                throw new UnsupportedOperationException();
+              };
+        };
 
     LongFloatFunction joinScorer;
     if (scoreMode == ScoreMode.Avg) {
