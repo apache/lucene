@@ -29,12 +29,15 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
+import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.document.TextField;
 import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
@@ -691,6 +694,58 @@ public class TestSoftDeletesRetentionMergePolicy extends LuceneTestCase {
     writer.commit();
     SegmentCommitInfo si = writer.cloneSegmentInfos().info(0);
     assertEquals(0, si.getSoftDelCount());
+    assertEquals(1, si.getDelCount());
+    IOUtils.close(writer, dir);
+  }
+
+  public void testTryUndeleteRejectedDocument() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig config =
+        newIndexWriterConfig()
+            .setSoftDeletesField("soft_delete")
+            .setMaxBufferedDocs(10)
+            .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
+            .setMergePolicy(NoMergePolicy.INSTANCE);
+    IndexWriter writer = new IndexWriter(dir, config);
+    // a document that fails indexing is hard deleted
+    Document rejected = new Document();
+    rejected.add(new StringField("id", "0", Field.Store.YES));
+    rejected.add(
+        new Field(
+            "body",
+            new TokenStream() {
+              {
+                addAttribute(CharTermAttribute.class);
+              }
+
+              @Override
+              public boolean incrementToken() {
+                throw new IllegalStateException("rejected");
+              }
+            },
+            TextField.TYPE_NOT_STORED));
+    expectThrows(IllegalStateException.class, () -> writer.addDocument(rejected));
+    Document d = new Document();
+    d.add(new StringField("id", "1", Field.Store.YES));
+    writer.addDocument(d);
+    // another soft deleted doc, so undeleting the rejected doc wouldn't make the count negative
+    d = new Document();
+    d.add(new StringField("id", "2", Field.Store.YES));
+    d.add(new NumericDocValuesField("soft_delete", 1));
+    writer.addDocument(d);
+    try (DirectoryReader reader = DirectoryReader.open(writer)) {
+      assertEquals(3, reader.maxDoc());
+      assertEquals(1, reader.numDocs());
+      assertTrue(
+          writer.tryUpdateDocValue(reader, 0, new NumericDocValuesField("soft_delete", null)) > 0);
+    }
+    try (DirectoryReader reader = DirectoryReader.open(writer)) {
+      assertEquals(3, reader.maxDoc());
+      assertEquals(1, reader.numDocs());
+    }
+    writer.commit();
+    SegmentCommitInfo si = writer.cloneSegmentInfos().info(0);
+    assertEquals(1, si.getSoftDelCount());
     assertEquals(1, si.getDelCount());
     IOUtils.close(writer, dir);
   }
