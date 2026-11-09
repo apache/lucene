@@ -133,10 +133,9 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
           FilteredHnswGraphSearcher.create(knnCollector.k(), graph, filteredDocCount, acceptOrds);
     } else {
       int n = getGraphSize(graph);
-      int m = graph.maxConn();
       int expectedVisit =
           hnswStrategy.expectedVisitedNodes(
-              knnCollector.k(), n, (float) (filteredDocCount / (double) n), m, graph.avgDegree());
+              knnCollector.k(), n, (float) (filteredDocCount / (double) n), graph.avgDegree());
       innerSearcher =
           new HnswGraphSearcher(
               new NeighborQueue(knnCollector.k(), true), createBitSet(expectedVisit, n));

@@ -399,7 +399,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     }
     double expectedHnswCost =
         strat.expectedVisitedNodes(
-            docIdCollector.k(), graphSize, selectivity, fieldEntry.M, fieldEntry.avgDegree);
+            docIdCollector.k(), graphSize, selectivity, fieldEntry.avgDegree);
     if (expectedHnswCost >= filteredDocCount) {
       scanAllDocs(docIdCollector, acceptDocs, sequentialScorerSupplier, scorerSupplier, numVectors);
     } else {

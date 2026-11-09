@@ -99,11 +99,10 @@ public abstract class KnnSearchStrategy {
     }
 
     @Override
-    public int expectedVisitedNodes(
-        int k, int graphSize, float selectivity, int m, float avgDegree) {
+    public int expectedVisitedNodes(int k, int graphSize, float selectivity, float avgDegree) {
       if (useFilteredSearch(selectivity)) {
         // TODO: Account for selectivity in ACORN-1
-        return super.expectedVisitedNodes(k, graphSize, selectivity, m, avgDegree);
+        return super.expectedVisitedNodes(k, graphSize, selectivity, avgDegree);
       }
 
       // Newer segments store their avg node degree, but for older segments choose 16 to preserve
@@ -117,12 +116,12 @@ public abstract class KnnSearchStrategy {
 
       double localUniverse = Math.min(graphSize, expectedDegree * k / s);
       double baseCost = expectedDegree * logN; // Unfiltered k=1 cost.
-      double filteredCostEstimate = .28 * Math.pow(k / s, .71) * expectedDegree * logN;
+      double filteredExplorationEstimate = .28 * Math.pow(k / s, .71) * expectedDegree * logN;
 
       return (int)
           Math.max(
               requiredScores,
-              descent + Math.max(baseCost, squash(localUniverse, filteredCostEstimate)));
+              descent + Math.max(baseCost, squash(localUniverse, filteredExplorationEstimate)));
     }
 
     /**
