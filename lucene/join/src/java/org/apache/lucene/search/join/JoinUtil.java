@@ -143,61 +143,62 @@ public final class JoinUtil {
     ConcurrentHashMap<Long, ScoreCell> aggregatedScores = new ConcurrentHashMap<>();
     ConcurrentHashMap<Long, Integer> occurrences = new ConcurrentHashMap<>();
     boolean needsScore = scoreMode != ScoreMode.None;
-    LongFloatProcedure scoreAggregator = switch (scoreMode) {
-      case Max ->
-          (key, score) ->
-              aggregatedScores.compute(
-                  key,
-                  (_, cell) -> {
-                    if (cell == null) {
-                      return new ScoreCell(score);
-                    } else {
-                      cell.value = Math.max(cell.value, score);
-                      return cell;
-                    }
-                  });
-      case Min ->
-          (key, score) ->
-              aggregatedScores.compute(
-                  key,
-                  (_, cell) -> {
-                    if (cell == null) {
-                      return new ScoreCell(score);
-                    } else {
-                      cell.value = Math.min(cell.value, score);
-                      return cell;
-                    }
-                  });
-      case Total ->
-          (key, score) ->
-              aggregatedScores.compute(
-                  key,
-                  (_, cell) -> {
-                    if (cell == null) {
-                      return new ScoreCell(score);
-                    } else {
-                      cell.value += score;
-                      return cell;
-                    }
-                  });
-      case Avg ->
-          (key, score) ->
-              aggregatedScores.compute(
-                  key,
-                  (k, cell) -> {
-                    if (cell == null) {
-                      cell = new ScoreCell(score);
-                    } else {
-                      cell.value += score;
-                    }
-                    occurrences.merge(k, 1, (a, b) -> a + b);
-                    return cell;
-                  });
-      case None ->
-          (_, _) -> {
-              throw new UnsupportedOperationException();
-          };
-    };
+    LongFloatProcedure scoreAggregator =
+        switch (scoreMode) {
+          case Max ->
+              (key, score) ->
+                  aggregatedScores.compute(
+                      key,
+                      (_, cell) -> {
+                        if (cell == null) {
+                          return new ScoreCell(score);
+                        } else {
+                          cell.value = Math.max(cell.value, score);
+                          return cell;
+                        }
+                      });
+          case Min ->
+              (key, score) ->
+                  aggregatedScores.compute(
+                      key,
+                      (_, cell) -> {
+                        if (cell == null) {
+                          return new ScoreCell(score);
+                        } else {
+                          cell.value = Math.min(cell.value, score);
+                          return cell;
+                        }
+                      });
+          case Total ->
+              (key, score) ->
+                  aggregatedScores.compute(
+                      key,
+                      (_, cell) -> {
+                        if (cell == null) {
+                          return new ScoreCell(score);
+                        } else {
+                          cell.value += score;
+                          return cell;
+                        }
+                      });
+          case Avg ->
+              (key, score) ->
+                  aggregatedScores.compute(
+                      key,
+                      (k, cell) -> {
+                        if (cell == null) {
+                          cell = new ScoreCell(score);
+                        } else {
+                          cell.value += score;
+                        }
+                        occurrences.merge(k, 1, (a, b) -> a + b);
+                        return cell;
+                      });
+          case None ->
+              (_, _) -> {
+                throw new UnsupportedOperationException();
+              };
+        };
 
     LongFloatFunction joinScorer;
     if (scoreMode == ScoreMode.Avg) {
