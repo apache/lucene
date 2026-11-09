@@ -703,6 +703,7 @@ public abstract sealed class LuceneTestCaseParent extends Assert
               // truncate it
               term.length = random.nextInt(term.length);
             }
+            tests.add(term);
           }
           case 2 -> {
             // term, but ensure a non-zero offset
