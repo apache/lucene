@@ -158,7 +158,7 @@ public class PriorityQueue<T> implements Iterable<T> {
    * {@link #updateTop(Object)} with remaining elements, it should skip(continue) consumed elements
    * with the delta size of queue.
    */
-  public void addAll(Collection<T> elements) {
+  public void addAll(Collection<? extends T> elements) {
     // Heap with size S always takes first S elements of the array,
     // and thus it's safe to fill array further - no actual non-sentinel value will be overwritten.
     try {
@@ -189,7 +189,7 @@ public class PriorityQueue<T> implements Iterable<T> {
    * {@link #updateTop(Object)} with remaining elements, it should use a new stream, and use {@link
    * Stream#skip(long)} to skip consumed elements with the delta size of queue.
    */
-  public void addAll(Stream<T> elements) {
+  public void addAll(Stream<? extends T> elements) {
     // Heap with size S always takes first S elements of the array,
     // and thus it's safe to fill array further - no actual non-sentinel value will be overwritten.
     try {

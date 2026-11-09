@@ -18,6 +18,7 @@ package org.apache.lucene.index;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
+import java.util.Arrays;
 import java.util.Comparator;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.Accountable;
@@ -166,11 +167,7 @@ abstract class DocValuesFieldUpdates implements Accountable {
             subs.length,
             Comparator.comparingInt(Iterator::docID)
                 .thenComparing(Comparator.comparingLong(Iterator::delGen).reversed()));
-    for (Iterator sub : subs) {
-      if (sub.nextDoc() != NO_MORE_DOCS) {
-        queue.add(sub);
-      }
-    }
+    queue.addAll(Arrays.stream(subs).filter(sub -> sub.nextDoc() != NO_MORE_DOCS));
 
     if (queue.size() == 0) {
       return null;

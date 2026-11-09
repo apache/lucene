@@ -18,6 +18,7 @@
 package org.apache.lucene.queries.intervals;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -27,6 +28,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -202,9 +204,20 @@ class DisjunctionIntervalsSource extends IntervalsSource {
 
     private void reset() throws IOException {
       intervalQueue.clear();
-      for (DisiWrapper dw = disiQueue.topList(); dw != null; dw = dw.next) {
-        dw.intervals.nextInterval();
-        intervalQueue.add(dw.intervals);
+      try {
+        intervalQueue.addAll(
+            Stream.iterate(disiQueue.topList(), Objects::nonNull, dw -> dw.next)
+                .map(
+                    dw -> {
+                      try {
+                        dw.intervals.nextInterval();
+                        return dw.intervals;
+                      } catch (IOException e) {
+                        throw new UncheckedIOException(e);
+                      }
+                    }));
+      } catch (UncheckedIOException e) {
+        throw e.getCause();
       }
       current = EMPTY;
     }
