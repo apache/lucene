@@ -36,7 +36,6 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
-import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.MultiTermQuery;
 import org.apache.lucene.search.Query;
@@ -98,9 +97,17 @@ public abstract class NegativeDisjunctPresearcherTestBase extends PresearcherTes
     assertRunAndMatched(1, 1, run("*:* -f:t", doc("g", "y")));
   }
 
-  /** Wraps {@code query} so that the Monitor's QueryDecomposer leaves it whole */
-  static Query undecomposed(String query) {
-    return new ConstantScoreQuery(parse(query));
+  /** A Monitor that indexes each query whole, without splitting its disjunctions */
+  Monitor newMonitorWithoutDecomposition() throws IOException {
+    QueryDecomposer whole =
+        new QueryDecomposer() {
+          @Override
+          public Set<Query> decompose(Query q) {
+            return Set.of(q);
+          }
+        };
+    return new Monitor(
+        WHITESPACE, createPresearcher(), new MonitorConfiguration().setQueryDecomposer(whole));
   }
 
   public void testNegatedConjunctionNeedsTwoNegativeDisjuncts() throws IOException {
@@ -155,16 +162,16 @@ public abstract class NegativeDisjunctPresearcherTestBase extends PresearcherTes
 
   public void testFieldsNamedLikeNegativeDisjunctFieldsAreSafe() throws IOException {
     // A user field named like a negative disjunct field of x must not let the document's x:t
-    // exclude the
-    // query; the helper query lets x:t pass the term filter
+    // exclude the query. The target needs its positive term and a negative disjunct in one pass,
+    // so it isn't decomposed; the helper query lets x:t pass the term filter.
     for (String field :
         new String[] {
           TermFilteredPresearcher.negativeDisjunctField("x", 0),
           TermFilteredPresearcher.negativeDisjunctField("x_0", 0)
         }) {
-      try (Monitor monitor = newMonitor()) {
+      try (Monitor monitor = newMonitorWithoutDecomposition()) {
         monitor.register(
-            new MonitorQuery("target", undecomposed(field + ":t (*:* -y:z)")),
+            new MonitorQuery("target", parse(field + ":t (*:* -y:z)")),
             new MonitorQuery("helper", parse("*:* -x:t")));
         MatchingQueries<QueryMatch> matches =
             monitor.match(doc("x", "t"), QueryMatch.SIMPLE_MATCHER);
@@ -212,17 +219,13 @@ public abstract class NegativeDisjunctPresearcherTestBase extends PresearcherTes
       writer.addDocument(presearcher.indexQuery(parse("*:* -f:t"), Map.of()));
       writer.addDocument(presearcher.indexQuery(parse("+g:x -f:u -h:v"), Map.of()));
     }
-    StringBuilder text = new StringBuilder("t");
-    for (int i = 0; i < 1000; i++) {
-      text.append(" w").append(i);
-    }
-    Document doc = doc("f", text.toString(), "g", "x y", "h", "w1");
+    Document doc = doc("f", "t w1 w2", "g", "x y", "h", "w1");
     try (DirectoryReader reader = DirectoryReader.open(dir);
         DocumentBatch batch = DocumentBatch.of(WHITESPACE, doc)) {
       Query documentQuery =
           presearcher.buildQuery(batch.get(), new QueryIndex.QueryTermFilter(reader));
-      // Of the document's 1,000+ terms, only f:t is negated by a query: u and v are not in the
-      // document, and no query negates the others
+      // Of the document's terms, only f:t is negated by a query: u and v are not in the document,
+      // and no query negates the others
       Map<String, Set<String>> negated = negatedDocumentTerms(documentQuery);
       assertFalse(negated.toString(), negated.isEmpty());
       for (Map.Entry<String, Set<String>> e : negated.entrySet()) {
