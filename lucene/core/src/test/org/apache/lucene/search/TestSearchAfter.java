@@ -48,6 +48,7 @@ public class TestSearchAfter extends LuceneTestCase {
   private List<SortField> allSortFields;
 
   @Override
+  @SuppressWarnings("IfChainToSwitch") // only a few SortField.Type values are handled
   public void setUp() throws Exception {
     super.setUp();
 

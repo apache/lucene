@@ -212,12 +212,26 @@ final class DedupUtil {
     return murmurhash3_x64_128(bytes, 0, bytes.length, GOOD_FAST_HASH_SEED)[0];
   }
 
-  static long alignBytes(IndexOutput output, VectorEncoding encoding) throws IOException {
-    int alignBytes =
-        switch (encoding) {
-          case BYTE -> 4;
-          case FLOAT32, FLOAT16 -> 64;
-        };
-    return output.alignFilePointer(alignBytes);
+  /**
+   * Inflates a float16 vector ({@code short[]}) into the reused {@code float[]} buffer for the
+   * fp32-based scalar quantizer.
+   */
+  static float[] inflateFloat16(short[] float16Vector, float[] dest) {
+    assert float16Vector.length == dest.length
+        : "length mismatch: float16Vector=" + float16Vector.length + " dest=" + dest.length;
+    for (int i = 0; i < float16Vector.length; i++) {
+      dest[i] = Float.float16ToFloat(float16Vector[i]);
+    }
+    return dest;
+  }
+
+  /**
+   * Page-aligns vector data for every encoding, so a vector whose size divides 4 KB or is a
+   * multiple of it (e.g. 1024-dim float32, 1024- or 4096-dim float16, 1024-dim byte) never
+   * straddles a page boundary and a rescoring read touches no extra page. Also a multiple of the
+   * 64-byte alignment that is optimal for Arm Neoverse machines.
+   */
+  static long alignRawVectorData(IndexOutput output) throws IOException {
+    return output.alignFilePointer(4096);
   }
 }

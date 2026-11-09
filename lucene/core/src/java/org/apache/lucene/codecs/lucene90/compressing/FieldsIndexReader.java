@@ -71,7 +71,7 @@ final class FieldsIndexReader extends FieldsIndex {
     indexInput =
         dir.openInput(
             IndexFileNames.segmentFileName(name, suffix, extension),
-            context.withHints(FileTypeHint.INDEX));
+            context.overrideHints(FileTypeHint.INDEX));
     try {
       CodecUtil.checkIndexHeader(
           indexInput, codecName + "Idx", VERSION_START, VERSION_CURRENT, id, suffix);

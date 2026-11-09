@@ -17,7 +17,106 @@
 
 # Apache Lucene Migration Guide
 
+## Migration from Lucene 11.x to Lucene 12.0
+
+### HnswGraphSearcher takes a VisitedSet instead of a BitSet (GITHUB#16806)
+
+The constructor `HnswGraphSearcher(NeighborQueue, BitSet)` is now
+`HnswGraphSearcher(NeighborQueue, VisitedSet)`, and the protected field `visited` is a
+`VisitedSet`. This interface has the `set`, `getAndSet` and `clear` methods of `BitSet`; create one
+with `VisitedSet.create(expectedVisitedNodes, graphSize)`.
+
 ## Migration from Lucene 10.x to Lucene 11.0
+
+### Deprecated TokenSources methods have been removed (GITHUB#16985)
+
+The highlighter's `TokenSources` class now only has `getTokenStream(String field, Fields tvFields,
+String text, Analyzer analyzer, int maxStartOffset)` and `getTermVectorTokenStreamOrNull(String
+field, Fields tvFields, int maxStartOffset)`. The `getAnyTokenStream` and
+`getTokenStreamWithOffsets` methods and all other `getTokenStream` overloads are removed.
+Load the document's term vectors once with `reader.termVectors().get(docId)`, get the field value
+from the stored fields, and pass both to `getTokenStream`. Use `-1` as `maxStartOffset` for no limit.
+
+```java
+// before
+TokenStream ts = TokenSources.getAnyTokenStream(reader, docId, field, analyzer);
+// after
+Fields tvFields = reader.termVectors().get(docId);
+String text = reader.storedFields().document(docId).get(field);
+TokenStream ts = TokenSources.getTokenStream(field, tvFields, text, analyzer, -1);
+```
+
+### TruncateTokenFilter constructor replaced by static factory methods (GITHUB#16984)
+
+The constructor `TruncateTokenFilter(TokenStream, int)` has been removed. To accomplish
+the same functionality use the static factory methods `truncateAfterChars` or `truncateAfterCodePoints`.
+`truncateAfterChars` keeps the old char-length behavior; `truncateAfterCodePoints` is the
+Unicode-correct replacement.
+The factory parameter `prefixLength` has also been removed. Replace it with `truncateAfterChars`
+or `truncateAfterCodePoints` on `TruncateTokenFilterFactory`.
+
+### UnifiedHighlighter must be created through its Builder (GITHUB#16975)
+
+The deprecated `UnifiedHighlighter(IndexSearcher, Analyzer)` constructor, its setters and the
+protected `shouldXxx` methods were removed. Use the Builder via
+`UnifiedHighlighter.builder(searcher, analyzer).withXxx(...).build()` instead. Subclasses that
+overrode the `shouldXxx` methods should override `getFlags(String)`.
+
+### Explicit byte and float similarity vector search has been removed (GITHUB#16965)
+
+The `Explicit` variants of `ByteVectorSimilarityQuery` and `FloatVectorSimilarityQuery`
+have been removed. Use `Adaptive` instead. Drop `traversalSimilarity` and pass
+`resultSimilarity` plus an optional `decay` (default `0.5`); the constructors are not
+a drop-in rename.
+
+### RegExp.ASCII_CASE_INSENSITIVE has been removed (GITHUB#16968)
+
+The flag was deprecated in 10.x and already behaved the same as `RegExp.CASE_INSENSITIVE` (full
+Unicode case folding). Replace it with `RegExp.CASE_INSENSITIVE`.
+
+The flag's raw value `0x0100` is no longer accepted: calls like
+`new RegExp(s, syntax_flags, 0x0100)` to `RegExp(String, int, int)` now throw an
+`IllegalArgumentException` and must be changed to `new RegExp(s, syntax_flags, RegExp.CASE_INSENSITIVE)`.
+
+### SpanishMinimalStemFilter has been removed (GITHUB#16969)
+
+`SpanishMinimalStemFilter` and `SpanishMinimalStemFilterFactory` (SPI name `spanishMinimalStem`)
+were deprecated in favor of `SpanishPluralStemFilter` and are now removed.
+Use `SpanishPluralStemFilter` (SPI name `spanishPluralStem`) instead. Indexes analyzed with the old
+filter may need reindexing, as the stemming results can differ.
+
+### MatchAllDocsQuery and MatchNoDocsQuery no-args constructors (GITHUB#16962)
+
+`MatchAllDocsQuery` and `MatchNoDocsQuery` no-args constructors visibility has been narrowed
+from public to private. Use instead the singleton instances available in the `INSTANCE` field.
+The direct no-args instantiation `new MatchAllDocsQuery()` has to be replaced by static field's
+reference `MatchAllDocsQuery.INSTANCE` and `MatchNoDocsQuery.INSTANCE` for `new MatchNoDocsQuery()`.
+
+### FixBrokenOffsetsFilter has been removed (GITHUB#16964)
+
+The deprecated `FixBrokenOffsetsFilter` and its factory (SPI name `fixBrokenOffsets`) are gone.
+Offsets that go backwards are rejected at index time; fix the upstream token filter or tokenizer
+that produces them instead.
+
+### MergePolicy.MergeSpecification#segString(Directory) has been removed (GITHUB#16963)
+
+The deprecated `MergePolicy.MergeSpecification#segString(Directory)` method is gone. The `Directory`
+argument was already ignored, so call `MergeSpecification#toString()` instead. Subclasses that
+overrode `segString(Directory)` should override `toString()`.
+
+### SortField#setOptimizeSortWithIndexedData has been removed (GITHUB#14399)
+
+`SortField#setOptimizeSortWithIndexedData(false)` and `setOptimizeSortWithPoints(false)`, along with
+their getters, are gone. Wrap the sort field instead: `SortField.withoutPruning(sortField)`. The
+wrapper is immutable and never lets comparators skip documents using points, terms or doc values
+skippers. Early termination for sorts that are a prefix of the index sort still applies. The
+wrapper is for searching only: it cannot be used as an index sort, and `getIndexSorter()` throws
+`UnsupportedOperationException`.
+
+`FieldComparator#setSingleSort`, `FieldComparator#disableSkipping` and
+`LeafFieldComparator#disableSkipping` were removed too. Custom comparators that relied on
+`setSingleSort` can use the `Pruning` they are constructed with: a single sort field that is not
+paging gets `Pruning.GREATER_THAN_OR_EQUAL_TO`, and has no top value set.
 
 ### Java 25 is the minimum required JDK (GITHUB#14229, GITHUB#15215)
 
@@ -100,6 +199,26 @@ GroupedFacetResult result = searcher.search(query, manager);
 List<GroupedFacetResult.FacetEntry> entries = result.getFacetEntries(offset, limit);
 ```
 
+### VectorValueSource and MultiValueSource have been removed (GITHUB#16814)
+
+`VectorValueSource` and its base class `MultiValueSource` have been removed without a replacement
+
+### `supportsConcurrency` constructors have been removed (GITHUB#16833)
+
+The `TopFieldCollectorManager` and `TopScoreDocCollectorManager` constructors that
+took a `boolean supportsConcurrency` argument have been removed. The flag has been
+a no-op since Lucene 10.1. Drop the last argument.
+
+```java
+// Before
+new TopScoreDocCollectorManager(numHits, after, totalHitsThreshold, true);
+new TopFieldCollectorManager(sort, numHits, after, totalHitsThreshold, false);
+
+// After
+new TopScoreDocCollectorManager(numHits, after, totalHitsThreshold);
+new TopFieldCollectorManager(sort, numHits, after, totalHitsThreshold);
+```
+
 ### Directory#copyFrom is now abstract (GITHUB#16530)
 
 `Directory#copyFrom` no longer has a default implementation, so classes that extend
@@ -113,29 +232,25 @@ It instead routes through `createOutput`, so filter directories that override
 that relied on the wrapped directory's optimized copy should override `copyFrom` and
 delegate explicitly, as `HardlinkCopyDirectoryWrapper` does.
 
-### Relaxed Index Upgrade Policy (GITHUB#13797)
+### Relaxed Index Upgrade Policy (GITHUB#13797, GITHUB#16741)
 
 Starting with Lucene 11.0.0, the index upgrade policy has been relaxed to allow safe upgrades across multiple major version numbers without reindexing when no format breaks occur.
 
 #### Key Changes
 
 - `Version.MIN_SUPPORTED_MAJOR` is now manually maintained instead of auto-computed as `LATEST.major-1`
-- Set to 10 for Lucene 11.0.0, allowing indexes created with Lucene 10.x to be opened directly
+- Set to 9 for Lucene 11.0.0, so indexes created with Lucene 9.x remain fully supported (open and write)
 - Will only be bumped when actual incompatible format changes are introduced
-
-#### Two-Tier Version Policy
-
-1. **Index opening policy**: An index can be opened if its creation version >= `MIN_SUPPORTED_MAJOR`
-2. **Codec reader policy**: Segments can only be read directly if written by current or previous major version number
+- The distinction between write and read-only compatibility is removed: all the built-in codecs provide full support
 
 #### Upgrade Scenarios
 
 ##### Scenario 1: No format breaks (wider upgrade span)
 
-- Index created with Lucene 10.x can be opened directly in Lucene 11.x, 12.x, 13.x, 14.x (as long as MIN_SUPPORTED_MAJOR stays ≤ 10)
+- Index created with Lucene 9.x can be opened directly in Lucene 10.x, 11.x, 12.x, 13.x, 14.x (as long as MIN_SUPPORTED_MAJOR stays ≤ 9)
 - Simply open the index with the new version; segments will be upgraded gradually through normal merging
 - Optional: Call `forceMerge()` or use `UpgradeIndexMergePolicy` to upgrade segment formats immediately
-- **Important**: You still only get one upgrade per index lifetime. Once MIN_SUPPORTED_MAJOR is bumped above 10, the index becomes unopenable and must be reindexed.
+- **Important**: You still only get one upgrade per index lifetime. Once MIN_SUPPORTED_MAJOR is bumped above 9, the index becomes unopenable and must be reindexed.
 
 ##### Scenario 2: Format breaks occur
 
@@ -145,16 +260,15 @@ Starting with Lucene 11.0.0, the index upgrade policy has been relaxed to allow 
 
 ##### Scenario 3: After using your upgrade
 
-- Index created with Lucene 10.x, successfully opened with Lucene 14.x
-- The index's creation version is still 10 (this never changes)
-- When Lucene 15+ bumps MIN_SUPPORTED_MAJOR above 10, this index becomes unopenable
+- Index created with Lucene 9.x, successfully opened with Lucene 14.x
+- The index's creation version is still 9 (this never changes)
+- When Lucene 15+ bumps MIN_SUPPORTED_MAJOR above 9, this index becomes unopenable
 - Must reindex to continue using newer Lucene versions
 
 #### Upgrade Example
 
 ```java
-// Opening a 10.x index in 11 still works (MIN_SUPPORTED_MAJOR is 10).
-// Later majors may keep that minimum if no format break occurs.
+// Opening an index created with Lucene 9.x or 10.x in Lucene 11.x+
 try (Directory dir = FSDirectory.open(indexPath)) {
     try (DirectoryReader reader = DirectoryReader.open(dir)) {
         // Index can be read normally

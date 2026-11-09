@@ -18,8 +18,11 @@ package org.apache.lucene.codecs.lucene90;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.file.NoSuchFileException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.codecs.CodecUtil;
@@ -27,6 +30,7 @@ import org.apache.lucene.codecs.CompoundDirectory;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentInfo;
+import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -49,9 +53,16 @@ final class Lucene90CompoundReader extends CompoundDirectory {
 
   private final Directory directory;
   private final String segmentName;
+  private final String dataFileName;
   private final Map<String, FileEntry> entries;
   private final IndexInput handle;
+  // copies of the data file, starting with handle, guarded by this
+  private final List<Copy> copies = new ArrayList<>();
+  private boolean closed;
   private int version;
+
+  /** A copy of the data file and the context each inner file was first opened with on it. */
+  private record Copy(IndexInput data, Map<String, IOContext> contexts) {}
 
   /** Create a new CompoundFileDirectory. */
   // TODO: we should just pre-strip "entries" and append segment name up-front like simpletext?
@@ -59,7 +70,7 @@ final class Lucene90CompoundReader extends CompoundDirectory {
   public Lucene90CompoundReader(Directory directory, SegmentInfo si) throws IOException {
     this.directory = directory;
     this.segmentName = si.name;
-    String dataFileName =
+    this.dataFileName =
         IndexFileNames.segmentFileName(segmentName, "", Lucene90CompoundFormat.DATA_EXTENSION);
     String entriesFileName =
         IndexFileNames.segmentFileName(segmentName, "", Lucene90CompoundFormat.ENTRIES_EXTENSION);
@@ -74,6 +85,7 @@ final class Lucene90CompoundReader extends CompoundDirectory {
             + CodecUtil.footerLength();
 
     handle = directory.openInput(dataFileName, IOContext.DEFAULT);
+    copies.add(new Copy(handle, new HashMap<>()));
     try {
       CodecUtil.checkIndexHeader(
           handle, Lucene90CompoundFormat.DATA_CODEC, version, version, si.getId(), "");
@@ -142,7 +154,15 @@ final class Lucene90CompoundReader extends CompoundDirectory {
 
   @Override
   public void close() throws IOException {
-    IOUtils.close(handle);
+    List<IndexInput> toClose = new ArrayList<>();
+    synchronized (this) {
+      closed = true;
+      for (Copy copy : copies) {
+        toClose.add(copy.data());
+      }
+      copies.clear();
+    }
+    IOUtils.close(toClose);
   }
 
   @Override
@@ -164,7 +184,31 @@ final class Lucene90CompoundReader extends CompoundDirectory {
               + entries.keySet()
               + ")");
     }
-    return handle.slice(name, entry.offset, entry.length, context);
+    synchronized (this) {
+      if (closed) {
+        throw new AlreadyClosedException("this Directory is closed");
+      }
+      for (Copy copy : copies) {
+        // an inner file keeps the advice it was first opened with on a copy
+        IOContext first = copy.contexts().putIfAbsent(id, context);
+        IndexInput slice =
+            copy.data().slice(name, entry.offset, entry.length, first == null ? context : first);
+        if (first == null || slice.isEfficientFor(context)) {
+          return slice;
+        }
+      }
+      final IndexInput data;
+      try {
+        // without advice, like handle, so inner files advise their own pages
+        data = directory.openInput(dataFileName, IOContext.DEFAULT);
+      } catch (@SuppressWarnings("unused") FileNotFoundException | NoSuchFileException e) {
+        // an open reader outlives its files, so read through the copy it already holds
+        IOContext first = copies.getFirst().contexts().get(id);
+        return handle.slice(name, entry.offset, entry.length, first);
+      }
+      copies.add(new Copy(data, new HashMap<>(Map.of(id, context))));
+      return data.slice(name, entry.offset, entry.length, context);
+    }
   }
 
   /** Returns an array of strings, one for each file in the directory. */

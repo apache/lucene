@@ -143,9 +143,8 @@ public final class JoinUtil {
     ConcurrentHashMap<Long, ScoreCell> aggregatedScores = new ConcurrentHashMap<>();
     ConcurrentHashMap<Long, Integer> occurrences = new ConcurrentHashMap<>();
     boolean needsScore = scoreMode != ScoreMode.None;
-    LongFloatProcedure scoreAggregator;
-    if (scoreMode == ScoreMode.Max) {
-      scoreAggregator =
+    LongFloatProcedure scoreAggregator = switch (scoreMode) {
+      case Max ->
           (key, score) ->
               aggregatedScores.compute(
                   key,
@@ -157,8 +156,7 @@ public final class JoinUtil {
                       return cell;
                     }
                   });
-    } else if (scoreMode == ScoreMode.Min) {
-      scoreAggregator =
+      case Min ->
           (key, score) ->
               aggregatedScores.compute(
                   key,
@@ -170,8 +168,7 @@ public final class JoinUtil {
                       return cell;
                     }
                   });
-    } else if (scoreMode == ScoreMode.Total) {
-      scoreAggregator =
+      case Total ->
           (key, score) ->
               aggregatedScores.compute(
                   key,
@@ -183,8 +180,7 @@ public final class JoinUtil {
                       return cell;
                     }
                   });
-    } else if (scoreMode == ScoreMode.Avg) {
-      scoreAggregator =
+      case Avg ->
           (key, score) ->
               aggregatedScores.compute(
                   key,
@@ -197,12 +193,11 @@ public final class JoinUtil {
                     occurrences.merge(k, 1, (a, b) -> a + b);
                     return cell;
                   });
-    } else {
-      scoreAggregator =
+      case None ->
           (_, _) -> {
-            throw new UnsupportedOperationException();
+              throw new UnsupportedOperationException();
           };
-    }
+    };
 
     LongFloatFunction joinScorer;
     if (scoreMode == ScoreMode.Avg) {
