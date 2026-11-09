@@ -608,12 +608,11 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
    */
   protected synchronized boolean maybeStall(MergeSource mergeSource) {
     long startStallTime = 0;
-    while (mergeSource.hasPendingMerges() && mergeThreadCount() >= maxMergeCount) {
+    while (mergeThreadCount() >= maxMergeCount) {
 
       // This means merging has fallen too far behind: we
-      // have already created maxMergeCount threads, and
-      // now there's at least one more merge pending.
-      // Note that only maxThreadCount of
+      // have already created maxMergeCount threads. Note
+      // that only maxThreadCount of
       // those created merge threads will actually be
       // running; the rest will be paused (see
       // updateMergeThreads).  We stall this producer
@@ -634,17 +633,6 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
         }
       }
       doStall();
-    }
-
-    if (mergeThreads.contains(Thread.currentThread()) && mergeSource.hasPendingMerges() == false) {
-      // A merge thread must not wait around for a merge that becomes pending
-      // after this check: IndexWriter registers new pending merges under its
-      // own lock, so a merge may become pending right after the stall check
-      // above, and getNextMerge would still pick it up, spawning more merge
-      // threads than maxMergeCount (see
-      // https://github.com/apache/lucene/issues/13593). The registration path
-      // calls merge() again for the late merge.
-      return false;
     }
 
     if (verbose() && startStallTime != 0) {
