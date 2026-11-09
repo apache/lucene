@@ -27,7 +27,7 @@ import org.apache.lucene.search.HnswQueueSaturationCollector;
  * @lucene.experimental
  */
 public abstract class KnnSearchStrategy {
-  public static final int DEFAULT_FILTERED_SEARCH_THRESHOLD = 0;
+  public static final int DEFAULT_FILTERED_SEARCH_THRESHOLD = 60;
 
   /** Override and implement search strategy instance equivalence properly in a subclass. */
   @Override
@@ -45,16 +45,15 @@ public abstract class KnnSearchStrategy {
   public abstract void nextVectorsBlock();
 
   /**
-   * Estimates the number of distinct nodes this search strategy expects to visit, accounting for
-   * maxConn and bounded by the graph size. Used to decide between an HNSW search and an exhaustive
-   * scan.
+   * Estimates the number of distinct nodes this search strategy expects to visit, bounded by the
+   * graph size. Used to decide between an HNSW search and an exhaustive scan.
    *
    * @param k neighbors to find
-   * @param graphSize size of the graph
-   * @param avgDegree average out-degree of nodes in the bottom layer of the graph
+   * @param graphSize size of the graph (must be > 0)
+   * @param avgDegree average out-degree of nodes in the bottom layer of the graph, or 0 if unknown
    * @return expected number of distinct visited nodes, in [0, graphSize]
    */
-  public int expectedVisitedNodes(int k, int graphSize, float selectivity, int m, float avgDegree) {
+  public int expectedVisitedNodes(int k, int graphSize, float selectivity, float avgDegree) {
     return (int) (k * Math.log(graphSize));
   }
 
@@ -107,21 +106,23 @@ public abstract class KnnSearchStrategy {
         return super.expectedVisitedNodes(k, graphSize, selectivity, m, avgDegree);
       }
 
-      // Newer segments store their avg node degree, but for older segments we need a conservative
-      // estimate
+      // Newer segments store their avg node degree, but for older segments choose 16 to preserve
+      // legacy behavior as much as possible.
       double expectedDegree = avgDegree > 0 ? avgDegree : 16;
 
       double requiredScores = Math.min(k, graphSize * selectivity);
-      double s = Math.max(.001, selectivity);
+      double s = Math.max(.001, selectivity); // highly selectively queries should not blow up cost
       double logN = Math.log(graphSize);
-      double descent = .70 * logN * logN;
-      //
-      double baseCost = expectedDegree * logN;
-      double localUniverse = Math.min(graphSize, expectedDegree * k / s);
-      double filteredCostEstimate = .28 * Math.pow(k / s, .71) * expectedDegree * logN;
-      double bottomExplorationCost = Math.max(baseCost, filteredCostEstimate);
+      double descent = .70 * logN * logN; // Cost of finding layer0 entry point.
 
-      return (int) Math.max(requiredScores, descent + squash(localUniverse, bottomExplorationCost));
+      double localUniverse = Math.min(graphSize, expectedDegree * k / s);
+      double baseCost = expectedDegree * logN; // Unfiltered k=1 cost.
+      double filteredCostEstimate = .28 * Math.pow(k / s, .71) * expectedDegree * logN;
+
+      return (int)
+          Math.max(
+              requiredScores,
+              descent + Math.max(baseCost, squash(localUniverse, filteredCostEstimate)));
     }
 
     /**

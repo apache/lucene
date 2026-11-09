@@ -78,7 +78,7 @@ public record KnnResult(Method strategy, TopDocs topDocs, int strongResultCount)
   public enum Method {
     /** Results came from an approximate (e.g. graph) search. */
     APPROXIMATE,
-    /** Results came from a brute-force exact search. */
+    /** Results came from an exhaustive exact search. */
     EXACT
   }
 }

@@ -162,10 +162,6 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       int tinySegmentsThreshold,
       int version)
       throws IOException {
-    if (version < Lucene99HnswVectorsFormat.VERSION_START
-        || version > Lucene99HnswVectorsFormat.VERSION_CURRENT) {
-      throw new IllegalArgumentException("Invalid version: " + version);
-    }
     this.M = M;
     this.flatVectorWriter = flatVectorWriter;
     this.flatVectorsFormat = flatVectorsFormat;
