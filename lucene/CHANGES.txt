@@ -260,6 +260,9 @@ New Features
 
 * GITHUB#16710: Add scalar quantization support for FLOAT16 vectors in the dedup KNN codec. (Pranshu Shukla)
 
+* GITHUB#16967: Add PartialHitCountCollectorManager to the misc module, which counts hits accurately
+  up to a threshold and stops counting once the threshold is exceeded. (Eugene Rizhkov)
+
 Improvements
 ---------------------
 * GITHUB#15704: Replace LinkedList with more efficient data structure. (Renato Haeberli)
