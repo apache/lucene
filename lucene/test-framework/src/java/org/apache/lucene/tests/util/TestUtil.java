@@ -1229,25 +1229,32 @@ public final class TestUtil {
       } else {
         t = 0;
       }
-      if (t == 0) {
-        buffer[i] = (char) r.nextInt(0x80);
-        bytes--;
-      } else if (1 == t) {
-        buffer[i] = (char) nextInt(r, 0x80, 0x7ff);
-        bytes -= 2;
-      } else if (2 == t) {
-        buffer[i] = (char) nextInt(r, 0x800, 0xd7ff);
-        bytes -= 3;
-      } else if (3 == t) {
-        buffer[i] = (char) nextInt(r, 0xe000, 0xffff);
-        bytes -= 3;
-      } else if (4 == t) {
-        // Make a surrogate pair
-        // High surrogate
-        buffer[i++] = (char) nextInt(r, 0xd800, 0xdbff);
-        // Low surrogate
-        buffer[i] = (char) nextInt(r, 0xdc00, 0xdfff);
-        bytes -= 4;
+      switch (t) {
+        case 0 -> {
+          buffer[i] = (char) r.nextInt(0x80);
+          bytes--;
+        }
+        case 1 -> {
+          buffer[i] = (char) nextInt(r, 0x80, 0x7ff);
+          bytes -= 2;
+        }
+        case 2 -> {
+          buffer[i] = (char) nextInt(r, 0x800, 0xd7ff);
+          bytes -= 3;
+        }
+        case 3 -> {
+          buffer[i] = (char) nextInt(r, 0xe000, 0xffff);
+          bytes -= 3;
+        }
+        case 4 -> {
+          // Make a surrogate pair
+          // High surrogate
+          buffer[i++] = (char) nextInt(r, 0xd800, 0xdbff);
+          // Low surrogate
+          buffer[i] = (char) nextInt(r, 0xdc00, 0xdfff);
+          bytes -= 4;
+        }
+        default -> throw new AssertionError(t);
       }
     }
     return new String(buffer, 0, i);
