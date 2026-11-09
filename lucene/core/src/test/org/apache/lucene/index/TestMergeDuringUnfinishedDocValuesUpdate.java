@@ -24,6 +24,9 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -31,12 +34,18 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.InfoStream;
 
+/**
+ * Updates a doc-values field that none of the segments being merged contains yet, with the update
+ * still in flight when the merge runs, and checks the merged index keeps the update.
+ */
 public class TestMergeDuringUnfinishedDocValuesUpdate extends LuceneTestCase {
 
-  public void testMergeWhileUpdateOfFieldNewToSegmentIsApplied() throws Exception {
+  public void testUpdateToFieldNewToSegmentSurvivesConcurrentMerge() throws Exception {
     CountDownLatch held = new CountDownLatch(1);
     CountDownLatch release = new CountDownLatch(1);
-    InfoStream holdLateThread =
+    // Pause the "late" update once it has applied its packet, so the merge runs while it is in
+    // flight. BD trace reports each applied packet; "done inner apply del packet" is that point.
+    InfoStream pauseLateAfterApply =
         new InfoStream() {
           @Override
           public void message(String component, String message) {
@@ -77,9 +86,10 @@ public class TestMergeDuringUnfinishedDocValuesUpdate extends LuceneTestCase {
             .setCodec(TestUtil.getDefaultCodec())
             .setMergePolicy(mergeFirstTwoOnRequest)
             .setMergeScheduler(new SerialMergeScheduler())
-            .setInfoStream(holdLateThread);
+            .setInfoStream(pauseLateAfterApply);
     try (Directory dir = new ByteBuffersDirectory();
         IndexWriter w = new IndexWriter(dir, iwc)) {
+      // Two segments to merge. "tag" is absent from both.
       Document a = new Document();
       a.add(new StringField("id", "a", Field.Store.NO));
       a.add(new NumericDocValuesField("num", 0));
@@ -87,11 +97,14 @@ public class TestMergeDuringUnfinishedDocValuesUpdate extends LuceneTestCase {
       w.flush();
       w.addDocument(new Document());
       w.flush();
+
       w.updateNumericDocValue(new Term("id", "a"), "num", 7);
       Document c = new Document();
       c.add(new BinaryDocValuesField("tag", new BytesRef("c")));
       w.addDocument(c);
       w.flushNextBuffer();
+
+      // Give "a" a "tag" value: a field new to the two segments being merged.
       FutureTask<Void> lateUpdate =
           new FutureTask<>(
               () -> {
@@ -105,12 +118,25 @@ public class TestMergeDuringUnfinishedDocValuesUpdate extends LuceneTestCase {
       assertTrue(held.await(60, TimeUnit.SECONDS));
       try {
         w.maybeMerge();
-      } catch (NullPointerException e) {
-        // expected: the merge of _0 and _1 succeeds; actual: NPE in DocIDMerger, the writer closes
-        throw new AssertionError("expected the merge to succeed, but it threw " + e, e);
       } finally {
         release.countDown();
         late.join();
+      }
+      lateUpdate.get();
+
+      try (DirectoryReader reader = DirectoryReader.open(w)) {
+        assertEquals(4, reader.numDocs());
+        TopDocs hits = new IndexSearcher(reader).search(new TermQuery(new Term("id", "a")), 1);
+        assertEquals(1, hits.totalHits.value());
+        int docID = hits.scoreDocs[0].doc;
+        LeafReaderContext leaf = reader.leaves().get(ReaderUtil.subIndex(docID, reader.leaves()));
+        int segDoc = docID - leaf.docBase;
+        NumericDocValues num = leaf.reader().getNumericDocValues("num");
+        assertTrue(num.advanceExact(segDoc));
+        assertEquals(7, num.longValue());
+        BinaryDocValues tag = leaf.reader().getBinaryDocValues("tag");
+        assertTrue(tag.advanceExact(segDoc));
+        assertEquals(new BytesRef("a"), tag.binaryValue());
       }
     }
   }
