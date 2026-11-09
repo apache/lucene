@@ -924,7 +924,7 @@ def help() -> None:
 
 def ensure_list(o: Any) -> list[Any]:
   if o is None:
-    return cast("list[Any]", [])
+    return []
   if not isinstance(o, list):
     return [o]
   return cast("list[Any]", o)
@@ -1034,7 +1034,7 @@ def load_rc() -> dict[str, Any]:
     with open(lucenerc) as fp:
       return cast("dict[str, Any]", json.load(fp))
   except Exception:
-    return cast("dict[str, Any]", {})
+    return {}
 
 
 def store_rc(release_root: str, release_version: str | None = None) -> None:
