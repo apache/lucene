@@ -890,8 +890,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "UseCorrectAssertInTests:OFF", // noisy
     "UseEnumSwitch:OFF", // TODO: new, not checked if applicable to Lucene
     "UsingJsr305CheckReturnValue:OFF", // TODO: new, not checked if applicable to Lucene
-    "ValueClassIdentity:OFF", // false positives: flags value-based classes used as IdentityHashMap
-                              // values
+    "ValueClassIdentity:OFF", // false positives: flags legitimate IdentityHashMap uses
     "Var:OFF", // TODO: new, not checked if applicable to Lucene
     "VarTypeName:ERROR",
     "VarWithPrimitive:OFF", // very subjective
@@ -961,6 +960,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
               List<String> excludedPaths =
                   switch (project.getPath()) {
                     case ":lucene:core" -> List.of(".*/StandardTokenizerImpl.java");
+                    case ":lucene:benchmark-jmh" -> List.of(".*/jmh_generated/.*");
                     case ":lucene:analysis:common" ->
                         List.of(
                             ".*/HTMLStripCharFilter.java", ".*/UAX29URLEmailTokenizerImpl.java");
