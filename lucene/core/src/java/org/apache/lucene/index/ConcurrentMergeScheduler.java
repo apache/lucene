@@ -575,17 +575,6 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
         return;
       }
 
-      // The pulled merge may have become pending after maybeStall evaluated
-      // hasPendingMerges (IndexWriter registers new pending merges under its
-      // own lock), so the cap has to be re-checked here before spawning a new
-      // thread (see https://github.com/apache/lucene/issues/13593). Only
-      // non-merge threads can be stalled here: merge threads already returned
-      // from maybeStall when the cap was reached, and the thread count cannot
-      // grow while we hold this monitor:
-      while (mergeThreadCount() >= maxMergeCount) {
-        doStall();
-      }
-
       try {
         // OK to spawn a new merge thread to handle this
         // merge:
@@ -654,8 +643,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
       // above, and getNextMerge would still pick it up, spawning more merge
       // threads than maxMergeCount (see
       // https://github.com/apache/lucene/issues/13593). The registration path
-      // calls merge() again for the late merge. Producer threads may continue;
-      // the cap is re-checked after they pull a merge (see merge()).
+      // calls merge() again for the late merge.
       return false;
     }
 
