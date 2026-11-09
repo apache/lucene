@@ -42,6 +42,11 @@ public abstract class BulkScorer {
    * <p>{@code min} is the minimum document to be considered for matching. All documents strictly
    * before this value must be ignored.
    *
+   * <p>This method may be called several times on the same bulk scorer with increasing ranges of
+   * doc IDs, where {@code min} is greater than or equal to the {@code max} of the previous call.
+   * Implementations must keep their position between calls instead of scoring from the start, like
+   * the example below does.
+   *
    * <p>Although {@code max} would be a legal return value for this method, higher values might help
    * callers skip more efficiently over non-matching portions of the docID space.
    *
