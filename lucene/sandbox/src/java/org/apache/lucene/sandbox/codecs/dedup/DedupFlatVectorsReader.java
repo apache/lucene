@@ -232,7 +232,6 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
       throws IOException {
 
     IndexInput in = null;
-    boolean success = false;
     try {
       in = state.directory.openInput(fileName, context);
       int versionVectorData =
@@ -254,12 +253,10 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
             in);
       }
       CodecUtil.retrieveChecksum(in);
-      success = true;
       return in;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(in);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, in);
+      throw t;
     }
   }
 

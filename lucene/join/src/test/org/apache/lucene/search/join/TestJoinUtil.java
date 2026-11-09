@@ -33,6 +33,8 @@ import java.util.Random;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoubleDocValuesField;
 import org.apache.lucene.document.DoublePoint;
@@ -99,6 +101,7 @@ import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.packed.PackedInts;
 
 public class TestJoinUtil extends LuceneTestCase {
@@ -436,7 +439,8 @@ public class TestJoinUtil extends LuceneTestCase {
   }
 
   public void testRandomOrdinalsJoin() throws Exception {
-    IndexIterationContext context = createContext(128, false, true);
+    int nDocs = atLeast(100);
+    IndexIterationContext context = createContext(nDocs, false, true);
     int searchIters = atLeast(1);
     IndexSearcher indexSearcher = context.searcher;
     for (int i = 0; i < searchIters; i++) {
@@ -2228,6 +2232,63 @@ public class TestJoinUtil extends LuceneTestCase {
     @Override
     public org.apache.lucene.search.ScoreMode scoreMode() {
       return org.apache.lucene.search.ScoreMode.COMPLETE_NO_SCORES;
+    }
+  }
+
+  /**
+   * Numeric joins collect join values concurrently across slices; make sure that many distinct
+   * values collected from many slices with an executor yield the same result as sequential
+   * collection.
+   */
+  public void testNumericJoinConcurrentCollection() throws Exception {
+    final int numValues = atLeast(2000);
+    final int numFromDocs = numValues * 4;
+    try (Directory dir = newDirectory();
+        IndexWriter w =
+            new IndexWriter(
+                dir,
+                newIndexWriterConfig(new MockAnalyzer(random()))
+                    .setMergePolicy(NoMergePolicy.INSTANCE))) {
+      for (int i = 0; i < numFromDocs; i++) {
+        long value = i % numValues;
+        Document doc = new Document();
+        doc.add(new NumericDocValuesField("from", value));
+        doc.add(new SortedNumericDocValuesField("fromMV", value));
+        doc.add(new SortedNumericDocValuesField("fromMV", value + numValues));
+        doc.add(new TextField("body", "a ".repeat(1 + random().nextInt(5)), Field.Store.NO));
+        w.addDocument(doc);
+        if (i % 500 == 499) {
+          w.flush();
+        }
+      }
+      for (long value = 0; value < 2L * numValues; value++) {
+        Document doc = new Document();
+        doc.add(new LongPoint("to", value));
+        w.addDocument(doc);
+      }
+      w.commit();
+
+      ExecutorService executor =
+          Executors.newFixedThreadPool(4, new NamedThreadFactory("TestJoinUtil"));
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher sequential = new IndexSearcher(reader);
+        IndexSearcher concurrent = new IndexSearcher(reader, executor);
+        Query fromQuery = new TermQuery(new Term("body", "a"));
+        for (boolean mv : new boolean[] {false, true}) {
+          String fromField = mv ? "fromMV" : "from";
+          for (ScoreMode scoreMode : ScoreMode.values()) {
+            Query expectedQuery =
+                JoinUtil.createJoinQuery(
+                    fromField, mv, "to", Long.class, fromQuery, sequential, scoreMode);
+            Query actualQuery =
+                JoinUtil.createJoinQuery(
+                    fromField, mv, "to", Long.class, fromQuery, concurrent, scoreMode);
+            assertEquals(expectedQuery, actualQuery);
+          }
+        }
+      } finally {
+        TestUtil.shutdownExecutorService(executor);
+      }
     }
   }
 }

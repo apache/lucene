@@ -17,7 +17,7 @@
 package org.apache.lucene.sandbox.codecs.dedup;
 
 import static java.nio.ByteOrder.LITTLE_ENDIAN;
-import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.alignBytes;
+import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.alignRawVectorData;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.writeEndMarker;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.writeFieldInfo;
 
@@ -133,7 +133,7 @@ final class DedupFlushContext implements Accountable {
 
       DedupGroup<?> group = entry.getValue();
       int groupNumVectors = group.numVectors();
-      long vectorDataOffset = alignBytes(vectorData, encoding);
+      long vectorDataOffset = alignRawVectorData(vectorData);
 
       // Write the vectors in (sorted) doc order, so that a merge reads them sequentially
       int[] new2OldGroupOrd = group.ordsByDoc(sortMap);

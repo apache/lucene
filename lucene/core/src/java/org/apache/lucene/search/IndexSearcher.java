@@ -624,26 +624,6 @@ public class IndexSearcher {
     return searchAfter(null, query, n);
   }
 
-  /**
-   * Lower-level search API.
-   *
-   * <p>{@link LeafCollector#collect(int)} is called for every matching document.
-   *
-   * @throws TooManyClauses If a query would exceed {@link IndexSearcher#getMaxClauseCount()}
-   *     clauses.
-   * @deprecated This method is being deprecated in favor of {@link IndexSearcher#search(Query,
-   *     CollectorManager)} due to its support for concurrency in IndexSearcher
-   */
-  @Deprecated
-  public void search(Query query, Collector collector) throws IOException {
-    query = rewrite(query, collector.scoreMode().needsScores());
-    Weight weight = createWeight(query, collector.scoreMode(), 1);
-    collector.setWeight(weight);
-    for (LeafReaderContext ctx : leafContexts) { // search each subreader
-      searchLeaf(ctx, 0, DocIdSetIterator.NO_MORE_DOCS, weight, collector);
-    }
-  }
-
   /** Returns true if any search hit the {@link #setTimeout(QueryTimeout) timeout}. */
   public boolean timedOut() {
     return partialResult;
@@ -740,9 +720,9 @@ public class IndexSearcher {
   }
 
   /**
-   * Lower-level search API. Search all leaves using the given {@link CollectorManager}. In contrast
-   * to {@link #search(Query, Collector)}, this method will use the searcher's {@link Executor} in
-   * order to parallelize execution of the collection on the configured {@link #getSlices()}.
+   * Lower-level search API. Search all leaves using the given {@link CollectorManager}. This method
+   * will use the searcher's {@link Executor} in order to parallelize execution of the collection on
+   * the configured {@link #getSlices()}.
    *
    * @see CollectorManager
    * @lucene.experimental
