@@ -46,27 +46,15 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
   protected float[] bulkScores = null;
 
   /**
-   * HNSW search is roughly logarithmic. This doesn't take maxConn into account, but it is a pretty
-   * good approximation.
-   *
-   * @param k neighbors to find
-   * @param graphSize size of the graph
-   * @return expected number of visited nodes
-   */
-  public static int expectedVisitedNodes(int k, int graphSize) {
-    return (int) (Math.log(graphSize) * k);
-  }
-
-  /**
    * Follows similar logic to {@link FixedBitSet#of(DocIdSetIterator, int)} to determine the best
    * bit set given the expected number of visited nodes vs total graph size.
    *
-   * @param k neighbors to find
+   * @param expectedVisitedCount the expected number of visited nodes
    * @param graphSize size of the graph
    * @return a bit set appropriate for the expected number of visited nodes
    */
-  static BitSet createBitSet(int k, int graphSize) {
-    return expectedVisitedNodes(k, graphSize) < (graphSize >>> 7)
+  static BitSet createBitSet(int expectedVisitedCount, int graphSize) {
+    return expectedVisitedCount < (graphSize >>> 7)
         ? new SparseFixedBitSet(graphSize)
         : new FixedBitSet(graphSize);
   }
@@ -144,12 +132,16 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
       innerSearcher =
           FilteredHnswGraphSearcher.create(knnCollector.k(), graph, filteredDocCount, acceptOrds);
     } else {
+      int n = getGraphSize(graph);
+      int m = graph.maxConn();
+      int expectedVisit =
+          hnswStrategy.expectedVisitedNodes(
+              knnCollector.k(), n, (float) (filteredDocCount / (double) n), m, graph.avgDegree());
       innerSearcher =
           new HnswGraphSearcher(
-              new NeighborQueue(knnCollector.k(), true),
-              createBitSet(knnCollector.k(), getGraphSize(graph)));
+              new NeighborQueue(knnCollector.k(), true), createBitSet(expectedVisit, n));
     }
-    // Then, check if we the search strategy is seeded
+    // Then, check if the search strategy is seeded
     final AbstractHnswGraphSearcher graphSearcher;
     if (knnCollector.getSearchStrategy() instanceof KnnSearchStrategy.Seeded seeded
         && seeded.numberOfEntryPoints() > 0) {
@@ -177,7 +169,7 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
   public static KnnCollector search(
       RandomVectorScorer scorer, int topK, OnHeapHnswGraph graph, Bits acceptOrds, int visitedLimit)
       throws IOException {
-    KnnCollector knnCollector = new TopKnnCollector(topK, visitedLimit, null);
+    KnnCollector knnCollector = new TopKnnCollector(topK, topK, visitedLimit, null);
     OnHeapHnswGraphSearcher graphSearcher =
         new OnHeapHnswGraphSearcher(
             new NeighborQueue(topK, true), new SparseFixedBitSet(getGraphSize(graph)));

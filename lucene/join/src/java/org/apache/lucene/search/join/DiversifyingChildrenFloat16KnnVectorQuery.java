@@ -29,9 +29,9 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.KnnFloat16VectorQuery;
+import org.apache.lucene.search.KnnResult;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TopDocsCollector;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
@@ -51,7 +51,6 @@ import org.apache.lucene.util.BitSet;
  * </code></pre>
  */
 public class DiversifyingChildrenFloat16KnnVectorQuery extends KnnFloat16VectorQuery {
-  private static final TopDocs NO_RESULTS = TopDocsCollector.EMPTY_TOPDOCS;
 
   private final BitSetProducer parentsFilter;
   private final Query childFilter;
@@ -100,25 +99,27 @@ public class DiversifyingChildrenFloat16KnnVectorQuery extends KnnFloat16VectorQ
   }
 
   @Override
-  protected TopDocs exactSearch(
+  protected KnnResult exactSearch(
       LeafReaderContext context, DocIdSetIterator acceptIterator, QueryTimeout queryTimeout)
       throws IOException {
     Float16VectorValues float16VectorValues = context.reader().getFloat16VectorValues(field);
     if (float16VectorValues == null) {
       Float16VectorValues.checkField(context.reader(), field);
-      return NO_RESULTS;
+      return KnnResult.NO_RESULT;
     }
 
     BitSet parentBitSet = parentsFilter.getBitSet(context);
     if (parentBitSet == null) {
-      return NO_RESULTS;
+      return KnnResult.NO_RESULT;
     }
     VectorScorer float16VectorScorer = float16VectorValues.scorer(query);
     if (float16VectorScorer == null) {
-      return NO_RESULTS;
+      return KnnResult.NO_RESULT;
     }
-    return new DiversifyingChildrenVectorScorer(acceptIterator, parentBitSet, float16VectorScorer)
-        .collect(k, queryTimeout);
+    TopDocs topDocs =
+        new DiversifyingChildrenVectorScorer(acceptIterator, parentBitSet, float16VectorScorer)
+            .collect(k, queryTimeout);
+    return new KnnResult(KnnResult.Method.EXACT, topDocs, topDocs.scoreDocs.length);
   }
 
   @Override
@@ -127,7 +128,7 @@ public class DiversifyingChildrenFloat16KnnVectorQuery extends KnnFloat16VectorQ
   }
 
   @Override
-  protected TopDocs approximateSearch(
+  protected KnnResult approximateSearch(
       LeafReaderContext context,
       AcceptDocs acceptDocs,
       int visitedLimit,
@@ -137,10 +138,10 @@ public class DiversifyingChildrenFloat16KnnVectorQuery extends KnnFloat16VectorQ
     KnnCollector collector =
         knnCollectorManager.newCollector(visitedLimit, searchStrategy, context);
     if (collector == null) {
-      return NO_RESULTS;
+      return KnnResult.NO_RESULT;
     }
     context.reader().searchNearestVectors(field, query, collector, acceptDocs);
-    return collector.topDocs();
+    return collector.knnResult();
   }
 
   @Override

@@ -88,6 +88,7 @@ import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnFloatVectorQuery;
+import org.apache.lucene.search.KnnResult;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
@@ -2710,7 +2711,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
   private static Query buildExactKnnQuery(String fieldName, float[] queryVector, int totalDocs) {
     return new KnnFloatVectorQuery(fieldName, queryVector, totalDocs) {
       @Override
-      protected TopDocs approximateSearch(
+      protected KnnResult approximateSearch(
           LeafReaderContext context,
           AcceptDocs acceptDocs,
           int visitedLimit,

@@ -37,7 +37,7 @@ import org.apache.lucene.search.knn.KnnSearchStrategy;
  *
  * <ul>
  *   <li>{@link #k()} does NOT provide a good estimate of the number of collected results.
- *   <li>{@link #topDocs()} does NOT return docs sorted in descending order of scores.
+ *   <li>{@link #knnResult()} does NOT return docs sorted in descending order of scores.
  *   <li>{@link #collect(int, float)} does NOT return true / false based on whether the document was
  *       collected.
  * </ul>
@@ -115,15 +115,16 @@ class VectorSimilarityCollector extends AbstractKnnCollector {
   }
 
   @Override
-  public TopDocs topDocs() {
+  public KnnResult knnResult() {
     // Results are not returned in a sorted order to prevent unnecessary calculations (because we do
     // not need to maintain the topK)
     TotalHits.Relation relation =
         earlyTerminated()
             ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
             : TotalHits.Relation.EQUAL_TO;
-    return new TopDocs(
-        new TotalHits(visitedCount(), relation), scoreDocList.toArray(ScoreDoc[]::new));
+    TopDocs td =
+        new TopDocs(new TotalHits(visitedCount(), relation), scoreDocList.toArray(ScoreDoc[]::new));
+    return new KnnResult(strategy, td, td.scoreDocs.length);
   }
 
   @Override

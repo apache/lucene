@@ -18,6 +18,7 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Objects;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.FieldInfo;
@@ -146,7 +147,7 @@ public class SeededKnnVectorQuery extends AbstractKnnVectorQuery {
   }
 
   @Override
-  protected TopDocs approximateSearch(
+  protected KnnResult approximateSearch(
       LeafReaderContext context,
       AcceptDocs acceptDocs,
       int visitedLimit,
@@ -162,14 +163,14 @@ public class SeededKnnVectorQuery extends AbstractKnnVectorQuery {
   }
 
   @Override
-  protected TopDocs exactSearch(
+  protected KnnResult exactSearch(
       LeafReaderContext context, DocIdSetIterator acceptIterator, QueryTimeout queryTimeout)
       throws IOException {
     return delegate.exactSearch(context, acceptIterator, queryTimeout);
   }
 
   @Override
-  protected TopDocs mergeLeafResults(TopDocs[] perLeafResults) {
+  protected TopDocs mergeLeafResults(Collection<KnnResult> perLeafResults) {
     return delegate.mergeLeafResults(perLeafResults);
   }
 

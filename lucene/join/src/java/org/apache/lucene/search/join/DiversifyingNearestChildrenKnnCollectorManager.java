@@ -68,7 +68,11 @@ public class DiversifyingNearestChildrenKnnCollectorManager implements KnnCollec
 
   @Override
   public KnnCollector newOptimisticCollector(
-      int visitedLimit, KnnSearchStrategy searchStrategy, LeafReaderContext context, int k)
+      int visitedLimit,
+      KnnSearchStrategy searchStrategy,
+      LeafReaderContext context,
+      int k,
+      int globalK)
       throws IOException {
     BitSet parentBitSet = parentsFilter.getBitSet(context);
     if (parentBitSet == null) {

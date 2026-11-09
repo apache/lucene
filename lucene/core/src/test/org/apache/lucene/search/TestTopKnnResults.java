@@ -28,7 +28,7 @@ public class TestTopKnnResults extends LuceneTestCase {
     for (int i = 0; i < nodes.length; i++) {
       results.collect(nodes[i], scores[i]);
     }
-    TopDocs topDocs = results.topDocs();
+    TopDocs topDocs = results.knnResult().topDocs();
     int[] sortedNodes = new int[topDocs.scoreDocs.length];
     float[] sortedScores = new float[topDocs.scoreDocs.length];
     for (int i = 0; i < topDocs.scoreDocs.length; i++) {

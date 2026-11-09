@@ -78,6 +78,7 @@ import org.apache.lucene.util.hnsw.HnswGraphBuilder;
  *         <li><b>array[vint]</b> for levels greater than 0 list of nodes on this level, stored as
  *             the level 0th delta encoded nodes' ordinals.
  *       </ul>
+ *   <li>Avg out-degree of nodes in the bottom layer (Version >= 2 only)
  * </ul>
  *
  * @lucene.experimental
@@ -91,7 +92,15 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
 
   public static final int VERSION_START = 0;
   public static final int VERSION_GROUPVARINT = 1;
-  public static final int VERSION_CURRENT = VERSION_GROUPVARINT;
+
+  /**
+   * Adds the average bottom-layer (level 0) node degree per field to the meta file, appended at the
+   * end of each field entry. Readers should default to 0 when the segment was written by an older
+   * version.
+   */
+  public static final int VERSION_AVG_DEGREE = 2;
+
+  public static final int VERSION_CURRENT = VERSION_AVG_DEGREE;
 
   /**
    * A maximum configurable maximum max conn.
@@ -123,8 +132,7 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
    * Minimum estimated search effort (in terms of expected visited nodes) required before building
    * an HNSW graph for a segment.
    *
-   * <p>This threshold is compared against the value produced by {@link
-   * org.apache.lucene.util.hnsw.HnswGraphSearcher#expectedVisitedNodes(int, int)}, which estimates
+   * <p>This threshold is compared against {@code k * ln(1 + numNodes)}, a conservative estimate of
    * how many nodes would be visited during a vector search based on the current graph size and
    * {@code k} (neighbours to find).
    *
@@ -268,6 +276,9 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
       int tinySegmentsThreshold,
       int writeVersion) {
     super("Lucene99HnswVectorsFormat");
+    if (writeVersion < VERSION_START || writeVersion > VERSION_CURRENT) {
+      throw new IllegalArgumentException("Invalid writeVersion: " + writeVersion);
+    }
     if (maxConn <= 0 || maxConn > MAXIMUM_MAX_CONN) {
       throw new IllegalArgumentException(
           "maxConn must be positive and less than or equal to "

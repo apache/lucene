@@ -92,6 +92,14 @@ public abstract class HnswGraph {
   public abstract int entryNode() throws IOException;
 
   /**
+   * Returns the average out-degree of nodes in the bottom layer of the graph or 0 if the graph is
+   * empty or the degree is unknown.
+   */
+  public float avgDegree() {
+    return 0f;
+  }
+
+  /**
    * Get all nodes on a given level as node 0th ordinals. The nodes are NOT guaranteed to be
    * presented in any particular order.
    *

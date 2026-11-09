@@ -27,7 +27,7 @@ import org.apache.lucene.search.HnswQueueSaturationCollector;
  * @lucene.experimental
  */
 public abstract class KnnSearchStrategy {
-  public static final int DEFAULT_FILTERED_SEARCH_THRESHOLD = 60;
+  public static final int DEFAULT_FILTERED_SEARCH_THRESHOLD = 0;
 
   /** Override and implement search strategy instance equivalence properly in a subclass. */
   @Override
@@ -43,6 +43,20 @@ public abstract class KnnSearchStrategy {
 
   /** Signal processing of the next block of vectors. */
   public abstract void nextVectorsBlock();
+
+  /**
+   * Estimates the number of distinct nodes this search strategy expects to visit, accounting for
+   * maxConn and bounded by the graph size. Used to decide between an HNSW search and an exhaustive
+   * scan.
+   *
+   * @param k neighbors to find
+   * @param graphSize size of the graph
+   * @param avgDegree average out-degree of nodes in the bottom layer of the graph
+   * @return expected number of distinct visited nodes, in [0, graphSize]
+   */
+  public int expectedVisitedNodes(int k, int graphSize, float selectivity, int m, float avgDegree) {
+    return (int) (k * Math.log(graphSize));
+  }
 
   /**
    * A strategy for kNN search that uses HNSW
@@ -69,6 +83,45 @@ public abstract class KnnSearchStrategy {
 
     public int filteredSearchThreshold() {
       return filteredSearchThreshold;
+    }
+
+    /**
+     * Squashes x to range [0, n)
+     *
+     * <p>This function is smooth and monotonic in x.
+     */
+    private static double squash(double x, double limit) {
+      if (limit <= 1) {
+        return 0;
+      }
+      // Expected number of unique items discovered when sampling `x` times from a universe of
+      // `limit` items uniformly at random.
+      return limit * (1 - Math.exp(x * Math.log1p(-1.0 / limit)));
+    }
+
+    @Override
+    public int expectedVisitedNodes(
+        int k, int graphSize, float selectivity, int m, float avgDegree) {
+      if (useFilteredSearch(selectivity)) {
+        // TODO: Account for selectivity in ACORN-1
+        return super.expectedVisitedNodes(k, graphSize, selectivity, m, avgDegree);
+      }
+
+      // Newer segments store their avg node degree, but for older segments we need a conservative
+      // estimate
+      double expectedDegree = avgDegree > 0 ? avgDegree : 16;
+
+      double requiredScores = Math.min(k, graphSize * selectivity);
+      double s = Math.max(.001, selectivity);
+      double logN = Math.log(graphSize);
+      double descent = .70 * logN * logN;
+      //
+      double baseCost = expectedDegree * logN;
+      double localUniverse = Math.min(graphSize, expectedDegree * k / s);
+      double filteredCostEstimate = .28 * Math.pow(k / s, .71) * expectedDegree * logN;
+      double bottomExplorationCost = Math.max(baseCost, filteredCostEstimate);
+
+      return (int) Math.max(requiredScores, descent + squash(localUniverse, bottomExplorationCost));
     }
 
     /**

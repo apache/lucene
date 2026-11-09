@@ -127,7 +127,7 @@ public class TestPatienceByteVectorQuery extends BaseKnnVectorQueryTestCase {
     }
 
     @Override
-    protected TopDocs exactSearch(
+    protected KnnResult exactSearch(
         LeafReaderContext context, DocIdSetIterator acceptIterator, QueryTimeout queryTimeout) {
       throw new UnsupportedOperationException("exact search is not supported");
     }

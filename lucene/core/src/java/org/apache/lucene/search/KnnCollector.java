@@ -80,18 +80,36 @@ public interface KnnCollector {
   float minCompetitiveSimilarity();
 
   /**
+   * The minimum similarity a vector that has already been scored must have to still be collected.
+   *
+   * <p>Unlike {@link #minCompetitiveSimilarity()}, which decides how far an approximate search
+   * explores, this is used when every candidate is scored anyway (e.g. an exhaustive scan), so a
+   * collector that keeps more hits than it searches for may accept hits below the competitive
+   * threshold at no extra scoring cost. Defaults to {@link #minCompetitiveSimilarity()}.
+   *
+   * @return the current minimum similarity for a scored vector to be collected
+   */
+  default float minCollectableSimilarity() {
+    return minCompetitiveSimilarity();
+  }
+
+  /**
    * This drains the collected nearest kNN results and returns them in a new {@link TopDocs}
    * collection, ordered by score descending. NOTE: This is generally a destructive action and the
    * collector should not be used after topDocs() is called.
    *
    * @return The collected top documents
    */
-  TopDocs topDocs();
+  KnnResult knnResult();
 
   /**
    * @return the search strategy used by this collector, can be null
    */
   KnnSearchStrategy getSearchStrategy();
+
+  void setMethodology(KnnResult.Method method);
+
+  KnnResult.Method getMethodology();
 
   /**
    * KnnCollector.Decorator is the base class for decorators of KnnCollector objects, which extend
@@ -142,13 +160,28 @@ public interface KnnCollector {
     }
 
     @Override
-    public TopDocs topDocs() {
-      return collector.topDocs();
+    public float minCollectableSimilarity() {
+      return collector.minCollectableSimilarity();
+    }
+
+    @Override
+    public KnnResult knnResult() {
+      return collector.knnResult();
     }
 
     @Override
     public KnnSearchStrategy getSearchStrategy() {
       return collector.getSearchStrategy();
+    }
+
+    @Override
+    public void setMethodology(KnnResult.Method strategy) {
+      collector.setMethodology(strategy);
+    }
+
+    @Override
+    public KnnResult.Method getMethodology() {
+      return collector.getMethodology();
     }
   }
 }

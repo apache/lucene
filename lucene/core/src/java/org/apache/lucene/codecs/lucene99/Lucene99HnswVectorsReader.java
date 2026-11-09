@@ -45,7 +45,9 @@ import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.DocAndFloatFeatureBuffer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.search.KnnResult;
 import org.apache.lucene.search.VectorScorer;
+import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.DataInput;
@@ -109,7 +111,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
                 Lucene99HnswVectorsFormat.VERSION_CURRENT,
                 state.segmentInfo.getId(),
                 state.segmentSuffix);
-        readFields(meta);
+        readFields(meta, versionMeta);
       } catch (Throwable exception) {
         priorE = exception;
       } finally {
@@ -195,13 +197,13 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     }
   }
 
-  private void readFields(ChecksumIndexInput meta) throws IOException {
+  private void readFields(ChecksumIndexInput meta, int versionMeta) throws IOException {
     for (int fieldNumber = meta.readInt(); fieldNumber != -1; fieldNumber = meta.readInt()) {
       FieldInfo info = fieldInfos.fieldInfo(fieldNumber);
       if (info == null) {
         throw new CorruptIndexException("Invalid field number: " + fieldNumber, meta);
       }
-      FieldEntry fieldEntry = readField(meta, info);
+      FieldEntry fieldEntry = readField(meta, info, versionMeta);
       validateFieldEntry(info, fieldEntry);
       fields.put(info.number, fieldEntry);
     }
@@ -248,7 +250,8 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     return VectorEncoding.values()[encodingId];
   }
 
-  private FieldEntry readField(IndexInput input, FieldInfo info) throws IOException {
+  private FieldEntry readField(IndexInput input, FieldInfo info, int versionMeta)
+      throws IOException {
     VectorEncoding vectorEncoding = readVectorEncoding(input);
     VectorSimilarityFunction similarityFunction = readSimilarityFunction(input);
     if (similarityFunction != info.getVectorSimilarityFunction()) {
@@ -260,7 +263,8 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
               + " != "
               + info.getVectorSimilarityFunction());
     }
-    return FieldEntry.create(input, vectorEncoding, info.getVectorSimilarityFunction());
+    return FieldEntry.create(
+        input, vectorEncoding, info.getVectorSimilarityFunction(), versionMeta);
   }
 
   @Override
@@ -298,6 +302,16 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       throw new IllegalArgumentException("field=\"" + field + "\" not found");
     }
     return entry;
+  }
+
+  /**
+   * Average out-degree of the bottom layer (level 0) of the field's HNSW graph, as computed at
+   * write time (and recomputed on merge, since merges rebuild the graph). Returns 0 when the
+   * segment was written by an older format version that does not store it, or when the field has no
+   * graph.
+   */
+  public float getAvgBottomLayerDegree(String field) {
+    return getFieldEntryOrThrow(field).avgDegree();
   }
 
   private FieldEntry getFieldEntry(String field, VectorEncoding expectedEncoding) {
@@ -373,14 +387,20 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     // Use approximate cardinality as this is good enough, but ensure we don't exceed the graph
     // size as that is illogical
     int filteredDocCount = Math.min(acceptDocs.cost(), graphSize);
-    // The approximate number of vectors that would be visited if we did not filter
     final RandomVectorScorer scorer = scorerSupplier.get();
     final KnnCollector ordCollector =
         new OrdinalTranslatedKnnCollector(docIdCollector, scorer::ordToDoc);
     final Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs.bits());
 
-    int unfilteredVisit = HnswGraphSearcher.expectedVisitedNodes(k, graphSize);
-    if (unfilteredVisit >= filteredDocCount) {
+    float selectivity = (float) (filteredDocCount / (double) graphSize);
+    KnnSearchStrategy strat = docIdCollector.getSearchStrategy();
+    if (strat == null) {
+      strat = KnnSearchStrategy.Hnsw.DEFAULT;
+    }
+    double expectedHnswCost =
+        strat.expectedVisitedNodes(
+            docIdCollector.k(), graphSize, selectivity, fieldEntry.M, fieldEntry.avgDegree);
+    if (expectedHnswCost >= filteredDocCount) {
       scanAllDocs(docIdCollector, acceptDocs, sequentialScorerSupplier, scorerSupplier, numVectors);
     } else {
       HnswGraphSearcher.search(
@@ -410,6 +430,8 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       IOSupplier<RandomVectorScorer> scorerSupplier,
       int numVectors)
       throws IOException {
+    docIdCollector.setMethodology(KnnResult.Method.EXACT);
+
     Bits bits = acceptDocs.bits();
     if (bits == null || acceptDocs.cost() >= numVectors) {
       // Case 1: No explicit filter and no deleted documents, so let's just iterate over vector ords
@@ -428,7 +450,8 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
         buffer.size > 0;
         maxScore = bulkScorer.nextDocsAndScores(DocIdSetIterator.NO_MORE_DOCS, null, buffer)) {
 
-      if (maxScore >= docIdCollector.minCompetitiveSimilarity()) {
+      // Collect any results that are globally competitive since we have to score them anyway.
+      if (maxScore >= docIdCollector.minCollectableSimilarity()) {
         for (int i = 0; i < buffer.size; ++i) {
           float score = buffer.features[i];
           int doc = buffer.docs[i];
@@ -466,7 +489,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
         ords[numOrds++] = i;
         if (numOrds == ords.length) {
           knnCollector.incVisitedCount(numOrds);
-          float minScore = knnCollector.minCompetitiveSimilarity();
+          float minScore = knnCollector.minCollectableSimilarity();
           if (scorer.bulkScore(ords, scores, numOrds) > minScore) {
             for (int j = 0; j < numOrds; j++) {
               if (scores[j] > minScore) {
@@ -480,7 +503,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     }
     if (numOrds > 0) {
       knnCollector.incVisitedCount(numOrds);
-      float minScore = knnCollector.minCompetitiveSimilarity();
+      float minScore = knnCollector.minCollectableSimilarity();
       if (scorer.bulkScore(ords, scores, numOrds) > minScore) {
         for (int j = 0; j < numOrds; j++) {
           if (scores[j] > minScore) {
@@ -569,12 +592,14 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       DirectMonotonicReader.Meta offsetsMeta,
       long offsetsOffset,
       int offsetsBlockShift,
-      long offsetsLength) {
+      long offsetsLength,
+      float avgDegree) {
 
     static FieldEntry create(
         IndexInput input,
         VectorEncoding vectorEncoding,
-        VectorSimilarityFunction similarityFunction)
+        VectorSimilarityFunction similarityFunction,
+        int versionMeta)
         throws IOException {
       final var vectorIndexOffset = input.readVLong();
       final var vectorIndexLength = input.readVLong();
@@ -613,6 +638,10 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
         offsetsMeta = null;
         offsetsLength = 0;
       }
+      final float avgDegree =
+          versionMeta >= Lucene99HnswVectorsFormat.VERSION_AVG_DEGREE
+              ? Float.intBitsToFloat(input.readInt())
+              : 0f;
       return new FieldEntry(
           similarityFunction,
           vectorEncoding,
@@ -626,7 +655,8 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
           offsetsMeta,
           offsetsOffset,
           offsetsBlockShift,
-          offsetsLength);
+          offsetsLength,
+          avgDegree);
     }
   }
 
@@ -637,6 +667,10 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     final int[][] nodesByLevel;
     final int numLevels;
     final int entryNode;
+
+    /** The average out-degree of nodes in the bottom layer of the graph if known, else 0 */
+    final float avgDegree;
+
     final int size;
     int arcCount;
     int arcUpTo;
@@ -654,6 +688,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       this.numLevels = entry.numLevels;
       this.entryNode = numLevels > 1 ? nodesByLevel[numLevels - 1][0] : 0;
       this.size = entry.size();
+      this.avgDegree = entry.avgDegree;
       final RandomAccessInput addressesData =
           vectorIndex.randomAccessSlice(entry.offsetsOffset, entry.offsetsLength);
       this.graphLevelNodeOffsets =
@@ -733,6 +768,11 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     @Override
     public int entryNode() throws IOException {
       return entryNode;
+    }
+
+    @Override
+    public float avgDegree() {
+      return avgDegree;
     }
 
     @Override
