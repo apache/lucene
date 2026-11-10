@@ -47,6 +47,7 @@ final class PendingSoftDeletes extends PendingDeletes {
    */
   PendingSoftDeletes(String field, SegmentReader reader, SegmentCommitInfo info) {
     super(info, reader.getLiveDocs(), true);
+    assert reader.isNRT : "the live docs of a reader opened from disk don't include soft deletes";
     this.field = field;
     Bits hardLiveDocs = reader.getHardLiveDocs();
     int numHardDeletes =

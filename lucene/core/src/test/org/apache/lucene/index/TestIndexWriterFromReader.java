@@ -26,6 +26,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -621,6 +622,141 @@ public class TestIndexWriterFromReader extends LuceneTestCase {
     assertEquals(softDelCount, newSoftDelCount);
     try (DirectoryReader r3 = DirectoryReader.open(dir)) {
       assertEquals(List.of("0-new", "2-new", "3", "4", "5"), ids(r3));
+    }
+    dir.close();
+  }
+
+  /**
+   * The soft deletes of the NRT reader must stay soft deletes: the next commit must not write them
+   * as hard deletes, and a merge policy that retains soft deleted documents must still see them.
+   */
+  public void testSoftDeletesStaySoft() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriter w =
+        new IndexWriter(
+            dir,
+            new IndexWriterConfig()
+                .setSoftDeletesField("soft_delete")
+                .setMergePolicy(NoMergePolicy.INSTANCE));
+    for (int i = 0; i < 5; i++) {
+      w.addDocument(doc(Integer.toString(i)));
+    }
+    w.commit();
+    w.updateDocValues(new Term("id", "0"), new NumericDocValuesField("soft_delete", 1));
+    w.commit();
+    DirectoryReader r = DirectoryReader.open(w);
+    w.close();
+
+    MergePolicy retainAll =
+        new SoftDeletesRetentionMergePolicy(
+            "soft_delete", () -> MatchAllDocsQuery.INSTANCE, newLogMergePolicy());
+    IndexWriter w2 =
+        new IndexWriter(
+            dir,
+            new IndexWriterConfig()
+                .setSoftDeletesField("soft_delete")
+                .setMergePolicy(retainAll)
+                .setIndexCommit(r.getIndexCommit()));
+    r.close();
+    w2.deleteDocuments(new Term("id", "3"));
+    w2.commit();
+    SegmentCommitInfo info = SegmentInfos.readLatestCommit(dir).info(0);
+    assertEquals(1, info.getDelCount());
+    assertEquals(1, info.getSoftDelCount());
+    w2.forceMerge(1);
+    w2.close();
+    try (DirectoryReader r2 = DirectoryReader.open(dir)) {
+      // the soft deleted document is retained
+      assertEquals(4, r2.maxDoc());
+      assertEquals(4, r2.numDocs());
+      assertEquals(List.of("1", "2", "4"), ids(r2));
+    }
+    dir.close();
+  }
+
+  /**
+   * With a soft deletes field but no soft deletes, the NRT reader's hard delete that isn't written
+   * yet was counted twice, and the next commit dropped the segment with its live document. No
+   * assertion caught this.
+   */
+  public void testUncommittedHardDeleteWithSoftDeletesField() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriter w =
+        new IndexWriter(
+            dir,
+            new IndexWriterConfig()
+                .setSoftDeletesField("soft_delete")
+                .setMergePolicy(NoMergePolicy.INSTANCE));
+    w.addDocument(doc("0"));
+    w.addDocument(doc("1"));
+    w.commit();
+    w.deleteDocuments(new Term("id", "0"));
+    DirectoryReader r = DirectoryReader.open(w);
+    w.rollback();
+    IndexWriter w2 =
+        new IndexWriter(
+            dir,
+            new IndexWriterConfig()
+                .setSoftDeletesField("soft_delete")
+                .setMergePolicy(NoMergePolicy.INSTANCE)
+                .setIndexCommit(r.getIndexCommit()));
+    r.close();
+    assertEquals(1, w2.getDocStats().numDocs);
+    w2.close();
+    try (DirectoryReader r2 = DirectoryReader.open(dir)) {
+      assertEquals(2, r2.maxDoc());
+      assertEquals(List.of("1"), ids(r2));
+    }
+    dir.close();
+  }
+
+  /**
+   * A merge on the new writer must map each document's terms to its own stored fields. Before the
+   * fix, the merge used a numDocs that didn't match the live docs, so the terms of the documents
+   * after the first segment pointed at other documents.
+   */
+  public void testMergeAfterSoftDeletes() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriter w =
+        new IndexWriter(
+            dir,
+            new IndexWriterConfig()
+                .setSoftDeletesField("soft_delete")
+                .setMergePolicy(NoMergePolicy.INSTANCE));
+    List<String> expected = new ArrayList<>();
+    for (String prefix : new String[] {"a", "b"}) {
+      for (int i = 0; i < 20; i++) {
+        w.addDocument(doc(prefix + i));
+        expected.add(prefix + i);
+      }
+      w.commit();
+    }
+    w.updateDocValues(new Term("id", "a0"), new NumericDocValuesField("soft_delete", 1));
+    expected.remove("a0");
+    Collections.sort(expected);
+    w.commit();
+    DirectoryReader r = DirectoryReader.open(w);
+    w.close();
+    IndexWriter w2 =
+        new IndexWriter(
+            dir,
+            new IndexWriterConfig()
+                .setSoftDeletesField("soft_delete")
+                .setMergePolicy(newLogMergePolicy())
+                .setIndexCommit(r.getIndexCommit()));
+    r.close();
+    w2.forceMerge(1);
+    w2.close();
+    try (DirectoryReader r2 = DirectoryReader.open(dir)) {
+      assertEquals(expected.size(), r2.maxDoc());
+      assertEquals(expected, ids(r2));
+      LeafReader leaf = getOnlyLeafReader(r2);
+      StoredFields storedFields = leaf.storedFields();
+      for (int doc = 0; doc < leaf.maxDoc(); doc++) {
+        String id = storedFields.document(doc).get("id");
+        PostingsEnum postings = leaf.postings(new Term("id", id));
+        assertEquals("postings of id " + id, doc, postings.advance(doc));
+      }
     }
     dir.close();
   }
