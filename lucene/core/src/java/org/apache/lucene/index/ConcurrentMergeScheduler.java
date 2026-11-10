@@ -626,6 +626,12 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
         return false;
       }
 
+      if (mergeSource.hasPendingMerges() == false) {
+        // No merge is pending, so there is no work to schedule. Stop
+        // scheduling rather than stalling this producer thread:
+        return false;
+      }
+
       if (startStallTime == 0) {
         startStallTime = System.currentTimeMillis();
         if (verbose()) {
