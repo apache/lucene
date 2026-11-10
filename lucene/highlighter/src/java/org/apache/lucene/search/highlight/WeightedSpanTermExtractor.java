@@ -566,22 +566,21 @@ public class WeightedSpanTermExtractor {
   }
 
   protected void collectSpanQueryFields(SpanQuery spanQuery, Set<String> fieldNames) {
-    if (spanQuery instanceof FieldMaskingSpanQuery) {
-      collectSpanQueryFields(((FieldMaskingSpanQuery) spanQuery).getMaskedQuery(), fieldNames);
-    } else if (spanQuery instanceof SpanFirstQuery) {
-      collectSpanQueryFields(((SpanFirstQuery) spanQuery).getMatch(), fieldNames);
-    } else if (spanQuery instanceof SpanNearQuery) {
-      for (final SpanQuery clause : ((SpanNearQuery) spanQuery).getClauses()) {
-        collectSpanQueryFields(clause, fieldNames);
+    switch (spanQuery) {
+      case FieldMaskingSpanQuery q -> collectSpanQueryFields(q.getMaskedQuery(), fieldNames);
+      case SpanFirstQuery q -> collectSpanQueryFields(q.getMatch(), fieldNames);
+      case SpanNearQuery q -> {
+        for (final SpanQuery clause : q.getClauses()) {
+          collectSpanQueryFields(clause, fieldNames);
+        }
       }
-    } else if (spanQuery instanceof SpanNotQuery) {
-      collectSpanQueryFields(((SpanNotQuery) spanQuery).getInclude(), fieldNames);
-    } else if (spanQuery instanceof SpanOrQuery) {
-      for (final SpanQuery clause : ((SpanOrQuery) spanQuery).getClauses()) {
-        collectSpanQueryFields(clause, fieldNames);
+      case SpanNotQuery q -> collectSpanQueryFields(q.getInclude(), fieldNames);
+      case SpanOrQuery q -> {
+        for (final SpanQuery clause : q.getClauses()) {
+          collectSpanQueryFields(clause, fieldNames);
+        }
       }
-    } else {
-      fieldNames.add(spanQuery.getField());
+      default -> fieldNames.add(spanQuery.getField());
     }
   }
 

@@ -17,6 +17,7 @@
 package org.apache.lucene.store;
 
 import static org.hamcrest.Matchers.arrayContainingInAnyOrder;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 
 import java.util.List;
 import java.util.Set;
@@ -86,6 +87,22 @@ public class TestIOContext extends LuceneTestCase {
     assertThat(
         context.removeHints(DataAccessHint.class).toArray(FileOpenHint[]::new),
         arrayContainingInAnyOrder(CustomTestHint.CUSTOM_TEST_HINT1, PreloadHint.INSTANCE));
+  }
+
+  public void testOverrideHints() {
+    IOContext context = IOContext.READONCE.overrideHints(DataAccessHint.RANDOM, FileTypeHint.INDEX);
+    assertThat(
+        context.hints(),
+        containsInAnyOrder(DataAccessHint.RANDOM, FileTypeHint.INDEX, ReadOnceHint.INSTANCE));
+    assertEquals(IOContext.READONCE.context(), context.context());
+
+    IOContext replaced = context.overrideHints(FileTypeHint.DATA);
+    assertThat(
+        replaced.hints(),
+        containsInAnyOrder(DataAccessHint.RANDOM, FileTypeHint.DATA, ReadOnceHint.INSTANCE));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> IOContext.DEFAULT.overrideHints(DataAccessHint.RANDOM, DataAccessHint.SEQUENTIAL));
   }
 
   protected List<IOContext> getContexts() {
