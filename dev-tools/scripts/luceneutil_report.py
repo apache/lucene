@@ -90,10 +90,23 @@ def format_table(results: list[TaskResult]) -> list[str]:
   return lines
 
 
+def describe_machine(args: argparse.Namespace) -> str:
+  cpus = f"{args.cpus} CPUs" + (f" ({args.cpu_model})" if args.cpu_model else "")
+  parts = [args.runner, cpus]
+  if args.memory_gb:
+    parts.append(f"{args.memory_gb} GB RAM")
+  if args.disk_gb:
+    parts.append(f"{args.disk_gb} GB disk")
+  if args.jdk:
+    parts.append(args.jdk)
+  parts.append(f"attempt {args.attempt}")
+  return ", ".join(parts)
+
+
 def render(results: list[TaskResult], args: argparse.Namespace) -> str:
   lines = [
     f"### luceneutil `{args.source}`: candidate `{args.candidate[:10]}` vs baseline `{args.baseline[:10]}`",
-    f"{args.runner}, {args.cpus} CPUs, attempt {args.attempt}",
+    describe_machine(args),
     "",
   ]
   if not results:
@@ -138,6 +151,10 @@ def main() -> int:
   parser.add_argument("--candidate", required=True, help="candidate commit")
   parser.add_argument("--runner", required=True, help="runner label")
   parser.add_argument("--cpus", required=True, help="number of CPUs on the runner")
+  parser.add_argument("--cpu-model", default="", help="CPU model name")
+  parser.add_argument("--memory-gb", default="", help="total memory in GB")
+  parser.add_argument("--disk-gb", default="", help="size of the workspace disk in GB")
+  parser.add_argument("--jdk", default="", help="JDK vendor and version")
   parser.add_argument("--attempt", default="1", help="attempt id")
   args = parser.parse_args()
 

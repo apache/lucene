@@ -260,14 +260,22 @@ jobs:
           ATTEMPT: ${{ matrix.attempt }}
         run: |
           touch bench/bench.log
+          cpu_model=$(lscpu | awk -F': *' '$1 == "Model name" && $2 != "-" {print $2; exit}') || cpu_model=""
+          memory_gb=$(awk '/^MemTotal:/ {printf "%d", $2 / 1048576 + 0.5}' /proc/meminfo) || memory_gb=""
+          disk_gb=$(df -BG --output=size "$GITHUB_WORKSPACE" | tail -n 1 | tr -dc '0-9') || disk_gb=""
+          java_props=$(java -XshowSettings:properties -version 2>&1) || java_props=""
+          jdk=$(sed -n 's/^ *java.vendor.version = //p' <<< "$java_props")
           python dev-tools/scripts/luceneutil_report.py bench/bench.log --output bench/summary.md \
             --source "$SOURCE" --baseline "$BASELINE" --candidate "$CANDIDATE" \
-            --runner "$RUNNER_LABEL" --cpus "$(nproc)" --attempt "$ATTEMPT"
+            --runner "$RUNNER_LABEL" --cpus "$(nproc)" --attempt "$ATTEMPT" \
+            --cpu-model "$cpu_model" --memory-gb "$memory_gb" --disk-gb "$disk_gb" --jdk "$jdk"
           cat bench/summary.md >> "$GITHUB_STEP_SUMMARY"
           # Read by report-benchmark-luceneutil.yml, which validates every value
           jq -n --arg pr "$PR_NUMBER" --arg source "$SOURCE" --arg baseline "$BASELINE" --arg candidate "$CANDIDATE" \
             --arg runner "$RUNNER_LABEL" --arg cpus "$(nproc)" --arg attempt "$ATTEMPT" \
-            '{pr: $pr, source: $source, baseline: $baseline, candidate: $candidate, runner: $runner, cpus: $cpus, attempt: $attempt}' \
+            --arg cpu_model "$cpu_model" --arg memory_gb "$memory_gb" --arg disk_gb "$disk_gb" --arg jdk "$jdk" \
+            '{pr: $pr, source: $source, baseline: $baseline, candidate: $candidate, runner: $runner, cpus: $cpus,
+              attempt: $attempt, cpu_model: $cpu_model, memory_gb: $memory_gb, disk_gb: $disk_gb, jdk: $jdk}' \
             > bench/request.json
 
       - name: Upload results

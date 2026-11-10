@@ -115,17 +115,30 @@ jobs:
           baseline=$(field baseline)
           runner=$(field runner)
           cpus=$(field cpus)
+          cpu_model=$(field cpu_model)
+          memory_gb=$(field memory_gb)
+          disk_gb=$(field disk_gb)
+          jdk=$(field jdk)
           [ "$(field pr)" = "$PR_NUMBER" ] || { echo "::error::PR number mismatch"; exit 1; }
           [ "$(field candidate)" = "$HEAD_SHA" ] || { echo "::error::Candidate is not the run's head commit"; exit 1; }
           [ "$source" = "wikimedium$SIZE" ] || { echo "::error::Unexpected source: $source"; exit 1; }
           [[ "$baseline" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::Invalid baseline commit"; exit 1; }
           [ "$runner" = ubuntu-26.04-arm ] || { echo "::error::Unexpected runner: $runner"; exit 1; }
           [[ "$cpus" =~ ^[0-9]{1,3}$ ]] || { echo "::error::Invalid CPU count"; exit 1; }
+          # Machine details are shown in the comment, so only plain values are accepted
+          [[ "$cpu_model" =~ ^[A-Za-z0-9\ ._()@+-]{0,64}$ ]] || { echo "::error::Invalid CPU model"; exit 1; }
+          [[ "$memory_gb" =~ ^[0-9]{0,4}$ ]] || { echo "::error::Invalid memory size"; exit 1; }
+          [[ "$disk_gb" =~ ^[0-9]{0,5}$ ]] || { echo "::error::Invalid disk size"; exit 1; }
+          [[ "$jdk" =~ ^[A-Za-z0-9\ ._+-]{0,64}$ ]] || { echo "::error::Invalid JDK"; exit 1; }
           {
             echo "source=$source"
             echo "baseline=$baseline"
             echo "runner=$runner"
             echo "cpus=$cpus"
+            echo "cpu_model=$cpu_model"
+            echo "memory_gb=$memory_gb"
+            echo "disk_gb=$disk_gb"
+            echo "jdk=$jdk"
           } >> "$GITHUB_OUTPUT"
 
       # From the default branch, never from the PR
@@ -151,10 +164,15 @@ jobs:
           CANDIDATE: ${{ github.event.workflow_run.head_sha }}
           RUNNER_LABEL: ${{ steps.results.outputs.runner }}
           CPUS: ${{ steps.results.outputs.cpus }}
+          CPU_MODEL: ${{ steps.results.outputs.cpu_model }}
+          MEMORY_GB: ${{ steps.results.outputs.memory_gb }}
+          DISK_GB: ${{ steps.results.outputs.disk_gb }}
+          JDK: ${{ steps.results.outputs.jdk }}
         run: |
           python trusted/dev-tools/scripts/luceneutil_report.py results/bench.log --output report.md \
             --source "$SOURCE" --baseline "$BASELINE" --candidate "$CANDIDATE" \
-            --runner "$RUNNER_LABEL" --cpus "$CPUS"
+            --runner "$RUNNER_LABEL" --cpus "$CPUS" \
+            --cpu-model "$CPU_MODEL" --memory-gb "$MEMORY_GB" --disk-gb "$DISK_GB" --jdk "$JDK"
 
       - name: Update the status comment
         if: always() && steps.request.outputs.pr != '' && github.event.action == 'completed'
