@@ -50,7 +50,7 @@ it again. A new request on the same pull request cancels a run that is still in 
 
 Both commits are built and benchmarked in the same job, on the same runner. luceneutil builds one index with
 the baseline and runs its standard search tasks against it with both commits, alternating between them over
-20 fresh JVMs each. The status comment names the exact commits that were measured.
+20 fresh JVMs each (10 for the 10k smoke test). The status comment names the exact commits that were measured.
 
 ## Reading the results
 

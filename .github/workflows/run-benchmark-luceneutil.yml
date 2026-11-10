@@ -116,8 +116,8 @@ jobs:
 
           echo "pr=$PR_NUMBER" >> "$GITHUB_OUTPUT"
           case "$LABEL" in
-            benchmark:luceneutil-1m) source=wikimedium1m ;;
-            benchmark:luceneutil-10k) source=wikimedium10k ;;
+            benchmark:luceneutil-1m) source=wikimedium1m iterations=20 ;;
+            benchmark:luceneutil-10k) source=wikimedium10k iterations=10 ;;
             *) echo "::error::Unexpected label: $LABEL"; exit 1 ;;
           esac
           # HEAD_SHA is the commit that was labeled, not the PR head at the time this job runs
@@ -126,7 +126,7 @@ jobs:
             echo "source=$source"
             echo "baseline=$merge_base"
             echo "candidate=$HEAD_SHA"
-            echo "iterations=20"
+            echo "iterations=$iterations"
             echo "runner=ubuntu-26.04-arm"
             echo "attempts=[1]"
           } >> "$GITHUB_OUTPUT"
@@ -137,7 +137,7 @@ jobs:
     name: luceneutil ${{ needs.gate.outputs.source }} (attempt ${{ matrix.attempt }})
     needs: gate
     if: needs.gate.outputs.source != ''
-    timeout-minutes: 120
+    timeout-minutes: 30
     runs-on: ${{ needs.gate.outputs.runner }}
     permissions:
       contents: read
