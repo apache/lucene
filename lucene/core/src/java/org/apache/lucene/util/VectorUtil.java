@@ -633,7 +633,6 @@ public final class VectorUtil {
     if (stats.length != 5) {
       throw new IllegalArgumentException("stats must have 5 entries: " + stats.length);
     }
-    assert lower <= upper : lower + " > " + upper;
     IMPL.osqGridStats(vector, lower, upper, points, stats);
   }
 
@@ -649,8 +648,6 @@ public final class VectorUtil {
       throw new IllegalArgumentException(
           "dest is shorter than vector: " + dest.length + " < " + vector.length);
     }
-    assert lower <= upper : lower + " > " + upper;
-    assert step >= 0 : "step < 0: " + step;
     return IMPL.osqAssign(vector, lower, upper, step, dest);
   }
 

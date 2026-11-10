@@ -1584,17 +1584,6 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     return correction;
   }
 
-  // reduceLanes(ADD) leaves the order of the additions open, and it adds in a different order
-  // before C2 compiles it than after, so the quantized values would depend on JIT state.
-  // Adding the lanes in order keeps them the same.
-  private static float sumLanes(FloatVector v) {
-    float sum = 0;
-    for (int i = 0; i < v.length(); i++) {
-      sum += v.lane(i);
-    }
-    return sum;
-  }
-
   @Override
   public void osqCenter(float[] vector, float[] centroid, float[] stats) {
     FloatVector accDot = FloatVector.zero(FLOAT_SPECIES);
@@ -1625,19 +1614,19 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     // scalar tail
     DefaultVectorUtilSupport.osqCenterImpl(vector, centroid, i, stats);
     // Each lane ran Welford over its own n values. Merge the lanes, then the tail (Chan et al.).
-    float mean = sumLanes(accMean) / FLOAT_SPECIES.length();
+    float mean = accMean.reduceLanes(ADD) / FLOAT_SPECIES.length();
     FloatVector meanDiff = accMean.sub(mean);
-    float m2 = sumLanes(accM2) + n * sumLanes(meanDiff.mul(meanDiff));
+    float m2 = accM2.reduceLanes(ADD) + n * meanDiff.mul(meanDiff).reduceLanes(ADD);
     int tail = vector.length - i;
     if (tail > 0) {
       float delta = stats[4] / tail - mean;
       m2 += stats[5] + delta * delta * ((float) i * tail / vector.length);
     }
-    stats[0] += sumLanes(accDot);
+    stats[0] += accDot.reduceLanes(ADD);
     stats[1] = Math.min(stats[1], accMin.reduceLanes(VectorOperators.MIN));
     stats[2] = Math.max(stats[2], accMax.reduceLanes(VectorOperators.MAX));
-    stats[3] += sumLanes(accSq);
-    stats[4] += sumLanes(accSum);
+    stats[3] += accSq.reduceLanes(ADD);
+    stats[4] += accSum.reduceLanes(ADD);
     stats[5] = m2;
   }
 
@@ -1677,9 +1666,9 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     DefaultVectorUtilSupport.osqGridStatsImpl(vector, i, lower, upper, points, stats);
     stats[0] += accK.reduceLanesToLong(ADD);
     stats[1] += accKK.reduceLanesToLong(ADD);
-    stats[2] += sumLanes(accXK);
-    stats[3] += sumLanes(accXD);
-    stats[4] += sumLanes(accDD);
+    stats[2] += accXK.reduceLanes(ADD);
+    stats[3] += accXD.reduceLanes(ADD);
+    stats[4] += accDD.reduceLanes(ADD);
   }
 
   @Override
