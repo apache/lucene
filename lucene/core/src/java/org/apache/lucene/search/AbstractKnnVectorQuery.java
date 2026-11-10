@@ -325,9 +325,6 @@ abstract class AbstractKnnVectorQuery extends Query {
       throws IOException {
 
     if (unfiltered) {
-      // No filter: every live doc is a candidate, so there is nothing to short-circuit or fall
-      // back from -- the reader's own `k >= numVectors` gate already scans tiny segments. The
-      // visit limit stays unbounded, as an exhaustive fallback is pointless without a filter.
       return approximateSearch(ctx, acceptDocs, Integer.MAX_VALUE, timeLimitingKnnCollectorManager);
     }
 
