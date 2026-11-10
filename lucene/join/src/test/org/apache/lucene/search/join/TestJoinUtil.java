@@ -33,6 +33,8 @@ import java.util.Random;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoubleDocValuesField;
 import org.apache.lucene.document.DoublePoint;
@@ -91,6 +93,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.FixedBitSetCollector;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
@@ -98,6 +101,7 @@ import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.packed.PackedInts;
 
 public class TestJoinUtil extends LuceneTestCase {
@@ -283,7 +287,7 @@ public class TestJoinUtil extends LuceneTestCase {
     doc.add(new SortedDocValuesField(joinField, new BytesRef("2")));
     w.addDocument(doc);
 
-    IndexSearcher indexSearcher = new IndexSearcher(w.getReader());
+    IndexSearcher indexSearcher = newSearcher(w.getReader());
     w.close();
 
     IndexReader r = indexSearcher.getIndexReader();
@@ -398,7 +402,7 @@ public class TestJoinUtil extends LuceneTestCase {
     w.addDocument(doc);
 
     IndexReader r = DirectoryReader.open(w);
-    IndexSearcher indexSearcher = new IndexSearcher(r);
+    IndexSearcher indexSearcher = newSearcher(r);
     SortedDocValues[] values = new SortedDocValues[r.leaves().size()];
     for (int i = 0; i < values.length; i++) {
       LeafReader leafReader = r.leaves().get(i).reader();
@@ -435,7 +439,8 @@ public class TestJoinUtil extends LuceneTestCase {
   }
 
   public void testRandomOrdinalsJoin() throws Exception {
-    IndexIterationContext context = createContext(128, false, true);
+    int nDocs = atLeast(100);
+    IndexIterationContext context = createContext(nDocs, false, true);
     int searchIters = atLeast(1);
     IndexSearcher indexSearcher = context.searcher;
     for (int i = 0; i < searchIters; i++) {
@@ -493,7 +498,7 @@ public class TestJoinUtil extends LuceneTestCase {
           indexSearcher.search(
               joinQuery,
               new MultiCollectorManager(
-                  new BitSetCollectorManager(indexSearcher.getIndexReader().maxDoc()),
+                  FixedBitSetCollector.createManager(indexSearcher.getIndexReader().maxDoc()),
                   new TopScoreDocCollectorManager(10, null, Integer.MAX_VALUE)));
       final BitSet actualResult = (BitSet) searchResults[0];
       assertBitSet(expectedResult, actualResult, indexSearcher);
@@ -1583,7 +1588,7 @@ public class TestJoinUtil extends LuceneTestCase {
             indexSearcher.search(
                 joinQuery,
                 new MultiCollectorManager(
-                    new BitSetCollectorManager(indexSearcher.getIndexReader().maxDoc()),
+                    FixedBitSetCollector.createManager(indexSearcher.getIndexReader().maxDoc()),
                     new TopScoreDocCollectorManager(10, null, Integer.MAX_VALUE)));
         // Asserting bit set...
         assertBitSet(expectedResult, (BitSet) searchResults[0], indexSearcher);
@@ -2080,31 +2085,6 @@ public class TestJoinUtil extends LuceneTestCase {
     }
   }
 
-  private static class BitSetCollector extends SimpleCollector {
-
-    private final BitSet bitSet;
-    private int docBase;
-
-    private BitSetCollector(BitSet bitSet) {
-      this.bitSet = bitSet;
-    }
-
-    @Override
-    public void collect(int doc) throws IOException {
-      bitSet.set(docBase + doc);
-    }
-
-    @Override
-    protected void doSetNextReader(LeafReaderContext context) throws IOException {
-      docBase = context.docBase;
-    }
-
-    @Override
-    public org.apache.lucene.search.ScoreMode scoreMode() {
-      return org.apache.lucene.search.ScoreMode.COMPLETE_NO_SCORES;
-    }
-  }
-
   private abstract static class JoinValueCollector extends SimpleCollector {
     final Map<BytesRef, JoinScore> localMap = new HashMap<>();
     final String fromField;
@@ -2133,8 +2113,12 @@ public class TestJoinUtil extends LuceneTestCase {
               entry.getKey(),
               entry.getValue(),
               (existing, src) -> {
-                if (src.minScore < existing.minScore) existing.minScore = src.minScore;
-                if (src.maxScore > existing.maxScore) existing.maxScore = src.maxScore;
+                if (src.minScore < existing.minScore) {
+                  existing.minScore = src.minScore;
+                }
+                if (src.maxScore > existing.maxScore) {
+                  existing.maxScore = src.maxScore;
+                }
                 existing.total += src.total;
                 existing.count += src.count;
                 return existing;
@@ -2251,27 +2235,60 @@ public class TestJoinUtil extends LuceneTestCase {
     }
   }
 
-  private static class BitSetCollectorManager
-      implements CollectorManager<BitSetCollector, FixedBitSet> {
-
-    private final int maxDoc;
-
-    BitSetCollectorManager(int maxDoc) {
-      this.maxDoc = maxDoc;
-    }
-
-    @Override
-    public BitSetCollector newCollector() {
-      return new BitSetCollector(new FixedBitSet(maxDoc));
-    }
-
-    @Override
-    public FixedBitSet reduce(Collection<BitSetCollector> collectors) {
-      FixedBitSet result = new FixedBitSet(maxDoc);
-      for (BitSetCollector c : collectors) {
-        result.or((FixedBitSet) c.bitSet);
+  /**
+   * Numeric joins collect join values concurrently across slices; make sure that many distinct
+   * values collected from many slices with an executor yield the same result as sequential
+   * collection.
+   */
+  public void testNumericJoinConcurrentCollection() throws Exception {
+    final int numValues = atLeast(2000);
+    final int numFromDocs = numValues * 4;
+    try (Directory dir = newDirectory();
+        IndexWriter w =
+            new IndexWriter(
+                dir,
+                newIndexWriterConfig(new MockAnalyzer(random()))
+                    .setMergePolicy(NoMergePolicy.INSTANCE))) {
+      for (int i = 0; i < numFromDocs; i++) {
+        long value = i % numValues;
+        Document doc = new Document();
+        doc.add(new NumericDocValuesField("from", value));
+        doc.add(new SortedNumericDocValuesField("fromMV", value));
+        doc.add(new SortedNumericDocValuesField("fromMV", value + numValues));
+        doc.add(new TextField("body", "a ".repeat(1 + random().nextInt(5)), Field.Store.NO));
+        w.addDocument(doc);
+        if (i % 500 == 499) {
+          w.flush();
+        }
       }
-      return result;
+      for (long value = 0; value < 2L * numValues; value++) {
+        Document doc = new Document();
+        doc.add(new LongPoint("to", value));
+        w.addDocument(doc);
+      }
+      w.commit();
+
+      ExecutorService executor =
+          Executors.newFixedThreadPool(4, new NamedThreadFactory("TestJoinUtil"));
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher sequential = new IndexSearcher(reader);
+        IndexSearcher concurrent = new IndexSearcher(reader, executor);
+        Query fromQuery = new TermQuery(new Term("body", "a"));
+        for (boolean mv : new boolean[] {false, true}) {
+          String fromField = mv ? "fromMV" : "from";
+          for (ScoreMode scoreMode : ScoreMode.values()) {
+            Query expectedQuery =
+                JoinUtil.createJoinQuery(
+                    fromField, mv, "to", Long.class, fromQuery, sequential, scoreMode);
+            Query actualQuery =
+                JoinUtil.createJoinQuery(
+                    fromField, mv, "to", Long.class, fromQuery, concurrent, scoreMode);
+            assertEquals(expectedQuery, actualQuery);
+          }
+        }
+      } finally {
+        TestUtil.shutdownExecutorService(executor);
+      }
     }
   }
 }

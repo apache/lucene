@@ -274,4 +274,15 @@ public class TestRoaringDocIdSet extends BaseDocIdSetTestCase<RoaringDocIdSet> {
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, it.docID());
     assertTrue(bitSet.scanIsEmpty());
   }
+
+  public void testRamBytesUsedFullBlocks() throws IOException {
+    final int blockSize = 1 << 16;
+    final int maxDoc = blockSize * random().nextInt(1, 5) + random().nextInt(blockSize);
+    BitSet bs = new BitSet(maxDoc);
+    bs.set(0, maxDoc);
+    assertRamBytesUsed(bs, maxDoc);
+    // all blocks but the one holding the missing doc remain full
+    bs.clear(random().nextInt(maxDoc));
+    assertRamBytesUsed(bs, maxDoc);
+  }
 }

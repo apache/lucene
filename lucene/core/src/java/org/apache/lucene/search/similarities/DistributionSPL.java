@@ -21,8 +21,10 @@ package org.apache.lucene.search.similarities;
  * in the original paper.
  *
  * <p>Unlike for DFR, the natural logarithm is used, as it is faster to compute and the original
- * paper does not express any preference to a specific base. WARNING: this model currently returns
- * infinite scores for very small tf values and negative scores for very large tf values
+ * paper does not express any preference to a specific base.
+ *
+ * <p>WARNING: this model may return very large (effectively infinite) scores for very small tf
+ * values.
  *
  * @lucene.experimental
  */
@@ -55,7 +57,9 @@ public class DistributionSPL extends Distribution {
       }
     }
 
-    return -Math.log((pow - lambda) / (1 - lambda));
+    double fraction = (pow - lambda) / (1 - lambda);
+    // Clamp to avoid negative scores due to floating-point rounding errors
+    return Math.max(0.0, -Math.log(fraction));
   }
 
   @Override

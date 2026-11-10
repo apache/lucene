@@ -52,6 +52,12 @@ public abstract class BaseDirectory extends Directory {
   }
 
   @Override
+  public void copyFrom(Directory from, String src, String dest, IOContext context)
+      throws IOException {
+    copyThroughCreateOutput(from, src, dest, context);
+  }
+
+  @Override
   public String toString() {
     return super.toString() + " lockFactory=" + lockFactory;
   }

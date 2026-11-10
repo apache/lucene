@@ -161,7 +161,7 @@ final class XYPointInGeometryQuery extends Query {
           }
 
           @Override
-          public long cost() {
+          public long cost() throws IOException {
             if (cost == -1) {
               // Computing the cost may be expensive, so only do it if necessary
               cost = values.estimateDocCount(visitor);

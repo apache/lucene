@@ -82,20 +82,13 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues implement
   }
 
   @Override
-  public void prefetch(final int[] ordsToPrefetch, int numOrds) throws IOException {
-    if (ordsToPrefetch == null) {
-      return;
+  public boolean prefetch(int ord, int count) throws IOException {
+    if (ord < 0 || ord >= size || count <= 0) {
+      return false;
     }
-    int finalNumOrds = Math.min(numOrds, ordsToPrefetch.length);
-    if (finalNumOrds <= 1) {
-      return;
-    }
-
-    // 1. calculate offset and prefetch immediately
-    for (int i = 0; i < finalNumOrds; i++) {
-      long offset = (long) ordsToPrefetch[i] * byteSize;
-      slice.prefetch(offset, byteSize);
-    }
+    // Vectors are laid out contiguously by ordinal, so a run of them is a single read.
+    final int runLength = Math.min(count, size - ord);
+    return slice.prefetch((long) ord * byteSize, (long) runLength * byteSize);
   }
 
   @Override

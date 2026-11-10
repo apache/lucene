@@ -239,7 +239,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
-    public long getSumDocFreq() throws IOException {
+    public long getSumDocFreq() {
       assertThread("Terms", creationThread);
       final long sumDf = in.getSumDocFreq();
       assert sumDf >= getDocCount();
@@ -247,7 +247,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
-    public long getSumTotalTermFreq() throws IOException {
+    public long getSumTotalTermFreq() {
       assertThread("Terms", creationThread);
       final long sumTtf = in.getSumTotalTermFreq();
       if (hasFreqs() == false) {
@@ -1879,6 +1879,13 @@ public class AssertingLeafReader extends FilterLeafReader {
       assertThread("Bits", creationThread);
       return in.length();
     }
+
+    @Override
+    public void applyMask(FixedBitSet bitSet, int offset) {
+      assertThread("Bits", creationThread);
+      assert offset >= 0;
+      in.applyMask(bitSet, offset);
+    }
   }
 
   @Override
@@ -1909,6 +1916,14 @@ public class AssertingLeafReader extends FilterLeafReader {
   @Override
   public void searchNearestVectors(
       String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
+    acceptDocs = AssertingAcceptDocs.wrap(acceptDocs);
+    super.searchNearestVectors(field, target, knnCollector, acceptDocs);
+  }
+
+  @Override
+  public void searchNearestVectors(
+      String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     acceptDocs = AssertingAcceptDocs.wrap(acceptDocs);
     super.searchNearestVectors(field, target, knnCollector, acceptDocs);

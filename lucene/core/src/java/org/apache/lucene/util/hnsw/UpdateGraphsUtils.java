@@ -49,7 +49,7 @@ public class UpdateGraphsUtils {
     for (int v = 0; v < size; v++) {
       graph.seek(0, v);
       int degree = graph.neighborCount();
-      k = degree < 9 ? 2 : Math.ceilDiv(degree, 4);
+      k = coverage(degree);
       gExit += k;
       int gain = k + degree;
       heap.push(encode(gain, v));
@@ -67,7 +67,7 @@ public class UpdateGraphsUtils {
       for (int u = graph.nextNeighbor(); u != NO_MORE_DOCS; u = graph.nextNeighbor()) {
         ns[i++] = u;
       }
-      k = degree < 9 ? 2 : Math.ceilDiv(degree, 4);
+      k = coverage(degree);
       if (stale[v]) { // if stale, recalculate gain
         int newGain = Math.max(0, k - counts[v]);
         for (int u : ns) {
@@ -99,6 +99,22 @@ public class UpdateGraphsUtils {
       }
     }
     return j;
+  }
+
+  /**
+   * How many times a node needs to be covered by the nodes of the join set before we consider it
+   * covered.
+   *
+   * <p>A node's neighbours are the only nodes that can cover it, so a node can never be covered
+   * more than {@code degree} times. Requesting a bigger coverage than that would make the coverage
+   * unsatisfiable, and the node would be forced to join the join set itself. This happens on
+   * degenerate graphs (e.g. hub-and-spoke shapes produced by highly duplicated or low dimensional
+   * vectors) where most of the nodes have a degree of 1: without clamping, every leaf ends up in
+   * the join set, and the join set degenerates to the whole graph.
+   */
+  private static int coverage(int degree) {
+    int k = degree < 9 ? 2 : Math.ceilDiv(degree, 4);
+    return Math.min(k, degree);
   }
 
   private static long encode(int value1, int value2) {

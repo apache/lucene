@@ -21,6 +21,7 @@ dependencies {
   moduleImplementation project(':lucene:core')
   moduleImplementation project(':lucene:expressions')
   moduleImplementation project(':lucene:join')
+  moduleImplementation project(':lucene:misc')
   moduleImplementation project(':lucene:sandbox')
   moduleTestImplementation project(':lucene:test-framework')
 
@@ -69,10 +70,12 @@ tasks.named("jar").configure {
   manifest {
     attributes([
       "Main-Class": "org.apache.lucene.benchmark.jmh.Main",
-      "Class-Path": new Object () {
+      "Class-Path": new Object() {
         @Override
         String toString() {
-          return configurations.runtimeClasspath.collect { f -> f.name }.join(" ")
+          return configurations.runtimeClasspath.collect { f ->
+            f.name
+          }.join(" ")
         }
       }
     ])

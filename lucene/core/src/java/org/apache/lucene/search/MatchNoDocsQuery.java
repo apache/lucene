@@ -31,13 +31,7 @@ public class MatchNoDocsQuery extends Query {
    */
   public static final MatchNoDocsQuery INSTANCE = new MatchNoDocsQuery();
 
-  /**
-   * Default constructor
-   *
-   * @deprecated Use either {@link MatchAllDocsQuery#INSTANCE} or {@link #MatchNoDocsQuery(String)}
-   */
-  @Deprecated
-  public MatchNoDocsQuery() {
+  private MatchNoDocsQuery() {
     this("");
   }
 

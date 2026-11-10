@@ -53,7 +53,6 @@ public final class BytesRefHash implements Accountable {
   // This mask is used to extract the high bits from a hashcode
   private int highMask;
   private int count;
-  private int lastCount = -1;
 
   /**
    * The <code>ids</code> array serves a dual purpose:
@@ -153,7 +152,7 @@ public final class BytesRefHash implements Accountable {
   /**
    * Populates and returns a {@link BytesRef} with the bytes for the given bytesID.
    *
-   * <p>Note: the given bytesID must be a positive integer less than the current size ({@link
+   * <p>Note: the given bytesID must be a non-negative integer less than the current size ({@link
    * #size()})
    *
    * @param bytesID the id
@@ -185,7 +184,6 @@ public final class BytesRefHash implements Accountable {
     }
     Arrays.fill(ids, count, hashSize, -1);
 
-    lastCount = count;
     return ids;
   }
 
@@ -293,28 +291,20 @@ public final class BytesRefHash implements Accountable {
 
   /** Clears the {@link BytesRef} which maps to the given {@link BytesRef} */
   public void clear(boolean resetPool) {
-    lastCount = count;
-    count = 0;
     if (resetPool) {
       pool.reset();
     }
     bytesStart = bytesStartArray.clear();
-    if (lastCount != -1 && shrink(lastCount)) {
-      // shrink clears the hash entries
-      return;
+    final boolean shrunk = shrink(count);
+    count = 0;
+    if (shrunk == false) {
+      // shrink already cleared the hash entries; otherwise clear them here
+      Arrays.fill(ids, -1);
     }
-    Arrays.fill(ids, -1);
   }
 
   public void clear() {
     clear(true);
-  }
-
-  /** Closes the BytesRefHash and releases all internally used memory */
-  public void close() {
-    clear(true);
-    ids = null;
-    bytesUsed.addAndGet(Integer.BYTES * (long) -hashSize);
   }
 
   /**
@@ -427,9 +417,7 @@ public final class BytesRefHash implements Accountable {
     return -(e + 1);
   }
 
-  /**
-   * Called when hash is too small ({@code > 50%} occupied) or too large ({@code < 20%} occupied).
-   */
+  /** Called when hash reaches {@code 50%} occupancy. */
   private void rehash(final int newSize, boolean hashOnData) {
     final int newMask = newSize - 1;
     final int newHighMask = ~newMask;
@@ -560,9 +548,6 @@ public final class BytesRefHash implements Accountable {
    * instance.
    */
   public static class DirectBytesStartArray extends BytesStartArray {
-    // TODO: can't we just merge this w/
-    // TrackingDirectBytesStartArray...?  Just add a ctor
-    // that makes a private bytesUsed?
 
     protected final int initSize;
     private int[] bytesStart;

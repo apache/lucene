@@ -451,7 +451,7 @@ public class Lucene104PostingsWriter extends PushPostingsWriterBase {
           spareBitSet.set(s);
         }
         // We never use the bit set encoding when it requires more than Integer.SIZE=32 bits per
-        // value. So the bit set cannot have more than BLOCK_SIZE * Integer.SIZE / Long.SIZE = 64
+        // value. So the bit set cannot have more than BLOCK_SIZE * Integer.SIZE / Long.SIZE = 128
         // longs, which fits on a byte.
         assert numBitSetLongs <= BLOCK_SIZE / 2;
         level0Output.writeByte((byte) -numBitSetLongs);
@@ -483,7 +483,7 @@ public class Lucene104PostingsWriter extends PushPostingsWriterBase {
       level0FreqNormAccumulator.clear();
     }
 
-    if ((docCount & LEVEL1_MASK) == 0) { // true every 32 blocks (4,096 docs)
+    if ((docCount & LEVEL1_MASK) == 0) { // true every 32 blocks (8,192 docs)
       writeLevel1SkipData();
       level1LastDocID = docID;
       level1CompetitiveFreqNormAccumulator.clear();

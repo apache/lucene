@@ -153,21 +153,38 @@ abstract class DocValuesUpdate {
     }
   }
 
-  /** An in-place update to a numeric DocValues field */
+  /**
+   * An in-place update to a numeric DocValues field.
+   *
+   * <p>Also used for {@link org.apache.lucene.document.SortedNumericDocValuesField} updates ({@code
+   * type == SORTED_NUMERIC}): such an update sets a single value per matched document, so its
+   * payload is identical to a numeric update — only the doc-values type differs, which drives the
+   * singleton wrapping at write/read time. The updated field may itself be single- or multi-valued:
+   * a single-valued column is physically stored as a {@link NumericDocValues} column (the codec
+   * only writes an addresses table when a document has more than one value) and reuses the numeric
+   * write path, while a multi-valued column is merged per-doc.
+   */
   static final class NumericDocValuesUpdate extends DocValuesUpdate {
     private final long value;
 
     NumericDocValuesUpdate(Term term, String field, long value) {
-      this(term, field, value, BufferedUpdates.MAX_INT, true);
+      this(DocValuesType.NUMERIC, term, field, value, BufferedUpdates.MAX_INT, true);
     }
 
     NumericDocValuesUpdate(Term term, String field, Long value) {
-      this(term, field, value != null ? value : -1, BufferedUpdates.MAX_INT, value != null);
+      this(DocValuesType.NUMERIC, term, field, value);
+    }
+
+    /** Creates a numeric or sorted-numeric update, depending on {@code type}. */
+    NumericDocValuesUpdate(DocValuesType type, Term term, String field, Long value) {
+      this(type, term, field, value != null ? value : -1, BufferedUpdates.MAX_INT, value != null);
     }
 
     private NumericDocValuesUpdate(
-        Term term, String field, long value, int docIDUpTo, boolean hasValue) {
-      super(DocValuesType.NUMERIC, term, field, docIDUpTo, hasValue);
+        DocValuesType type, Term term, String field, long value, int docIDUpTo, boolean hasValue) {
+      super(type, term, field, docIDUpTo, hasValue);
+      assert type == DocValuesType.NUMERIC || type == DocValuesType.SORTED_NUMERIC
+          : "unexpected type: " + type;
       this.value = value;
     }
 
@@ -175,7 +192,7 @@ abstract class DocValuesUpdate {
       if (docIDUpTo == this.docIDUpTo) {
         return this;
       }
-      return new NumericDocValuesUpdate(term, field, value, docIDUpTo, hasValue);
+      return new NumericDocValuesUpdate(type, term, field, value, docIDUpTo, hasValue);
     }
 
     @Override

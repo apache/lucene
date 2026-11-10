@@ -686,4 +686,9 @@ public final class UnicodeUtil {
   public static int UTF8toUTF16(BytesRef bytesRef, char[] chars) {
     return UTF8toUTF16(bytesRef.bytes, bytesRef.offset, bytesRef.length, chars);
   }
+
+  /** Returns the Unicode simple case folding of {@code codepoint}. */
+  public static int foldCase(int codepoint) {
+    return SimpleCaseFolding.fold(codepoint);
+  }
 }

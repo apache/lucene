@@ -34,13 +34,36 @@ public class TestFilterDirectory extends BaseDirectoryTestCase {
     // verify that all methods of Directory are overridden by FilterDirectory,
     // except those under the 'exclude' list
     Set<Method> exclude = new HashSet<>();
-    exclude.add(
-        Directory.class.getMethod(
-            "copyFrom", Directory.class, String.class, String.class, IOContext.class));
     exclude.add(Directory.class.getMethod("openChecksumInput", String.class));
     for (Method m : FilterDirectory.class.getMethods()) {
       if (m.getDeclaringClass() == Directory.class) {
         assertTrue("method " + m.getName() + " not overridden!", exclude.contains(m));
+      }
+    }
+  }
+
+  public void testCopyFromRoutesThroughCreateOutput() throws IOException {
+    try (Directory srcDir = new ByteBuffersDirectory();
+        Directory destDir = new ByteBuffersDirectory()) {
+      try (IndexOutput out = srcDir.createOutput("test.txt", IOContext.DEFAULT)) {
+        out.writeString("hello");
+      }
+      Set<String> created = new HashSet<>();
+      FilterDirectory filterDestDir =
+          new FilterDirectory(destDir) {
+            @Override
+            public IndexOutput createOutput(String name, IOContext context) throws IOException {
+              created.add(name);
+              return in.createOutput(name, context);
+            }
+          };
+      filterDestDir.copyFrom(srcDir, "test.txt", "copied.txt", IOContext.DEFAULT);
+      assertTrue(
+          "copyFrom should route through the wrapper's createOutput",
+          created.contains("copied.txt"));
+      assertTrue(slowFileExists(destDir, "copied.txt"));
+      try (IndexInput in = destDir.openInput("copied.txt", IOContext.DEFAULT)) {
+        assertEquals("hello", in.readString());
       }
     }
   }

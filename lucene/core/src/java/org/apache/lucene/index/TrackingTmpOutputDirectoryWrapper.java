@@ -25,6 +25,7 @@ import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.util.IOUtils;
 
 final class TrackingTmpOutputDirectoryWrapper extends FilterDirectory {
   private final Map<String, String> fileNames = new HashMap<>();
@@ -45,6 +46,23 @@ final class TrackingTmpOutputDirectoryWrapper extends FilterDirectory {
     // keep the original file name if no match, it might be a temp file already
     String tmpName = fileNames.getOrDefault(name, name);
     return super.openInput(tmpName, context);
+  }
+
+  @Override
+  public void copyFrom(Directory from, String src, String dest, IOContext context)
+      throws IOException {
+    // the inherited failure cleanup would delete dest, but createOutput() redirects dest to a
+    // temp file; on failure remove the mapping and delete the temp file instead
+    try (IndexInput is = from.openInput(src, IOContext.READONCE);
+        IndexOutput os = createOutput(dest, context)) {
+      os.copyBytes(is, is.length());
+    } catch (Throwable t) {
+      String tmpName = fileNames.remove(dest);
+      if (tmpName != null) {
+        IOUtils.deleteFilesSuppressingExceptions(t, in, tmpName);
+      }
+      throw t;
+    }
   }
 
   public Map<String, String> getTemporaryFiles() {

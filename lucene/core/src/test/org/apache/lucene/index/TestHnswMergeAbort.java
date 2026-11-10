@@ -16,13 +16,18 @@
  */
 package org.apache.lucene.index;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.codecs.lucene104.Lucene104HnswScalarQuantizedVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -33,17 +38,27 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.NamedThreadFactory;
+import org.apache.lucene.util.ThreadInterruptedException;
+import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
 
 /**
- * Tests that aborting a merge (e.g. via {@link IndexWriter#rollback()}) promptly interrupts HNSW
- * graph construction instead of blocking until the entire graph is built.
+ * Tests that aborting a merge (e.g. via {@link IndexWriter#rollback()}) interrupts HNSW graph
+ * construction instead of building the entire graph.
+ *
+ * <p>The merge thread is held at the start of the graph build until the merge is marked aborted,
+ * and the test then asserts that the build never ran to completion, which holds at any segment
+ * size. The abort exception is deliberately not asserted on: it is swallowed as expected control
+ * flow, and a small unchecked build can finish without ever throwing.
  */
 public class TestHnswMergeAbort extends LuceneTestCase {
 
   private static final int DIM = 96;
   private static final int SEGMENTS = 4;
-  private static final int DOCS_PER_SEGMENT = 12_000;
-  private static final int BEAM_WIDTH = 250;
+  private static final int DOCS_PER_SEGMENT = 1_000;
+  private static final int BEAM_WIDTH = 100;
+  // always build a graph, no matter how small the segment is
+  private static final int TINY_SEGMENTS_THRESHOLD = 0;
+  private static final int LIVE_DOCS_AFTER_DELETES = SEGMENTS * DOCS_PER_SEGMENT / 2;
 
   /**
    * Every segment carries more than {@code IncrementalHnswGraphMerger#DELETE_PCT_THRESHOLD}
@@ -51,7 +66,10 @@ public class TestHnswMergeAbort extends LuceneTestCase {
    * scratch via {@code HnswGraphBuilder#addVectors}.
    */
   public void testRollbackDuringFullRebuildMerge() throws Exception {
-    doTestRollbackDuringMerge(true, new Lucene99HnswVectorsFormat(16, BEAM_WIDTH));
+    doTestRollbackDuringMerge(
+        true,
+        new Lucene99HnswVectorsFormat(16, BEAM_WIDTH, TINY_SEGMENTS_THRESHOLD),
+        "build graph from " + LIVE_DOCS_AFTER_DELETES + " vectors");
   }
 
   /**
@@ -59,26 +77,50 @@ public class TestHnswMergeAbort extends LuceneTestCase {
    * via {@code MergingHnswGraphBuilder}.
    */
   public void testRollbackDuringGraphJoinMerge() throws Exception {
-    doTestRollbackDuringMerge(false, new Lucene99HnswVectorsFormat(16, BEAM_WIDTH));
+    doTestRollbackDuringMerge(
+        false,
+        new Lucene99HnswVectorsFormat(16, BEAM_WIDTH, TINY_SEGMENTS_THRESHOLD),
+        "build graph from merging " + SEGMENTS + " graphs");
   }
 
   /**
    * The merged graph is built by {@code HnswConcurrentMergeBuilder} workers ({@code numMergeWorkers
-   * > 1}), which must forward the abort check to every worker.
+   * > 1}), which must forward the abort check to every worker. The first worker to insert a node
+   * trips the forwarded check.
    */
   public void testRollbackDuringConcurrentMerge() throws Exception {
     ExecutorService mergeExec =
         Executors.newFixedThreadPool(2, new NamedThreadFactory("hnsw-merge-worker"));
     try {
-      doTestRollbackDuringMerge(true, new Lucene99HnswVectorsFormat(16, BEAM_WIDTH, 2, mergeExec));
+      doTestRollbackDuringMerge(
+          true,
+          new Lucene99HnswVectorsFormat(16, BEAM_WIDTH, 2, mergeExec, TINY_SEGMENTS_THRESHOLD),
+          "build graph from " + LIVE_DOCS_AFTER_DELETES + " vectors, with 2 workers");
     } finally {
       mergeExec.shutdown();
       assertTrue(mergeExec.awaitTermination(30, TimeUnit.SECONDS));
     }
   }
 
-  private void doTestRollbackDuringMerge(boolean withDeletes, KnnVectorsFormat format)
-      throws Exception {
+  /**
+   * Verifies that aborting an asymmetric scalar merge releases the query-side temporary file
+   * prepared for its graph scorer.
+   */
+  public void testRollbackDuringQuantizedMerge() throws Exception {
+    doTestRollbackDuringMerge(
+        true,
+        new Lucene104HnswScalarQuantizedVectorsFormat(
+            ScalarEncoding.SINGLE_BIT_QUERY_NIBBLE,
+            16,
+            BEAM_WIDTH,
+            1,
+            null,
+            TINY_SEGMENTS_THRESHOLD),
+        "build graph from " + LIVE_DOCS_AFTER_DELETES + " vectors");
+  }
+
+  private void doTestRollbackDuringMerge(
+      boolean withDeletes, KnnVectorsFormat format, String expectedBuildStart) throws Exception {
     try (Directory dir = newDirectory()) {
       IndexWriterConfig cfg = new IndexWriterConfig();
       cfg.setCodec(TestUtil.alwaysKnnVectorsFormat(format));
@@ -109,18 +151,36 @@ public class TestHnswMergeAbort extends LuceneTestCase {
       }
 
       CountDownLatch buildStarted = new CountDownLatch(1);
+      CountDownLatch mergeAborted = new CountDownLatch(1);
+      AtomicBoolean releasedAfterAbort = new AtomicBoolean();
+      List<String> hnswMessages = new ArrayList<>();
       InfoStream latching =
           new InfoStream() {
             @Override
             public void message(String component, String message) {
-              if ("HNSW".equals(component) && message.startsWith("build graph")) {
-                buildStarted.countDown();
+              if ("HNSW".equals(component)) {
+                synchronized (hnswMessages) {
+                  hnswMessages.add(message);
+                }
+                if (message.startsWith("build graph") && buildStarted.getCount() > 0) {
+                  buildStarted.countDown();
+                  // hold the merge thread until the merge is marked aborted, so the abort
+                  // always lands mid-build
+                  try {
+                    releasedAfterAbort.set(mergeAborted.await(2, TimeUnit.MINUTES));
+                  } catch (InterruptedException e) {
+                    throw new ThreadInterruptedException(e);
+                  }
+                }
+              } else if ("IW".equals(component) && message.startsWith("now wait for")) {
+                // IndexWriter#abortMerges emits this after marking every running merge aborted
+                mergeAborted.countDown();
               }
             }
 
             @Override
             public boolean isEnabled(String component) {
-              return "HNSW".equals(component);
+              return "HNSW".equals(component) || "IW".equals(component);
             }
 
             @Override
@@ -143,21 +203,57 @@ public class TestHnswMergeAbort extends LuceneTestCase {
                 }
               });
       merger.start();
+      List<String> midMerge = List.of();
       try {
         assertTrue(
             "HNSW graph construction never started", buildStarted.await(120, TimeUnit.SECONDS));
-        long t0 = System.nanoTime();
+        // Capture the handoff while the graph build is parked. If no tragedy is recorded, rollback
+        // can delete an unreferenced temporary file, so the final listing alone cannot prove
+        // cleanup. MockDirectoryWrapper also fails on close if the handoff remains open.
+        midMerge = tempFiles(dir);
+        if (format instanceof Lucene104HnswScalarQuantizedVectorsFormat) {
+          assertFalse(
+              "the quantized merge wrote no hand-off file for the abort to release",
+              midMerge.isEmpty());
+        }
         w2.rollback();
-        long rollbackMillis = (System.nanoTime() - t0) / 1_000_000;
-        assertTrue(
-            "rollback() blocked for "
-                + rollbackMillis
-                + " ms waiting for HNSW graph construction to finish",
-            rollbackMillis < 10_000);
+        assertTrue("merge thread was not released by the abort signal", releasedAfterAbort.get());
+        synchronized (hnswMessages) {
+          String buildStart = null;
+          for (String message : hnswMessages) {
+            if (message.startsWith("build graph")) {
+              buildStart = message;
+              break;
+            }
+          }
+          assertNotNull("no graph build started", buildStart);
+          assertTrue(
+              "merge took an unexpected graph build path: " + buildStart,
+              buildStart.startsWith(expectedBuildStart));
+          for (String message : hnswMessages) {
+            assertFalse(
+                "HNSW graph build ran to completion despite the aborted merge: " + message,
+                message.startsWith("addVectors [") || message.startsWith("merge completed:"));
+          }
+        }
       } finally {
         merger.join(TimeUnit.MINUTES.toMillis(5));
         assertFalse("merge thread did not terminate", merger.isAlive());
       }
+      assertEquals(
+          "a temporary file outlived the aborted merge, which had " + midMerge + " mid-build",
+          List.of(),
+          tempFiles(dir));
     }
+  }
+
+  private static List<String> tempFiles(Directory dir) throws IOException {
+    List<String> temps = new ArrayList<>();
+    for (String file : dir.listAll()) {
+      if (file.endsWith(".tmp")) {
+        temps.add(file);
+      }
+    }
+    return temps;
   }
 }

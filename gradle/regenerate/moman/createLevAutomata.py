@@ -22,7 +22,6 @@ import math
 import os
 import sys
 
-
 MODE = "array"
 PACKED = True
 WORD = 64
@@ -619,15 +618,13 @@ def unpack(data, index, bitsPerValue):
     bitStart = int(bitLoc & (WORD - 1))
     if bitStart + bitsPerValue <= WORD:
         # not split
-        return int(((data[dataLoc] >> bitStart) & MASKS[bitsPerValue - 1]))
+        return int((data[dataLoc] >> bitStart) & MASKS[bitsPerValue - 1])
     else:
         # split
         part = WORD - bitStart
         return int(
-            (
-                ((data[dataLoc] >> bitStart) & MASKS[part - 1])
-                + ((data[1 + dataLoc] & MASKS[bitsPerValue - part - 1]) << part)
-            )
+            ((data[dataLoc] >> bitStart) & MASKS[part - 1])
+            + ((data[1 + dataLoc] & MASKS[bitsPerValue - part - 1]) << part)
         )
 
 

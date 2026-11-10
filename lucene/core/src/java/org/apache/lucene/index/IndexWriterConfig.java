@@ -107,6 +107,13 @@ public final class IndexWriterConfig extends LiveIndexWriterConfig {
    */
   public static final long DEFAULT_MAX_FULL_FLUSH_MERGE_WAIT_MILLIS = 500;
 
+  /**
+   * Default maximum number of sparse doc-values overlays a field keeps before they are folded into
+   * one: {@code 8}. {@code 0} disables the feature (classic full-column rewrite); higher values
+   * lower write amplification but keep more overlays (hence more files) live to merge at read time.
+   */
+  public static final int DEFAULT_MAX_DOC_VALUES_OVERLAYS = 8;
+
   // indicates whether this config instance is already attached to a writer.
   // not final so that it can be cloned properly.
   private SetOnce<IndexWriter> writer = new SetOnce<>();
@@ -171,10 +178,10 @@ public final class IndexWriterConfig extends LiveIndexWriterConfig {
    * index already exists, then this value is ignored. Default value is the {@link Version#major
    * major} of the {@link Version#LATEST latest version}.
    *
-   * <p><b>NOTE</b>: Changing the creation version reduces backward compatibility guarantees. For
-   * instance an index created with Lucene 8 with a compatibility version of 7 can't be read with
-   * Lucene 9 due to the fact that Lucene only supports reading indices created with the current or
-   * previous major release.
+   * <p><b>NOTE</b>: Changing the creation version reduces backward compatibility guarantees. The
+   * value must be between {@link Version#MIN_SUPPORTED_MAJOR} and the major of {@link
+   * Version#LATEST}, inclusive. A lower creation version means the index will become unopenable
+   * sooner when {@link Version#MIN_SUPPORTED_MAJOR} is later bumped.
    *
    * @param indexCreatedVersionMajor the major version to use for compatibility
    */
@@ -186,10 +193,10 @@ public final class IndexWriterConfig extends LiveIndexWriterConfig {
               + ", but got: "
               + indexCreatedVersionMajor);
     }
-    if (indexCreatedVersionMajor < Version.LATEST.major - 1) {
+    if (indexCreatedVersionMajor < Version.MIN_SUPPORTED_MAJOR) {
       throw new IllegalArgumentException(
           "indexCreatedVersionMajor may not be less than the minimum supported version: "
-              + (Version.LATEST.major - 1)
+              + (Version.MIN_SUPPORTED_MAJOR)
               + ", but got: "
               + indexCreatedVersionMajor);
     }
@@ -322,6 +329,29 @@ public final class IndexWriterConfig extends LiveIndexWriterConfig {
   @Override
   public boolean getReaderPooling() {
     return readerPooling;
+  }
+
+  /**
+   * Sets the maximum number of sparse doc-values overlays a field may accumulate before they are
+   * folded into a single overlay, which also enables or disables the feature. When enabled, a
+   * doc-values update that only sets values (no removals) is written as a sparse "delta" holding
+   * just the updated documents and overlaid on the existing column at read time, rather than
+   * rewriting the whole column. This trades some read cost for much lower write amplification on
+   * frequently updated fields. Pass {@code 0} to disable the feature and keep the classic
+   * full-column rewrite; any value {@code > 0} enables it, keeping up to that many overlays before
+   * a fold. Enabled by default (see {@link #DEFAULT_MAX_DOC_VALUES_OVERLAYS}).
+   *
+   * <p>Only takes effect when IndexWriter is first created.
+   *
+   * @lucene.experimental
+   */
+  public IndexWriterConfig setMaxDocValuesOverlays(int maxDocValuesOverlays) {
+    if (maxDocValuesOverlays < 0) {
+      throw new IllegalArgumentException(
+          "maxDocValuesOverlays must be >= 0; got " + maxDocValuesOverlays);
+    }
+    this.maxDocValuesOverlays = maxDocValuesOverlays;
+    return this;
   }
 
   /**

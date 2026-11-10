@@ -150,7 +150,9 @@ public class SortedNumericSortField extends SortField {
                   selectorType,
                   NumericUtils.sortableLongToDouble(in.readLong()));
           // $CASES-OMITTED$
-          default -> throw new AssertionError();
+          default ->
+              throw new IllegalStateException(
+                  "Can't deserialize SortedNumericSortField - unsupported type " + type);
         };
       }
       return new SortedNumericSortField(field, type, reverse, selectorType, null);
@@ -358,9 +360,6 @@ public class SortedNumericSortField extends SortField {
       case STRING:
       default:
         throw new AssertionError();
-    }
-    if (getOptimizeSortWithIndexedData() == false) {
-      fieldComparator.disableSkipping();
     }
     return fieldComparator;
   }

@@ -105,6 +105,20 @@ public class TestByteWritesTrackingDirectoryWrapper extends BaseDirectoryTestCas
     assertEquals(expectedMergeBytes, dir.getMergedBytes());
   }
 
+  public void testCopyFromTracksBytes() throws Exception {
+    ByteWritesTrackingDirectoryWrapper dir =
+        new ByteWritesTrackingDirectoryWrapper(new ByteBuffersDirectory());
+    int expectedMergeBytes = 1 + random().nextInt(100);
+    try (Directory srcDir = new ByteBuffersDirectory()) {
+      try (IndexOutput out = srcDir.createOutput("src", IOContext.DEFAULT)) {
+        out.writeBytes(new byte[expectedMergeBytes], expectedMergeBytes);
+      }
+      dir.copyFrom(
+          srcDir, "src", "dest", IOContext.merge(new MergeInfo(10, expectedMergeBytes, false, 2)));
+      assertEquals(expectedMergeBytes, dir.getMergedBytes());
+    }
+  }
+
   @Override
   protected Directory getDirectory(Path path) throws IOException {
     return new ByteWritesTrackingDirectoryWrapper(new ByteBuffersDirectory());

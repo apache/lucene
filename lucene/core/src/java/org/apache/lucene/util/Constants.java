@@ -67,10 +67,6 @@ public final class Constants {
   /** True iff the Java VM is based on Hotspot and has the Hotspot MX bean readable by Lucene. */
   public static final boolean IS_HOTSPOT_VM = HotspotVMOptions.IS_HOTSPOT_VM;
 
-  /** True if jvmci is enabled (e.g. graalvm) */
-  public static final boolean IS_JVMCI_VM =
-      HotspotVMOptions.get("UseJVMCICompiler").map(Boolean::valueOf).orElse(false);
-
   /** True iff running on a 64bit JVM */
   public static final boolean JRE_IS_64BIT = (ValueLayout.ADDRESS.byteSize() == Long.BYTES);
 
@@ -86,12 +82,16 @@ public final class Constants {
   private static final boolean HAS_SSE4A =
       HotspotVMOptions.get("UseXmmI2F").map(Boolean::valueOf).orElse(false);
 
+  /** true for cpu with AVX-512 support. */
+  public static final boolean HAS_AVX512 =
+      HotspotVMOptions.get("UseAVX").map(Integer::valueOf).orElse(0) >= 3;
+
   /** true for cpu with AVX support at least AVX2. */
-  private static final boolean HAS_AVX2 =
+  public static final boolean HAS_AVX2 =
       HotspotVMOptions.get("UseAVX").map(Integer::valueOf).orElse(0) >= 2;
 
   /** true for arm cpu with SVE support. */
-  private static final boolean HAS_SVE =
+  public static final boolean HAS_SVE =
       HotspotVMOptions.get("UseSVE").map(Integer::valueOf).orElse(0) >= 1;
 
   /** true iff we know VFMA has faster throughput than separate vmul/vadd. */

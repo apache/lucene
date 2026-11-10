@@ -61,7 +61,7 @@ public class TestFloatVectorSimilarityQuery
   @Override
   FloatVectorSimilarityQuery getVectorQuery(
       String field, float[] vector, float resultSimilarity, float decay, Query filter) {
-    return new FloatVectorSimilarityQuery(field, vector, resultSimilarity, decay, filter);
+    return new FloatVectorSimilarityQuery.Adaptive(field, vector, resultSimilarity, decay, filter);
   }
 
   @Override
@@ -72,14 +72,14 @@ public class TestFloatVectorSimilarityQuery
       float decay,
       Query filter,
       KnnSearchStrategy searchStrategy) {
-    return new FloatVectorSimilarityQuery(
+    return new FloatVectorSimilarityQuery.Adaptive(
         field, vector, resultSimilarity, decay, filter, searchStrategy);
   }
 
   @Override
   FloatVectorSimilarityQuery getThrowingVectorQuery(
       String field, float[] vector, float resultSimilarity, float decay, Query filter) {
-    return new FloatVectorSimilarityQuery(field, vector, resultSimilarity, decay, filter) {
+    return new FloatVectorSimilarityQuery.Adaptive(field, vector, resultSimilarity, decay, filter) {
       @Override
       VectorScorer createVectorScorer(LeafReaderContext context) {
         throw new UnsupportedOperationException();

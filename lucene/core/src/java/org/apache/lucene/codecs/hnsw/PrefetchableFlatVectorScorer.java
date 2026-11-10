@@ -78,6 +78,15 @@ public class PrefetchableFlatVectorScorer implements FlatVectorsScorer {
   }
 
   @Override
+  public RandomVectorScorer getRandomVectorScorer(
+      VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, short[] target)
+      throws IOException {
+    return new PrefetchableRandomVectorScorer(
+        (RandomVectorScorer.AbstractRandomVectorScorer)
+            flatVectorsScorer.getRandomVectorScorer(similarityFunction, vectorValues, target));
+  }
+
+  @Override
   public String toString() {
     return "PrefetchableFlatVectorScorer()";
   }

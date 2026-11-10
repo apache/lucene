@@ -62,11 +62,13 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.FixedBitSetCollector;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.RamUsageTester;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NumericUtils;
+import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.bkd.BKDConfig;
 import org.junit.BeforeClass;
 
@@ -2629,5 +2631,40 @@ public class TestPointQueries extends LuceneTestCase {
               };
             });
     assertEquals("values are out of order: saw [2] before [1]", expected.getMessage());
+  }
+
+  public void testRamBytesUsedIncludesBoundsArrays() {
+    // The constructor allocates lowerPoint/upperPoint and retains them for the whole
+    // lifetime of the query (scorerSupplier uses them for a per-segment pre-check).
+    // Both must contribute to ramBytesUsed().
+    PointInSetQuery q =
+        (PointInSetQuery) BinaryPoint.newSetQuery("f", new byte[] {1, 2, 3, 4, 5, 6, 7, 8});
+    assertNotNull(q.lowerPoint);
+    assertNotNull(q.upperPoint);
+    long expected =
+        RamUsageEstimator.shallowSizeOfInstance(PointInSetQuery.class)
+            + RamUsageEstimator.sizeOfObject(q.field)
+            + RamUsageEstimator.sizeOfObject(q.sortedPackedPoints)
+            + RamUsageEstimator.sizeOfObject(q.lowerPoint)
+            + RamUsageEstimator.sizeOfObject(q.upperPoint);
+    assertEquals(expected, q.ramBytesUsed());
+  }
+
+  public void testRamBytesUsedMatchesActualWithinTolerance() {
+    // Independent cross-check against a full object-graph walk; guards against the
+    // case where the byte-exact test and the implementation drift together.
+    // Mirrors TestTermInSetQuery#testRamBytesUsed (many entries, 5% margin).
+    final int numPoints = 10000 + random().nextInt(1000);
+    final byte[][] values = new byte[numPoints][];
+    for (int i = 0; i < numPoints; i++) {
+      values[i] = new byte[8];
+      random().nextBytes(values[i]);
+    }
+    PointInSetQuery query = (PointInSetQuery) BinaryPoint.newSetQuery("f", values);
+    final long actualRamBytesUsed = RamUsageTester.ramUsed(query);
+    final long expectedRamBytesUsed = query.ramBytesUsed();
+    // error margin within 5%
+    assertEquals(
+        (double) expectedRamBytesUsed, (double) actualRamBytesUsed, actualRamBytesUsed / 20.d);
   }
 }

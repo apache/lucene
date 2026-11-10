@@ -1,6 +1,8 @@
 self-hosted-runner:
   # Labels of self-hosted runner in array of strings.
-  labels: []
+  # NOTE: these are NOT self-hosted runners, just a workaround for
+  # https://github.com/rhysd/actionlint/issues/682
+  labels: ["ubuntu-26.04", "ubuntu-26.04-arm"]
 
 # Configuration variables in array of strings defined in your repository or
 # organization. `null` means disabling configuration variables check.
