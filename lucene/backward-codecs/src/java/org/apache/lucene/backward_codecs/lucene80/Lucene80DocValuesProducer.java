@@ -138,35 +138,33 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
         throw new CorruptIndexException("Invalid field number: " + fieldNumber, meta);
       }
       byte type = meta.readByte();
-      if (type == Lucene80DocValuesFormat.NUMERIC) {
-        numerics.put(info.number, readNumeric(meta));
-      } else if (type == Lucene80DocValuesFormat.BINARY) {
-        final boolean compressed;
-        if (version >= Lucene80DocValuesFormat.VERSION_CONFIGURABLE_COMPRESSION) {
-          String value = info.getAttribute(Lucene80DocValuesFormat.MODE_KEY);
-          if (value == null) {
-            throw new IllegalStateException(
-                "missing value for "
-                    + Lucene80DocValuesFormat.MODE_KEY
-                    + " for field: "
-                    + info.name
-                    + " in segment: "
-                    + segmentName);
+      switch (type) {
+        case Lucene80DocValuesFormat.NUMERIC -> numerics.put(info.number, readNumeric(meta));
+        case Lucene80DocValuesFormat.BINARY -> {
+          final boolean compressed;
+          if (version >= Lucene80DocValuesFormat.VERSION_CONFIGURABLE_COMPRESSION) {
+            String value = info.getAttribute(Lucene80DocValuesFormat.MODE_KEY);
+            if (value == null) {
+              throw new IllegalStateException(
+                  "missing value for "
+                      + Lucene80DocValuesFormat.MODE_KEY
+                      + " for field: "
+                      + info.name
+                      + " in segment: "
+                      + segmentName);
+            }
+            Lucene80DocValuesFormat.Mode mode = Lucene80DocValuesFormat.Mode.valueOf(value);
+            compressed = mode == Lucene80DocValuesFormat.Mode.BEST_COMPRESSION;
+          } else {
+            compressed = version >= Lucene80DocValuesFormat.VERSION_BIN_COMPRESSED;
           }
-          Lucene80DocValuesFormat.Mode mode = Lucene80DocValuesFormat.Mode.valueOf(value);
-          compressed = mode == Lucene80DocValuesFormat.Mode.BEST_COMPRESSION;
-        } else {
-          compressed = version >= Lucene80DocValuesFormat.VERSION_BIN_COMPRESSED;
+          binaries.put(info.number, readBinary(meta, compressed));
         }
-        binaries.put(info.number, readBinary(meta, compressed));
-      } else if (type == Lucene80DocValuesFormat.SORTED) {
-        sorted.put(info.number, readSorted(meta));
-      } else if (type == Lucene80DocValuesFormat.SORTED_SET) {
-        sortedSets.put(info.number, readSortedSet(meta));
-      } else if (type == Lucene80DocValuesFormat.SORTED_NUMERIC) {
-        sortedNumerics.put(info.number, readSortedNumeric(meta));
-      } else {
-        throw new CorruptIndexException("invalid type: " + type, meta);
+        case Lucene80DocValuesFormat.SORTED -> sorted.put(info.number, readSorted(meta));
+        case Lucene80DocValuesFormat.SORTED_SET -> sortedSets.put(info.number, readSortedSet(meta));
+        case Lucene80DocValuesFormat.SORTED_NUMERIC ->
+            sortedNumerics.put(info.number, readSortedNumeric(meta));
+        default -> throw new CorruptIndexException("invalid type: " + type, meta);
       }
     }
   }
