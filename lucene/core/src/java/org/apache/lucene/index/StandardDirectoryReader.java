@@ -536,10 +536,12 @@ public final class StandardDirectoryReader extends DirectoryReader {
       // current:
       SegmentInfos sis = SegmentInfos.readLatestCommit(directory);
 
-      // we loaded SegmentInfos from the directory. For an NRT reader, also compare generations: if
-      // it was opened while a commit was in progress, it can have the commit's version but still
-      // use the previous commit. Don't do this for other readers: a commit written with
-      // SegmentInfos#commit can keep the version, and such a reader still sees the same documents.
+      // we loaded SegmentInfos from the directory. For an NRT reader, also compare generations,
+      // because the same version doesn't mean the same documents: a reader opened while a commit
+      // was in progress has the commit's version but still uses the previous commit, and after a
+      // rollback a later writer can commit a version that this reader already has. Don't do this
+      // for other readers: a commit written with SegmentInfos#commit can keep the version, and such
+      // a reader still sees the same documents.
       return sis.getVersion() == segmentInfos.getVersion()
           && (writer == null || sis.getGeneration() == segmentInfos.getLastGeneration());
     } else {

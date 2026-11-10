@@ -444,7 +444,9 @@ Bug Fixes
   (Di Wu)
 
 * GITHUB#16923: An NRT reader opened while a commit was in progress stayed current after the
-  commit, even though it still used the previous segments_N file, which may be deleted. (Di Wu)
+  commit, even though it still used the previous segments_N file, which may be deleted. Likewise,
+  an NRT reader kept after its writer was rolled back or closed without committing could stay
+  current after a later writer committed the same version. (Di Wu)
 
 * GITHUB#16923: IndexWriter#rollback could throw NoSuchFileException if the writer was opened on an
   older commit or from an NRT reader, because the deletion policy could delete the files it rolls
