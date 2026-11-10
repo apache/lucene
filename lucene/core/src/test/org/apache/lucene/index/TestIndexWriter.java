@@ -5231,10 +5231,41 @@ public class TestIndexWriter extends LuceneTestCase {
                 != -1);
       }
       assertEquals(2, writer.getDocStats().numDocs);
+      assertFalse(writer.hasDeletions());
       try (DirectoryReader reader = DirectoryReader.open(writer)) {
         assertEquals(2, reader.numDocs());
       }
       assertEquals(2, writer.getDocStats().numDocs);
+      assertFalse(writer.hasDeletions());
+    }
+  }
+
+  /**
+   * An undelete that isn't written yet must not revive a document that is hard deleted after it.
+   */
+  public void testSoftUndeleteThenHardDeleteCountsBeforeWrite() throws Exception {
+    try (Directory dir = newDirectory();
+        IndexWriter writer =
+            new IndexWriter(
+                dir,
+                newIndexWriterConfig()
+                    .setSoftDeletesField("soft_delete")
+                    .setMergePolicy(NoMergePolicy.INSTANCE))) {
+      for (String id : List.of("0", "1")) {
+        Document doc = new Document();
+        doc.add(new StringField("id", id, Field.Store.NO));
+        writer.addDocument(doc);
+      }
+      try (DirectoryReader reader = DirectoryReader.open(writer)) {
+        assertTrue(
+            writer.tryUpdateDocValue(reader, 0, new NumericDocValuesField("soft_delete", null))
+                != -1);
+        assertTrue(writer.tryDeleteDocument(reader, 0) != -1);
+      }
+      assertEquals(1, writer.getDocStats().numDocs);
+      assertTrue(writer.hasDeletions());
+      // writing the undelete fails without #17003, so don't open a reader or commit
+      writer.rollback();
     }
   }
 
@@ -5263,6 +5294,17 @@ public class TestIndexWriter extends LuceneTestCase {
               newIndexWriterConfig()
                   .setSoftDeletesField("soft_delete")
                   .setMergePolicy(NoMergePolicy.INSTANCE))) {
+        assertEquals(1, writer.getDocStats().numDocs);
+        assertTrue(writer.hasDeletions());
+      }
+      try (Directory otherDir = newDirectory();
+          IndexWriter writer =
+              new IndexWriter(
+                  otherDir,
+                  newIndexWriterConfig()
+                      .setSoftDeletesField("soft_delete")
+                      .setMergePolicy(NoMergePolicy.INSTANCE))) {
+        writer.addIndexes(dir);
         assertEquals(1, writer.getDocStats().numDocs);
         assertTrue(writer.hasDeletions());
       }

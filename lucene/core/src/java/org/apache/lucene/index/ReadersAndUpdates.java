@@ -17,7 +17,6 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -156,21 +155,7 @@ final class ReadersAndUpdates {
     if (iterator == null) {
       return delCount;
     }
-    // Count what writing the updates would change by applying them to a copy of the live docs
-    Bits liveDocs = pendingDeletes.getLiveDocs();
-    FixedBitSet bits;
-    if (liveDocs == null) {
-      bits = new FixedBitSet(info.info.maxDoc());
-      bits.set(0, info.info.maxDoc());
-    } else {
-      bits = FixedBitSet.copyOf(liveDocs);
-    }
-    try {
-      return delCount + PendingSoftDeletes.applySoftDeletes(iterator, bits);
-    } catch (IOException e) {
-      // can't happen: the updates are in memory
-      throw new UncheckedIOException(e);
-    }
+    return delCount + ((PendingSoftDeletes) pendingDeletes).countSoftDeletesUpdates(iterator);
   }
 
   private synchronized boolean assertNoDupGen(

@@ -1443,6 +1443,7 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
       writer.waitForMerges();
       assertEquals(1, writer.getSegmentCount());
       assertEquals(3, writer.getDocStats().numDocs);
+      assertTrue(writer.hasDeletions());
       try (DirectoryReader reader = DirectoryReader.open(writer)) {
         assertEquals(3, reader.numDocs());
       }

@@ -148,6 +148,31 @@ final class PendingSoftDeletes extends PendingDeletes {
     return newDeletes;
   }
 
+  /**
+   * Returns how much applying the given soft deletes updates would change {@link #getDelCount()},
+   * without applying them. Like {@link #applySoftDeletes}, a document with a value is deleted and a
+   * document without one is undeleted, but a hard deleted document stays deleted. Each document
+   * must appear at most once in the iterator.
+   */
+  int countSoftDeletesUpdates(DocValuesFieldUpdates.Iterator iterator) {
+    Bits liveDocs = peekLiveDocs();
+    Bits hardLiveDocs = hardDeletes.peekLiveDocs();
+    int delta = 0;
+    for (int doc = iterator.nextDoc();
+        doc != DocIdSetIterator.NO_MORE_DOCS;
+        doc = iterator.nextDoc()) {
+      boolean live = liveDocs == null || liveDocs.get(doc);
+      if (iterator.hasValue()) {
+        if (live) {
+          delta++;
+        }
+      } else if (live == false && (hardLiveDocs == null || hardLiveDocs.get(doc))) {
+        delta--;
+      }
+    }
+    return delta;
+  }
+
   @Override
   void onDocValuesUpdate(FieldInfo info, DocValuesFieldUpdates.Iterator iterator)
       throws IOException {
