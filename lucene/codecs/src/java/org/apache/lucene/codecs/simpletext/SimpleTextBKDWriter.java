@@ -549,65 +549,42 @@ final class SimpleTextBKDWriter implements Closeable {
     }
   }
 
-  // TODO: there must be a simpler way?
   private void rotateToTree(
       int nodeID, int offset, int count, byte[] index, List<byte[]> leafBlockStartValues) {
-    // System.out.println("ROTATE: nodeID=" + nodeID + " offset=" + offset + " count=" + count + "
-    // bpd=" + config.bytesPerDim() + " index.length=" + index.length);
+
+    if (count == 0) {
+      return;
+    }
+
+    int leftHalf;
     if (count == 1) {
-      // Leaf index node
-      // System.out.println("  leaf index node");
-      // System.out.println("  index[" + nodeID + "] = blockStartValues[" + offset + "]");
-      System.arraycopy(
-          leafBlockStartValues.get(offset),
-          0,
-          index,
-          nodeID * (1 + config.bytesPerDim()) + 1,
-          config.bytesPerDim());
-    } else if (count > 1) {
-      // Internal index node: binary partition of count
-      int countAtLevel = 1;
-      int totalCount = 0;
-      while (true) {
-        int countLeft = count - totalCount;
-        // System.out.println("    cycle countLeft=" + countLeft + " coutAtLevel=" + countAtLevel);
-        if (countLeft <= countAtLevel) {
-          // This is the last level, possibly partially filled:
-          int lastLeftCount = Math.min(countAtLevel / 2, countLeft);
-          assert lastLeftCount >= 0;
-          int leftHalf = (totalCount - 1) / 2 + lastLeftCount;
-
-          int rootOffset = offset + leftHalf;
-          /*
-          System.out.println("  last left count " + lastLeftCount);
-          System.out.println("  leftHalf " + leftHalf + " rightHalf=" + (count-leftHalf-1));
-          System.out.println("  rootOffset=" + rootOffset);
-          */
-
-          System.arraycopy(
-              leafBlockStartValues.get(rootOffset),
-              0,
-              index,
-              nodeID * (1 + config.bytesPerDim()) + 1,
-              config.bytesPerDim());
-          // System.out.println("  index[" + nodeID + "] = blockStartValues[" + rootOffset + "]");
-
-          // TODO: we could optimize/specialize, when we know it's simply fully balanced binary tree
-          // under here, to save this while loop on each recursion
-
-          // Recurse left
-          rotateToTree(2 * nodeID, offset, leftHalf, index, leafBlockStartValues);
-
-          // Recurse right
-          rotateToTree(
-              2 * nodeID + 1, rootOffset + 1, count - leftHalf - 1, index, leafBlockStartValues);
-          return;
-        }
-        totalCount += countAtLevel;
-        countAtLevel *= 2;
-      }
+      leftHalf = 0;
     } else {
-      assert count == 0;
+      // O(1) calculation for the number of nodes in the left subtree
+      // of a complete binary tree.
+      int h = Integer.highestOneBit(count);
+      int halfH = h >>> 1; // Same as h / 2
+      leftHalf = halfH - 1 + Math.min(count - h + 1, halfH);
+    }
+
+    int rootOffset = offset + leftHalf;
+    int bytesPerDim = config.bytesPerDim();
+
+    // Unify the arraycopy for both leaf and internal nodes
+    System.arraycopy(
+        leafBlockStartValues.get(rootOffset),
+        0,
+        index,
+        nodeID * (1 + bytesPerDim) + 1,
+        bytesPerDim);
+
+    if (count > 1) {
+      // Recurse left
+      rotateToTree(2 * nodeID, offset, leftHalf, index, leafBlockStartValues);
+
+      // Recurse right
+      rotateToTree(
+          2 * nodeID + 1, rootOffset + 1, count - leftHalf - 1, index, leafBlockStartValues);
     }
   }
 
