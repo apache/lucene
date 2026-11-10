@@ -21,6 +21,7 @@ import static org.apache.lucene.index.VectorEncoding.FLOAT16;
 import static org.apache.lucene.index.VectorEncoding.FLOAT32;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.inputFor;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.mergeContext;
+import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.sequentialContext;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupVectorValues.loadDedupBytes;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupVectorValues.loadDedupFloat16s;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupVectorValues.loadDedupFloats;
@@ -49,6 +50,7 @@ import org.apache.lucene.sandbox.codecs.dedup.DedupUtil.GroupInfo;
 import org.apache.lucene.sandbox.codecs.dedup.DedupUtil.ReadFieldInfo;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.ChecksumIndexInput;
+import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FileDataHint;
 import org.apache.lucene.store.FileTypeHint;
@@ -77,8 +79,9 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
   private final IOContext dataContext;
   // the reader this one was created from
   private final DedupFlatVectorsReader original;
-  // opened lazily for merges, closed with this reader, guarded by this
+  // opened lazily for merges and sequential reads, closed with this reader, guarded by this
   private IndexInput mergeVectorData;
+  private IndexInput sequentialVectorData;
   // guarded by this
   private boolean closed;
 
@@ -279,7 +282,7 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
   @Override
   public RandomVectorScorer getRandomVectorScorer(String field, float[] target) throws IOException {
     FieldEntry entry = getEntry(field, FLOAT32);
-    FloatVectorValues vectorValues = getFloatVectorValues(entry);
+    FloatVectorValues vectorValues = getFloatVectorValues(entry, vectorData);
     return vectorsScorer.getRandomVectorScorer(entry.fieldInfo.function(), vectorValues, target);
   }
 
@@ -302,14 +305,15 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
     CodecUtil.checksumEntireFile(vectorData, merge);
   }
 
-  private FloatVectorValues getFloatVectorValues(FieldEntry entry) throws IOException {
+  private FloatVectorValues getFloatVectorValues(FieldEntry entry, IndexInput data)
+      throws IOException {
     return loadDedupFloats(
         vectorsScorer,
         entry.fieldInfo.function(),
         entry.fieldInfo.ordToDoc(),
         entry.fieldInfo.dimension(),
         entry.groupInfo.groupNumVectors(),
-        vectorData,
+        data,
         entry.groupInfo.vectorDataOffset(),
         entry.groupInfo.vectorDataSize(),
         entry.fieldInfo.fieldOrdToGroupOrdOffset(),
@@ -319,7 +323,15 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
 
   @Override
   public FloatVectorValues getFloatVectorValues(String field) throws IOException {
-    return getFloatVectorValues(getEntry(field, FLOAT32));
+    return getFloatVectorValues(getEntry(field, FLOAT32), vectorData);
+  }
+
+  @Override
+  public FloatVectorValues getFloatVectorValues(String field, DataAccessHint access)
+      throws IOException {
+    IndexInput data =
+        access == DataAccessHint.SEQUENTIAL ? original.sequentialVectorData() : vectorData;
+    return getFloatVectorValues(getEntry(field, FLOAT32), data);
   }
 
   private ByteVectorValues getByteVectorValues(FieldEntry entry) throws IOException {
@@ -372,13 +384,32 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
   /** Returns the input for merges, opening the data file again if needed. */
   private synchronized IndexInput mergeVectorData() throws IOException {
     assert original == this;
+    ensureOpen();
+    if (mergeVectorData == null) {
+      mergeVectorData =
+          inputFor(
+              mergeContext(dataContext), vectorData, sequentialVectorData, directory, vectorDataFN);
+    }
+    return mergeVectorData;
+  }
+
+  /** Returns the input for sequential reads by searches, opening the data file again if needed. */
+  private synchronized IndexInput sequentialVectorData() throws IOException {
+    assert original == this;
+    ensureOpen();
+    if (sequentialVectorData == null) {
+      // read by searches, even on a reader a merge opened
+      sequentialVectorData =
+          inputFor(
+              sequentialContext(dataContext), vectorData, mergeVectorData, directory, vectorDataFN);
+    }
+    return sequentialVectorData;
+  }
+
+  private void ensureOpen() {
     if (closed) {
       throw new AlreadyClosedException("this reader is closed");
     }
-    if (mergeVectorData == null) {
-      mergeVectorData = inputFor(mergeContext(dataContext), vectorData, directory, vectorDataFN);
-    }
-    return mergeVectorData;
   }
 
   @Override
@@ -392,7 +423,9 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
       closed = true;
       toClose.add(vectorData);
       toClose.add(mergeVectorData);
+      toClose.add(sequentialVectorData);
       mergeVectorData = null;
+      sequentialVectorData = null;
     }
     IOUtils.close(toClose);
   }

@@ -682,6 +682,64 @@ public class TestDedupFlatVectorsFormat extends LuceneTestCase {
     }
   }
 
+  /**
+   * Sequential values read the raw vectors through an input opened again with sequential advice
+   * when the reader's own input reads at random. Later merges share it, and it is kept until the
+   * reader closes.
+   */
+  public void testSequentialValuesOpenTheVectorsAgain() throws Exception {
+    for (KnnVectorsFormat format :
+        List.of(new DedupHnswVectorsFormat(), new DedupHnswScalarQuantizedVectorsFormat())) {
+      for (boolean advises : new boolean[] {true, false}) {
+        List<Open> opens = new CopyOnWriteArrayList<>();
+        List<Open> sequential;
+        IndexWriterConfig config =
+            new IndexWriterConfig()
+                .setCodec(TestUtil.alwaysKnnVectorsFormat(format))
+                .setUseCompoundFile(false);
+        try (Directory dir = new RecordingDirectory(newDirectory(), opens, advises)) {
+          try (IndexWriter w = new IndexWriter(dir, config)) {
+            for (int i = 0; i < 4; i++) {
+              Document doc = new Document();
+              doc.add(new KnnFloatVectorField("f", randomVector(4), DOT_PRODUCT));
+              w.addDocument(doc);
+            }
+          }
+          try (DirectoryReader reader = DirectoryReader.open(dir)) {
+            KnnVectorsReader vectors = ((CodecReader) getOnlyLeafReader(reader)).getVectorReader();
+            opens.clear();
+            FloatVectorValues random = vectors.getFloatVectorValues("f", DataAccessHint.RANDOM);
+            FloatVectorValues values = vectors.getFloatVectorValues("f", DataAccessHint.SEQUENTIAL);
+            sequential = opens.stream().filter(Open::isSequentialVectorData).toList();
+            assertEquals(opens.toString(), advises ? 1 : 0, sequential.size());
+            for (Open open : sequential) {
+              assertTrue(open.toString(), open.name.endsWith(".vdd"));
+              assertEquals(open.toString(), IOContext.Context.DEFAULT, open.context.context());
+              assertTrue(open.toString(), open.read);
+            }
+            assertEquals(random.size(), values.size());
+            for (int ord = 0; ord < random.size(); ord++) {
+              assertArrayEquals(random.vectorValue(ord), values.vectorValue(ord), 0f);
+            }
+            // merges and later sequential values share it (quantized records aside)
+            vectors.getMergeInstance();
+            vectors.getFloatVectorValues("f", DataAccessHint.SEQUENTIAL);
+            assertEquals(
+                opens.toString(),
+                sequential.size(),
+                opens.stream()
+                    .filter(o -> o.isSequentialVectorData() && o.name.endsWith(".vdd"))
+                    .count());
+            assertFalse(sequential.toString(), sequential.stream().anyMatch(o -> o.closed));
+          }
+        }
+        for (Open open : sequential) {
+          assertTrue("closed with the reader: " + open, open.closed);
+        }
+      }
+    }
+  }
+
   /** Tests specific to on-heap versions of the field ord -> group ord mapping. */
   public void testOnHeapFieldOrdToGroupOrd() {
     FieldOrdToGroupOrd arrayBacked = new FieldOrdToGroupOrdArrayList(new IntArrayList());

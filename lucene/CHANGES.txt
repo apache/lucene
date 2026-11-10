@@ -449,11 +449,10 @@ Bug Fixes
 
 * GITHUB#16971: Fix double DocValuesStats extrema initialization. (Simranjeet Singh)
 
-* GITHUB#16595: The sandboxed dedup vector formats now de-duplicate vectors only within a document,
+* GITHUB#16938: The sandboxed dedup vector formats now de-duplicate vectors only within a document,
   and store a group's vectors in doc order. Merges compare a vector with the other vectors of its
-  document instead of hashing it and reading back earlier vectors, so they read less and sequentially,
-  through inputs opened for merges as Lucene99FlatVectorsReader does. Identical vectors of different
-  documents are no longer shared, so such indexes grow as their segments are merged. (Kaival Parikh)
+  document instead of hashing it and reading back earlier vectors, so they read less and sequentially.
+  (Kaival Parikh)
 
 Changes in Runtime Behavior
 ---------------------

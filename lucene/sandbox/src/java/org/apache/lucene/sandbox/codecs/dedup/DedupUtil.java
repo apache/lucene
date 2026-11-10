@@ -236,13 +236,18 @@ final class DedupUtil {
   }
 
   /**
-   * Returns {@code data} if it is efficient for {@code context}, or else {@code fileName} opened
-   * again with it (as {@code Lucene99FlatVectorsReader} does for merges), which the caller closes.
+   * Returns {@code data}, or else {@code other} (if any), if it is efficient for {@code context},
+   * or else {@code fileName} opened again with it (as {@code Lucene99FlatVectorsReader} does for
+   * merges and sequential reads), which the caller closes.
    */
   static IndexInput inputFor(
-      IOContext context, IndexInput data, Directory directory, String fileName) throws IOException {
+      IOContext context, IndexInput data, IndexInput other, Directory directory, String fileName)
+      throws IOException {
     if (data.isEfficientFor(context)) {
       return data;
+    }
+    if (other != null && other.isEfficientFor(context)) {
+      return other;
     }
     try {
       return directory.openInput(fileName, context);
@@ -254,11 +259,17 @@ final class DedupUtil {
 
   /** The merge context with the hints of {@code dataContext}, for sequential access. */
   static IOContext mergeContext(IOContext dataContext) {
-    return IOContext.merge()
-        .withHints(
-            Stream.concat(
-                    dataContext.removeHints(DataAccessHint.class),
-                    Stream.of(DataAccessHint.SEQUENTIAL))
-                .toArray(IOContext.FileOpenHint[]::new));
+    return IOContext.merge().withHints(sequentialHints(dataContext));
+  }
+
+  /** The default context with the hints of {@code dataContext}, for sequential access. */
+  static IOContext sequentialContext(IOContext dataContext) {
+    return IOContext.DEFAULT.withHints(sequentialHints(dataContext));
+  }
+
+  private static IOContext.FileOpenHint[] sequentialHints(IOContext dataContext) {
+    return Stream.concat(
+            dataContext.removeHints(DataAccessHint.class), Stream.of(DataAccessHint.SEQUENTIAL))
+        .toArray(IOContext.FileOpenHint[]::new);
   }
 }

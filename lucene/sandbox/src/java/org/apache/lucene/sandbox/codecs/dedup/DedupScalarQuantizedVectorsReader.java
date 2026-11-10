@@ -21,6 +21,7 @@ import static org.apache.lucene.index.VectorEncoding.FLOAT16;
 import static org.apache.lucene.index.VectorEncoding.FLOAT32;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.inputFor;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.mergeContext;
+import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.sequentialContext;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupVectorValues.loadDedupBytes;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupVectorValues.loadDedupFloat16s;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupVectorValues.loadDedupFloats;
@@ -54,6 +55,7 @@ import org.apache.lucene.sandbox.codecs.dedup.DedupUtil.GroupInfo;
 import org.apache.lucene.sandbox.codecs.dedup.DedupUtil.ReadFieldInfo;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.ChecksumIndexInput;
+import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FileDataHint;
 import org.apache.lucene.store.FileTypeHint;
@@ -97,9 +99,10 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
   private final IOContext dataContext;
   // the reader this one was created from
   private final DedupScalarQuantizedVectorsReader original;
-  // opened lazily for merges, closed with this reader, guarded by this
+  // opened lazily for merges and sequential reads, closed with this reader, guarded by this
   private IndexInput mergeVectorData;
   private IndexInput mergeQuantizedVectorData;
+  private IndexInput sequentialVectorData;
   // guarded by this
   private boolean closed;
 
@@ -393,14 +396,15 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
     CodecUtil.checksumEntireFile(quantizedVectorData, merge);
   }
 
-  private DedupVectorValues.FloatImpl getRawFloatVectorValues(FieldEntry entry) throws IOException {
+  private DedupVectorValues.FloatImpl getRawFloatVectorValues(FieldEntry entry, IndexInput data)
+      throws IOException {
     return loadDedupFloats(
         vectorsScorer,
         entry.fieldInfo().function(),
         entry.fieldInfo().ordToDoc(),
         entry.fieldInfo().dimension(),
         entry.groupInfo().groupNumVectors(),
-        vectorData,
+        data,
         entry.groupInfo().vectorDataOffset(),
         entry.groupInfo().vectorDataSize(),
         entry.fieldInfo().fieldOrdToGroupOrdOffset(),
@@ -427,9 +431,24 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
 
   @Override
   public FloatVectorValues getFloatVectorValues(String field) throws IOException {
-    FieldEntry entry = getEntry(field, FLOAT32);
+    return getFloatVectorValues(getEntry(field, FLOAT32), vectorData);
+  }
+
+  @Override
+  public FloatVectorValues getFloatVectorValues(String field, DataAccessHint access)
+      throws IOException {
+    IndexInput data =
+        access == DataAccessHint.SEQUENTIAL ? original.sequentialVectorData() : vectorData;
+    return getFloatVectorValues(getEntry(field, FLOAT32), data);
+  }
+
+  /**
+   * The raw vectors of {@code entry}, read through {@code data}, paired with its quantized ones.
+   */
+  private FloatVectorValues getFloatVectorValues(FieldEntry entry, IndexInput data)
+      throws IOException {
     return new Float32RawAndQuantizedValues(
-        getRawFloatVectorValues(entry), getQuantizedVectorValues(entry));
+        getRawFloatVectorValues(entry, data), getQuantizedVectorValues(entry));
   }
 
   private ByteVectorValues getByteVectorValues(FieldEntry entry) throws IOException {
@@ -518,7 +537,7 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
       DedupVectorValues.Float16Impl float16RawValues = getRawFloat16VectorValues(entry);
       floatVectorValues = new Float16AsFloatVectorValues(float16RawValues.getGroupView());
     } else {
-      DedupVectorValues.FloatImpl float32RawValues = getRawFloatVectorValues(entry);
+      DedupVectorValues.FloatImpl float32RawValues = getRawFloatVectorValues(entry, vectorData);
       floatVectorValues = float32RawValues.getGroupView();
     }
 
@@ -611,7 +630,9 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
     assert original == this;
     ensureOpen();
     if (mergeVectorData == null) {
-      mergeVectorData = inputFor(mergeContext(dataContext), vectorData, directory, vectorDataFN);
+      mergeVectorData =
+          inputFor(
+              mergeContext(dataContext), vectorData, sequentialVectorData, directory, vectorDataFN);
     }
     return mergeVectorData;
   }
@@ -623,9 +644,26 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
     if (mergeQuantizedVectorData == null) {
       mergeQuantizedVectorData =
           inputFor(
-              mergeContext(dataContext), quantizedVectorData, directory, quantizedVectorDataFN);
+              mergeContext(dataContext),
+              quantizedVectorData,
+              null, // only merges read the quantized records sequentially
+              directory,
+              quantizedVectorDataFN);
     }
     return mergeQuantizedVectorData;
+  }
+
+  /** Returns the input for sequential reads by searches, opening the data file again if needed. */
+  private synchronized IndexInput sequentialVectorData() throws IOException {
+    assert original == this;
+    ensureOpen();
+    if (sequentialVectorData == null) {
+      // read by searches, even on a reader a merge opened
+      sequentialVectorData =
+          inputFor(
+              sequentialContext(dataContext), vectorData, mergeVectorData, directory, vectorDataFN);
+    }
+    return sequentialVectorData;
   }
 
   private void ensureOpen() {
@@ -647,8 +685,10 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
       toClose.add(quantizedVectorData);
       toClose.add(mergeVectorData);
       toClose.add(mergeQuantizedVectorData);
+      toClose.add(sequentialVectorData);
       mergeVectorData = null;
       mergeQuantizedVectorData = null;
+      sequentialVectorData = null;
     }
     IOUtils.close(toClose);
   }
