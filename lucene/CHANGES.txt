@@ -441,7 +441,8 @@ Bug Fixes
 
 * GITHUB#16900: An NRT reader stayed current after doc values updates were written to disk without
   a commit, for example on flush(), so openIfChanged returned null and the updates were missed.
-  (Di Wu)
+  IndexWriter#hasUncommittedChanges also returned false for doc values updates that were applied
+  but not written yet. (Di Wu)
 
 * GITHUB#16923: An NRT reader opened while a commit was in progress stayed current after the
   commit, even though it still used the previous segments_N file, which may be deleted. Likewise,

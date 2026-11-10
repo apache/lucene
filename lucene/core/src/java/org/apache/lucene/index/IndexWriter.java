@@ -4243,7 +4243,11 @@ public class IndexWriter
    * finished, this method may return true right after you had just called {@link #commit}.
    */
   public final boolean hasUncommittedChanges() {
-    return changeCount.get() != lastCommitChangeCount || hasChangesInRam();
+    // Applied doc values updates only count as a change once they are written (see
+    // writeReaderPool), so also check for ones that aren't written yet:
+    return changeCount.get() != lastCommitChangeCount
+        || hasChangesInRam()
+        || readerPool.anyDocValuesChanges();
   }
 
   /** Returns true if there are any changes or deletes that are not flushed or applied. */
