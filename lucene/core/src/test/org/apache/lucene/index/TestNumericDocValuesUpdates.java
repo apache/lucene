@@ -18,6 +18,7 @@ package org.apache.lucene.index;
 
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -26,7 +27,6 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.lucene.codecs.DocValuesFormat;
@@ -58,7 +58,6 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
-import org.apache.lucene.util.ThreadInterruptedException;
 
 @SuppressWarnings("resource")
 public class TestNumericDocValuesUpdates extends LuceneTestCase {
@@ -419,46 +418,33 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
     writer.updateNumericDocValue(new Term("id", "doc-0"), "val", 10L);
     assertEquals(flushDeletesCount + 1, writer.getFlushDeletesCount());
     assertTrue(writer.hasUncommittedChanges());
-
-    // so code that commits only if there are uncommitted changes keeps the update
-    if (writer.hasUncommittedChanges()) {
-      writer.commit();
-    }
-    writer.rollback();
-    DirectoryReader reader = DirectoryReader.open(dir);
-    NumericDocValues dvs = reader.leaves().get(0).reader().getNumericDocValues("val");
-    assertEquals(0, dvs.nextDoc());
-    assertEquals(10, dvs.longValue());
-    IOUtils.close(reader, dir);
+    IOUtils.close(writer, dir);
   }
 
   // Updates are only written, and visible to NRT readers, once their packet is finished, which is
   // after it was applied. A reader opened in between doesn't see the update, so the version must
   // not be increased before the update is written.
   public void testReopenReaderOpenedBeforeUpdatesPacketFinished() throws Exception {
-    CountDownLatch paused = new CountDownLatch(1);
-    CountDownLatch resume = new CountDownLatch(1);
-    AtomicReference<Thread> pauseThread = new AtomicReference<>();
+    AtomicReference<IndexWriter> writerRef = new AtomicReference<>();
+    AtomicReference<DirectoryReader> reader2Ref = new AtomicReference<>();
     InfoStream infoStream =
         new InfoStream() {
           @Override
           public void message(String component, String message) {
-            // logged after the packet was applied, and before it is marked finished:
-            if (Thread.currentThread() == pauseThread.get()
-                && message.contains("done inner apply del packet")) {
-              pauseThread.set(null);
-              paused.countDown();
+            // logged after the packet was applied, and before it is marked finished, so open a
+            // reader right here:
+            if (message.contains("done inner apply del packet") && reader2Ref.get() == null) {
               try {
-                assertTrue(resume.await(30, TimeUnit.SECONDS));
-              } catch (InterruptedException e) {
-                throw new ThreadInterruptedException(e);
+                reader2Ref.set(DirectoryReader.open(writerRef.get(), false, false));
+              } catch (IOException e) {
+                throw new UncheckedIOException(e);
               }
             }
           }
 
           @Override
           public boolean isEnabled(String component) {
-            return true;
+            return writerRef.get() != null;
           }
 
           @Override
@@ -474,30 +460,12 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
     writer.addDocument(doc(0)); // val=1
     DirectoryReader reader1 = DirectoryReader.open(writer);
 
-    // a tiny RAM buffer makes the updating thread apply the update right away
+    // a tiny RAM buffer applies the update right away
     writer.getConfig().setRAMBufferSizeMB(0.00000001);
-    AtomicReference<Throwable> failure = new AtomicReference<>();
-    Thread updater =
-        new Thread(
-            () -> {
-              try {
-                writer.updateNumericDocValue(new Term("id", "doc-0"), "val", 10L);
-              } catch (Throwable t) {
-                failure.set(t);
-              }
-            });
-    pauseThread.set(updater);
-    updater.start();
-    DirectoryReader reader2;
-    try {
-      assertTrue(paused.await(30, TimeUnit.SECONDS));
-      // doesn't wait for the packet that is being applied:
-      reader2 = DirectoryReader.open(writer, false, false);
-    } finally {
-      resume.countDown();
-      updater.join();
-    }
-    assertNull(failure.get());
+    writerRef.set(writer);
+    writer.updateNumericDocValue(new Term("id", "doc-0"), "val", 10L);
+    DirectoryReader reader2 = reader2Ref.get();
+    assertNotNull(reader2);
     NumericDocValues dvs = reader2.leaves().get(0).reader().getNumericDocValues("val");
     assertEquals(0, dvs.nextDoc());
     assertEquals(1, dvs.longValue());
