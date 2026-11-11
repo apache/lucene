@@ -45,7 +45,7 @@ public class TimeLimitingKnnCollectorManager implements KnnCollectorManager {
     if (queryTimeout == null) {
       return collector;
     }
-    return new TimeLimitingKnnCollector(collector);
+    return collector != null ? new TimeLimitingKnnCollector(collector) : null;
   }
 
   class TimeLimitingKnnCollector extends KnnCollector.Decorator {
