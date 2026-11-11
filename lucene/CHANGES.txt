@@ -19,7 +19,11 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+* GITHUB#16806: HNSW searches track the visited nodes of a large graph in a hash set instead of a
+  bit set sized to the graph, which makes merges into large segments faster. (Ankur Goel)
+
+* GITHUB#16956: Merges that reuse an existing HNSW graph no longer read the query vector of every
+  copied node, which slowed the graph copy by 2.4x to 10x in one benchmark. (Ankur Goel)
 
 Bug Fixes
 ---------------------
@@ -33,6 +37,38 @@ Other
 
 API Changes
 ---------------------
+* GITHUB#16985: Remove the deprecated TokenSources methods in the highlighter module
+  (getAnyTokenStream, getTokenStreamWithOffsets and the getTokenStream overloads taking a Terms,
+  IndexReader, Document or plain text). Use TokenSources#getTokenStream(String, Fields, String,
+  Analyzer, int) or TokenSources#getTermVectorTokenStreamOrNull instead. (Christoph Büscher)
+
+* GITHUB#16984: Remove the deprecated constructor in TruncateTokenFilter.
+  Its usage has been replaced by static factory methods TruncateTokenFilter.truncateAfterChars
+  for backward compatibility or TruncateTokenFilter.truncateAfterCodePoints.
+  The deprecated factory parameter prefixLength (constant field PREFIX_LENGTH_KEY) is also removed;
+  use truncateAfterChars or truncateAfterCodePoints instead. (Andrea Selva)
+
+* GITHUB#16975: Removed the deprecated UnifiedHighlighter constructor, setters and shouldXxx
+  methods. Use UnifiedHighlighter.Builder instead. (Christoph Büscher)
+
+* GITHUB#16965: Remove the deprecated classes for explicit vector similarity search:
+  ByteVectorSimilarityQuery.Explicit, FloatVectorSimilarityQuery.Explicit and
+  ExplicitVectorSimilarityCollector.
+  Use the more performant Adaptive queries instead. (Andrea Selva)
+
+* GITHUB#16969: Remove deprecated SpanishMinimalStemFilter, SpanishMinimalStemFilterFactory and
+  SpanishMinimalStemmer. Use SpanishPluralStemFilter instead. (Christoph Büscher)
+
+* GITHUB#16962: Removed usage of deprecated no-args constructors of MatchAllDocsQuery
+  and MatchNoDocsQuery. (Andrea Selva)
+
+* GITHUB#16964: Remove the deprecated FixBrokenOffsetsFilter and FixBrokenOffsetsFilterFactory
+  (SPI name "fixBrokenOffsets"). Fix the token filters that produce broken offsets instead.
+  (Chris Parrinello)
+
+* GITHUB#16963: Remove the deprecated MergePolicy.MergeSpecification#segString(Directory) method.
+  Use MergeSpecification#toString() instead. (Christoph Büscher)
+
 * GITHUB#16741: Lower the minimum supported major version from 10 to 9. Indexes created with 9.x
   remain fully supported in Lucene 11, no reindexing required. (Luca Cavanna)
 
@@ -187,6 +223,9 @@ API Changes
   multiterm) now throw IndexSearcher.TooManyClauses instead of IllegalStateException when
   they expand to more than maxExpansions terms. (Mayya Sharipova)
 
+* GITHUB#16968: Remove deprecated RegExp.ASCII_CASE_INSENSITIVE flag, use
+  RegExp.CASE_INSENSITIVE instead. (Christoph Büscher)
+
 New Features
 ---------------------
 * GITHUB#16723: Support SIMD Faiss library variants with runtime fallback. (Abhinav Chinnala)
@@ -261,6 +300,12 @@ Improvements
 Optimizations
 ---------------------
 
+* GITHUB#16746: Speed up decoding long overlapping LZ4 matches using bulk copies
+  of initialized bytes. (Andre Kurait)
+
+* GITHUB#16881: UnifiedHighlighter converts each term to UTF-16 once instead of once per automaton,
+  which speeds up highlighting of queries with many multi-term clauses. (Eugene Rizhkov)
+
 * GITHUB#16794: Concurrent HNSW merges now join the other deletion-free graphs into the base graph
   through their join sets, as serial merges have done since GITHUB#14331, instead of inserting all
   their vectors with a full search. Graphs now match the serial merge: slightly lower recall at the
@@ -315,8 +360,15 @@ Optimizations
 
 * GITHUB#15902: Improve DiversifyingChildren performance by using primitive arrays (Alessandro Benedetti)
 
+* GITHUB#16970: SortingStoredFieldsConsumer reads its temporary files using a single-threaded
+  IOContext, allowing MMapDirectory to open them with confined areas and avoiding JVM-wide
+  handshakes when the files are closed. (Alan Woodward)
+
 Bug Fixes
 ---------------------
+* GITHUB#16983: UnifiedHighlighter.Builder#withFlags is no longer ignored when building the
+  highlighter. (Christoph Büscher)
+
 * GITHUB#16867: Apply buffered soft-update/delete terms before the global delete buffer reaches the 2GB
   addressing limit of its ByteBlockPool, and stall indexing if the limit is hit during a full flush.
   (Alan Woodward)
@@ -388,10 +440,14 @@ Bug Fixes
 * GITHUB#16926: RescoreTopNQuery no longer throws when its inner query matches no documents.
   (Greg Miller)
 
+* GITHUB#16972: Fix Brazilian "logias" stem replacement. (Simranjeet Singh)
+
 * GITHUB#16947: Disable index-sort early termination for indexes with parent-child docs.  Index sorts
   only apply to parent documents so naive early termination checks can read the sort value from a child
   document as meaning no later documents would be competitive, and incorrectly miss parent documents.
   (Alan Woodward)
+
+* GITHUB#16971: Fix double DocValuesStats extrema initialization. (Simranjeet Singh)
 
 Changes in Runtime Behavior
 ---------------------
