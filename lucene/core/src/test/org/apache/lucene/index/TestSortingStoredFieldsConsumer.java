@@ -17,20 +17,34 @@
 
 package org.apache.lucene.index;
 
+import static org.hamcrest.Matchers.hasItems;
+
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingStoredFieldsWriter;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.NumericDocValuesField;
+import org.apache.lucene.document.StoredField;
+import org.apache.lucene.document.TextField;
+import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.SortField;
+import org.apache.lucene.store.ByteBuffersDirectory;
+import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.FilterIndexInput;
 import org.apache.lucene.store.FlushInfo;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.ReadOnceHint;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.StringHelper;
@@ -131,6 +145,44 @@ public class TestSortingStoredFieldsConsumer extends LuceneTestCase {
 
       assertEquals(
           "Expected only 1 seek (for checksum retrieval), not one per document", 1, numSeeks.get());
+    }
+  }
+
+  /**
+   * The temporary stored fields are read back on the flushing thread only, so their index must be
+   * opened read-once to let directories confine it to that thread.
+   */
+  public void testTempFilesOpenedReadOnce() throws IOException {
+    List<IOContext> tempIndexOpens = new ArrayList<>();
+    try (Directory dir =
+        new FilterDirectory(new ByteBuffersDirectory()) {
+          @Override
+          public IndexInput openInput(String name, IOContext context) throws IOException {
+            if (name.endsWith(".tmp") && name.matches(".*\\.(fdx|fdt|tvx|tvd)__.*")) {
+              tempIndexOpens.add(context);
+            }
+            return super.openInput(name, context);
+          }
+        }) {
+      IndexWriterConfig iwc =
+          new IndexWriterConfig()
+              .setIndexSort(new Sort(new SortField("sort", SortField.Type.LONG)));
+      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+        for (int i = 0; i < 10; i++) {
+          Document doc = new Document();
+          doc.add(new NumericDocValuesField("sort", 10 - i));
+          doc.add(new StoredField("stored", i));
+          FieldType withVectors = new FieldType(TextField.TYPE_NOT_STORED);
+          withVectors.setStoreTermVectors(true);
+          doc.add(new Field("vectors", "a b c", withVectors));
+          writer.addDocument(doc);
+        }
+        writer.commit();
+      }
+    }
+    assertEquals(4, tempIndexOpens.size()); // fdx, fdt, tvx and tvd
+    for (IOContext context : tempIndexOpens) {
+      assertThat(context.hints(), hasItems(ReadOnceHint.INSTANCE, DataAccessHint.RANDOM));
     }
   }
 }

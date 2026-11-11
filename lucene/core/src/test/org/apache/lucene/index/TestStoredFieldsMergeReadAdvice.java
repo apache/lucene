@@ -181,6 +181,7 @@ public class TestStoredFieldsMergeReadAdvice extends LuceneTestCase {
             .toList();
     for (Open open : sequential) {
       assertTrue(open.toString(), open.context.hints().contains(NoReuseHint.INSTANCE));
+      assertEquals(open.toString(), IOContext.Context.MERGE, open.context.context());
     }
     return sequential;
   }
