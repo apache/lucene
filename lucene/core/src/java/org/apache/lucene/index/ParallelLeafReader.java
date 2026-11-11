@@ -90,8 +90,8 @@ public class ParallelLeafReader extends LeafReader {
     this.storedFieldsReaders = storedFieldsReaders.clone();
     if (parallelReaders.length > 0) {
       final LeafReader first = parallelReaders[0];
-      this.maxDoc = first.maxDoc();
-      this.numDocs = first.numDocs();
+      this.maxDoc = first.maxLeafDoc();
+      this.numDocs = first.numLeafDocs();
       this.hasDeletions = first.hasDeletions();
     } else {
       this.maxDoc = this.numDocs = 0;
@@ -262,13 +262,13 @@ public class ParallelLeafReader extends LeafReader {
   }
 
   @Override
-  public int numDocs() {
+  public int numLeafDocs() {
     // Don't call ensureOpen() here (it could affect performance)
     return numDocs;
   }
 
   @Override
-  public int maxDoc() {
+  public int maxLeafDoc() {
     // Don't call ensureOpen() here (it could affect performance)
     return maxDoc;
   }

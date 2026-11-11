@@ -120,7 +120,7 @@ public class TestBPIndexReorderer extends LuceneTestCase {
     reorderer.setMinPartitionSize(1);
     reorderer.setMaxIters(10);
     CodecReader reordered = reorderer.reorder(codecReader, dir, pool);
-    String[] ids = new String[codecReader.maxDoc()];
+    String[] ids = new String[codecReader.maxLeafDoc()];
     StoredFields storedFields = reordered.storedFields();
     for (int i = 0; i < codecReader.maxDoc(); ++i) {
       ids[i] = storedFields.document(i).get("id");
@@ -305,7 +305,7 @@ public class TestBPIndexReorderer extends LuceneTestCase {
     reorderer.setMinPartitionSize(1);
     reorderer.setMaxIters(10);
     CodecReader reordered = reorderer.reorder(codecReader, dir, null);
-    String[] ids = new String[codecReader.maxDoc()];
+    String[] ids = new String[codecReader.maxLeafDoc()];
     StoredFields storedFields = reordered.storedFields();
     for (int i = 0; i < codecReader.maxDoc(); ++i) {
       ids[i] = storedFields.document(i).get("id");

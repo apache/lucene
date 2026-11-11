@@ -258,7 +258,7 @@ public class TestLucene104HnswScalarQuantizedVectorsFormat extends BaseKnnVector
                   "f",
                   randomVector,
                   1,
-                  AcceptDocs.fromLiveDocs(null, r.maxDoc()),
+                  AcceptDocs.fromLiveDocs(null, r.maxLeafDoc()),
                   Integer.MAX_VALUE);
           assertEquals(1, td.totalHits.value());
           assertTrue(td.scoreDocs[0].score >= 0);

@@ -109,7 +109,7 @@ public class TestDiversifyingNearestChildrenKnnCollectorPerformance extends Luce
       assertEquals("size k=" + k, Math.min(k, numParents), topDocs.scoreDocs.length);
       int parentIndex = numParents - 1;
       for (int i = 0; i < topDocs.scoreDocs.length; i++) {
-        int actualDocId = topDocs.scoreDocs[i].doc;
+        int actualDocId = Math.toIntExact(topDocs.scoreDocs[i].doc);
         float actualScore = topDocs.scoreDocs[i].score;
         assertEquals("wrong result set for k=" + k, bestChild[parentIndex], actualDocId);
         assertEquals("wrong result set for k=" + k, bestScore[parentIndex], actualScore, 0f);

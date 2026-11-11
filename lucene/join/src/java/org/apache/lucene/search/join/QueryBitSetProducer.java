@@ -79,7 +79,7 @@ public class QueryBitSetProducer implements BitSetProducer {
       if (s == null) {
         bitSet = SENTINEL;
       } else {
-        bitSet = BitSet.of(s.iterator(), context.reader().maxDoc());
+        bitSet = BitSet.of(s.iterator(), context.maxLeafDoc());
       }
       if (cacheHelper != null) {
         cache.put(cacheHelper.getKey(), bitSet);

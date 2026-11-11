@@ -29,7 +29,7 @@ import org.apache.lucene.index.IndexReader;
 public interface IndexPackageAccess {
   IndexReader.CacheKey newCacheKey();
 
-  void setIndexWriterMaxDocs(int limit);
+  void setIndexWriterMaxDocs(long limit);
 
   FieldInfosBuilder newFieldInfosBuilder(String softDeletesFieldName, String parentFieldName);
 

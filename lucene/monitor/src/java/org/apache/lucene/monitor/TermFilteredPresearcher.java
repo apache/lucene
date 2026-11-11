@@ -173,7 +173,7 @@ public class TermFilteredPresearcher extends Presearcher {
 
     BooleanQuery.Builder bq = new BooleanQuery.Builder();
 
-    int docsInBatch = reader.maxDoc();
+    int docsInBatch = reader.maxLeafDoc();
 
     BytesRef term;
     TermsEnum te = terms.iterator();

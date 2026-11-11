@@ -284,7 +284,7 @@ public class LongValueFacetCounts extends Facets {
 
     for (LeafReaderContext context : reader.leaves()) {
       LongValues fv = valueSource.getValues(context, null);
-      int maxDoc = context.reader().maxDoc();
+      int maxDoc = context.maxLeafDoc();
 
       for (int doc = 0; doc < maxDoc; doc++) {
         // Skip missing docs:
@@ -301,7 +301,7 @@ public class LongValueFacetCounts extends Facets {
 
     for (LeafReaderContext context : reader.leaves()) {
       MultiLongValues multiValues = valueSource.getValues(context);
-      int maxDoc = context.reader().maxDoc();
+      int maxDoc = context.maxLeafDoc();
 
       for (int doc = 0; doc < maxDoc; doc++) {
         // Skip missing docs:

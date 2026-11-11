@@ -59,7 +59,7 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
    */
   protected TreeSet<CollectedSearchGroup<T>> orderedGroups;
 
-  private int docBase;
+  private long docBase;
   private int spareSlot;
 
   /**
@@ -371,7 +371,7 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
               if (c != 0) {
                 return c;
               } else if (compIDX == compIDXEnd) {
-                return o1.topDoc - o2.topDoc;
+                return Long.compare(o1.topDoc, o2.topDoc);
               }
             }
           }

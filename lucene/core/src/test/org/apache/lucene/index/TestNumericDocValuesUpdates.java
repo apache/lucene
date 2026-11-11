@@ -274,7 +274,7 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
       NumericDocValues ndv = r.getNumericDocValues("val");
       assertNotNull(ndv);
       for (int i = 0; i < r.maxDoc(); i++) {
-        long expected = expectedValues[i + context.docBase];
+        long expected = expectedValues[Math.toIntExact(i + context.docBase)];
         assertEquals(i, ndv.nextDoc());
         long actual = ndv.longValue();
         assertEquals(expected, actual);
@@ -1034,7 +1034,7 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
           String f = "f" + field;
           NumericDocValues ndv = r.getNumericDocValues(f);
           assertNotNull(ndv);
-          int maxDoc = r.maxDoc();
+          int maxDoc = r.maxLeafDoc();
           for (int doc = 0; doc < maxDoc; doc++) {
             if (liveDocs == null || liveDocs.get(doc)) {
               assertEquals("advanced to wrong doc in seg=" + r, doc, ndv.advance(doc));

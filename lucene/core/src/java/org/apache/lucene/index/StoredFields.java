@@ -46,6 +46,14 @@ public abstract class StoredFields {
   public void prefetch(int docID) throws IOException {}
 
   /**
+   * Like {@link #prefetch(int)} but accepts a global doc id (composite readers may exceed {@link
+   * Integer#MAX_VALUE} docs).
+   */
+  public void prefetch(long docID) throws IOException {
+    prefetch(Math.toIntExact(docID));
+  }
+
+  /**
    * Returns the stored fields of the <code>n</code><sup>th</sup> <code>Document</code> in this
    * index. This is just sugar for using {@link DocumentStoredFieldVisitor}.
    *
@@ -81,6 +89,29 @@ public abstract class StoredFields {
    * for {@link DocumentStoredFieldVisitor#DocumentStoredFieldVisitor(Set)}.
    */
   public final Document document(int docID, Set<String> fieldsToLoad) throws IOException {
+    final DocumentStoredFieldVisitor visitor = new DocumentStoredFieldVisitor(fieldsToLoad);
+    document(docID, visitor);
+    return visitor.getDocument();
+  }
+
+  /**
+   * Like {@link #document(int)} but for a global doc id in a composite/directory reader, whose
+   * doc-id space may exceed {@link Integer#MAX_VALUE}. Hits returned from an {@code IndexSearcher}
+   * (a {@code ScoreDoc}'s doc id) are such global ids.
+   */
+  public final Document document(long docID) throws IOException {
+    final DocumentStoredFieldVisitor visitor = new DocumentStoredFieldVisitor();
+    document(docID, visitor);
+    return visitor.getDocument();
+  }
+
+  /** Like {@link #document(int, StoredFieldVisitor)} but for a global doc id. */
+  public void document(long docID, StoredFieldVisitor visitor) throws IOException {
+    document(Math.toIntExact(docID), visitor);
+  }
+
+  /** Like {@link #document(int, Set)} but for a global doc id. */
+  public final Document document(long docID, Set<String> fieldsToLoad) throws IOException {
     final DocumentStoredFieldVisitor visitor = new DocumentStoredFieldVisitor(fieldsToLoad);
     document(docID, visitor);
     return visitor.getDocument();

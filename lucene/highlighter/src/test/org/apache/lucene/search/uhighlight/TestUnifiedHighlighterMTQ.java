@@ -937,7 +937,8 @@ public class TestUnifiedHighlighterMTQ extends UnifiedHighlighterTestBase {
 
     IndexSearcher searcher = newSearcher(ir);
     UnifiedHighlighter highlighter = randomUnifiedHighlighter(searcher, indexAnalyzer);
-    int docID = searcher.search(new TermQuery(new Term("id", "id")), 1).scoreDocs[0].doc;
+    int docID =
+        Math.toIntExact(searcher.search(new TermQuery(new Term("id", "id")), 1).scoreDocs[0].doc);
 
     Query query = new PrefixQuery(new Term("body", "nonexistent"));
     int[] docIDs = new int[1];
@@ -994,7 +995,8 @@ public class TestUnifiedHighlighterMTQ extends UnifiedHighlighterTestBase {
 
     IndexSearcher searcher = newSearcher(ir);
     UnifiedHighlighter highlighter = randomUnifiedHighlighter(searcher, indexAnalyzer);
-    int docID = searcher.search(new TermQuery(new Term("id", "id")), 1).scoreDocs[0].doc;
+    int docID =
+        Math.toIntExact(searcher.search(new TermQuery(new Term("id", "id")), 1).scoreDocs[0].doc);
 
     PhraseQuery pq =
         new PhraseQuery.Builder()
@@ -1034,7 +1036,8 @@ public class TestUnifiedHighlighterMTQ extends UnifiedHighlighterTestBase {
     IndexSearcher searcher = newSearcher(ir);
     UnifiedHighlighter highlighter = UnifiedHighlighter.builder(searcher, indexAnalyzer).build();
 
-    int docId = searcher.search(new TermQuery(new Term("id", "id")), 1).scoreDocs[0].doc;
+    int docId =
+        Math.toIntExact(searcher.search(new TermQuery(new Term("id", "id")), 1).scoreDocs[0].doc);
 
     WildcardQuery wildcardQuery = new WildcardQuery(new Term("body", "foxtr*"));
     SpanMultiTermQueryWrapper<WildcardQuery> wildcardQueryWrapper =

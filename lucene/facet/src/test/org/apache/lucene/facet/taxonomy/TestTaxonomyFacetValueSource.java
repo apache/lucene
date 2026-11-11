@@ -562,7 +562,7 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
             DoubleValuesSource.SCORES);
 
     assertEquals(r.maxDoc(), facets1.getTopChildren(10, "a").value.intValue());
-    assertEquals(r.maxDoc(), facets2.getTopChildren(10, "b").value.doubleValue(), 1E-10);
+    assertEquals((double) r.maxDoc(), facets2.getTopChildren(10, "b").value.doubleValue(), 1E-10);
     iw.close();
     IOUtils.close(taxoWriter, taxoReader, taxoDir, r, indexDir);
   }

@@ -86,9 +86,9 @@ public class TestFilterDirectoryReader extends LuceneTestCase {
     public LeafReader wrap(LeafReader reader) {
       return new FilterLeafReader(reader) {
         @Override
-        public int numDocs() {
+        public int numLeafDocs() {
           numDocsCallCount.incrementAndGet();
-          return super.numDocs();
+          return super.numLeafDocs();
         }
 
         @Override

@@ -26,10 +26,10 @@ import org.apache.lucene.index.LeafReaderContext;
  */
 public class TotalHitCountCollector implements Collector {
   private Weight weight;
-  private int totalHits;
+  private long totalHits;
 
   /** Returns how many hits matched the search. */
-  public int getTotalHits() {
+  public long getTotalHits() {
     return totalHits;
   }
 

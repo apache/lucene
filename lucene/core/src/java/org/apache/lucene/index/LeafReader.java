@@ -62,6 +62,27 @@ public abstract non-sealed class LeafReader extends IndexReader {
     return readerContext;
   }
 
+  /** Returns the number of documents in this leaf, as an {@code int}. */
+  public abstract int numLeafDocs();
+
+  /** Returns one greater than the largest document number in this leaf, as an {@code int}. */
+  public abstract int maxLeafDoc();
+
+  @Override
+  public final long numDocs() {
+    return numLeafDocs();
+  }
+
+  @Override
+  public final long maxDoc() {
+    return maxLeafDoc();
+  }
+
+  /** Returns the number of deleted documents in this leaf. */
+  public final int numDeletedLeafDocs() {
+    return maxLeafDoc() - numLeafDocs();
+  }
+
   /**
    * Optional method: Return a {@link IndexReader.CacheHelper} that can be used to cache based on
    * the content of this leaf regardless of deletions. Two readers that have the same data but
@@ -77,8 +98,8 @@ public abstract non-sealed class LeafReader extends IndexReader {
    */
   public abstract CacheHelper getCoreCacheHelper();
 
-  @Override
-  public final int docFreq(Term term) throws IOException {
+  /** Returns the number of documents in this leaf containing the term, as an {@code int}. */
+  public final int leafDocFreq(Term term) throws IOException {
     final Terms terms = Terms.getTerms(this, term.field());
     final TermsEnum termsEnum = terms.iterator();
     if (termsEnum.seekExact(term.bytes())) {
@@ -86,6 +107,11 @@ public abstract non-sealed class LeafReader extends IndexReader {
     } else {
       return 0;
     }
+  }
+
+  @Override
+  public final long docFreq(Term term) throws IOException {
+    return leafDocFreq(term);
   }
 
   /**
@@ -113,13 +139,21 @@ public abstract non-sealed class LeafReader extends IndexReader {
     return terms.getSumDocFreq();
   }
 
-  @Override
-  public final int getDocCount(String field) {
+  /**
+   * Returns the number of documents in this leaf that have at least one term for the field, as an
+   * {@code int}.
+   */
+  public final int getLeafDocCount(String field) {
     final Terms terms = terms(field);
     if (terms == null) {
       return 0;
     }
     return terms.getDocCount();
+  }
+
+  @Override
+  public final long getDocCount(String field) {
+    return getLeafDocCount(field);
   }
 
   @Override

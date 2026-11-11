@@ -287,12 +287,12 @@ public class QueryUtils {
       }
 
       @Override
-      public int numDocs() {
+      public int numLeafDocs() {
         return 0;
       }
 
       @Override
-      public int maxDoc() {
+      public int maxLeafDoc() {
         return maxDoc;
       }
 

@@ -110,7 +110,7 @@ public class TestIndexWriterOutOfFileDescriptors extends LuceneTestCase {
           }
         }
         assertTrue("before=" + lastNumDocs + " after=" + r2.numDocs(), r2.numDocs() >= lastNumDocs);
-        lastNumDocs = r2.numDocs();
+        lastNumDocs = Math.toIntExact(r2.numDocs());
         // System.out.println("numDocs=" + lastNumDocs);
         dir.setRandomIOExceptionRateOnOpen(rate);
 

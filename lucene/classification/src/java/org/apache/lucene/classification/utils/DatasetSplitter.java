@@ -121,7 +121,7 @@ public class DatasetSplitter {
       gs.setGroupSort(Sort.INDEXORDER);
       gs.setSortWithinGroup(Sort.INDEXORDER);
       gs.setAllGroups(true);
-      gs.setGroupDocsLimit(originalIndex.maxDoc());
+      gs.setGroupDocsLimit(Math.toIntExact(originalIndex.maxDoc()));
       TopGroups<Object> topGroups =
           gs.search(indexSearcher, MatchAllDocsQuery.INSTANCE, 0, noOfClasses);
 

@@ -26,22 +26,24 @@ public class ScoreDoc {
   public float score;
 
   /**
-   * A hit document's number.
+   * A hit document's number. This is a global doc id within the searched (possibly
+   * composite/directory) reader, and is a {@code long} because that doc-id space may exceed {@link
+   * Integer#MAX_VALUE}. A single segment (leaf) still numbers its documents with {@code int}.
    *
-   * @see StoredFields#document(int)
+   * @see StoredFields#document(long)
    */
-  public int doc;
+  public long doc;
 
   /** Only set by {@link TopDocs#merge} */
   public int shardIndex;
 
   /** Constructs a ScoreDoc. */
-  public ScoreDoc(int doc, float score) {
+  public ScoreDoc(long doc, float score) {
     this(doc, score, -1);
   }
 
   /** Constructs a ScoreDoc. */
-  public ScoreDoc(int doc, float score, int shardIndex) {
+  public ScoreDoc(long doc, float score, int shardIndex) {
     this.doc = doc;
     this.score = score;
     this.shardIndex = shardIndex;
@@ -61,7 +63,7 @@ public class ScoreDoc {
         } else if (a.score < b.score) {
           return 1;
         } else {
-          return a.doc - b.doc;
+          return Long.compare(a.doc, b.doc);
         }
       };
 }

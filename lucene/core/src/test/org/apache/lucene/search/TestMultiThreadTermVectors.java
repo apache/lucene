@@ -126,7 +126,7 @@ public class TestMultiThreadTermVectors extends LuceneTestCase {
 
     private void testTermVectors() throws Exception {
       // check:
-      int numDocs = reader.numDocs();
+      int numDocs = Math.toIntExact(reader.numDocs());
       TermVectors termVectors = reader.termVectors();
       for (int docId = 0; docId < numDocs; docId++) {
         Fields vectors = termVectors.get(docId);

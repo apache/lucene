@@ -498,7 +498,8 @@ public class TestJoinUtil extends LuceneTestCase {
           indexSearcher.search(
               joinQuery,
               new MultiCollectorManager(
-                  FixedBitSetCollector.createManager(indexSearcher.getIndexReader().maxDoc()),
+                  FixedBitSetCollector.createManager(
+                      Math.toIntExact(indexSearcher.getIndexReader().maxDoc())),
                   new TopScoreDocCollectorManager(10, null, Integer.MAX_VALUE)));
       final BitSet actualResult = (BitSet) searchResults[0];
       assertBitSet(expectedResult, actualResult, indexSearcher);
@@ -717,7 +718,7 @@ public class TestJoinUtil extends LuceneTestCase {
       Query joinQuery =
           JoinUtil.createJoinQuery(
               "join_field", fromQuery, toQuery, searcher, scoreMode, ordinalMap, min, max);
-      int totalHits = searcher.count(joinQuery);
+      long totalHits = searcher.count(joinQuery);
       int expectedCount = 0;
       for (int numChildDocs : childDocsPerParent) {
         if (numChildDocs >= min && numChildDocs <= max) {
@@ -1588,7 +1589,8 @@ public class TestJoinUtil extends LuceneTestCase {
             indexSearcher.search(
                 joinQuery,
                 new MultiCollectorManager(
-                    FixedBitSetCollector.createManager(indexSearcher.getIndexReader().maxDoc()),
+                    FixedBitSetCollector.createManager(
+                        Math.toIntExact(indexSearcher.getIndexReader().maxDoc())),
                     new TopScoreDocCollectorManager(10, null, Integer.MAX_VALUE)));
         // Asserting bit set...
         assertBitSet(expectedResult, (BitSet) searchResults[0], indexSearcher);
@@ -1987,10 +1989,10 @@ public class TestJoinUtil extends LuceneTestCase {
       linkValueDocuments = context.fromDocuments;
     }
 
-    BitSet expectedResult = new FixedBitSet(topLevelReader.maxDoc());
+    BitSet expectedResult = new FixedBitSet(Math.toIntExact(topLevelReader.maxDoc()));
     List<RandomDoc> matchingDocs = randomValueDocs.get(queryValue);
     if (matchingDocs == null) {
-      return new FixedBitSet(topLevelReader.maxDoc());
+      return new FixedBitSet(Math.toIntExact(topLevelReader.maxDoc()));
     }
 
     for (RandomDoc matchingDoc : matchingDocs) {
@@ -2223,7 +2225,7 @@ public class TestJoinUtil extends LuceneTestCase {
     @Override
     protected void doSetNextReader(LeafReaderContext ctx) throws IOException {
       terms = DocValues.getSorted(ctx.reader(), toField);
-      docBase = ctx.docBase;
+      docBase = Math.toIntExact(ctx.docBase);
     }
 
     @Override

@@ -205,7 +205,7 @@ public class MatchHighlighter {
     // for streaming, so we'll just populate the map in proper order.
     LinkedHashMap<Integer, DocHit> docHits = new LinkedHashMap<>();
     for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
-      docHits.put(scoreDoc.doc, null);
+      docHits.put(Math.toIntExact(scoreDoc.doc), null);
     }
 
     Predicate<String> fieldsToLoadUnconditionally = fieldsAlwaysReturned::contains;

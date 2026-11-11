@@ -114,7 +114,7 @@ public class TestLargeNumHitsTopDocsCollector extends LuceneTestCase {
     LargeNumHitsTopDocsCollectorManager largeCollectorManager =
         new LargeNumHitsTopDocsCollectorManager(250_000);
     TopScoreDocCollectorManager regularCollectorManager =
-        new TopScoreDocCollectorManager(reader.numDocs(), Integer.MAX_VALUE);
+        new TopScoreDocCollectorManager(Math.toIntExact(reader.numDocs()), Integer.MAX_VALUE);
 
     TopDocs largeTopDocs = searcher.search(testQuery, largeCollectorManager);
     TopDocs regularTopDocs = searcher.search(testQuery, regularCollectorManager);
@@ -151,7 +151,7 @@ public class TestLargeNumHitsTopDocsCollector extends LuceneTestCase {
     LargeNumHitsTopDocsCollectorManager largeCollectorManager =
         new LargeNumHitsTopDocsCollectorManager(250_000);
     TopScoreDocCollectorManager regularCollectorManager =
-        new TopScoreDocCollectorManager(reader.numDocs(), Integer.MAX_VALUE);
+        new TopScoreDocCollectorManager(Math.toIntExact(reader.numDocs()), Integer.MAX_VALUE);
 
     TopDocs largeTopDocs = searcher.search(testQuery, largeCollectorManager);
     TopDocs regularTopDocs = searcher.search(testQuery, regularCollectorManager);

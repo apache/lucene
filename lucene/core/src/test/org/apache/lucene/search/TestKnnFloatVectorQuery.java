@@ -222,7 +222,7 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
           scoreDocsList.add(new ScoreDoc(doc, randomFloat()));
         }
         ScoreDoc[] scoreDocs = scoreDocsList.toArray(ScoreDoc[]::new);
-        int[] docs = new int[scoreDocs.length];
+        long[] docs = new long[scoreDocs.length];
         float[] scores = new float[scoreDocs.length];
         float maxScore = Float.MIN_VALUE;
         for (int i = 0; i < scoreDocs.length; i++) {
@@ -247,7 +247,7 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
         assertEquals(scoreDocs.length, topDocs.totalHits.value());
         assertEquals(query.visited(), topDocs.totalHits.value());
         assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation());
-        Arrays.sort(topDocs.scoreDocs, Comparator.comparingInt(scoreDoc -> scoreDoc.doc));
+        Arrays.sort(topDocs.scoreDocs, Comparator.comparingLong(scoreDoc -> scoreDoc.doc));
         assertEquals(scoreDocs.length, topDocs.scoreDocs.length);
         assertEquals(0, query.reentryCount());
         for (int i = 0; i < scoreDocs.length; i++) {

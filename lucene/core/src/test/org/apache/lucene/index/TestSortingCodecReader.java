@@ -204,7 +204,7 @@ public class TestSortingCodecReader extends LuceneTestCase {
           }
         }
         iw.commit();
-        actualNumDocs = iw.getDocStats().numDocs;
+        actualNumDocs = Math.toIntExact(iw.getDocStats().numDocs);
       }
       Sort indexSort =
           RandomPicks.randomFrom(

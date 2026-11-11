@@ -326,7 +326,9 @@ public class TestRescoreTopNQuery extends LuceneTestCase {
         IndexSearcher s = new IndexSearcher(reader);
         TopDocs knnHits = s.search(knnQuery, 5 * topN);
         Set<Integer> knnHitDocs =
-            Arrays.stream(knnHits.scoreDocs).map(k -> k.doc).collect(Collectors.toSet());
+            Arrays.stream(knnHits.scoreDocs)
+                .map(k -> Math.toIntExact(k.doc))
+                .collect(Collectors.toSet());
         Query lateIQuery =
             RescoreTopNQuery.createLateInteractionQuery(
                 knnQuery, topN, LATE_I_FIELD, lateIQueryVector, vectorSimilarityFunction);
@@ -335,8 +337,8 @@ public class TestRescoreTopNQuery extends LuceneTestCase {
         assertEquals(topN, lateIHits.scoreDocs.length);
         StoredFields storedFields = reader.storedFields();
         for (ScoreDoc hit : lateIHits.scoreDocs) {
-          assertTrue(knnHitDocs.contains(hit.doc));
-          int idValue = Integer.parseInt(storedFields.document(hit.doc).get("id"));
+          assertTrue(knnHitDocs.contains(Math.toIntExact(hit.doc)));
+          int idValue = Integer.parseInt(storedFields.document(Math.toIntExact(hit.doc)).get("id"));
           float[][] docVector = corpus.get(idValue);
           float expected =
               scoreFunction.compare(lateIQueryVector, docVector, vectorSimilarityFunction);

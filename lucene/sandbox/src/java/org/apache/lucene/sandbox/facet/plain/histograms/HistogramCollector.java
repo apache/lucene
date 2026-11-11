@@ -374,7 +374,7 @@ final class HistogramCollector implements Collector {
   }
 
   private boolean isMatchAll(LeafReaderContext context) throws IOException {
-    return weight != null && weight.count(context) == context.reader().maxDoc();
+    return weight != null && weight.count(context) == context.maxLeafDoc();
   }
 
   private static final Map<Class<?>, Function<Query, Query>> queryWrappers;

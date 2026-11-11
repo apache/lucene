@@ -34,8 +34,8 @@ import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.Weight;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.mutable.MutableValue;
 
 /**
@@ -63,7 +63,7 @@ public class GroupingSearch {
   private boolean ignoreDocsWithoutGroupField;
 
   private Collection<?> matchingGroups;
-  private Bits matchingGroupHeads;
+  private FixedBitSet[] matchingGroupHeads;
 
   /**
    * Constructs a <code>GroupingSearch</code> instance that groups documents by index terms using
@@ -185,9 +185,9 @@ public class GroupingSearch {
     if (allGroupHeads) {
       AllGroupHeadsCollectorManager.GroupHeadsResult headsResult =
           (AllGroupHeadsCollectorManager.GroupHeadsResult) firstRoundResults[resultIdx];
-      matchingGroupHeads = headsResult.retrieveGroupHeads(searcher.getIndexReader().maxDoc());
+      matchingGroupHeads = headsResult.retrieveGroupHeads(searcher.getIndexReader().leaves());
     } else {
-      matchingGroupHeads = new Bits.MatchNoBits(searcher.getIndexReader().maxDoc());
+      matchingGroupHeads = new FixedBitSet[0];
     }
 
     if (topSearchGroups.isEmpty()) {
@@ -380,13 +380,15 @@ public class GroupingSearch {
   }
 
   /**
-   * Returns the matching group heads if {@link #setAllGroupHeads(boolean)} was set to true or an
-   * empty bit set.
+   * Returns the matching group heads if {@link #setAllGroupHeads(boolean)} was set to true;
+   * otherwise an empty array. The result is one {@link FixedBitSet} per leaf (indexed by {@link
+   * org.apache.lucene.index.LeafReaderContext#ord}), each marking that leaf's heads by their
+   * leaf-local doc id — split per segment so it stays int-addressable even when the whole index
+   * holds more than {@link Integer#MAX_VALUE} documents.
    *
-   * @return The matching group heads if {@link #setAllGroupHeads(boolean)} was set to true or an
-   *     empty bit set
+   * @return the matching group heads, one bit set per leaf, or an empty array
    */
-  public Bits getAllGroupHeads() {
+  public FixedBitSet[] getAllGroupHeads() {
     return matchingGroupHeads;
   }
 

@@ -38,7 +38,7 @@ public class TopDocs {
 
   /** Internal comparator with docID */
   private static final Comparator<ScoreDoc> DOC_ID_TIE_BREAKER =
-      Comparator.comparingInt(d -> d.doc);
+      Comparator.comparingLong(d -> d.doc);
 
   /** Default comparator */
   private static final Comparator<ScoreDoc> DEFAULT_TIE_BREAKER =
@@ -353,7 +353,7 @@ public class TopDocs {
     }
   }
 
-  private record ShardIndexAndDoc(int shardIndex, int doc) {}
+  private record ShardIndexAndDoc(int shardIndex, long doc) {}
 
   /**
    * Reciprocal Rank Fusion method.
@@ -415,7 +415,7 @@ public class TopDocs {
             // Tie-break by doc ID, then shard index (like TopDocs#merge)
             .thenComparing(
                 Map.Entry.<ShardIndexAndDoc, Double>comparingByKey(
-                    Comparator.comparingInt(ShardIndexAndDoc::doc)))
+                    Comparator.comparingLong(ShardIndexAndDoc::doc)))
             .thenComparing(
                 Map.Entry.<ShardIndexAndDoc, Double>comparingByKey(
                     Comparator.comparingInt(ShardIndexAndDoc::shardIndex))));
@@ -423,7 +423,7 @@ public class TopDocs {
     ScoreDoc[] rrfScoreDocs = new ScoreDoc[Math.min(topN, rrfScoreRank.size())];
     for (int i = 0; i < rrfScoreDocs.length; i++) {
       Map.Entry<ShardIndexAndDoc, Double> entry = rrfScoreRank.get(i);
-      int doc = entry.getKey().doc;
+      long doc = entry.getKey().doc;
       int shardIndex = entry.getKey().shardIndex();
       float score = entry.getValue().floatValue();
       rrfScoreDocs[i] = new ScoreDoc(doc, score, shardIndex);

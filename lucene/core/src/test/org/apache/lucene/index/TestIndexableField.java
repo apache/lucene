@@ -285,7 +285,7 @@ public class TestIndexableField extends LuceneTestCase {
 
       final TopDocs hits = s.search(new TermQuery(new Term("id", "" + id)), 1);
       assertEquals(1, hits.totalHits.value());
-      final int docID = hits.scoreDocs[0].doc;
+      final int docID = Math.toIntExact(hits.scoreDocs[0].doc);
       final Document doc = storedFields.document(docID);
       final int endCounter = counter + fieldsPerDoc[id];
       while (counter < endCounter) {

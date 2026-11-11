@@ -268,13 +268,13 @@ class MergeReaderWrapper extends LeafReader {
   }
 
   @Override
-  public int numDocs() {
-    return in.numDocs();
+  public int numLeafDocs() {
+    return in.numLeafDocs();
   }
 
   @Override
-  public int maxDoc() {
-    return in.maxDoc();
+  public int maxLeafDoc() {
+    return in.maxLeafDoc();
   }
 
   @Override

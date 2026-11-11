@@ -138,7 +138,7 @@ public class PKIndexSplitter {
         LeafReaderContext context, Weight preserveWeight, boolean negateFilter) throws IOException {
       // our cast is ok, since we open the Directory.
       super((CodecReader) context.reader());
-      final int maxDoc = in.maxDoc();
+      final int maxDoc = in.maxLeafDoc();
       final FixedBitSet bits = new FixedBitSet(maxDoc);
       // ignore livedocs here, as we filter them later:
       final Scorer preserveScorer = preserveWeight.scorer(context);
@@ -166,7 +166,7 @@ public class PKIndexSplitter {
     }
 
     @Override
-    public int numDocs() {
+    public int numLeafDocs() {
       return numDocs;
     }
 

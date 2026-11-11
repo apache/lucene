@@ -407,7 +407,7 @@ public class TestIndexWriterOnDiskFull extends LuceneTestCase {
             e.printStackTrace(System.out);
             fail(testName + ": exception when creating IndexReader: " + e);
           }
-          int result = reader.docFreq(searchTerm);
+          long result = reader.docFreq(searchTerm);
           if (success) {
             if (result != START_COUNT) {
               fail(

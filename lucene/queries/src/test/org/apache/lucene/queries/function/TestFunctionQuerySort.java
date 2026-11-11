@@ -129,7 +129,7 @@ public class TestFunctionQuerySort extends LuceneTestCase {
 
     // Get hits sorted by our FunctionValues (ascending values)
     Query q = MatchAllDocsQuery.INSTANCE;
-    TopDocs hits = searcher.search(q, reader.maxDoc(), orderBy);
+    TopDocs hits = searcher.search(q, Math.toIntExact(reader.maxDoc()), orderBy);
     assertEquals(NUM_VALS, hits.scoreDocs.length);
     // Verify that sorting works in general
     int i = 0;
@@ -141,7 +141,7 @@ public class TestFunctionQuerySort extends LuceneTestCase {
     // Now get hits after hit #2 using IS.searchAfter()
     int afterIdx = 1;
     FieldDoc afterHit = (FieldDoc) hits.scoreDocs[afterIdx];
-    hits = searcher.searchAfter(afterHit, q, reader.maxDoc(), orderBy);
+    hits = searcher.searchAfter(afterHit, q, Math.toIntExact(reader.maxDoc()), orderBy);
 
     // Expected # of hits: NUM_VALS - 2
     assertEquals(NUM_VALS - (afterIdx + 1), hits.scoreDocs.length);

@@ -38,6 +38,12 @@ class FlushByRamOrCountsPolicy extends FlushPolicy {
       flushDeletes(control);
     }
     if (perThread != null
+        && perThread.getNumDocsInRAM() >= IndexWriter.getActualMaxDocsPerSegment()) {
+      // A single segment cannot hold more than the per-segment limit (doc numbers within a segment
+      // are int). Flush this one so subsequent docs start a fresh segment, keeping every segment
+      // below the limit even when the whole index grows beyond Integer.MAX_VALUE docs.
+      control.setFlushPending(perThread);
+    } else if (perThread != null
         && flushOnDocCount()
         && perThread.getNumDocsInRAM() >= indexWriterConfig.getMaxBufferedDocs()) {
       // Flush this state by num docs

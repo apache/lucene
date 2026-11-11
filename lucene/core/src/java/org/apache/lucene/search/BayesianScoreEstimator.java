@@ -79,7 +79,7 @@ public class BayesianScoreEstimator {
     }
 
     IndexReader reader = searcher.getIndexReader();
-    int maxDoc = reader.maxDoc();
+    long maxDoc = reader.maxDoc();
     if (maxDoc == 0) {
       return new Parameters(1.0f, 0.0f, 0.01f);
     }
@@ -219,9 +219,9 @@ public class BayesianScoreEstimator {
     return value;
   }
 
-  private static float[] collectScores(IndexSearcher searcher, Query query, int maxDoc)
+  private static float[] collectScores(IndexSearcher searcher, Query query, long maxDoc)
       throws IOException {
-    int topN = Math.min(maxDoc, 10000);
+    int topN = (int) Math.min(maxDoc, 10000L);
     TopDocs topDocs = searcher.search(query, topN);
     float[] scores = new float[topDocs.scoreDocs.length];
     for (int i = 0; i < topDocs.scoreDocs.length; i++) {

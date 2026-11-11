@@ -83,7 +83,7 @@ public class TestScorerPerf extends LuceneTestCase {
 
     @Override
     protected void doSetNextReader(LeafReaderContext context) {
-      docBase = context.docBase;
+      docBase = Math.toIntExact(context.docBase);
     }
 
     @Override

@@ -334,7 +334,7 @@ public class TestStressIndexing2 extends LuceneTestCase {
     }
     boolean hasDeletes = !(r1.maxDoc() == r2.maxDoc() && r1.numDocs() == r1.maxDoc());
 
-    int[] r2r1 = new int[r2.maxDoc()]; // r2 id to r1 id mapping
+    int[] r2r1 = new int[Math.toIntExact(r2.maxDoc())]; // r2 id to r1 id mapping
 
     // create mapping from id2 space to id2 based on idField
     if (FieldInfos.getIndexedFields(r1).isEmpty()) {
@@ -501,8 +501,8 @@ public class TestStressIndexing2 extends LuceneTestCase {
     PostingsEnum docs1 = null, docs2 = null;
 
     // pack both doc and freq into single element for easy sorting
-    long[] info1 = new long[r1.numDocs()];
-    long[] info2 = new long[r2.numDocs()];
+    long[] info1 = new long[Math.toIntExact(r1.numDocs())];
+    long[] info2 = new long[Math.toIntExact(r2.numDocs())];
 
     for (; ; ) {
       BytesRef term1 = null, term2 = null;

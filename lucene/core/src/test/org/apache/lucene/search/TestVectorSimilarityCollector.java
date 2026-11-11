@@ -40,7 +40,7 @@ public class TestVectorSimilarityCollector extends LuceneTestCase {
     int[] resultNodes = new int[scoreDocs.length];
     float[] resultScores = new float[scoreDocs.length];
     for (int i = 0; i < scoreDocs.length; i++) {
-      resultNodes[i] = scoreDocs[i].doc;
+      resultNodes[i] = Math.toIntExact(scoreDocs[i].doc);
       resultScores[i] = scoreDocs[i].score;
     }
 

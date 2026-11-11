@@ -272,7 +272,7 @@ public class TestMultiTermConstantScore extends TestBaseRangeFilter {
     String maxIP = pad(maxId);
     String medIP = pad(medId);
 
-    int numDocs = reader.numDocs();
+    int numDocs = Math.toIntExact(reader.numDocs());
 
     assertEquals("num of docs", numDocs, 1 + maxId - minId);
 
@@ -357,7 +357,7 @@ public class TestMultiTermConstantScore extends TestBaseRangeFilter {
     String minRP = pad(signedIndexDir.minR);
     String maxRP = pad(signedIndexDir.maxR);
 
-    int numDocs = reader.numDocs();
+    int numDocs = Math.toIntExact(reader.numDocs());
 
     assertEquals("num of docs", numDocs, 1 + maxId - minId);
 

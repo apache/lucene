@@ -711,8 +711,8 @@ public class TestUnifiedHighlighter extends UnifiedHighlighterTestBase {
     assertEquals(2, topDocs.totalHits.value());
     ScoreDoc[] hits = topDocs.scoreDocs;
     int[] docIDs = new int[2];
-    docIDs[0] = hits[0].doc;
-    docIDs[1] = hits[1].doc;
+    docIDs[0] = Math.toIntExact(hits[0].doc);
+    docIDs[1] = Math.toIntExact(hits[1].doc);
     String[] snippets =
         highlighter
             .highlightFields(new String[] {"body"}, query, docIDs, new int[] {1})
@@ -824,7 +824,8 @@ public class TestUnifiedHighlighter extends UnifiedHighlighterTestBase {
 
     IndexSearcher searcher = newSearcher(ir);
     UnifiedHighlighter highlighter = randomUnifiedHighlighter(searcher, indexAnalyzer);
-    int docID = searcher.search(new TermQuery(new Term("id", "id")), 1).scoreDocs[0].doc;
+    int docID =
+        Math.toIntExact(searcher.search(new TermQuery(new Term("id", "id")), 1).scoreDocs[0].doc);
 
     Query query = new TermQuery(new Term("body", "highlighting"));
     int[] docIDs = new int[1];
@@ -957,7 +958,8 @@ public class TestUnifiedHighlighter extends UnifiedHighlighterTestBase {
 
     IndexSearcher searcher = newSearcher(ir);
     UnifiedHighlighter highlighter = randomUnifiedHighlighter(searcher, indexAnalyzer);
-    int docID = searcher.search(new TermQuery(new Term("id", "id")), 1).scoreDocs[0].doc;
+    int docID =
+        Math.toIntExact(searcher.search(new TermQuery(new Term("id", "id")), 1).scoreDocs[0].doc);
 
     Query query = new TermQuery(new Term("body", "highlighting"));
     int[] docIDs = new int[1];
@@ -989,7 +991,8 @@ public class TestUnifiedHighlighter extends UnifiedHighlighterTestBase {
 
     IndexSearcher searcher = newSearcher(ir);
     UnifiedHighlighter highlighter = randomUnifiedHighlighter(searcher, indexAnalyzer);
-    int docID = searcher.search(new TermQuery(new Term("id", "id")), 1).scoreDocs[0].doc;
+    int docID =
+        Math.toIntExact(searcher.search(new TermQuery(new Term("id", "id")), 1).scoreDocs[0].doc);
 
     Query query = new TermQuery(new Term("body", "highlighting"));
     int[] docIDs = new int[1];
@@ -1153,7 +1156,7 @@ public class TestUnifiedHighlighter extends UnifiedHighlighterTestBase {
     TopDocs topDocs = searcher.search(query, 10, Sort.INDEXORDER);
     assertEquals(1, topDocs.totalHits.value());
     int[] docIDs = new int[1];
-    docIDs[0] = topDocs.scoreDocs[0].doc;
+    docIDs[0] = Math.toIntExact(topDocs.scoreDocs[0].doc);
     Map<String, Object[]> snippets =
         highlighter.highlightFieldsAsObjects(new String[] {"body"}, query, docIDs, new int[] {1});
     Object[] bodySnippets = snippets.get("body");

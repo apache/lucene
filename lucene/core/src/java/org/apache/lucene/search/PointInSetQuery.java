@@ -208,7 +208,7 @@ public abstract class PointInSetQuery extends Query implements Accountable {
 
             @Override
             public Scorer get(long leadCost) throws IOException {
-              DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values);
+              DocIdSetBuilder result = new DocIdSetBuilder(reader.maxLeafDoc(), values);
               values.intersect(new MergePointVisitor(sortedPackedPoints.iterator(), result));
               DocIdSetIterator iterator = result.build().iterator();
               return new ConstantScoreScorer(score(), scoreMode, iterator);
@@ -218,7 +218,7 @@ public abstract class PointInSetQuery extends Query implements Accountable {
             public long cost() throws IOException {
               if (cost == -1) {
                 // Computing the cost may be expensive, so only do it if necessary
-                DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values);
+                DocIdSetBuilder result = new DocIdSetBuilder(reader.maxLeafDoc(), values);
                 cost =
                     values.estimateDocCount(
                         new MergePointVisitor(sortedPackedPoints.iterator(), result));
@@ -239,7 +239,7 @@ public abstract class PointInSetQuery extends Query implements Accountable {
 
             @Override
             public Scorer get(long leadCost) throws IOException {
-              DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values);
+              DocIdSetBuilder result = new DocIdSetBuilder(reader.maxLeafDoc(), values);
               SinglePointVisitor visitor = new SinglePointVisitor(result);
               TermIterator iterator = sortedPackedPoints.iterator();
               for (BytesRef point = iterator.next(); point != null; point = iterator.next()) {
@@ -252,7 +252,7 @@ public abstract class PointInSetQuery extends Query implements Accountable {
             @Override
             public long cost() throws IOException {
               if (cost == -1) {
-                DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values);
+                DocIdSetBuilder result = new DocIdSetBuilder(reader.maxLeafDoc(), values);
                 SinglePointVisitor visitor = new SinglePointVisitor(result);
                 TermIterator iterator = sortedPackedPoints.iterator();
                 cost = 0;

@@ -480,7 +480,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
           "expected the concurrent reuse+repair path to run",
           infoBytes.toString(StandardCharsets.UTF_8).contains("repaired reused graph"));
       try (IndexReader reader = DirectoryReader.open(dir)) {
-        int liveCount = reader.numDocs();
+        int liveCount = Math.toIntExact(reader.numDocs());
         assertTrue("expected some docs to be deleted", liveCount < total);
         for (LeafReaderContext ctx : reader.leaves()) {
           HnswGraph graph =
@@ -520,7 +520,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
   @Override
   MockVectorValues vectorValues(LeafReader reader, String fieldName) throws IOException {
     FloatVectorValues vectorValues = reader.getFloatVectorValues(fieldName);
-    float[][] vectors = new float[reader.maxDoc()][];
+    float[][] vectors = new float[reader.maxLeafDoc()][];
     for (int i = 0; i < vectorValues.size(); i++) {
       vectors[vectorValues.ordToDoc(i)] =
           ArrayUtil.copyOfSubArray(vectorValues.vectorValue(i), 0, vectorValues.dimension());
@@ -587,7 +587,9 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
     assertEquals("Number of found results is not equal to [10].", 10, nodes.scoreDocs.length);
     int sum = 0;
     for (ScoreDoc node : nodes.scoreDocs) {
-      assertTrue("the results include a deleted document: " + node, acceptOrds.get(node.doc));
+      assertTrue(
+          "the results include a deleted document: " + node,
+          acceptOrds.get(Math.toIntExact(node.doc)));
       sum += node.doc;
     }
     // We still expect to get reasonable recall. The lowest non-skipped docIds

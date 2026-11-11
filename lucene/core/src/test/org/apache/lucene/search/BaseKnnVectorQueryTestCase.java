@@ -534,7 +534,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
 
         Set<Integer> collected = new HashSet<>();
         for (ScoreDoc sd : searcher.search(query, 3).scoreDocs) {
-          collected.add(sd.doc);
+          collected.add(Math.toIntExact(sd.doc));
         }
         int dropped = -1;
         for (int doc = 0; doc < 5; doc++) {
@@ -667,7 +667,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
           AbstractKnnVectorQuery query = getKnnVectorQuery("field", randomVector(dimension), k);
           int n = random().nextInt(100) + 1;
           TopDocs results = searcher.search(query, n);
-          int expected = Math.min(Math.min(n, k), reader.numDocs());
+          int expected = (int) Math.min(Math.min(n, k), reader.numDocs());
           // we may get fewer results than requested if there are deletions, but this test doesn't
           // test that
           assert reader.hasDeletions() == false;
@@ -1050,10 +1050,10 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       searcher.setTimeout(new CountingQueryTimeout(1)); // Only score 1 doc
       // Note: We get partial results when the HNSW graph has 1 layer, but no results for > 1 layer
       // because the timeout is exhausted while finding the best entry node for the last level
-      assertThat(searcher.count(query), lessThanOrEqualTo(1));
+      assertThat(searcher.count(query), lessThanOrEqualTo(1L));
 
       searcher.setTimeout(new CountingQueryTimeout(1)); // Only score 1 doc
-      assertThat(searcher.count(exactQuery), lessThanOrEqualTo(1));
+      assertThat(searcher.count(exactQuery), lessThanOrEqualTo(1L));
     }
   }
 
@@ -1192,13 +1192,13 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     }
 
     @Override
-    public int numDocs() {
+    public int numLeafDocs() {
       return 0;
     }
 
     @Override
     public Bits getLiveDocs() {
-      return new Bits.MatchNoBits(in.maxDoc());
+      return new Bits.MatchNoBits(in.maxLeafDoc());
     }
 
     @Override

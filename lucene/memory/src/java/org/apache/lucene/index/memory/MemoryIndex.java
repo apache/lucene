@@ -2227,13 +2227,13 @@ public class MemoryIndex {
     }
 
     @Override
-    public int numDocs() {
+    public int numLeafDocs() {
       if (DEBUG) System.err.println("MemoryIndexReader.numDocs");
       return 1;
     }
 
     @Override
-    public int maxDoc() {
+    public int maxLeafDoc() {
       if (DEBUG) System.err.println("MemoryIndexReader.maxDoc");
       return 1;
     }

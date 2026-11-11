@@ -36,13 +36,13 @@ abstract class TermCollectingRewrite<B> extends MultiTermQuery.RewriteMethod {
   protected abstract Query build(B builder);
 
   /** Add a MultiTermQuery term to the top-level query builder. */
-  protected final void addClause(B topLevel, Term term, int docCount, float boost)
+  protected final void addClause(B topLevel, Term term, long docCount, float boost)
       throws IOException {
     addClause(topLevel, term, docCount, boost, null);
   }
 
   protected abstract void addClause(
-      B topLevel, Term term, int docCount, float boost, TermStates states) throws IOException;
+      B topLevel, Term term, long docCount, float boost, TermStates states) throws IOException;
 
   final void collectTerms(IndexReader reader, MultiTermQuery query, TermCollector collector)
       throws IOException {

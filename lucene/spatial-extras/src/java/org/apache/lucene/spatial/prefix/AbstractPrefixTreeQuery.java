@@ -129,7 +129,7 @@ public abstract class AbstractPrefixTreeQuery extends Query {
     public BaseTermsEnumTraverser(LeafReaderContext context) throws IOException {
       this.context = context;
       LeafReader reader = context.reader();
-      this.maxDoc = reader.maxDoc();
+      this.maxDoc = reader.maxLeafDoc();
       terms = reader.terms(fieldName);
       if (terms != null) {
         this.termsEnum = terms.iterator();

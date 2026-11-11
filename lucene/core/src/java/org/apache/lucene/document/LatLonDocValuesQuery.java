@@ -159,10 +159,7 @@ class LatLonDocValuesQuery extends Query {
                 "Invalid query relationship:[" + queryRelation + "]");
         }
         return ConstantScoreScorerSupplier.fromIterator(
-            TwoPhaseIterator.asDocIdSetIterator(iterator),
-            boost,
-            scoreMode,
-            context.reader().maxDoc());
+            TwoPhaseIterator.asDocIdSetIterator(iterator), boost, scoreMode, context.maxLeafDoc());
       }
 
       @Override

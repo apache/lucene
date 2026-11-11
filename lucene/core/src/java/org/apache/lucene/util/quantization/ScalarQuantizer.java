@@ -669,7 +669,9 @@ public class ScalarQuantizer {
         // scores now
         errors.reset();
         for (ScoreDoc scoreDoc : scoreDocs) {
-          float vectorCorrection = quantizer.quantize(vectors.get(scoreDoc.doc), vector, function);
+          // scoreDoc.doc here is a per-segment vector ordinal (leaf-local), so it fits an int.
+          float vectorCorrection =
+              quantizer.quantize(vectors.get((int) scoreDoc.doc), vector, function);
           float qScore =
               scalarQuantizedVectorSimilarity.score(
                   query, queryCorrection, vector, vectorCorrection);

@@ -65,7 +65,9 @@ public class TestLongNormValueSource extends LuceneTestCase {
         searcher.setSimilarity(sim);
 
         Query q = new FunctionQuery(new NormValueSource(field));
-        TopDocs docs = searcher.search(q, searcher.getIndexReader().numDocs(), new Sort(), true);
+        TopDocs docs =
+            searcher.search(
+                q, Math.toIntExact(searcher.getIndexReader().numDocs()), new Sort(), true);
         final var expectedDocIds = new int[] {1, 0};
         final var expectedScoreDocs =
             new ScoreDoc[] {new ScoreDoc(1, 0.70710677f), new ScoreDoc(0, 0.4082483f)};

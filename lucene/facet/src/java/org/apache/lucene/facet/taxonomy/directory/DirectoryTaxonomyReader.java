@@ -448,7 +448,8 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
     FacetLabel ret;
 
     if (values == null
-        || values.advanceExact(ordinal - indexReader.leaves().get(readerIndex).docBase) == false) {
+        || values.advanceExact(indexReader.leaves().get(readerIndex).toLeafDocId(ordinal))
+            == false) {
       throw new IllegalStateException();
     } else {
       // The index uses the BinaryDocValuesField format to store the mapping
@@ -566,8 +567,8 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
         readerIndex = ReaderUtil.subIndex(ord, indexReader.leaves());
         leafReaderContext = indexReader.leaves().get(readerIndex);
         leafReader = leafReaderContext.reader();
-        leafReaderMaxDoc = leafReader.maxDoc();
-        leafReaderDocBase = leafReaderContext.docBase;
+        leafReaderMaxDoc = leafReader.maxLeafDoc();
+        leafReaderDocBase = Math.toIntExact(leafReaderContext.docBase);
         values = leafReader.getBinaryDocValues(Consts.FULL);
       }
       // values is leaf specific, so you only advance till you reach the target within the leaf
@@ -590,7 +591,7 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
   @Override
   public int getSize() {
     ensureOpen();
-    return indexReader.numDocs();
+    return Math.toIntExact(indexReader.numDocs());
   }
 
   @Override
@@ -659,7 +660,7 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
   public String toString(int max) {
     ensureOpen();
     StringBuilder sb = new StringBuilder();
-    int limit = Math.min(max, indexReader.maxDoc());
+    int limit = (int) Math.min(max, indexReader.maxDoc());
     for (int i = 0; i < limit; i++) {
       try {
         FacetLabel category = this.getPath(i);

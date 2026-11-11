@@ -36,7 +36,7 @@ public class FixedBitSetCollector extends SimpleCollector {
 
   @Override
   protected void doSetNextReader(LeafReaderContext context) throws IOException {
-    docBase = context.docBase;
+    docBase = Math.toIntExact(context.docBase);
   }
 
   @Override

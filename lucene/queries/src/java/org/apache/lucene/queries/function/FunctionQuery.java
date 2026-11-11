@@ -111,8 +111,8 @@ public class FunctionQuery extends Query {
       this.weight = w;
       this.boost = boost;
       this.reader = context.reader();
-      this.maxDoc = reader.maxDoc();
-      iterator = DocIdSetIterator.all(context.reader().maxDoc());
+      this.maxDoc = context.maxLeafDoc();
+      iterator = DocIdSetIterator.all(context.maxLeafDoc());
       vals = func.getValues(weight.context, context);
     }
 

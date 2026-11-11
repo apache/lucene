@@ -25,7 +25,7 @@ import org.apache.lucene.document.FloatPoint;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.PointValues.PointTree;
-import org.apache.lucene.internal.hppc.IntArrayList;
+import org.apache.lucene.internal.hppc.LongArrayList;
 import org.apache.lucene.search.FieldDoc;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.ScoreDoc;
@@ -77,14 +77,14 @@ public class FloatPointNearestNeighbor {
   }
 
   private static class NearestVisitor implements PointValues.IntersectVisitor {
-    int curDocBase;
+    long curDocBase;
     Bits curLiveDocs;
     final int topN;
     final PriorityQueue<NearestHit> hitQueue;
     final float[] origin;
     private final int dims;
     double bottomNearestDistanceSquared = Double.POSITIVE_INFINITY;
-    int bottomNearestDistanceDoc = Integer.MAX_VALUE;
+    long bottomNearestDistanceDoc = Long.MAX_VALUE;
 
     public NearestVisitor(PriorityQueue<NearestHit> hitQueue, int topN, float[] origin) {
       this.hitQueue = hitQueue;
@@ -117,7 +117,7 @@ public class FloatPointNearestNeighbor {
       // System.out.println("    visit docID=" + docID + " distanceSquared=" + distanceSquared + "
       // value: " + Arrays.toString(docPoint));
 
-      int fullDocID = curDocBase + docID;
+      long fullDocID = curDocBase + docID;
 
       if (hitQueue.size() == topN) { // queue already full
         if (distanceSquared == bottomNearestDistanceSquared
@@ -162,7 +162,7 @@ public class FloatPointNearestNeighbor {
 
   /** Holds one hit from {@link FloatPointNearestNeighbor#nearest} */
   static class NearestHit {
-    public int docID;
+    public long docID;
     public double distanceSquared;
 
     @Override
@@ -174,7 +174,7 @@ public class FloatPointNearestNeighbor {
   private static NearestHit[] nearest(
       List<PointValues> readers,
       List<Bits> liveDocs,
-      IntArrayList docBases,
+      LongArrayList docBases,
       final int topN,
       float[] origin)
       throws IOException {
@@ -190,7 +190,7 @@ public class FloatPointNearestNeighbor {
             (a, b) -> {
               // sort by opposite distance natural order
               int cmp = Double.compare(a.distanceSquared, b.distanceSquared);
-              return cmp != 0 ? -cmp : b.docID - a.docID; // tie-break by higher docID
+              return cmp != 0 ? -cmp : Long.compare(b.docID, a.docID); // tie-break by higher docID
             });
 
     // Holds all cells, sorted by closest to the point:
@@ -308,7 +308,7 @@ public class FloatPointNearestNeighbor {
       throw new IllegalArgumentException("searcher must not be null");
     }
     List<PointValues> readers = new ArrayList<>();
-    IntArrayList docBases = new IntArrayList();
+    LongArrayList docBases = new LongArrayList();
     List<Bits> liveDocs = new ArrayList<>();
     int totalHits = 0;
     for (LeafReaderContext leaf : searcher.getIndexReader().leaves()) {

@@ -284,14 +284,14 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
 
     @Override
     public boolean test(LeafReaderContext context) {
-      final int maxDoc = context.reader().maxDoc();
+      final int maxDoc = context.maxLeafDoc();
       if (maxDoc < minSize) {
         return false;
       }
       final IndexReaderContext topLevelContext = ReaderUtil.getTopLevelContext(context);
-      final int averageTotalDocs =
+      final long averageTotalDocs =
           topLevelContext.reader().maxDoc() / topLevelContext.leaves().size();
-      return maxDoc * 2 > averageTotalDocs;
+      return (long) maxDoc * 2 > averageTotalDocs;
     }
   }
 
@@ -606,7 +606,7 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
       ScorerSupplier scorerSupplier,
       LeafReaderContext context)
       throws IOException {
-    final CacheAndCount cached = cacheImpl(scorerSupplier.bulkScorer(), context.reader().maxDoc());
+    final CacheAndCount cached = cacheImpl(scorerSupplier.bulkScorer(), context.maxLeafDoc());
     putIfAbsent(weight.getQuery(), cached, cacheKey);
     return cached;
   }
@@ -789,7 +789,7 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
       return in.matches(context, doc);
     }
 
-    private boolean cacheEntryHasReasonableWorstCaseSize(int maxDoc) {
+    private boolean cacheEntryHasReasonableWorstCaseSize(long maxDoc) {
       // The worst-case (dense) is a bit set which needs one bit per document
       final long worstCaseRamUsage = maxDoc / 8;
       // Imagine the worst-case that a cache entry is large than the size of
@@ -833,7 +833,7 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
       CacheAndCount cached;
       cached = get(in.getQuery(), cacheHelper);
 
-      int maxDoc = context.reader().maxDoc();
+      int maxDoc = context.maxLeafDoc();
       if (cached == null) {
         if (policy.shouldCache(in.getQuery())) {
           final ScorerSupplier supplier = in.scorerSupplier(context);

@@ -33,7 +33,7 @@ public class TestMultiDoubleValuesSource extends MultiValuesSourceTestCase {
     for (LeafReaderContext ctx : reader.leaves()) {
       SortedNumericDocValues docValues = DocValues.getSortedNumeric(ctx.reader(), "single_int");
       MultiDoubleValues values = valuesSource.getValues(ctx);
-      validateFieldBasedSource(docValues, values, ctx.reader().maxDoc());
+      validateFieldBasedSource(docValues, values, ctx.maxLeafDoc());
     }
 
     valuesSource = MultiDoubleValuesSource.fromLongField("single_long");
@@ -41,21 +41,21 @@ public class TestMultiDoubleValuesSource extends MultiValuesSourceTestCase {
     for (LeafReaderContext ctx : reader.leaves()) {
       SortedNumericDocValues docValues = DocValues.getSortedNumeric(ctx.reader(), "single_long");
       MultiDoubleValues values = valuesSource.getValues(ctx);
-      validateFieldBasedSource(docValues, values, ctx.reader().maxDoc());
+      validateFieldBasedSource(docValues, values, ctx.maxLeafDoc());
     }
 
     valuesSource = MultiDoubleValuesSource.fromIntField("multi_int");
     for (LeafReaderContext ctx : reader.leaves()) {
       SortedNumericDocValues docValues = DocValues.getSortedNumeric(ctx.reader(), "multi_int");
       MultiDoubleValues values = valuesSource.getValues(ctx);
-      validateFieldBasedSource(docValues, values, ctx.reader().maxDoc());
+      validateFieldBasedSource(docValues, values, ctx.maxLeafDoc());
     }
 
     valuesSource = MultiDoubleValuesSource.fromLongField("multi_long");
     for (LeafReaderContext ctx : reader.leaves()) {
       SortedNumericDocValues docValues = DocValues.getSortedNumeric(ctx.reader(), "multi_long");
       MultiDoubleValues values = valuesSource.getValues(ctx);
-      validateFieldBasedSource(docValues, values, ctx.reader().maxDoc());
+      validateFieldBasedSource(docValues, values, ctx.maxLeafDoc());
     }
 
     valuesSource = MultiDoubleValuesSource.fromFloatField("single_float");
@@ -63,7 +63,7 @@ public class TestMultiDoubleValuesSource extends MultiValuesSourceTestCase {
     for (LeafReaderContext ctx : reader.leaves()) {
       SortedNumericDocValues docValues = DocValues.getSortedNumeric(ctx.reader(), "single_float");
       MultiDoubleValues values = valuesSource.getValues(ctx);
-      validateFieldBasedSource(docValues, values, ctx.reader().maxDoc(), false);
+      validateFieldBasedSource(docValues, values, ctx.maxLeafDoc(), false);
     }
 
     valuesSource = MultiDoubleValuesSource.fromDoubleField("single_double");
@@ -71,21 +71,21 @@ public class TestMultiDoubleValuesSource extends MultiValuesSourceTestCase {
     for (LeafReaderContext ctx : reader.leaves()) {
       SortedNumericDocValues docValues = DocValues.getSortedNumeric(ctx.reader(), "single_double");
       MultiDoubleValues values = valuesSource.getValues(ctx);
-      validateFieldBasedSource(docValues, values, ctx.reader().maxDoc(), true);
+      validateFieldBasedSource(docValues, values, ctx.maxLeafDoc(), true);
     }
 
     valuesSource = MultiDoubleValuesSource.fromFloatField("multi_float");
     for (LeafReaderContext ctx : reader.leaves()) {
       SortedNumericDocValues docValues = DocValues.getSortedNumeric(ctx.reader(), "multi_float");
       MultiDoubleValues values = valuesSource.getValues(ctx);
-      validateFieldBasedSource(docValues, values, ctx.reader().maxDoc(), false);
+      validateFieldBasedSource(docValues, values, ctx.maxLeafDoc(), false);
     }
 
     valuesSource = MultiDoubleValuesSource.fromDoubleField("multi_double");
     for (LeafReaderContext ctx : reader.leaves()) {
       SortedNumericDocValues docValues = DocValues.getSortedNumeric(ctx.reader(), "multi_double");
       MultiDoubleValues values = valuesSource.getValues(ctx);
-      validateFieldBasedSource(docValues, values, ctx.reader().maxDoc(), true);
+      validateFieldBasedSource(docValues, values, ctx.maxLeafDoc(), true);
     }
   }
 
@@ -100,11 +100,11 @@ public class TestMultiDoubleValuesSource extends MultiValuesSourceTestCase {
     for (LeafReaderContext ctx : reader.leaves()) {
       SortedNumericDocValues docValues = DocValues.getSortedNumeric(ctx.reader(), "single_float");
       MultiDoubleValues values = valuesSource.getValues(ctx);
-      validateFieldBasedSource(docValues, values, ctx.reader().maxDoc(), false);
+      validateFieldBasedSource(docValues, values, ctx.maxLeafDoc(), false);
 
       NumericDocValues singletonDv = DocValues.getNumeric(ctx.reader(), "single_float");
       DoubleValues singletonVals = singleton.getValues(ctx, null);
-      validateFieldBasedSource(singletonDv, singletonVals, ctx.reader().maxDoc(), false);
+      validateFieldBasedSource(singletonDv, singletonVals, ctx.maxLeafDoc(), false);
     }
 
     valuesSource =
@@ -115,11 +115,11 @@ public class TestMultiDoubleValuesSource extends MultiValuesSourceTestCase {
     for (LeafReaderContext ctx : reader.leaves()) {
       SortedNumericDocValues docValues = DocValues.getSortedNumeric(ctx.reader(), "single_double");
       MultiDoubleValues values = valuesSource.getValues(ctx);
-      validateFieldBasedSource(docValues, values, ctx.reader().maxDoc(), true);
+      validateFieldBasedSource(docValues, values, ctx.maxLeafDoc(), true);
 
       NumericDocValues singletonDv = DocValues.getNumeric(ctx.reader(), "single_double");
       DoubleValues singletonVals = singleton.getValues(ctx, null);
-      validateFieldBasedSource(singletonDv, singletonVals, ctx.reader().maxDoc(), true);
+      validateFieldBasedSource(singletonDv, singletonVals, ctx.maxLeafDoc(), true);
     }
   }
 
