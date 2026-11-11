@@ -359,6 +359,9 @@ Bug Fixes
 * GITHUB#16983: UnifiedHighlighter.Builder#withFlags is no longer ignored when building the
   highlighter. (Christoph Büscher)
 
+* GITHUB#17000: Fix ramBytesUsed of the hppc *ObjectHashMap classes to measure values rather than
+  cursors. (Chris Parrinello)
+
 * GITHUB#16867: Apply buffered soft-update/delete terms before the global delete buffer reaches the 2GB
   addressing limit of its ByteBlockPool, and stall indexing if the limit is hit during a full flush.
   (Alan Woodward)
