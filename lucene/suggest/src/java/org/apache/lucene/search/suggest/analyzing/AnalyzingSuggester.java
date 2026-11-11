@@ -75,9 +75,9 @@ import org.apache.lucene.util.fst.Util.TopResults;
  * you should call the constructor with <code>preservePositionIncrements</code> parameter set to
  * false
  *
- * <p>If SynonymFilter is used to map wifi and wireless network to hotspot then the partial text
- * "wirele..." could suggest "wifi router". Token normalization like stemmers, accent removal, etc.,
- * would allow suggestions to ignore such variations.
+ * <p>If SynonymGraphFilter is used to map wifi and wireless network to hotspot then the partial
+ * text "wirele..." could suggest "wifi router". Token normalization like stemmers, accent removal,
+ * etc., would allow suggestions to ignore such variations.
  *
  * <p>When two matching suggestions have the same weight, they are tie-broken by the analyzed form.
  * If their analyzed form is the same then the order is undefined.
@@ -143,7 +143,7 @@ public class AnalyzingSuggester extends Lookup {
 
   /**
    * Maximum graph paths to index for a single analyzed surface form. This only matters if your
-   * analyzer makes lots of alternate paths (e.g. contains SynonymFilter).
+   * analyzer makes lots of alternate paths (e.g. contains SynonymGraphFilter).
    */
   private final int maxGraphExpansions;
 
