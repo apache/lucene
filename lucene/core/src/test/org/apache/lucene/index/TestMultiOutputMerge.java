@@ -580,7 +580,7 @@ public class TestMultiOutputMerge extends LuceneTestCase {
       iwc.setSoftDeletesField(SOFT);
       iwc.setMergePolicy(
           new SoftDeletesRetentionMergePolicy(
-              SOFT, MatchAllDocsQuery::new, new PartitioningMergePolicy()));
+              SOFT, () -> MatchAllDocsQuery.INSTANCE, new PartitioningMergePolicy()));
       Set<String> originals = new HashSet<>();
       try (IndexWriter w = new IndexWriter(dir, iwc)) {
         for (int seg = 0; seg < SEGMENTS; seg++) {
@@ -622,7 +622,7 @@ public class TestMultiOutputMerge extends LuceneTestCase {
       iwc.setSoftDeletesField(SOFT);
       iwc.setMergePolicy(
           new SoftDeletesRetentionMergePolicy(
-              SOFT, MatchAllDocsQuery::new, new PartitioningMergePolicy()));
+              SOFT, () -> MatchAllDocsQuery.INSTANCE, new PartitioningMergePolicy()));
       Set<String> hardDeleted = new HashSet<>();
       try (IndexWriter w = new IndexWriter(dir, iwc)) {
         for (int seg = 0; seg < SEGMENTS; seg++) {
