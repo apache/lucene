@@ -235,6 +235,7 @@ public interface IndexSorter {
     }
 
     @Override
+    @SuppressWarnings("CompareToZero") // reverseMul is always -1 or 1
     public DocComparator getDocComparator(LeafReader reader, int maxDoc) throws IOException {
       final NumericDocValues dvs = valuesProvider.get(reader);
       int[] values = new int[maxDoc];
@@ -305,6 +306,7 @@ public interface IndexSorter {
     }
 
     @Override
+    @SuppressWarnings("CompareToZero") // reverseMul is always -1 or 1
     public DocComparator getDocComparator(LeafReader reader, int maxDoc) throws IOException {
       final NumericDocValues dvs = valuesProvider.get(reader);
       long[] values = new long[maxDoc];
@@ -368,6 +370,7 @@ public interface IndexSorter {
     }
 
     @Override
+    @SuppressWarnings("CompareToZero") // reverseMul is always -1 or 1
     public DocComparator getDocComparator(LeafReader reader, int maxDoc) throws IOException {
       final NumericDocValues dvs = valuesProvider.get(reader);
       float[] values = new float[maxDoc];
@@ -432,6 +435,7 @@ public interface IndexSorter {
     }
 
     @Override
+    @SuppressWarnings("CompareToZero") // reverseMul is always -1 or 1
     public DocComparator getDocComparator(LeafReader reader, int maxDoc) throws IOException {
       final NumericDocValues dvs = valuesProvider.get(reader);
       double[] values = new double[maxDoc];
@@ -509,6 +513,7 @@ public interface IndexSorter {
     }
 
     @Override
+    @SuppressWarnings("CompareToZero") // reverseMul is always -1 or 1
     public DocComparator getDocComparator(LeafReader reader, int maxDoc) throws IOException {
       final SortedDocValues sorted = valuesProvider.get(reader);
       final int missingOrd;
@@ -605,6 +610,7 @@ public interface IndexSorter {
     }
 
     @Override
+    @SuppressWarnings("CompareToZero") // reverseMul is always -1 or 1
     public DocComparator getDocComparator(LeafReader reader, int maxDoc) throws IOException {
       final BinaryDocValues values = valuesProvider.get(reader);
       // Materialize the values once for random access during the in-memory sort: concatenate them
