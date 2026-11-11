@@ -228,7 +228,22 @@ jobs:
 
       - name: Set up luceneutil
         working-directory: bench/util
-        run: python src/python/initial_setup.py
+        run: |
+          python src/python/initial_setup.py
+          # One segment for 1M docs, as in the nightly benchmark, with a heap large enough for that buffer
+          python - <<'EOF'
+          import re
+          from pathlib import Path
+          run = Path("src/python/localrun.py")
+          text, count = re.subn(r"^( *)addDVFields=True,$", r"\g<0>\n\1ramBufferMB=1024,", run.read_text(), flags=re.M)
+          if count == 0:
+              raise SystemExit("localrun.py no longer matches; update the ramBufferMB setting")
+          run.write_text(text)
+          EOF
+          cat >> src/python/localconstants.py <<'EOF'
+          import os
+          JAVA_COMMAND = os.path.join(os.environ["JAVA_HOME"], "bin", "java") + " -server -Xms8g -Xmx8g --add-modules jdk.incubator.vector -XX:+HeapDumpOnOutOfMemoryError -XX:+UseParallelGC"
+          EOF
 
       - name: Build baseline
         working-directory: bench/lucene_baseline
