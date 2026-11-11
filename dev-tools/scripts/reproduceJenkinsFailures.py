@@ -92,7 +92,7 @@ def runOutput(cmd: str) -> str:
 def run(cmd: str, rememberFailure: bool = True) -> int:
   global lastFailureCode
   print("[repro] %s" % cmd)
-  code = os.system(cmd)  # ty:ignore[deprecated]
+  code = os.system(cmd)
   if code != 0 and rememberFailure:
     print("\n[repro] Setting last failure code to %d\n" % code)
     lastFailureCode = code

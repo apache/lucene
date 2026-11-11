@@ -6,12 +6,12 @@ on:
   pull_request:
     branches:
       - 'main'
-      - 'branch_10x'
+      - 'branch_11x'
 
   push:
     branches:
       - 'main'
-      - 'branch_10x'
+      - 'branch_11x'
 
 permissions: {}
 

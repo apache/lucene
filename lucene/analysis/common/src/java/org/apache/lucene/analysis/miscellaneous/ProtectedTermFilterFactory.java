@@ -41,7 +41,7 @@ import org.apache.lucene.util.ResourceLoader;
  * Analyzer ana = CustomAnalyzer.builder()
  *   .withTokenizer("standard")
  *   .when("protectedterm", "ignoreCase", "true", "protected", "protectedTerms.txt")
- *     .addTokenFilter("truncate", "prefixLength", "4")
+ *     .addTokenFilter("truncate", "truncateAfterChars", "4")
  *     .addTokenFilter("lowercase")
  *   .endwhen()
  *   .build();
@@ -56,7 +56,7 @@ import org.apache.lucene.util.ResourceLoader;
  *   &lt;analyzer&gt;
  *     &lt;tokenizer class="solr.WhitespaceTokenizerFactory"/&gt;
  *     &lt;filter class="solr.ProtectedTermFilterFactory" ignoreCase="true" protected="protectedTerms.txt"
- *             wrappedFilters="truncate,lowercase" truncate.prefixLength="4" /&gt;
+ *             wrappedFilters="truncate,lowercase" truncate.truncateAfterChars="4" /&gt;
  *   &lt;/analyzer&gt;
  * &lt;/fieldType&gt;</code></pre>
  *

@@ -428,7 +428,7 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     // fallback, so it collapses to that MatchNoDocsQuery instead of re-wrapping it.
     Query fallbackQuery = new BooleanQuery.Builder().build();
     Query query = new IndexSortSortedNumericDocValuesRangeQuery("field", 1, 42, fallbackQuery);
-    assertEquals(new MatchNoDocsQuery(), query.rewrite(newSearcher(reader)));
+    assertEquals(MatchNoDocsQuery.INSTANCE, query.rewrite(newSearcher(reader)));
 
     writer.close();
     reader.close();
