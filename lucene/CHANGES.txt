@@ -369,6 +369,9 @@ Bug Fixes
 * GITHUB#16983: UnifiedHighlighter.Builder#withFlags is no longer ignored when building the
   highlighter. (Christoph Büscher)
 
+* GITHUB#16986: SortingCodecReader's vector values now support copy(), so code that reads them on
+  several threads works with sorted readers. (Ankur Goel)
+
 * GITHUB#16867: Apply buffered soft-update/delete terms before the global delete buffer reaches the 2GB
   addressing limit of its ByteBlockPool, and stall indexing if the limit is hit during a full flush.
   (Alan Woodward)

@@ -320,6 +320,12 @@ public final class SortingCodecReader extends FilterCodecReader {
       iteratorSupplier = iteratorSupplier(delegate, sortMap);
     }
 
+    private SortingFloatVectorValues(
+        FloatVectorValues delegate, SortingIteratorSupplier iteratorSupplier) {
+      this.delegate = delegate;
+      this.iteratorSupplier = iteratorSupplier;
+    }
+
     @Override
     public float[] vectorValue(int ord) throws IOException {
       // ords are interpreted in the delegate's ord-space.
@@ -343,8 +349,9 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
 
     @Override
-    public FloatVectorValues copy() {
-      throw new UnsupportedOperationException();
+    public FloatVectorValues copy() throws IOException {
+      // the mapping is immutable, so the copy shares it
+      return new SortingFloatVectorValues(delegate.copy(), iteratorSupplier);
     }
 
     @Override
@@ -361,6 +368,12 @@ public final class SortingCodecReader extends FilterCodecReader {
       this.delegate = delegate;
       // SortingValuesIterator consumes the iterator and records the docs and ord mapping
       iteratorSupplier = iteratorSupplier(delegate, sortMap);
+    }
+
+    private SortingByteVectorValues(
+        ByteVectorValues delegate, SortingIteratorSupplier iteratorSupplier) {
+      this.delegate = delegate;
+      this.iteratorSupplier = iteratorSupplier;
     }
 
     @Override
@@ -390,8 +403,9 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
 
     @Override
-    public ByteVectorValues copy() {
-      throw new UnsupportedOperationException();
+    public ByteVectorValues copy() throws IOException {
+      // the mapping is immutable, so the copy shares it
+      return new SortingByteVectorValues(delegate.copy(), iteratorSupplier);
     }
   }
 
@@ -404,6 +418,12 @@ public final class SortingCodecReader extends FilterCodecReader {
       this.delegate = delegate;
       // SortingValuesIterator consumes the iterator and records the docs and ord mapping
       iteratorSupplier = iteratorSupplier(delegate, sortMap);
+    }
+
+    private SortingFloat16VectorValues(
+        Float16VectorValues delegate, SortingIteratorSupplier iteratorSupplier) {
+      this.delegate = delegate;
+      this.iteratorSupplier = iteratorSupplier;
     }
 
     @Override
@@ -433,8 +453,9 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
 
     @Override
-    public Float16VectorValues copy() {
-      throw new UnsupportedOperationException();
+    public Float16VectorValues copy() throws IOException {
+      // the mapping is immutable, so the copy shares it
+      return new SortingFloat16VectorValues(delegate.copy(), iteratorSupplier);
     }
   }
 
