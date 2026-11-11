@@ -27,6 +27,8 @@ import java.lang.foreign.SymbolLookup;
 import java.lang.invoke.MethodHandle;
 import java.util.Arrays;
 import java.util.Locale;
+import java.util.logging.Logger;
+import org.apache.lucene.util.Constants;
 
 /**
  * Utility class to wrap necessary functions of the native <a
@@ -37,8 +39,97 @@ import java.util.Locale;
  */
 @SuppressWarnings("restricted") // uses unsafe calls
 final class FaissNativeWrapper {
-  static {
-    System.loadLibrary(FaissLibrary.NAME);
+
+  private static final Logger LOG = Logger.getLogger(FaissNativeWrapper.class.getName());
+  private static final String FAISS_C_AVX2 = "faiss_c_avx2";
+  private static final String FAISS_C_AVX512 = "faiss_c_avx512";
+  private static final String FAISS_C_SVE = "faiss_c_sve";
+
+  /** Baseline Faiss C library name. */
+  static final String NAME = "faiss_c";
+
+  /** Expected Faiss native library version. */
+  static final String VERSION = "1.11.0";
+
+  /**
+   * Name of the Faiss native library loaded at runtime (either a CPU-optimized SIMD variant or the
+   * baseline {@link #NAME}).
+   */
+  static final String LOADED_LIBRARY = loadLibrary();
+
+  private static String loadLibrary() {
+    // Manual override via system property
+    String customLib = System.getProperty("lucene.faiss.libname");
+    if (customLib != null && customLib.isBlank() == false) {
+      System.loadLibrary(customLib);
+      return customLib;
+    }
+    String warningMessage = null;
+    // Try SIMD variants matching the CPU architecture
+    switch (Constants.OS_ARCH) {
+      case "amd64" -> {
+        if (Constants.HAS_AVX512) {
+          if (tryLoad(FAISS_C_AVX512)) {
+            return FAISS_C_AVX512;
+          }
+          if (tryLoad(FAISS_C_AVX2)) {
+            LOG.warning(
+                "CPU supports AVX-512, but '"
+                    + FAISS_C_AVX512
+                    + "' was not found; falling back to '"
+                    + FAISS_C_AVX2
+                    + "'");
+            return FAISS_C_AVX2;
+          }
+          warningMessage =
+              "CPU supports AVX-512, but neither '"
+                  + FAISS_C_AVX512
+                  + "' nor '"
+                  + FAISS_C_AVX2
+                  + "' was found; falling back to '"
+                  + NAME
+                  + "'";
+        } else if (Constants.HAS_AVX2) {
+          if (tryLoad(FAISS_C_AVX2)) {
+            return FAISS_C_AVX2;
+          }
+          warningMessage =
+              "CPU supports AVX2, but '"
+                  + FAISS_C_AVX2
+                  + "' was not found; falling back to '"
+                  + NAME
+                  + "'";
+        }
+      }
+      case "aarch64" -> {
+        if (Constants.HAS_SVE) {
+          if (tryLoad(FAISS_C_SVE)) {
+            return FAISS_C_SVE;
+          }
+          warningMessage =
+              "CPU supports SVE, but '"
+                  + FAISS_C_SVE
+                  + "' was not found; falling back to '"
+                  + NAME
+                  + "'";
+        }
+      }
+    }
+    // Fallback to generic baseline
+    System.loadLibrary(NAME);
+    if (warningMessage != null) {
+      LOG.warning(warningMessage);
+    }
+    return NAME;
+  }
+
+  private static boolean tryLoad(String libName) {
+    try {
+      System.loadLibrary(libName);
+      return true;
+    } catch (UnsatisfiedLinkError _) {
+      return false;
+    }
   }
 
   private static MethodHandle getHandle(String functionName, FunctionDescriptor descriptor) {
@@ -48,7 +139,7 @@ final class FaissNativeWrapper {
 
   FaissNativeWrapper() {
     // Check Faiss version
-    String expectedVersion = FaissLibrary.VERSION;
+    String expectedVersion = VERSION;
     String actualVersion = faiss_get_version().reinterpret(Long.MAX_VALUE).getString(0);
 
     if (expectedVersion.equals(actualVersion) == false) {

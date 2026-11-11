@@ -24,9 +24,6 @@ import org.apache.lucene.facet.taxonomy.FacetLabel;
  *
  * <p>TODO: move FacetLabel out of taxonomy folder to use it for any facets, not just taxonomy?
  *
- * <p>TODO: there is some overlap with {@link
- * org.apache.lucene.facet.taxonomy.writercache.LabelToOrdinal}, can we reuse something?
- *
  * @lucene.experimental
  */
 public interface LabelToOrd {

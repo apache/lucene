@@ -100,11 +100,11 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
   /** -1 if missing values are sorted first, 1 if they are sorted last */
   final int missingSortCmp;
 
-  /** Whether this is the only comparator. */
-  private boolean singleSort;
+  /** How this comparator is allowed to skip documents. */
+  private final Pruning pruning;
 
-  /** Whether this comparator is allowed to skip documents. */
-  private boolean canSkipDocuments;
+  /** Whether {@link #setTopValue} has been called, even with a null value. */
+  private boolean topValueSet;
 
   /** Whether the collector is done with counting hits so that we can start skipping documents. */
   private boolean hitsThresholdReached = false;
@@ -115,7 +115,7 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
    */
   public TermOrdValComparator(
       int numHits, String field, boolean sortMissingLast, boolean reverse, Pruning pruning) {
-    canSkipDocuments = pruning != Pruning.NONE;
+    this.pruning = pruning;
     ords = new int[numHits];
     values = new BytesRef[numHits];
     tempBRs = new BytesRefBuilder[numHits];
@@ -130,14 +130,12 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
     }
   }
 
-  @Override
-  public void disableSkipping() {
-    canSkipDocuments = false;
-  }
-
-  @Override
-  public void setSingleSort() {
-    singleSort = true;
+  /**
+   * Whether there is no tie breaker: this is the only sort field and we are not paging, so
+   * documents that compare equal to the bottom are not competitive.
+   */
+  private boolean noTieBreaker() {
+    return pruning == Pruning.GREATER_THAN_OR_EQUAL_TO && topValueSet == false;
   }
 
   @Override
@@ -176,6 +174,7 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
     // null is fine: it means the last doc of the prior
     // search was missing this value
     topValue = value;
+    topValueSet = true;
     // System.out.println("setTopValue " + topValue);
   }
 
@@ -252,7 +251,7 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
       final boolean enableSkipping;
       Terms terms = null;
       DocValuesSkipper skipper = null;
-      if (canSkipDocuments == false) {
+      if (pruning == Pruning.NONE) {
         dense = false;
         enableSkipping = false;
       } else {
@@ -300,7 +299,7 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
         // Missing values sort best here, so they stay competitive for as long as the queue is not
         // full of them. With no tie breaker they stop competing once it is, so skipping is still
         // worth enabling; updateCompetitiveIterator decides when it can actually start.
-        return singleSort;
+        return noTieBreaker();
       } else {
         return true;
       }
@@ -436,7 +435,7 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
           }
         } else if (sortMissingLast || dense) {
           minOrd = 0;
-        } else if (bottomValue == null && singleSort) {
+        } else if (bottomValue == null && noTieBreaker()) {
           // The worst entry in the queue is itself a missing value and there is no tie breaker, so
           // another missing value can no longer compete: missing values are no longer competitive.
           // (bottomValue==null is stronger than bottomOrd==missingOrd, which can also be produced
@@ -450,7 +449,7 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
 
         if (bottomOrd == missingOrd) {
           // The queue still contains missing values.
-          if (singleSort) {
+          if (noTieBreaker()) {
             // If there is no tie breaker, we can start ignoring missing values from now on.
             maxOrd = termsIndex.getValueCount() - 1;
           } else {
@@ -459,7 +458,7 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
         } else if (bottomSameReader) {
           // If there is no tie breaker, we can start ignoring values that compare equal to the
           // current top value too.
-          maxOrd = singleSort ? bottomOrd - 1 : bottomOrd;
+          maxOrd = noTieBreaker() ? bottomOrd - 1 : bottomOrd;
         } else {
           maxOrd = bottomOrd;
         }
@@ -468,7 +467,7 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
 
         if (bottomOrd == missingOrd) {
           // The queue still contains missing values.
-          if (singleSort) {
+          if (noTieBreaker()) {
             // If there is no tie breaker, we can start ignoring missing values from now on.
             minOrd = 0;
           } else {
@@ -477,7 +476,7 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
         } else if (bottomSameReader) {
           // If there is no tie breaker, we can start ignoring values that compare equal to the
           // current top value too.
-          minOrd = singleSort ? bottomOrd + 1 : bottomOrd;
+          minOrd = noTieBreaker() ? bottomOrd + 1 : bottomOrd;
         } else {
           minOrd = bottomOrd + 1;
         }
@@ -498,13 +497,6 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
       assert minOrd >= 0;
       assert maxOrd < termsIndex.getValueCount();
       competitiveState.update(minOrd, maxOrd);
-    }
-
-    @Override
-    public void disableSkipping() {
-      // Drop the competitive iterator so this segment is scanned without skipping; the collector
-      // will terminate early on its own because the search sort is a prefix of this segment's sort.
-      competitiveState = null;
     }
 
     @Override

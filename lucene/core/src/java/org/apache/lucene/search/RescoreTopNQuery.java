@@ -77,6 +77,9 @@ public class RescoreTopNQuery extends Query {
         valuesSource.needsScores()
             ? rescoreInline(reader, weight, rewrittenValueSource, queue)
             : rescoreWithPrefetch(reader, weight, rewrittenValueSource, queue);
+    if (queue.size() == 0) {
+      return new MatchNoDocsQuery("No documents to rescore");
+    }
     int i = 0;
     ScoreDoc[] scoreDocs = new ScoreDoc[queue.size()];
     for (ScoreDoc topDoc : queue) {
@@ -281,9 +284,9 @@ public class RescoreTopNQuery extends Query {
    */
   public static Query createFullPrecisionRescorerQuery(
       Query in, float[] targetVector, String field, int n) {
-    DoubleValuesSource valuaSource =
+    DoubleValuesSource valueSource =
         new FullPrecisionFloatVectorSimilarityValuesSource(targetVector, field);
-    return new RescoreTopNQuery(in, valuaSource, n);
+    return new RescoreTopNQuery(in, valueSource, n);
   }
 
   /**
