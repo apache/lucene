@@ -20,7 +20,9 @@ package org.apache.lucene.internal.vectorization;
 import java.io.IOException;
 import java.util.Locale;
 import java.util.logging.Logger;
+import org.apache.lucene.codecs.hnsw.AsymmetricFlatVectorsScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
+import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorScorer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.SuppressForbidden;
@@ -74,6 +76,19 @@ final class NativeVectorizationProvider extends VectorizationProvider {
   @Override
   public FlatVectorsScorer getLucene99ScalarQuantizedVectorsScorer() {
     return delegateVectorUtilProvider.getLucene99ScalarQuantizedVectorsScorer();
+  }
+
+  @Override
+  public AsymmetricFlatVectorsScorer getLucene104ScalarQuantizedVectorsScorer() {
+    if (NativeVectorUtilSupport.isLibraryLoaded()) {
+      // The bulk kernels of the Panama scorer have no native equivalent, so the generic scorer is
+      // used, which reaches the native kernels through VectorUtil.
+      // TODO: move the bulk dot products to VectorUtil / VectorUtilSupport, so that this provider
+      // can implement them natively too: https://github.com/apache/lucene/issues/16556
+      return new Lucene104ScalarQuantizedVectorScorer(
+          delegateVectorUtilProvider.getLucene99FlatVectorsScorer());
+    }
+    return delegateVectorUtilProvider.getLucene104ScalarQuantizedVectorsScorer();
   }
 
   @Override

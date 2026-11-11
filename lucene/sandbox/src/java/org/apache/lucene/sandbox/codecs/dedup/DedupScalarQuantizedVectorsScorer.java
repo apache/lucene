@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.sandbox.codecs.dedup;
 
+import java.io.IOException;
+import org.apache.lucene.codecs.hnsw.AsymmetricFlatVectorsScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
 import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorScorer;
 import org.apache.lucene.index.KnnVectorValues;
@@ -35,8 +37,8 @@ import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
  */
 final class DedupScalarQuantizedVectorsScorer extends DedupFlatVectorsScorer {
 
-  private static final Lucene104ScalarQuantizedVectorScorer QUANTIZED_SCORER =
-      new Lucene104ScalarQuantizedVectorScorer(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
+  private static final AsymmetricFlatVectorsScorer QUANTIZED_SCORER =
+      FlatVectorScorerUtil.getLucene104ScalarQuantizedVectorsScorer();
 
   DedupScalarQuantizedVectorsScorer() {
     super(QUANTIZED_SCORER);
@@ -63,7 +65,8 @@ final class DedupScalarQuantizedVectorsScorer extends DedupFlatVectorsScorer {
   static RandomVectorScorerSupplier asymmetricMergeSupplier(
       VectorSimilarityFunction similarityFunction,
       QuantizedByteVectorValues queryValues,
-      FieldValues targetValues) {
+      FieldValues targetValues)
+      throws IOException {
     RandomVectorScorerSupplier groupView =
         QUANTIZED_SCORER.getRandomVectorScorerSupplier(
             similarityFunction, queryValues, targetValues.getGroupView());

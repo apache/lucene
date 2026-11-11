@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Objects;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.hnsw.AsymmetricFlatVectorsScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
@@ -83,13 +84,13 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
   private final Map<String, FieldEntry> fields;
   private final IndexInput quantizedVectorData;
   private final FlatVectorsReader rawVectorsReader;
-  private final Lucene104ScalarQuantizedVectorScorer vectorScorer;
+  private final AsymmetricFlatVectorsScorer vectorScorer;
   public static final int EXHAUSTIVE_BULK_SCORE_ORDS = 64;
 
   public Lucene104ScalarQuantizedVectorsReader(
       SegmentReadState state,
       FlatVectorsReader rawVectorsReader,
-      Lucene104ScalarQuantizedVectorScorer vectorsScorer)
+      AsymmetricFlatVectorsScorer vectorsScorer)
       throws IOException {
     this.fields = new HashMap<>();
     this.vectorScorer = vectorsScorer;
@@ -616,7 +617,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
   static CloseableRandomVectorScorerSupplier mergeScorerSupplier(
       FieldInfo fieldInfo,
       QuantizedByteVectorValues indexVectors,
-      Lucene104ScalarQuantizedVectorScorer vectorScorer,
+      AsymmetricFlatVectorsScorer vectorScorer,
       Directory directory,
       IOContext context,
       String queryDataName)

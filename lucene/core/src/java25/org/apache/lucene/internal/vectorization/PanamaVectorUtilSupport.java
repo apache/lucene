@@ -68,12 +68,12 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       VectorSpecies.of(int.class, VectorShape.forBitSize(DOUBLE_SPECIES.vectorBitSize() / 2));
   private static final VectorSpecies<Integer> INT_SPECIES =
       PanamaVectorConstants.PRERERRED_INT_SPECIES;
-  private static final VectorSpecies<Byte> BYTE_SPECIES;
-  private static final VectorSpecies<Short> SHORT_SPECIES;
+  static final VectorSpecies<Byte> BYTE_SPECIES;
+  static final VectorSpecies<Short> SHORT_SPECIES;
   private static final VectorSpecies<Byte> BYTE_SPECIES_128 = ByteVector.SPECIES_128;
   private static final VectorSpecies<Byte> BYTE_SPECIES_256 = ByteVector.SPECIES_256;
   // full register needed, no widening
-  private static final VectorSpecies<Byte> BYTE_SPECIES_FULL =
+  static final VectorSpecies<Byte> BYTE_SPECIES_FULL =
       ByteVector.SPECIES_MAX.withShape(
           VectorShape.forBitSize(PanamaVectorConstants.PREFERRED_VECTOR_BITSIZE));
 
@@ -583,7 +583,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     return acc.reduceLanes(ADD);
   }
 
-  private static class Int4Constants {
+  static class Int4Constants {
     static final VectorSpecies<Byte> BYTE_SPECIES;
     static final VectorSpecies<Short> SHORT_SPECIES;
     static final int CHUNK;

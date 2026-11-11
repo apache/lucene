@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.function.IntPredicate;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.hnsw.AsymmetricFlatVectorsScorer;
 import org.apache.lucene.codecs.hnsw.FlatFieldVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
@@ -79,7 +80,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   private final IndexOutput meta, vectorData;
   private final ScalarEncoding encoding;
   private final FlatVectorsWriter rawVectorDelegate;
-  private final Lucene104ScalarQuantizedVectorScorer vectorScorer;
+  private final AsymmetricFlatVectorsScorer vectorScorer;
   private boolean finished;
 
   /** Sole constructor */
@@ -87,7 +88,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       SegmentWriteState state,
       ScalarEncoding encoding,
       FlatVectorsWriter rawVectorDelegate,
-      Lucene104ScalarQuantizedVectorScorer vectorsScorer)
+      AsymmetricFlatVectorsScorer vectorsScorer)
       throws IOException {
     super(vectorsScorer);
     this.vectorScorer = vectorsScorer;
@@ -473,7 +474,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     private final Directory directory;
     private final IOContext context;
     private final FieldInfo fieldInfo;
-    private final Lucene104ScalarQuantizedVectorScorer vectorScorer;
+    private final AsymmetricFlatVectorsScorer vectorScorer;
     private final String fileName;
     private boolean spent;
 
@@ -481,7 +482,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
         Directory directory,
         IOContext context,
         FieldInfo fieldInfo,
-        Lucene104ScalarQuantizedVectorScorer vectorScorer,
+        AsymmetricFlatVectorsScorer vectorScorer,
         String fileName) {
       this.directory = directory;
       this.context = context;
