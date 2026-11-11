@@ -351,6 +351,19 @@ public final class ColumnValidation {
     }
   }
 
+  /** Throws if a vector values cursor's dimension does not match the field's declared dimension. */
+  public static void checkVectorCursorDimension(VectorColumn<?> column, int actual, int expected) {
+    if (actual != expected) {
+      throw new IllegalArgumentException(
+          "VectorColumn \""
+              + column.name()
+              + "\" expected dimension "
+              + expected
+              + " but values cursor has dimension "
+              + actual);
+    }
+  }
+
   /**
    * Throws if a float vector has a non-finite component, or is a zero vector while {@code
    * similarityFunction} is {@link VectorSimilarityFunction#COSINE COSINE}. Mirrors the checks done
@@ -361,20 +374,35 @@ public final class ColumnValidation {
       float[] vector,
       VectorSimilarityFunction similarityFunction,
       int batchDocID) {
+    checkFloatVectorValue(column, vector, 0, vector.length, similarityFunction, batchDocID);
+  }
+
+  /**
+   * Like {@link #checkFloatVectorValue(VectorColumn, float[], VectorSimilarityFunction, int)}, for
+   * the vector stored in {@code data[offset, offset + dimension)}.
+   */
+  public static void checkFloatVectorValue(
+      VectorColumn<?> column,
+      float[] data,
+      int offset,
+      int dimension,
+      VectorSimilarityFunction similarityFunction,
+      int batchDocID) {
     boolean isZero = true;
-    for (int i = 0; i < vector.length; i++) {
-      if (Float.isFinite(vector[i]) == false) {
+    for (int i = 0; i < dimension; i++) {
+      float value = data[offset + i];
+      if (Float.isFinite(value) == false) {
         throw new IllegalArgumentException(
             "VectorColumn \""
                 + column.name()
                 + "\" has non-finite value at vector["
                 + i
                 + "]="
-                + vector[i]
+                + value
                 + " at batch doc "
                 + batchDocID);
       }
-      isZero = isZero & (vector[i] == 0);
+      isZero = isZero & (value == 0);
     }
     if (isZero && similarityFunction == VectorSimilarityFunction.COSINE) {
       throw zeroCosineVector(column, batchDocID);
@@ -397,6 +425,28 @@ public final class ColumnValidation {
   }
 
   /**
+   * Like {@link #checkByteVectorValue(VectorColumn, byte[], VectorSimilarityFunction, int)}, for
+   * the vector stored in {@code data[offset, offset + dimension)}.
+   */
+  public static void checkByteVectorValue(
+      VectorColumn<?> column,
+      byte[] data,
+      int offset,
+      int dimension,
+      VectorSimilarityFunction similarityFunction,
+      int batchDocID) {
+    if (similarityFunction != VectorSimilarityFunction.COSINE) {
+      return;
+    }
+    for (int i = 0; i < dimension; i++) {
+      if (data[offset + i] != 0) {
+        return;
+      }
+    }
+    throw zeroCosineVector(column, batchDocID);
+  }
+
+  /**
    * Throws if a float16 vector, encoded as {@code short[]}, has a non-finite component, or is a
    * zero vector while {@code similarityFunction} is {@link VectorSimilarityFunction#COSINE COSINE}.
    * Mirrors the checks done by {@link org.apache.lucene.document.KnnFloat16VectorField}.
@@ -406,21 +456,37 @@ public final class ColumnValidation {
       short[] vector,
       VectorSimilarityFunction similarityFunction,
       int batchDocID) {
-    for (int i = 0; i < vector.length; i++) {
-      if ((vector[i] & 0x7C00) == 0x7C00) {
+    checkFloat16VectorValue(column, vector, 0, vector.length, similarityFunction, batchDocID);
+  }
+
+  /**
+   * Like {@link #checkFloat16VectorValue(VectorColumn, short[], VectorSimilarityFunction, int)},
+   * for the vector stored in {@code data[offset, offset + dimension)}.
+   */
+  public static void checkFloat16VectorValue(
+      VectorColumn<?> column,
+      short[] data,
+      int offset,
+      int dimension,
+      VectorSimilarityFunction similarityFunction,
+      int batchDocID) {
+    boolean isZero = true;
+    for (int i = 0; i < dimension; i++) {
+      short value = data[offset + i];
+      if ((value & 0x7C00) == 0x7C00) {
         throw new IllegalArgumentException(
             "VectorColumn \""
                 + column.name()
                 + "\" has non-finite float16 value at vector["
                 + i
                 + "]="
-                + Float.float16ToFloat(vector[i])
+                + Float.float16ToFloat(value)
                 + " at batch doc "
                 + batchDocID);
       }
+      isZero = isZero & ((value & 0x7FFF) == 0);
     }
-    if (similarityFunction == VectorSimilarityFunction.COSINE
-        && VectorUtil.isZeroVectorFloat16(vector)) {
+    if (isZero && similarityFunction == VectorSimilarityFunction.COSINE) {
       throw zeroCosineVector(column, batchDocID);
     }
   }
