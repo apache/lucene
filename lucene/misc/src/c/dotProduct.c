@@ -178,10 +178,7 @@ int32_t vdot8s_scalar(int8_t vec1[], int8_t vec2[], int32_t limit) {
     return result;
 }
 
-static void* resolve_dot8s(void) {
-#ifdef AT_HWCAP
-    unsigned long hwcap = getauxval(AT_HWCAP);
-#endif
+static void* resolve_dot8s(uint64_t hwcap) {
 #if defined(HWCAP_SVE) && defined(__ARM_FEATURE_SVE)
     if (hwcap & HWCAP_SVE) {
         return (void*) vdot8s_sve;
@@ -310,10 +307,7 @@ static void int4DotProductSinglePackedBulk_neon(const uint8_t unpacked[], const 
 }
 #endif
 
-static void* resolve_int4_single_packed_bulk(void) {
-#ifdef AT_HWCAP
-    unsigned long hwcap = getauxval(AT_HWCAP);
-#endif
+static void* resolve_int4_single_packed_bulk(uint64_t hwcap) {
 #if defined(HWCAP_ASIMDDP) && defined(__ARM_NEON)
     if (hwcap & HWCAP_ASIMDDP) {
         return (void*) int4DotProductSinglePackedBulk_neon;
