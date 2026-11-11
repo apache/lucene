@@ -46,7 +46,7 @@ final class PrefetchBackoff {
   // On a long-lived input, every SKIPth call probes when the file looks warm, so an eviction costs
   // at most SKIP - 1 unprefetched reads before a sample notices it. On fully cached files, this is
   // assumed to be noise. Must be a power of two.
-  static final int SKIP = 64;
+  static final int SKIP = 256;
 
   private final AtomicInteger consecutiveHits;
   private final AtomicInteger inputs;
