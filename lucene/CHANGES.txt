@@ -449,7 +449,7 @@ Bug Fixes
 
 * GITHUB#16971: Fix double DocValuesStats extrema initialization. (Simranjeet Singh)
 
-* GITHUB#TODO: Fix int overflow bugs when sizing FuzzySet. (Greg Miller)
+* GITHUB#17019: Fix int overflow bugs when sizing FuzzySet. (Greg Miller)
 
 Changes in Runtime Behavior
 ---------------------
