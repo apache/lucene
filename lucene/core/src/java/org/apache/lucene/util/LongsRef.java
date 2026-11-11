@@ -131,7 +131,7 @@ public final class LongsRef implements Comparable<LongsRef>, Cloneable {
   /**
    * Creates a new LongsRef that points to a copy of the longs from <code>other</code>
    *
-   * <p>The returned IntsRef will have a length of other.length and an offset of zero.
+   * <p>The returned LongsRef will have a length of other.length and an offset of zero.
    */
   public static LongsRef deepCopyOf(LongsRef other) {
     return new LongsRef(
