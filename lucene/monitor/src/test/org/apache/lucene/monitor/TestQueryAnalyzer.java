@@ -17,12 +17,26 @@
 
 package org.apache.lucene.monitor;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.BoostQuery;
+import org.apache.lucene.search.ConstantScoreQuery;
+import org.apache.lucene.search.DisjunctionMaxQuery;
+import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.QueryVisitor;
+import org.apache.lucene.search.RegexpQuery;
+import org.apache.lucene.search.SynonymQuery;
+import org.apache.lucene.search.TermInSetQuery;
+import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 
@@ -146,6 +160,15 @@ public class TestQueryAnalyzer extends LuceneTestCase {
     assertFalse(tree.advancePhase(0));
   }
 
+  public void testShouldClausesBesideFilterClausesAreIgnored() {
+    Query query =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("field", "a")), BooleanClause.Occur.FILTER)
+            .add(new TermQuery(new Term("field", "b")), BooleanClause.Occur.SHOULD)
+            .build();
+    assertEquals(Set.of(new Term("field", "a")), collectTerms(query));
+  }
+
   public void testMinWeightAdvances() {
     QueryTree tree =
         QueryTree.disjunction(
@@ -172,5 +195,241 @@ public class TestQueryAnalyzer extends LuceneTestCase {
                 new Term("field", "term5")));
     assertEquals(expected, collectTerms(tree));
     assertFalse(tree.advancePhase(0.1f));
+  }
+
+  // Negative disjuncts (negation optimized)
+
+  private static final QueryAnalyzer negativeDisjunctAnalyzer = new QueryAnalyzer(List.of(), true);
+
+  private static Term t(String text) {
+    return new Term("field", text);
+  }
+
+  private static final Set<Term> ANY =
+      Set.of(new Term(TermFilteredPresearcher.ANYTOKEN_FIELD, TermFilteredPresearcher.ANYTOKEN));
+
+  /** The terms and negative disjuncts of the current path */
+  private record Pass(Set<Term> terms, List<Set<Term>> negativeDisjuncts) {}
+
+  private static Pass collect(QueryTree tree) {
+    Set<Term> terms = new HashSet<>();
+    List<Set<Term>> negativeDisjuncts = new ArrayList<>();
+    tree.collectTerms(
+        new QueryTree.TermCollector() {
+          @Override
+          public void accept(String field, BytesRef term) {
+            terms.add(new Term(field, BytesRef.deepCopyOf(term)));
+          }
+
+          @Override
+          public void negativeDisjunct(Set<Term> disjunctTerms) {
+            negativeDisjuncts.add(disjunctTerms);
+          }
+        });
+    return new Pass(terms, negativeDisjuncts);
+  }
+
+  private static QueryTree negativeDisjunctTree(Query query) {
+    return negativeDisjunctAnalyzer.buildTree(query, TermWeightor.DEFAULT);
+  }
+
+  private static Pass negativeDisjunctPass(String query) {
+    return collect(negativeDisjunctTree(MonitorTestBase.parse(query)));
+  }
+
+  public void testNegatedTermBecomesANegativeDisjunctAfterThePositives() {
+    QueryTree tree = negativeDisjunctTree(MonitorTestBase.parse("+a -b"));
+    assertEquals(new Pass(Set.of(t("a")), List.of()), collect(tree));
+    assertTrue(tree.advancePhase(0));
+    assertEquals(new Pass(Set.of(), List.of(Set.of(t("b")))), collect(tree));
+    assertFalse(tree.advancePhase(0));
+  }
+
+  public void testNegatedTermsOfAConjunctionShareANegativeDisjunct() {
+    assertEquals(
+        new Pass(Set.of(), List.of(Set.of(t("b"), t("c")))), negativeDisjunctPass("*:* -b -c"));
+    assertEquals(
+        new Pass(Set.of(), List.of(Set.of(t("b"), t("c")))), negativeDisjunctPass("-b -c"));
+    // De Morgan: NOT(b OR c) = NOT b AND NOT c
+    assertEquals(
+        new Pass(Set.of(), List.of(Set.of(t("b"), t("c")))), negativeDisjunctPass("*:* -(b c)"));
+  }
+
+  public void testNegatedTermsOfNestedConjunctionsShareANegativeDisjunct() {
+    QueryTree tree = negativeDisjunctTree(MonitorTestBase.parse("+(+x -a) -b"));
+    assertEquals(new Pass(Set.of(t("x")), List.of()), collect(tree));
+    assertTrue(tree.advancePhase(0));
+    assertEquals(new Pass(Set.of(), List.of(Set.of(t("a"), t("b")))), collect(tree));
+    assertFalse(tree.advancePhase(0));
+
+    assertEquals(
+        new Pass(Set.of(), List.of(Set.of(t("a"), t("b")))),
+        negativeDisjunctPass("+(*:* -a) +(*:* -b)"));
+  }
+
+  public void testNegatedDisjunctionsMergeAcrossNestingLevels() {
+    // NOT (a OR (b OR c)) = NOT a AND NOT b AND NOT c
+    assertEquals(
+        new Pass(Set.of(), List.of(Set.of(t("a"), t("b"), t("c")))),
+        negativeDisjunctPass("*:* -(a OR (b OR c))"));
+    Pass pass = negativeDisjunctPass("(*:* -(a OR (b OR c))) OR (*:* -(d OR (e OR f)))");
+    assertEquals(
+        Set.of(Set.of(t("a"), t("b"), t("c")), Set.of(t("d"), t("e"), t("f"))),
+        new HashSet<>(pass.negativeDisjuncts()));
+
+    // NOT (a AND (b AND c)) = NOT a OR NOT b OR NOT c: nothing to merge
+    pass = negativeDisjunctPass("(*:* -(a AND (b AND c))) OR (*:* -(d AND (e AND f)))");
+    assertEquals(6, pass.negativeDisjuncts().size());
+    for (Set<Term> negativeDisjunct : pass.negativeDisjuncts()) {
+      assertEquals(1, negativeDisjunct.size());
+    }
+  }
+
+  public void testNegatedConjunctionIsADisjunctionOfNegativeDisjuncts() {
+    Pass pass = negativeDisjunctPass("*:* -(+b +c)");
+    assertEquals(Set.of(), pass.terms());
+    assertEquals(Set.of(Set.of(t("b")), Set.of(t("c"))), new HashSet<>(pass.negativeDisjuncts()));
+  }
+
+  public void testNegatedOneTermPhraseIsANegativeDisjunct() {
+    Query query =
+        new BooleanQuery.Builder()
+            .add(MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.SHOULD)
+            .add(new PhraseQuery("field", "b"), BooleanClause.Occur.MUST_NOT)
+            .build();
+    assertEquals(new Pass(Set.of(), List.of(Set.of(t("b")))), collect(negativeDisjunctTree(query)));
+  }
+
+  private static Query matchAllExcept(Query negated) {
+    return new BooleanQuery.Builder()
+        .add(MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.SHOULD)
+        .add(negated, BooleanClause.Occur.MUST_NOT)
+        .build();
+  }
+
+  public void testNegationThroughOtherQueryTypes() {
+    TermQuery b = new TermQuery(t("b"));
+    List<Set<Term>> notB = List.of(Set.of(t("b")));
+    assertEquals(
+        new Pass(Set.of(), notB),
+        collect(negativeDisjunctTree(matchAllExcept(new BoostQuery(b, 2)))));
+    assertEquals(
+        new Pass(Set.of(), notB),
+        collect(negativeDisjunctTree(matchAllExcept(new ConstantScoreQuery(b)))));
+    Query oneTermSet = new TermInSetQuery("field", List.of(new BytesRef("b")));
+    assertEquals(
+        new Pass(Set.of(), notB), collect(negativeDisjunctTree(matchAllExcept(oneTermSet))));
+    Query synonyms = new SynonymQuery.Builder("field").addTerm(t("b")).addTerm(t("c")).build();
+    assertEquals(
+        new Pass(Set.of(), List.of(Set.of(t("b"), t("c")))),
+        collect(negativeDisjunctTree(matchAllExcept(synonyms))));
+
+    // not negated exactly: a disjunction-max wrapper, an empty boolean query (which matches
+    // nothing), and a query whose handler does not implement handleNegatedQuery
+    Query dismax = new DisjunctionMaxQuery(List.of(b, new TermQuery(t("c"))), 0);
+    assertEquals(new Pass(ANY, List.of()), collect(negativeDisjunctTree(matchAllExcept(dismax))));
+    Query empty = new BooleanQuery.Builder().build();
+    assertEquals(new Pass(ANY, List.of()), collect(negativeDisjunctTree(matchAllExcept(empty))));
+    QueryAnalyzer regexp = new QueryAnalyzer(List.of(new RegexpQueryHandler()), true);
+    Query negatedRegexp = matchAllExcept(new RegexpQuery(t("ab.*")));
+    assertEquals(
+        new Pass(ANY, List.of()), collect(regexp.buildTree(negatedRegexp, TermWeightor.DEFAULT)));
+  }
+
+  public void testDoubleNegationIsPositive() {
+    // NOT(a AND NOT b) = NOT a OR b
+    assertEquals(
+        new Pass(Set.of(t("b")), List.of(Set.of(t("a")))), negativeDisjunctPass("*:* -(+a -b)"));
+  }
+
+  public void testInexactNegationsAreAny() {
+    for (String query :
+        new String[] {
+          "*:* -\"a b\"", "*:* -b*", "*:* -field:[a TO c]", "*:* -/ab.*/", "*:* -(-b)"
+        }) {
+      assertEquals(query, new Pass(ANY, List.of()), negativeDisjunctPass(query));
+    }
+    BooleanQuery msm =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(t("b")), BooleanClause.Occur.SHOULD)
+            .add(new TermQuery(t("c")), BooleanClause.Occur.SHOULD)
+            .setMinimumNumberShouldMatch(1)
+            .build();
+    Query query =
+        new BooleanQuery.Builder()
+            .add(MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.SHOULD)
+            .add(msm, BooleanClause.Occur.MUST_NOT)
+            .build();
+    assertEquals(new Pass(ANY, List.of()), collect(negativeDisjunctTree(query)));
+
+    // a query that passes its terms straight to the visitor, but needs all of them to match
+    Query allTerms =
+        new Query() {
+          @Override
+          public void visit(QueryVisitor visitor) {
+            visitor.consumeTerms(this, t("b"), t("c"));
+          }
+
+          @Override
+          public String toString(String field) {
+            return "allTerms";
+          }
+
+          @Override
+          public boolean equals(Object obj) {
+            return obj == this;
+          }
+
+          @Override
+          public int hashCode() {
+            return System.identityHashCode(this);
+          }
+        };
+    query =
+        new BooleanQuery.Builder()
+            .add(MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.SHOULD)
+            .add(allTerms, BooleanClause.Occur.MUST_NOT)
+            .build();
+    assertEquals(new Pass(ANY, List.of()), collect(negativeDisjunctTree(query)));
+  }
+
+  public void testCustomQueryHandlersUnderNegation() {
+    Query query =
+        new BooleanQuery.Builder()
+            .add(MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.SHOULD)
+            .add(
+                new TermInSetQuery("field", List.of(new BytesRef("x"), new BytesRef("y"))),
+                BooleanClause.Occur.MUST_NOT)
+            .build();
+
+    // the handler's positive tree is never negated
+    QueryAnalyzer notNegatable = new QueryAnalyzer(List.of(new TermInSetQueryHandler(false)), true);
+    assertEquals(
+        new Pass(ANY, List.of()), collect(notNegatable.buildTree(query, TermWeightor.DEFAULT)));
+
+    QueryAnalyzer negatable =
+        new QueryAnalyzer(
+            List.of(new TermInSetQueryHandler(false), new TermInSetQueryHandler(true)), true);
+    assertEquals(
+        new Pass(Set.of(), List.of(Set.of(t("x"), t("y")))),
+        collect(negatable.buildTree(query, TermWeightor.DEFAULT)));
+
+    // with negation off, handleNegatedQuery is never called
+    CustomQueryHandler throwing =
+        new CustomQueryHandler() {
+          @Override
+          public QueryTree handleQuery(Query q, TermWeightor w) {
+            return null;
+          }
+
+          @Override
+          public QueryTree handleNegatedQuery(Query q, TermWeightor w) {
+            throw new AssertionError("called with negation off");
+          }
+        };
+    QueryAnalyzer off = new QueryAnalyzer(List.of(throwing), false);
+    assertEquals(
+        new Pass(ANY, List.of()),
+        collect(off.buildTree(MonitorTestBase.parse("*:* -/ab.*/"), TermWeightor.DEFAULT)));
   }
 }

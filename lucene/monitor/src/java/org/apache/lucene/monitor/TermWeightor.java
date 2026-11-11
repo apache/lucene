@@ -21,18 +21,61 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.DoubleUnaryOperator;
 import java.util.function.ToDoubleFunction;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.util.BytesRef;
 
-/** Calculates the weight of a {@link Term} */
+/**
+ * Calculates the weight of a {@link Term}
+ *
+ * <p>Higher weights mark terms that are more useful for selecting queries, typically rarer or
+ * longer ones. {@link #negate(double)} turns a weight into the weight of the absence of the term,
+ * for negated clauses.
+ */
 public interface TermWeightor extends ToDoubleFunction<Term> {
 
   /** A default TermWeightor based on token length */
   TermWeightor DEFAULT = lengthWeightor(3, 0.3f);
 
-  /** Combine weightors by multiplication */
+  /** The smallest weight returned by the default {@link #negate(double)} */
+  double MIN_NEGATED_WEIGHT = 1e-6;
+
+  /**
+   * The weight of the absence of a term of weight {@code weight}, used for negated clauses
+   *
+   * <p>By default the weight is read as surprisal, {@code w = -ln p} where {@code p} is the share
+   * of documents containing the term, giving {@code -ln(1 - e^-w)}: rare terms are weak exclusions
+   * and common terms strong ones. Use {@link #withNegation(DoubleUnaryOperator)} if weights are not
+   * surprisal.
+   */
+  default double negate(double weight) {
+    return Math.max(MIN_NEGATED_WEIGHT, -Math.log1p(-Math.exp(-weight)));
+  }
+
+  /**
+   * Returns this TermWeightor, with the absence of a term weighed by {@code negation}
+   *
+   * @param negation maps the weight of a term to the weight of its absence, which must be greater
+   *     than 0
+   */
+  default TermWeightor withNegation(DoubleUnaryOperator negation) {
+    return new NegatingTermWeightor(this, negation);
+  }
+
+  /**
+   * Combine weightors by multiplication
+   *
+   * @throws IllegalArgumentException if a weightor has a {@link #withNegation(DoubleUnaryOperator)
+   *     negation}; apply it to the combined weightor instead
+   */
   static TermWeightor combine(TermWeightor... weightors) {
+    for (TermWeightor w : weightors) {
+      if (w instanceof NegatingTermWeightor) {
+        throw new IllegalArgumentException(
+            "Cannot combine weightors with a negation; apply withNegation to the combined weightor");
+      }
+    }
     return value -> {
       double r = 1;
       for (TermWeightor w : weightors) {
