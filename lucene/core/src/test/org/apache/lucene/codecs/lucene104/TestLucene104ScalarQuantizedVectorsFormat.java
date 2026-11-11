@@ -22,7 +22,6 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.oneOf;
 
-import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -622,8 +621,7 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
     // Random dims will also run the native code's tail loops.
     int dims = random().nextInt(1, 300);
     int numDocs = random().nextInt(50, 500);
-    VectorSimilarityFunction similarity =
-        RandomPicks.randomFrom(random(), VectorSimilarityFunction.values());
+    VectorSimilarityFunction similarity = randomSimilarity();
     var nibbleFormat = new Lucene104ScalarQuantizedVectorsFormat(ScalarEncoding.PACKED_NIBBLE);
     try (IndexWriter w =
         new IndexWriter(

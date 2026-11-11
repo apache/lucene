@@ -148,7 +148,7 @@ final class Lucene104NativeScalarQuantizedVectorScorer
       if (numNodes > ords.length) {
         grow(numNodes);
       }
-      // First check are the ordinals in range.
+      // First check that the ordinals are in range.
       int size = maxOrd();
       for (int i = 0; i < numNodes; i++) {
         ords[i] = Objects.checkIndex(nodes[i], size);

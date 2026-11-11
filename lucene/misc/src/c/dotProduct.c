@@ -178,6 +178,7 @@ int32_t vdot8s_scalar(int8_t vec1[], int8_t vec2[], int32_t limit) {
     return result;
 }
 
+#if defined(__aarch64__) && defined(__linux__)
 static void* resolve_dot8s(uint64_t hwcap) {
 #if defined(HWCAP_SVE) && defined(__ARM_FEATURE_SVE)
     if (hwcap & HWCAP_SVE) {
@@ -193,7 +194,6 @@ static void* resolve_dot8s(uint64_t hwcap) {
 }
 
 // dot8s will dispatch based on runtime capabilities
-#if defined(__aarch64__) && defined(__linux__)
 __attribute__((ifunc("resolve_dot8s")))
 int32_t lucene_dotProduct(int8_t vec1[], int8_t vec2[], int32_t limit);
 #else
