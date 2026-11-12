@@ -17,7 +17,10 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.codecs.Codec;
@@ -330,8 +333,22 @@ final class SegmentMerger {
   }
 
   void cleanupMerge() throws IOException {
+    cleanupMerge(Collections.newSetFromMap(new IdentityHashMap<>()));
+  }
+
+  /**
+   * Finishes each merge instance exactly once, skipping any the caller has already finished.
+   *
+   * <p>A partitioned merge builds one merger per output over the same input readers, and {@link
+   * KnnVectorsReader#getMergeInstance()} may return {@code this} -- {@code
+   * Lucene99FlatVectorsReader} does, having only flipped the read advice on an input it keeps.
+   * Finishing once per output would then touch that input again after the first call reverted it,
+   * so the outputs share the set of readers they have finished.
+   */
+  void cleanupMerge(Set<KnnVectorsReader> finished) throws IOException {
     for (KnnVectorsReader reader : mergeState.knnVectorsReaders) {
-      if (reader != null) {
+      // Keyed on the reader underneath: every output of a partitioned merge narrows the same one.
+      if (reader != null && finished.add(DocRangeKnnVectorsReader.unwrap(reader))) {
         reader.finishMerge();
       }
     }
