@@ -45,7 +45,6 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.StringHelper;
-import org.apache.lucene.util.ThreadInterruptedException;
 import org.apache.lucene.util.Version;
 
 /**
@@ -409,11 +408,12 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
       final SegmentInfo info;
       try {
         info = codec.segmentInfoFormat().read(directory, segName, segmentID, IOContext.READONCE);
-      } catch (ThreadInterruptedException e) {
-        throw e;
-      } catch (Exception | AssertionError e) {
-        // Corruption in a .si file can surface as almost anything the codec's reader happens to do
-        // with the bad bytes, so catch broadly, but keep the root cause: it is what names the file.
+      } catch (CorruptIndexException
+          | EOFException
+          | NoSuchFileException
+          | FileNotFoundException e) {
+        // The .si is missing, truncated or failed its checksum. Anything else, e.g. a transient I/O
+        // failure, is no evidence of corruption and must propagate as-is.
         throw new CorruptSegmentInfoException(
             segName,
             "segment info file: " + segName + ".si cannot be read - it may be missing or corrupt",
@@ -1125,9 +1125,21 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
 
   /** applies all changes caused by committing a merge to this SegmentInfos */
   void applyMergeChanges(MergePolicy.OneMerge merge, boolean dropSegment) {
-    if (indexCreatedVersionMajor >= 7 && merge.info.info.minVersion == null) {
-      throw new IllegalArgumentException(
-          "All segments must record the minVersion for indices created on or after Lucene 7");
+    applyMergeChanges(merge, dropSegment ? List.of() : List.of(merge.info));
+  }
+
+  /**
+   * Swap this merge's input segments for {@code toInsert}, which holds every surviving output. A
+   * normal merge passes a singleton (or an empty list when the result is fully deleted); a
+   * partitioned merge passes one entry per non-dropped output. All outputs are inserted at the
+   * position of the first input, preserving segment order.
+   */
+  void applyMergeChanges(MergePolicy.OneMerge merge, List<SegmentCommitInfo> toInsert) {
+    for (SegmentCommitInfo info : toInsert) {
+      if (indexCreatedVersionMajor >= 7 && info.info.minVersion == null) {
+        throw new IllegalArgumentException(
+            "All segments must record the minVersion for indices created on or after Lucene 7");
+      }
     }
 
     final Set<SegmentCommitInfo> mergedAway = new HashSet<>(merge.segments);
@@ -1137,10 +1149,15 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
       assert segIdx >= newSegIdx;
       final SegmentCommitInfo info = segments.get(segIdx);
       if (mergedAway.contains(info)) {
-        if (!inserted && !dropSegment) {
-          segments.set(segIdx, merge.info);
-          inserted = true;
+        if (!inserted && toInsert.isEmpty() == false) {
+          segments.set(segIdx, toInsert.get(0));
           newSegIdx++;
+          for (int k = 1; k < toInsert.size(); k++) {
+            segments.add(newSegIdx++, toInsert.get(k));
+            cnt++;
+            segIdx++;
+          }
+          inserted = true;
         }
       } else {
         segments.set(newSegIdx, info);
@@ -1156,8 +1173,8 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
     // deleted while we are merging, in which case it should
     // be the case that the new segment is also all deleted,
     // we insert it at the beginning if it should not be dropped:
-    if (!inserted && !dropSegment) {
-      segments.add(0, merge.info);
+    if (!inserted && toInsert.isEmpty() == false) {
+      segments.addAll(0, toInsert);
     }
   }
 

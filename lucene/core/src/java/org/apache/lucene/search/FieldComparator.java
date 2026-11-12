@@ -117,21 +117,6 @@ public abstract class FieldComparator<T> {
   }
 
   /**
-   * Informs the comparator that sort is done on this single field. This is useful to enable some
-   * optimizations for skipping non-competitive documents.
-   */
-  public void setSingleSort() {}
-
-  /**
-   * Informs the comparator that the skipping of documents should be disabled. This function is
-   * called by TopFieldCollector in cases when the skipping functionality should not be applied or
-   * not necessary. An example could be when search sort is a part of the index sort, and can be
-   * already efficiently handled by TopFieldCollector, and doing extra work for skipping in the
-   * comparator is redundant.
-   */
-  public void disableSkipping() {}
-
-  /**
    * Sorts by descending relevance. NOTE: if you are sorting only by descending relevance and then
    * secondarily by ascending docID, performance is faster using {@link TopScoreDocCollector}
    * directly (which {@link IndexSearcher#search(Query, int)} uses when no {@link Sort} is
