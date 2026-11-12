@@ -128,6 +128,12 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
       public float score(int node) throws IOException {
         return quantizedScore(targetQuantized, targetCorrectiveTerms, qv, node, similarityFunction);
       }
+
+      @Override
+      public float bulkScore(int[] nodes, float[] scores, int numNodes) throws IOException {
+        touch(qv, nodes, numNodes);
+        return super.bulkScore(nodes, scores, numNodes);
+      }
     };
   }
 
@@ -183,6 +189,12 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
 
           return quantizedScore(vector, queryCorrections, targetVectors, node, similarityFunction);
         }
+
+        @Override
+        public float bulkScore(int[] nodes, float[] scores, int numNodes) throws IOException {
+          touch(targetVectors, nodes, numNodes);
+          return super.bulkScore(nodes, scores, numNodes);
+        }
       };
     }
 
@@ -237,6 +249,12 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
           }
           targetCorrectiveTerms = targetValues.getCorrectiveTerms(node);
         }
+
+        @Override
+        public float bulkScore(int[] nodes, float[] scores, int numNodes) throws IOException {
+          touch(values, nodes, numNodes);
+          return super.bulkScore(nodes, scores, numNodes);
+        }
       };
     }
 
@@ -257,6 +275,14 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
         1f / ((1 << 7) - 1),
         1f / ((1 << 8) - 1),
       };
+
+  /** Touches the vectors about to be scored so that their cache misses overlap. */
+  private static void touch(QuantizedByteVectorValues values, int[] nodes, int numNodes)
+      throws IOException {
+    if (values instanceof OffHeapScalarQuantizedVectorValues offHeap) {
+      offHeap.touch(nodes, numNodes);
+    }
+  }
 
   private static float quantizedScore(
       byte[] quantizedQuery,
