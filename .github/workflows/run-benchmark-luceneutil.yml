@@ -61,6 +61,7 @@ env:
   # sha256 of the first CORPUS_LINES lines; checked after every restore and download
   CORPUS_SHA256: 02b6f0b539d9a82c2e5a215aa5c1690703c74d875fd08b36763253627b1c1896
   LUCENEUTIL_REF: f77ba1c41c181b9361a7ab5d48fa83b4a367f2e9
+  LUCENEUTIL_JVM_ARGS: -server -Xms8g -Xmx8g --add-modules jdk.incubator.vector -XX:+HeapDumpOnOutOfMemoryError -XX:+UseParallelGC
 
 defaults:
   run:
@@ -242,7 +243,7 @@ jobs:
           EOF
           cat >> src/python/localconstants.py <<'EOF'
           import os
-          JAVA_COMMAND = os.path.join(os.environ["JAVA_HOME"], "bin", "java") + " -server -Xms8g -Xmx8g --add-modules jdk.incubator.vector -XX:+HeapDumpOnOutOfMemoryError -XX:+UseParallelGC"
+          JAVA_COMMAND = os.path.join(os.environ["JAVA_HOME"], "bin", "java") + " " + os.environ["LUCENEUTIL_JVM_ARGS"]
           EOF
 
       - name: Build baseline
@@ -275,22 +276,29 @@ jobs:
           ATTEMPT: ${{ matrix.attempt }}
         run: |
           touch bench/bench.log
+          os_name=$(. /etc/os-release && echo "$PRETTY_NAME") || os_name=""
           cpu_model=$(lscpu | awk -F': *' '$1 == "Model name" && $2 != "-" {print $2; exit}') || cpu_model=""
           memory_gb=$(awk '/^MemTotal:/ {printf "%d", $2 / 1048576 + 0.5}' /proc/meminfo) || memory_gb=""
           disk_gb=$(df -BG --output=size "$GITHUB_WORKSPACE" | tail -n 1 | tr -dc '0-9') || disk_gb=""
+          disk_model=$(lsblk -lsno TYPE,MODEL "/dev/block/$(findmnt -no MAJ:MIN -T "$GITHUB_WORKSPACE")" 2> /dev/null \
+            | awk '$1 == "disk" {sub(/^disk +/, ""); print; exit}') || disk_model=""
           java_props=$(java -XshowSettings:properties -version 2>&1) || java_props=""
           jdk=$(sed -n 's/^ *java.vendor.version = //p' <<< "$java_props")
           python dev-tools/scripts/luceneutil_report.py bench/bench.log --output bench/summary.md \
             --source "$SOURCE" --baseline "$BASELINE" --candidate "$CANDIDATE" \
             --runner "$RUNNER_LABEL" --cpus "$(nproc)" --attempt "$ATTEMPT" \
-            --cpu-model "$cpu_model" --memory-gb "$memory_gb" --disk-gb "$disk_gb" --jdk "$jdk"
+            --repo-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" --os "$os_name" \
+            --cpu-model "$cpu_model" --memory-gb "$memory_gb" --disk-gb "$disk_gb" --disk-model "$disk_model" \
+            --jdk "$jdk" --jvm-args "$LUCENEUTIL_JVM_ARGS"
           cat bench/summary.md >> "$GITHUB_STEP_SUMMARY"
           # Read by report-benchmark-luceneutil.yml, which validates every value
           jq -n --arg pr "$PR_NUMBER" --arg source "$SOURCE" --arg baseline "$BASELINE" --arg candidate "$CANDIDATE" \
-            --arg runner "$RUNNER_LABEL" --arg cpus "$(nproc)" --arg attempt "$ATTEMPT" \
-            --arg cpu_model "$cpu_model" --arg memory_gb "$memory_gb" --arg disk_gb "$disk_gb" --arg jdk "$jdk" \
+            --arg runner "$RUNNER_LABEL" --arg cpus "$(nproc)" --arg attempt "$ATTEMPT" --arg os "$os_name" \
+            --arg cpu_model "$cpu_model" --arg memory_gb "$memory_gb" --arg disk_gb "$disk_gb" \
+            --arg disk_model "$disk_model" --arg jdk "$jdk" --arg jvm_args "$LUCENEUTIL_JVM_ARGS" \
             '{pr: $pr, source: $source, baseline: $baseline, candidate: $candidate, runner: $runner, cpus: $cpus,
-              attempt: $attempt, cpu_model: $cpu_model, memory_gb: $memory_gb, disk_gb: $disk_gb, jdk: $jdk}' \
+              attempt: $attempt, os: $os, cpu_model: $cpu_model, memory_gb: $memory_gb, disk_gb: $disk_gb,
+              disk_model: $disk_model, jdk: $jdk, jvm_args: $jvm_args}' \
             > bench/request.json
 
       - name: Upload results
