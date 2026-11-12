@@ -345,6 +345,10 @@ public class TestCheckIndex extends BaseTestCheckIndex {
           assertTrue(corruption + ": " + cause, cause instanceof IOException);
         }
 
+        // NOTE: We can assert that the cause's message contains the filename once all relevant
+        // exception paths, including EOFException, provide it. For example: assertTrue(corruption +
+        // ": " + cause, cause.toString().contains("_1.si"));
+
         // ... and CheckIndex reports it rather than only that something was unreadable
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         try (CheckIndex checker = new CheckIndex(dir)) {
