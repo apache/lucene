@@ -366,6 +366,9 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#17020: Reduce CachingTokenFilter memory use by not copying stale term bytes in
+  CharTermAttributeImpl#clone. (Eugene Rizhkov)
+
 * GITHUB#16983: UnifiedHighlighter.Builder#withFlags is no longer ignored when building the
   highlighter. (Christoph Büscher)
 
