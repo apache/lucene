@@ -90,23 +90,40 @@ def format_table(results: list[TaskResult]) -> list[str]:
   return lines
 
 
-def describe_machine(args: argparse.Namespace) -> str:
-  cpus = f"{args.cpus} CPUs" + (f" ({args.cpu_model})" if args.cpu_model else "")
-  parts = [args.runner, cpus]
-  if args.memory_gb:
-    parts.append(f"{args.memory_gb} GB RAM")
-  if args.disk_gb:
-    parts.append(f"{args.disk_gb} GB disk")
-  if args.jdk:
-    parts.append(args.jdk)
-  parts.append(f"attempt {args.attempt}")
-  return ", ".join(parts)
+def commit_link(args: argparse.Namespace, sha: str) -> str:
+  return f"[`{sha[:10]}`]({args.repo_url}/commit/{sha})" if args.repo_url else f"`{sha[:10]}`"
+
+
+def describe_commits(args: argparse.Namespace) -> str:
+  text = f"Candidate {commit_link(args, args.candidate)} vs baseline {commit_link(args, args.baseline)}"
+  if args.repo_url:
+    text += f" ([compare]({args.repo_url}/compare/{args.baseline}...{args.candidate}))"
+  return text + f", attempt {args.attempt}"
+
+
+def format_environment(args: argparse.Namespace) -> list[str]:
+  disk = ", ".join(part for part in (f"{args.disk_gb} GB" if args.disk_gb else "", args.disk_model) if part)
+  rows = [
+    ("Runner", args.runner),
+    ("OS", args.os),
+    ("CPU", f"{args.cpus} × {args.cpu_model}" if args.cpu_model else f"{args.cpus} CPUs"),
+    ("Memory", f"{args.memory_gb} GB" if args.memory_gb else ""),
+    ("Disk", disk),
+    ("JDK", args.jdk),
+    ("JVM options", f"`{args.jvm_args}`" if args.jvm_args else ""),
+  ]
+  lines = ["<details><summary>Environment</summary>", "", "| | |", "| --- | --- |"]
+  lines.extend(f"| {name} | {value} |" for name, value in rows if value)
+  lines.extend(["", "</details>"])
+  return lines
 
 
 def render(results: list[TaskResult], args: argparse.Namespace) -> str:
   lines = [
-    f"### luceneutil `{args.source}`: candidate `{args.candidate[:10]}` vs baseline `{args.baseline[:10]}`",
-    describe_machine(args),
+    f"### Performance benchmark (luceneutil {args.source})",
+    describe_commits(args),
+    "",
+    *format_environment(args),
     "",
   ]
   if not results:
@@ -150,11 +167,15 @@ def main() -> int:
   parser.add_argument("--baseline", required=True, help="baseline commit")
   parser.add_argument("--candidate", required=True, help="candidate commit")
   parser.add_argument("--runner", required=True, help="runner label")
+  parser.add_argument("--repo-url", default="", help="repository URL for commit and compare links")
+  parser.add_argument("--os", default="", help="operating system name")
   parser.add_argument("--cpus", required=True, help="number of CPUs on the runner")
   parser.add_argument("--cpu-model", default="", help="CPU model name")
   parser.add_argument("--memory-gb", default="", help="total memory in GB")
   parser.add_argument("--disk-gb", default="", help="size of the workspace disk in GB")
+  parser.add_argument("--disk-model", default="", help="model of the disk backing the workspace")
   parser.add_argument("--jdk", default="", help="JDK vendor and version")
+  parser.add_argument("--jvm-args", default="", help="JVM options luceneutil runs with")
   parser.add_argument("--attempt", default="1", help="attempt id")
   args = parser.parse_args()
 
