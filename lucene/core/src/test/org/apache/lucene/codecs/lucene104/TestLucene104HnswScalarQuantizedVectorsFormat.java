@@ -98,7 +98,9 @@ public class TestLucene104HnswScalarQuantizedVectorsFormat extends BaseKnnVector
             Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
             Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH,
             1,
-            null);
+            null,
+            Lucene99HnswVectorsFormat.HNSW_GRAPH_THRESHOLD,
+            random().nextBoolean());
     super.setUp();
   }
 

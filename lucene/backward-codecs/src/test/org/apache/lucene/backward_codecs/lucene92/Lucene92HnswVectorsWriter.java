@@ -296,7 +296,7 @@ public final class Lucene92HnswVectorsWriter extends BufferingKnnVectorsWriter {
         HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
     hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
 
-    OnHeapHnswGraph graph = hnswGraphBuilder.build(vectorValues.size());
+    OnHeapHnswGraph graph = (OnHeapHnswGraph) hnswGraphBuilder.build(vectorValues.size());
 
     // write vectors' neighbours on each level into the vectorIndex file
     int countOnLevel0 = graph.size();
