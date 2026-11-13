@@ -34,7 +34,16 @@ public class ByteRunAutomaton extends RunAutomaton implements ByteRunnable {
    * @throws IllegalArgumentException if the automaton is not deterministic
    */
   public ByteRunAutomaton(Automaton a, boolean isBinary) {
-    super(isBinary ? a : convert(a), 256);
+    this(a, isBinary, false);
+  }
+
+  /**
+   * expert: if isBinary is true, the input is already byte-based
+   *
+   * @throws IllegalArgumentException if the automaton is not deterministic
+   */
+  ByteRunAutomaton(Automaton a, boolean isBinary, boolean computeMatchAllSuffix) {
+    super(isBinary ? a : convert(a), 256, computeMatchAllSuffix);
   }
 
   static Automaton convert(Automaton a) {
