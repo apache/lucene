@@ -40,7 +40,7 @@ import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncod
  * additional correction and the component sum) is then a pure function of the raw vector and the
  * {@link Flavor} derived from the field's similarity function: independent of the other vectors in
  * the segment. Identical vectors thus quantize identically and the quantized data de-duplicates
- * along with the raw data, shared across all documents and fields of a group with the same flavor.
+ * along with the raw data, shared across all fields of a document in a group with the same flavor.
  *
  * <p>For the same reason, a record already computed by a source segment does not change on merge:
  * when a distinct vector originates from a segment in this format (with the same encoding and

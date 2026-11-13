@@ -19,6 +19,9 @@ package org.apache.lucene.sandbox.codecs.dedup;
 import static org.apache.lucene.index.VectorEncoding.BYTE;
 import static org.apache.lucene.index.VectorEncoding.FLOAT16;
 import static org.apache.lucene.index.VectorEncoding.FLOAT32;
+import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.inputFor;
+import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.mergeContext;
+import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.sequentialContext;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupVectorValues.loadDedupBytes;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupVectorValues.loadDedupFloat16s;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupVectorValues.loadDedupFloats;
@@ -26,8 +29,10 @@ import static org.apache.lucene.sandbox.codecs.dedup.DedupVectorValues.loadDedup
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
@@ -48,7 +53,10 @@ import org.apache.lucene.sandbox.codecs.dedup.DedupScalarQuantizedVectorValues.F
 import org.apache.lucene.sandbox.codecs.dedup.DedupScalarQuantizedVectorValues.Float32RawAndQuantizedValues;
 import org.apache.lucene.sandbox.codecs.dedup.DedupUtil.GroupInfo;
 import org.apache.lucene.sandbox.codecs.dedup.DedupUtil.ReadFieldInfo;
+import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.ChecksumIndexInput;
+import org.apache.lucene.store.DataAccessHint;
+import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FileDataHint;
 import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
@@ -85,6 +93,18 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
   private final IndexInput quantizedVectorData;
   private final String vectorDataExtension;
   private final String quantizedVectorDataExtension;
+  private final Directory directory;
+  private final String vectorDataFN;
+  private final String quantizedVectorDataFN;
+  private final IOContext dataContext;
+  // the reader this one was created from
+  private final DedupScalarQuantizedVectorsReader original;
+  // opened lazily for merges and sequential reads, closed with this reader, guarded by this
+  private IndexInput mergeVectorData;
+  private IndexInput mergeQuantizedVectorData;
+  private IndexInput sequentialVectorData;
+  // guarded by this
+  private boolean closed;
 
   DedupScalarQuantizedVectorsReader(
       SegmentReadState state,
@@ -103,6 +123,16 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
     this.fields = new HashMap<>();
     this.vectorDataExtension = vectorDataExtension;
     this.quantizedVectorDataExtension = quantizedVectorDataExtension;
+    this.directory = state.directory;
+    this.vectorDataFN =
+        IndexFileNames.segmentFileName(
+            state.segmentInfo.name, state.segmentSuffix, vectorDataExtension);
+    this.quantizedVectorDataFN =
+        IndexFileNames.segmentFileName(
+            state.segmentInfo.name, state.segmentSuffix, quantizedVectorDataExtension);
+    // how these are read is up to whoever wraps this format
+    this.dataContext = state.context.union(FileTypeHint.DATA, FileDataHint.KNN_VECTORS);
+    this.original = this;
 
     String metaFileName =
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, metaExtension);
@@ -131,7 +161,8 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
               state,
               versionMeta,
               vectorDataCodecName,
-              vectorDataExtension,
+              vectorDataFN,
+              dataContext,
               versionStart,
               versionCurrent);
       this.quantizedVectorData =
@@ -139,13 +170,32 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
               state,
               versionMeta,
               quantizedVectorDataCodecName,
-              quantizedVectorDataExtension,
+              quantizedVectorDataFN,
+              dataContext,
               versionStart,
               versionCurrent);
     } catch (Throwable t) {
       IOUtils.closeWhileSuppressingExceptions(t, this);
       throw t;
     }
+  }
+
+  /** Reads the same fields as {@code reader}, through the given inputs. */
+  private DedupScalarQuantizedVectorsReader(
+      DedupScalarQuantizedVectorsReader reader,
+      IndexInput vectorData,
+      IndexInput quantizedVectorData) {
+    this.vectorsScorer = reader.vectorsScorer;
+    this.fields = reader.fields;
+    this.vectorData = vectorData;
+    this.quantizedVectorData = quantizedVectorData;
+    this.vectorDataExtension = reader.vectorDataExtension;
+    this.quantizedVectorDataExtension = reader.quantizedVectorDataExtension;
+    this.directory = reader.directory;
+    this.vectorDataFN = reader.vectorDataFN;
+    this.quantizedVectorDataFN = reader.quantizedVectorDataFN;
+    this.dataContext = reader.dataContext;
+    this.original = reader.original;
   }
 
   private void readMetaBody(ChecksumIndexInput meta, FieldInfos fieldInfos) throws IOException {
@@ -266,17 +316,11 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
       SegmentReadState state,
       int versionMeta,
       String vectorDataCodecName,
-      String vectorDataExtension,
+      String fileName,
+      IOContext context,
       int versionStart,
       int versionCurrent)
       throws IOException {
-
-    String fileName =
-        IndexFileNames.segmentFileName(
-            state.segmentInfo.name, state.segmentSuffix, vectorDataExtension);
-
-    // how these are read is up to whoever wraps this format
-    IOContext context = state.context.union(FileTypeHint.DATA, FileDataHint.KNN_VECTORS);
 
     IndexInput in = null;
     try {
@@ -352,14 +396,15 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
     CodecUtil.checksumEntireFile(quantizedVectorData, merge);
   }
 
-  private DedupVectorValues.FloatImpl getRawFloatVectorValues(FieldEntry entry) throws IOException {
+  private DedupVectorValues.FloatImpl getRawFloatVectorValues(FieldEntry entry, IndexInput data)
+      throws IOException {
     return loadDedupFloats(
         vectorsScorer,
         entry.fieldInfo().function(),
         entry.fieldInfo().ordToDoc(),
         entry.fieldInfo().dimension(),
         entry.groupInfo().groupNumVectors(),
-        vectorData,
+        data,
         entry.groupInfo().vectorDataOffset(),
         entry.groupInfo().vectorDataSize(),
         entry.fieldInfo().fieldOrdToGroupOrdOffset(),
@@ -386,9 +431,24 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
 
   @Override
   public FloatVectorValues getFloatVectorValues(String field) throws IOException {
-    FieldEntry entry = getEntry(field, FLOAT32);
+    return getFloatVectorValues(getEntry(field, FLOAT32), vectorData);
+  }
+
+  @Override
+  public FloatVectorValues getFloatVectorValues(String field, DataAccessHint access)
+      throws IOException {
+    IndexInput data =
+        access == DataAccessHint.SEQUENTIAL ? original.sequentialVectorData() : vectorData;
+    return getFloatVectorValues(getEntry(field, FLOAT32), data);
+  }
+
+  /**
+   * The raw vectors of {@code entry}, read through {@code data}, paired with its quantized ones.
+   */
+  private FloatVectorValues getFloatVectorValues(FieldEntry entry, IndexInput data)
+      throws IOException {
     return new Float32RawAndQuantizedValues(
-        getRawFloatVectorValues(entry), getQuantizedVectorValues(entry));
+        getRawFloatVectorValues(entry, data), getQuantizedVectorValues(entry));
   }
 
   private ByteVectorValues getByteVectorValues(FieldEntry entry) throws IOException {
@@ -477,7 +537,7 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
       DedupVectorValues.Float16Impl float16RawValues = getRawFloat16VectorValues(entry);
       floatVectorValues = new Float16AsFloatVectorValues(float16RawValues.getGroupView());
     } else {
-      DedupVectorValues.FloatImpl float32RawValues = getRawFloatVectorValues(entry);
+      DedupVectorValues.FloatImpl float32RawValues = getRawFloatVectorValues(entry, vectorData);
       floatVectorValues = float32RawValues.getGroupView();
     }
 
@@ -555,8 +615,82 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
   }
 
   @Override
+  public FlatVectorsReader getMergeInstance() throws IOException {
+    // vectors and their quantized records are stored in doc order and merged front to back, so
+    // read them sequentially
+    IndexInput data = original.mergeVectorData();
+    IndexInput quantizedData = original.mergeQuantizedVectorData();
+    return data == vectorData && quantizedData == quantizedVectorData
+        ? this
+        : new DedupScalarQuantizedVectorsReader(this, data.clone(), quantizedData.clone());
+  }
+
+  /** Returns the input for merges, opening the data file again if needed. */
+  private synchronized IndexInput mergeVectorData() throws IOException {
+    assert original == this;
+    ensureOpen();
+    if (mergeVectorData == null) {
+      mergeVectorData =
+          inputFor(
+              mergeContext(dataContext), vectorData, sequentialVectorData, directory, vectorDataFN);
+    }
+    return mergeVectorData;
+  }
+
+  /** Returns the input for merges, opening the quantized data file again if needed. */
+  private synchronized IndexInput mergeQuantizedVectorData() throws IOException {
+    assert original == this;
+    ensureOpen();
+    if (mergeQuantizedVectorData == null) {
+      mergeQuantizedVectorData =
+          inputFor(
+              mergeContext(dataContext),
+              quantizedVectorData,
+              null, // only merges read the quantized records sequentially
+              directory,
+              quantizedVectorDataFN);
+    }
+    return mergeQuantizedVectorData;
+  }
+
+  /** Returns the input for sequential reads by searches, opening the data file again if needed. */
+  private synchronized IndexInput sequentialVectorData() throws IOException {
+    assert original == this;
+    ensureOpen();
+    if (sequentialVectorData == null) {
+      // read by searches, even on a reader a merge opened
+      sequentialVectorData =
+          inputFor(
+              sequentialContext(dataContext), vectorData, mergeVectorData, directory, vectorDataFN);
+    }
+    return sequentialVectorData;
+  }
+
+  private void ensureOpen() {
+    if (closed) {
+      throw new AlreadyClosedException("this reader is closed");
+    }
+  }
+
+  @Override
   public void close() throws IOException {
-    IOUtils.close(vectorData, quantizedVectorData);
+    // the inputs can be the same
+    Set<IndexInput> toClose = new LinkedHashSet<>();
+    synchronized (this) {
+      if (closed) {
+        return;
+      }
+      closed = true;
+      toClose.add(vectorData);
+      toClose.add(quantizedVectorData);
+      toClose.add(mergeVectorData);
+      toClose.add(mergeQuantizedVectorData);
+      toClose.add(sequentialVectorData);
+      mergeVectorData = null;
+      mergeQuantizedVectorData = null;
+      sequentialVectorData = null;
+    }
+    IOUtils.close(toClose);
   }
 
   @Override

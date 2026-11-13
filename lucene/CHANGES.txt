@@ -456,6 +456,11 @@ Bug Fixes
 
 * GITHUB#16971: Fix double DocValuesStats extrema initialization. (Simranjeet Singh)
 
+* GITHUB#16938: The sandboxed dedup vector formats now de-duplicate vectors only within a document,
+  and store a group's vectors in doc order. Merges compare a vector with the other vectors of its
+  document instead of hashing it and reading back earlier vectors, so they read less and sequentially.
+  (Kaival Parikh)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)

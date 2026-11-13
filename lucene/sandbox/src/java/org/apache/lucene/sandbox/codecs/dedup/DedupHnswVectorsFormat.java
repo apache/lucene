@@ -46,8 +46,8 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *
  * <p>Graph construction and search are identical to {@link
  * org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat}. A {@link DedupFlatVectorsFormat} is
- * used for the flat vector storage, which stores each distinct vector exactly once, shared across
- * all documents that reference it.
+ * used for the flat vector storage, which stores each distinct vector of a document exactly once,
+ * shared across all its fields that reference it.
  *
  * <p>This format is suitable for high-performance filtered vector search when filter information is
  * available at indexing time. In addition to the primary vector field, the user creates separate
