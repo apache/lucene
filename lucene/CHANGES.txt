@@ -370,6 +370,10 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#16999: SimplePatternTokenizer's String constructors determinize the automaton again,
+  honoring determinizeWorkLimit, instead of rejecting non-deterministic patterns such as "ab|ac".
+  (John Wagster)
+
 * GITHUB#16983: UnifiedHighlighter.Builder#withFlags is no longer ignored when building the
   highlighter. (Christoph Büscher)
 
