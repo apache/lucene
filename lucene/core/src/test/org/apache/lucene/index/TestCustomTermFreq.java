@@ -628,7 +628,7 @@ public class TestCustomTermFreq extends LuceneTestCase {
     assertEquals(128, fis.getMaxTermFrequency());
     assertEquals(2, fis.getUniqueTermCount());
     assertEquals(0, fis.getNumOverlap());
-    assertEquals(2, fis.getLength());
+    assertEquals(2, fis.getNumTerms());
 
     IOUtils.close(w, dir);
   }
