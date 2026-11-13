@@ -30,6 +30,7 @@ import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.Callable;
 import java.util.function.IntPredicate;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -38,6 +39,7 @@ import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.document.column.VectorValuesCursor;
+import org.apache.lucene.index.DocIDMerger;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.Float16VectorValues;
@@ -49,8 +51,11 @@ import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.internal.hppc.FloatArrayList;
+import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.search.VectorScorer;
+import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.store.DataAccessHint;
+import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FileDataHint;
 import org.apache.lucene.store.FileTypeHint;
@@ -80,16 +85,40 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   private final ScalarEncoding encoding;
   private final FlatVectorsWriter rawVectorDelegate;
   private final Lucene104ScalarQuantizedVectorScorer vectorScorer;
+  private final int numMergeWorkers;
+  private final TaskExecutor mergeExec;
   private boolean finished;
 
-  /** Sole constructor */
+  /** Creates a writer that quantizes merged vectors on the merging thread. */
   public Lucene104ScalarQuantizedVectorsWriter(
       SegmentWriteState state,
       ScalarEncoding encoding,
       FlatVectorsWriter rawVectorDelegate,
       Lucene104ScalarQuantizedVectorScorer vectorsScorer)
       throws IOException {
+    this(state, encoding, rawVectorDelegate, vectorsScorer, 1, null);
+  }
+
+  /**
+   * Creates a writer that quantizes merged vectors on {@code numMergeWorkers} tasks, as the HNSW
+   * graph merge does.
+   *
+   * @param numMergeWorkers tasks that quantize the vectors of a merged field; 1 quantizes them on
+   *     the merging thread
+   * @param mergeExec the executor for those tasks, or null to use the merge's {@link
+   *     MergeState#intraMergeTaskExecutor}
+   */
+  public Lucene104ScalarQuantizedVectorsWriter(
+      SegmentWriteState state,
+      ScalarEncoding encoding,
+      FlatVectorsWriter rawVectorDelegate,
+      Lucene104ScalarQuantizedVectorScorer vectorsScorer,
+      int numMergeWorkers,
+      TaskExecutor mergeExec)
+      throws IOException {
     super(vectorsScorer);
+    this.numMergeWorkers = numMergeWorkers;
+    this.mergeExec = mergeExec;
     this.vectorScorer = vectorsScorer;
     this.encoding = encoding;
     this.segmentWriteState = state;
@@ -357,7 +386,9 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       return null;
     }
     final float[] mergedCentroid = new float[fieldInfo.getVectorDimension()];
-    int vectorCount = mergeAndRecalculateCentroids(mergeState, fieldInfo, mergedCentroid);
+    int vectorCount =
+        mergeAndRecalculateCentroids(
+            mergeState, fieldInfo, mergedCentroid, mergeExecutor(mergeState), numMergeWorkers);
     if (segmentWriteState.infoStream.isEnabled(QUANTIZED_VECTOR_COMPONENT)) {
       segmentWriteState.infoStream.message(
           QUANTIZED_VECTOR_COMPONENT, "Vectors' count:" + vectorCount);
@@ -369,12 +400,25 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
             && fieldInfo.getVectorEncoding().isFloatingPoint()
             && needsMergeScorer.test(vectorCount);
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
+    ParallelMergeQuantizer parallelQuantizer =
+        parallelMergeQuantizer(fieldInfo, mergeState, vectorCount);
     DocsWithFieldSet docsWithField;
     MergeScorerData mergeScorerData = null;
     if (prepareQueryData) {
       docsWithField = new DocsWithFieldSet();
       mergeScorerData =
-          writeVectorAndQueryData(fieldInfo, mergeState, mergedCentroid, docsWithField);
+          writeVectorAndQueryData(
+              fieldInfo, mergeState, mergedCentroid, docsWithField, parallelQuantizer);
+    } else if (parallelQuantizer != null) {
+      docsWithField = new DocsWithFieldSet();
+      parallelQuantizer.writeRecords(
+          vectorData,
+          null,
+          new OptimizedScalarQuantizer(fieldInfo.getVectorSimilarityFunction()),
+          encoding,
+          mergedCentroid,
+          docsWithField,
+          QUANTIZE_BLOCK_SIZE);
     } else {
       QuantizedByteVectorValues quantizedVectorValues =
           mergedQuantizedVectorValues(fieldInfo, mergeState, mergedCentroid);
@@ -422,40 +466,38 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
    * @param docsWithField filled with the documents that were written
    */
   private MergeScorerData writeVectorAndQueryData(
-      FieldInfo fieldInfo, MergeState mergeState, float[] centroid, DocsWithFieldSet docsWithField)
+      FieldInfo fieldInfo,
+      MergeState mergeState,
+      float[] centroid,
+      DocsWithFieldSet docsWithField,
+      ParallelMergeQuantizer parallelQuantizer)
       throws IOException {
     assert encoding.isAsymmetric();
     OptimizedScalarQuantizer quantizer =
         new OptimizedScalarQuantizer(fieldInfo.getVectorSimilarityFunction());
-    FloatVectorValues vectorValues = mergedFloatVectorValues(fieldInfo, mergeState);
-    int discretizedDims = encoding.getDiscreteDimensions(vectorValues.dimension());
-    byte[] indexQuantized = new byte[discretizedDims];
-    byte[] queryQuantized = new byte[discretizedDims];
-    byte[] indexPacked =
-        switch (encoding) {
-          case UNSIGNED_BYTE, SEVEN_BIT -> indexQuantized;
-          case PACKED_NIBBLE, SINGLE_BIT_QUERY_NIBBLE, DIBIT_QUERY_NIBBLE ->
-              new byte[encoding.getDocPackedLength(discretizedDims)];
-        };
-    byte[] queryPacked = new byte[encoding.getQueryPackedLength(discretizedDims)];
-    byte[] bits = new byte[] {encoding.getBits(), encoding.getQueryBits()};
-    byte[][] destinations = new byte[][] {indexQuantized, queryQuantized};
     String queryDataName = null;
     try (IndexOutput queryData =
         segmentWriteState.directory.createTempOutput(
             segmentWriteState.segmentInfo.name, "queries", queryDataContext())) {
       queryDataName = queryData.getName();
-      KnnVectorValues.DocIndexIterator iterator = vectorValues.iterator();
-      for (int docV = iterator.nextDoc(); docV != NO_MORE_DOCS; docV = iterator.nextDoc()) {
-        OptimizedScalarQuantizer.QuantizationResult[] corrections =
-            quantizer.multiScalarQuantize(
-                vectorValues.vectorValue(iterator.index()), destinations, bits, centroid);
-        // the index side, packed as QuantizedFloatVectorValues packs it
-        packIndexRecord(encoding, indexQuantized, indexPacked);
-        vectorData.writeBytes(indexPacked, indexPacked.length);
-        writeCorrections(vectorData, corrections[0]);
-        writeQueryRecord(queryData, queryQuantized, queryPacked, corrections[1]);
-        docsWithField.add(docV);
+      if (parallelQuantizer != null) {
+        parallelQuantizer.writeRecords(
+            vectorData,
+            queryData,
+            quantizer,
+            encoding,
+            centroid,
+            docsWithField,
+            QUANTIZE_BLOCK_SIZE);
+      } else {
+        writeVectorAndQueryRecords(
+            vectorData,
+            queryData,
+            mergedFloatVectorValues(fieldInfo, mergeState),
+            quantizer,
+            encoding,
+            centroid,
+            docsWithField);
       }
       CodecUtil.writeFooter(queryData);
     } catch (Throwable t) {
@@ -527,6 +569,323 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     }
   }
 
+  /**
+   * Vectors in one block of a parallel merge quantization. Most of the memory this costs is the
+   * encoded records of one block: 5.5 MB at 1024 dimensions with 1-bit codes and 4-bit queries.
+   */
+  static final int QUANTIZE_BLOCK_SIZE = 8192;
+
+  /**
+   * The executor that computes the centroid and quantizes a merged field in parallel, or null to do
+   * both on the merging thread. As for the HNSW graph merge, this is the format's executor if it
+   * has one and the merge's own otherwise, and only with more than one merge worker.
+   */
+  private TaskExecutor mergeExecutor(MergeState mergeState) {
+    if (numMergeWorkers <= 1) {
+      return null;
+    }
+    if (mergeExec != null) {
+      return mergeExec;
+    }
+    return mergeState.intraMergeTaskExecutor == null
+        ? null
+        : new TaskExecutor(mergeState.intraMergeTaskExecutor);
+  }
+
+  /**
+   * Returns the parallel quantizer of a merged field, or null to quantize it serially. A field of
+   * one block or less is quantized on the merging thread.
+   */
+  private ParallelMergeQuantizer parallelMergeQuantizer(
+      FieldInfo fieldInfo, MergeState mergeState, int vectorCount) throws IOException {
+    TaskExecutor executor = mergeExecutor(mergeState);
+    if (executor == null || vectorCount <= QUANTIZE_BLOCK_SIZE) {
+      return null;
+    }
+    // the segments that MergedVectorValues merges, viewed as mergedFloatVectorValues views them
+    List<FloatVectorValues> segments = new ArrayList<>();
+    List<MergeState.DocMap> docMaps = new ArrayList<>();
+    for (int i = 0; i < mergeState.knnVectorsReaders.length; i++) {
+      KnnVectorsReader reader = mergeState.knnVectorsReaders[i];
+      if (reader == null
+          || MergedVectorValues.hasVectorValues(mergeState.fieldInfos[i], fieldInfo.name)
+              == false) {
+        continue;
+      }
+      FloatVectorValues values = floatingPointVectorValues(reader, fieldInfo);
+      if (values != null) {
+        segments.add(
+            fieldInfo.getVectorSimilarityFunction() == COSINE
+                ? new NormalizedFloatVectorValues(values)
+                : values);
+        docMaps.add(mergeState.docMaps[i]);
+      }
+    }
+    return segments.isEmpty()
+        ? null
+        : ParallelMergeQuantizer.create(
+            executor, numMergeWorkers, segments, docMaps, mergeState.needsIndexSort);
+  }
+
+  /**
+   * Quantizes a vector and writes its records: the index-side record and, if there is a query side,
+   * the query-side record. The serial and the parallel paths both use it, so they write the same
+   * bytes. Not thread-safe.
+   */
+  static final class RecordEncoder {
+    private final OptimizedScalarQuantizer quantizer;
+    private final ScalarEncoding encoding;
+    private final float[] centroid;
+    private final byte[] indexQuantized;
+    private final byte[] indexPacked;
+    private final byte[] queryQuantized;
+    private final byte[] queryPacked;
+    private final byte[][] destinations;
+    private final byte[] bits;
+
+    RecordEncoder(
+        OptimizedScalarQuantizer quantizer, ScalarEncoding encoding, float[] centroid, int dim) {
+      this.quantizer = quantizer;
+      this.encoding = encoding;
+      this.centroid = centroid;
+      int discretizedDims = encoding.getDiscreteDimensions(dim);
+      indexQuantized = new byte[discretizedDims];
+      indexPacked =
+          switch (encoding) {
+            case UNSIGNED_BYTE, SEVEN_BIT -> indexQuantized;
+            case PACKED_NIBBLE, SINGLE_BIT_QUERY_NIBBLE, DIBIT_QUERY_NIBBLE ->
+                new byte[encoding.getDocPackedLength(discretizedDims)];
+          };
+      queryQuantized = new byte[discretizedDims];
+      queryPacked = new byte[encoding.getQueryPackedLength(discretizedDims)];
+      destinations = new byte[][] {indexQuantized, queryQuantized};
+      bits = new byte[] {encoding.getBits(), encoding.getQueryBits()};
+    }
+
+    int indexRecordLength() {
+      return indexPacked.length + CORRECTIONS_LENGTH;
+    }
+
+    int queryRecordLength() {
+      return queryPacked.length + CORRECTIONS_LENGTH;
+    }
+
+    /**
+     * Writes the records of {@code vector}, which the quantizer centers in place. Writes no query
+     * record if {@code query} is null.
+     */
+    void encode(float[] vector, DataOutput index, DataOutput query) throws IOException {
+      OptimizedScalarQuantizer.QuantizationResult indexCorrections;
+      if (query == null) {
+        indexCorrections =
+            quantizer.scalarQuantize(vector, indexQuantized, encoding.getBits(), centroid);
+      } else {
+        // centers the vector once and quantizes it at both bit widths
+        OptimizedScalarQuantizer.QuantizationResult[] corrections =
+            quantizer.multiScalarQuantize(vector, destinations, bits, centroid);
+        indexCorrections = corrections[0];
+        writeQueryRecord(query, queryQuantized, queryPacked, corrections[1]);
+      }
+      // the index side, packed as QuantizedFloatVectorValues packs it
+      packIndexRecord(encoding, indexQuantized, indexPacked);
+      index.writeBytes(indexPacked, indexPacked.length);
+      writeCorrections(index, indexCorrections);
+    }
+  }
+
+  /** Bytes of the corrective terms that follow each record. */
+  private static final int CORRECTIONS_LENGTH = 3 * Float.BYTES + Integer.BYTES;
+
+  /**
+   * Writes the index-side record of each vector to {@code vectorData} and its query-side record to
+   * {@code queryData}.
+   */
+  static void writeVectorAndQueryRecords(
+      IndexOutput vectorData,
+      IndexOutput queryData,
+      FloatVectorValues values,
+      OptimizedScalarQuantizer quantizer,
+      ScalarEncoding encoding,
+      float[] centroid,
+      DocsWithFieldSet docsWithField)
+      throws IOException {
+    RecordEncoder encoder = new RecordEncoder(quantizer, encoding, centroid, values.dimension());
+    KnnVectorValues.DocIndexIterator iterator = values.iterator();
+    for (int docV = iterator.nextDoc(); docV != NO_MORE_DOCS; docV = iterator.nextDoc()) {
+      encoder.encode(values.vectorValue(iterator.index()), vectorData, queryData);
+      docsWithField.add(docV);
+    }
+  }
+
+  /**
+   * Quantizes the vectors of a merged field on several workers, and writes the same records as the
+   * serial path. The merged view of the vectors can only be read forward by one thread, so the
+   * workers read the source segments instead, each through its own copies.
+   *
+   * <p>For each block, the merging thread walks the merged documents and records the segment and
+   * ordinal of each vector, the workers each read, quantize and encode a range of the block, and
+   * the merging thread writes the block with one call per file. Writes stay on the merging thread,
+   * because {@code OneMergeProgress#pauseNanos} expects the merge's rate limiter to pause that
+   * thread only.
+   */
+  static final class ParallelMergeQuantizer {
+    private final TaskExecutor executor;
+    private final DocIDMerger<SegmentVectors> merger;
+    private final int dim;
+    // [worker][segment]
+    private final FloatVectorValues[][] copies;
+    private boolean exhausted;
+
+    private ParallelMergeQuantizer(
+        TaskExecutor executor,
+        DocIDMerger<SegmentVectors> merger,
+        int dim,
+        FloatVectorValues[][] copies) {
+      this.executor = executor;
+      this.merger = merger;
+      this.dim = dim;
+      this.copies = copies;
+    }
+
+    /**
+     * Returns a quantizer that reads {@code segmentVectors}, whose documents {@code docMaps} map
+     * into the merged segment, on {@code workers} tasks.
+     */
+    static ParallelMergeQuantizer create(
+        TaskExecutor executor,
+        int workers,
+        List<FloatVectorValues> segmentVectors,
+        List<MergeState.DocMap> docMaps,
+        boolean indexIsSorted)
+        throws IOException {
+      List<SegmentVectors> segments = new ArrayList<>(segmentVectors.size());
+      FloatVectorValues[][] copies = new FloatVectorValues[workers][segmentVectors.size()];
+      for (int s = 0; s < segmentVectors.size(); s++) {
+        FloatVectorValues values = segmentVectors.get(s);
+        segments.add(new SegmentVectors(docMaps.get(s), s, values));
+        for (int w = 0; w < workers; w++) {
+          copies[w][s] = values.copy();
+        }
+      }
+      return new ParallelMergeQuantizer(
+          executor,
+          DocIDMerger.of(segments, indexIsSorted),
+          segmentVectors.get(0).dimension(),
+          copies);
+    }
+
+    /**
+     * Writes the index-side records to {@code vectorData} and, if {@code queryData} is not null,
+     * the query-side records to it, in blocks of {@code blockSize} vectors.
+     */
+    void writeRecords(
+        IndexOutput vectorData,
+        IndexOutput queryData,
+        OptimizedScalarQuantizer quantizer,
+        ScalarEncoding encoding,
+        float[] centroid,
+        DocsWithFieldSet docsWithField,
+        int blockSize)
+        throws IOException {
+      int workers = copies.length;
+      RecordEncoder[] encoders = new RecordEncoder[workers];
+      for (int w = 0; w < workers; w++) {
+        encoders[w] = new RecordEncoder(quantizer, encoding, centroid, dim);
+      }
+      float[][] vectors = new float[workers][dim];
+      int indexLength = encoders[0].indexRecordLength();
+      int queryLength = queryData == null ? 0 : encoders[0].queryRecordLength();
+      byte[] indexRecords = new byte[blockSize * indexLength];
+      byte[] queryRecords = new byte[blockSize * queryLength];
+      Block block = new Block(blockSize);
+      List<Callable<Void>> tasks = new ArrayList<>(workers);
+      for (fill(block); block.count > 0; fill(block)) {
+        tasks.clear();
+        int rangeSize = (block.count + workers - 1) / workers;
+        for (int w = 0; w * rangeSize < block.count; w++) {
+          int worker = w;
+          int from = w * rangeSize;
+          int to = Math.min(block.count, from + rangeSize);
+          tasks.add(
+              () -> {
+                DataOutput index =
+                    new ByteArrayDataOutput(
+                        indexRecords, from * indexLength, (to - from) * indexLength);
+                DataOutput query =
+                    queryData == null
+                        ? null
+                        : new ByteArrayDataOutput(
+                            queryRecords, from * queryLength, (to - from) * queryLength);
+                float[] vector = vectors[worker];
+                for (int i = from; i < to; i++) {
+                  // a copy, because the quantizer centers its input in place
+                  float[] v = copies[worker][block.segments[i]].vectorValue(block.ords[i]);
+                  System.arraycopy(v, 0, vector, 0, dim);
+                  encoders[worker].encode(vector, index, query);
+                }
+                return null;
+              });
+        }
+        executor.invokeAll(tasks);
+        vectorData.writeBytes(indexRecords, block.count * indexLength);
+        if (queryData != null) {
+          queryData.writeBytes(queryRecords, block.count * queryLength);
+        }
+        for (int i = 0; i < block.count; i++) {
+          docsWithField.add(block.docs[i]);
+        }
+      }
+    }
+
+    /** Fills {@code block} with the next merged documents; it has none when all were walked. */
+    private void fill(Block block) throws IOException {
+      block.count = 0;
+      while (exhausted == false && block.count < block.docs.length) {
+        SegmentVectors sub = merger.next();
+        if (sub == null) {
+          // DocIDMerger must not be called again once exhausted
+          exhausted = true;
+        } else {
+          block.docs[block.count] = sub.mappedDocID;
+          block.segments[block.count] = sub.segment;
+          block.ords[block.count] = sub.iterator.index();
+          block.count++;
+        }
+      }
+    }
+  }
+
+  /** One source segment's vectors, as {@link DocIDMerger} merges them. */
+  private static final class SegmentVectors extends DocIDMerger.Sub {
+    final int segment;
+    final KnnVectorValues.DocIndexIterator iterator;
+
+    SegmentVectors(MergeState.DocMap docMap, int segment, FloatVectorValues values) {
+      super(docMap);
+      this.segment = segment;
+      this.iterator = values.iterator();
+    }
+
+    @Override
+    public int nextDoc() throws IOException {
+      return iterator.nextDoc();
+    }
+  }
+
+  /** The merged documents of a block, with the segment and the ordinal of each one's vector. */
+  private static final class Block {
+    final int[] docs;
+    final int[] segments;
+    final int[] ords;
+    int count;
+
+    Block(int size) {
+      docs = new int[size];
+      segments = new int[size];
+      ords = new int[size];
+    }
+  }
+
   static DocsWithFieldSet writeVectorData(
       IndexOutput output, QuantizedByteVectorValues quantizedByteVectorValues) throws IOException {
     DocsWithFieldSet docsWithField = new DocsWithFieldSet();
@@ -590,8 +949,18 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     };
   }
 
+  /**
+   * Computes the centroid of the merged vectors into {@code mergedCentroid} and returns their
+   * count. Recomputing it reads every vector, on up to {@code workers} tasks when {@code executor}
+   * is not null.
+   */
   static int mergeAndRecalculateCentroids(
-      MergeState mergeState, FieldInfo fieldInfo, float[] mergedCentroid) throws IOException {
+      MergeState mergeState,
+      FieldInfo fieldInfo,
+      float[] mergedCentroid,
+      TaskExecutor executor,
+      int workers)
+      throws IOException {
     boolean recalculate = false;
     int totalVectorCount = 0;
     for (int i = 0; i < mergeState.knnVectorsReaders.length; i++) {
@@ -622,7 +991,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     if (totalVectorCount == 0) {
       return 0;
     } else if (recalculate) {
-      return calculateCentroid(mergeState, fieldInfo, mergedCentroid);
+      return calculateCentroid(mergeState, fieldInfo, mergedCentroid, executor, workers);
     } else {
       for (int j = 0; j < mergedCentroid.length; j++) {
         mergedCentroid[j] = mergedCentroid[j] / totalVectorCount;
@@ -634,46 +1003,93 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     }
   }
 
-  static int calculateCentroid(MergeState mergeState, FieldInfo fieldInfo, float[] centroid)
+  /**
+   * Live vectors that one task sums when a merge recomputes the centroid. Fixed, so that the
+   * centroid does not depend on the number of workers.
+   */
+  static final int CENTROID_CHUNK_SIZE = 1024;
+
+  static int calculateCentroid(
+      MergeState mergeState,
+      FieldInfo fieldInfo,
+      float[] centroid,
+      TaskExecutor executor,
+      int workers)
       throws IOException {
     assert fieldInfo.getVectorEncoding().isFloatingPoint();
-    // clear out the centroid
-    Arrays.fill(centroid, 0);
+    double[] sums = new double[centroid.length];
     int count = 0;
     for (int i = 0; i < mergeState.knnVectorsReaders.length; i++) {
-      KnnVectorsReader knnVectorsReader = mergeState.knnVectorsReaders[i];
-      if (knnVectorsReader == null) continue;
-      count += accumulateCentroid(knnVectorsReader, fieldInfo, mergeState.liveDocs[i], centroid);
-    }
-    if (count == 0) {
-      return count;
+      KnnVectorsReader reader = mergeState.knnVectorsReaders[i];
+      FloatVectorValues values =
+          reader == null ? null : floatingPointVectorValues(reader, fieldInfo);
+      if (values != null) {
+        count += sumVectors(values, mergeState.liveDocs[i], sums, executor, workers);
+      }
     }
     for (int i = 0; i < centroid.length; i++) {
-      centroid[i] /= count;
+      centroid[i] = count == 0 ? 0 : (float) (sums[i] / count);
     }
-    if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
+    if (count > 0 && fieldInfo.getVectorSimilarityFunction() == COSINE) {
       VectorUtil.l2normalize(centroid);
     }
     return count;
   }
 
-  private static int accumulateCentroid(
-      KnnVectorsReader reader, FieldInfo fieldInfo, Bits liveDocs, float[] centroid)
+  /**
+   * Adds the live vectors of {@code values} to {@code sums} and returns how many there are. The
+   * merging thread splits them in chunks of {@link #CENTROID_CHUNK_SIZE}, up to {@code workers}
+   * tasks read and sum one chunk each, and the merging thread adds the chunk sums in order. So the
+   * result does not depend on the number of workers.
+   */
+  static int sumVectors(
+      FloatVectorValues values, Bits liveDocs, double[] sums, TaskExecutor executor, int workers)
       throws IOException {
-    FloatVectorValues vectorValues = floatingPointVectorValues(reader, fieldInfo);
-    if (vectorValues == null) {
-      return 0;
+    int tasks =
+        executor == null
+            ? 1
+            : Math.clamp(Math.ceilDiv(values.size(), CENTROID_CHUNK_SIZE), 1, workers);
+    int[][] ords = new int[tasks][CENTROID_CHUNK_SIZE];
+    int[] sizes = new int[tasks];
+    double[][] chunkSums = new double[tasks][sums.length];
+    List<Callable<Void>> calls = new ArrayList<>(tasks);
+    for (int t = 0; t < tasks; t++) {
+      int task = t;
+      // one task runs on the merging thread, so it reads the values themselves
+      FloatVectorValues vectors = tasks == 1 ? values : values.copy();
+      calls.add(
+          () -> {
+            Arrays.fill(chunkSums[task], 0);
+            for (int i = 0; i < sizes[task]; i++) {
+              float[] vector = vectors.vectorValue(ords[task][i]);
+              for (int j = 0; j < vector.length; j++) {
+                chunkSums[task][j] += vector[j];
+              }
+            }
+            return null;
+          });
     }
+    TaskExecutor taskExecutor = executor == null ? new TaskExecutor(Runnable::run) : executor;
     int count = 0;
-    KnnVectorValues.DocIndexIterator iterator = vectorValues.iterator();
-    for (int doc = iterator.nextDoc(); doc != NO_MORE_DOCS; doc = iterator.nextDoc()) {
-      if (liveDocs != null && liveDocs.get(doc) == false) {
-        continue;
+    KnnVectorValues.DocIndexIterator iterator = values.iterator();
+    int doc = iterator.nextDoc();
+    while (doc != NO_MORE_DOCS) {
+      int chunks = 0;
+      for (; chunks < tasks && doc != NO_MORE_DOCS; chunks++) {
+        int size = 0;
+        for (; size < CENTROID_CHUNK_SIZE && doc != NO_MORE_DOCS; doc = iterator.nextDoc()) {
+          if (liveDocs == null || liveDocs.get(doc)) {
+            ords[chunks][size++] = iterator.index();
+          }
+        }
+        sizes[chunks] = size;
       }
-      count++;
-      float[] vector = vectorValues.vectorValue(iterator.index());
-      for (int j = 0; j < vector.length; j++) {
-        centroid[j] += vector[j];
+      taskExecutor.invokeAll(calls.subList(0, chunks));
+      for (int t = 0; t < chunks; t++) {
+        for (int j = 0; j < sums.length; j++) {
+          sums[j] += chunkSums[t][j];
+        }
+        count += sizes[t];
       }
     }
     return count;

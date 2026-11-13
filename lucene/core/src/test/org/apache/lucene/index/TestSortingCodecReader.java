@@ -25,6 +25,10 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
@@ -32,6 +36,8 @@ import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.KnnByteVectorField;
+import org.apache.lucene.document.KnnFloat16VectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
@@ -53,8 +59,10 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.hnsw.HnswGraph;
 
 public class TestSortingCodecReader extends LuceneTestCase {
@@ -143,6 +151,71 @@ public class TestSortingCodecReader extends LuceneTestCase {
     assertEquals(18, values.longValue());
     assertNotNull(leaf.getMetaData().sort());
     IOUtils.close(r, w, dir, tmpDir);
+  }
+
+  // merge workers read a sorted segment's vectors in parallel, each through its own copy, while the
+  // merging thread reads the original
+  public void testVectorValuesCopiesReadInParallel() throws Exception {
+    int numDocs = atLeast(1000);
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter w =
+          new IndexWriter(dir, new IndexWriterConfig().setCodec(TestUtil.getDefaultCodec()))) {
+        for (int i = 0; i < numDocs; i++) {
+          Document doc = new Document();
+          doc.add(new NumericDocValuesField("foo", random().nextInt()));
+          doc.add(new KnnFloatVectorField("float", new float[] {i, 1}));
+          doc.add(new KnnByteVectorField("byte", new byte[] {(byte) i, (byte) (i >> 8)}));
+          short[] float16 = {Float.floatToFloat16(i), Float.floatToFloat16(1)};
+          doc.add(
+              new KnnFloat16VectorField("float16", float16, VectorSimilarityFunction.EUCLIDEAN));
+          w.addDocument(doc);
+        }
+        w.forceMerge(1);
+      }
+      ExecutorService executor = Executors.newFixedThreadPool(4, new NamedThreadFactory("copy"));
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        CodecReader sorted =
+            SortingCodecReader.wrap(
+                SlowCodecReaderWrapper.wrap(getOnlyLeafReader(reader)),
+                new Sort(new SortField("foo", SortField.Type.INT)));
+        KnnVectorsReader vectors = sorted.getVectorReader();
+        for (KnnVectorValues values :
+            List.of(
+                vectors.getFloatVectorValues("float"),
+                vectors.getByteVectorValues("byte"),
+                vectors.getFloat16VectorValues("float16"))) {
+          Object[] expected = readAll(values);
+          List<Future<Object[]>> workers = new ArrayList<>();
+          for (int t = 0; t < 4; t++) {
+            KnnVectorValues copy = values.copy();
+            workers.add(executor.submit(() -> readAll(copy)));
+          }
+          assertArrayEquals(expected, readAll(values));
+          for (Future<Object[]> worker : workers) {
+            assertArrayEquals(expected, worker.get());
+          }
+        }
+      } finally {
+        executor.shutdown();
+        assertTrue(executor.awaitTermination(1, TimeUnit.MINUTES));
+      }
+    }
+  }
+
+  /** The vectors in doc order. */
+  private static Object[] readAll(KnnVectorValues values) throws IOException {
+    Object[] vectors = new Object[values.size()];
+    KnnVectorValues.DocIndexIterator it = values.iterator();
+    for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
+      vectors[doc] =
+          switch (values) {
+            case FloatVectorValues f -> f.vectorValue(it.index()).clone();
+            case ByteVectorValues b -> b.vectorValue(it.index()).clone();
+            case Float16VectorValues h -> h.vectorValue(it.index()).clone();
+            default -> throw new AssertionError(values);
+          };
+    }
+    return vectors;
   }
 
   public void testSortOnAddIndicesRandom() throws IOException {
