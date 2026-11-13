@@ -11,7 +11,9 @@ API Changes
 
 New Features
 ---------------------
-(No changes)
+* GITHUB#16957: Add Albanian analyzer (org.apache.lucene.analysis.sq): a normalizer that folds ë/ç and
+  in-word apostrophes, a light suffix-stripping stemmer covering standard and Gheg inflection,
+  and a stop word list. (Visar Uruqi)
 
 Improvements
 ---------------------
