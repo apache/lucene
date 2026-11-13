@@ -30,6 +30,7 @@ import java.util.function.Predicate;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
+import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorScorer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.VectorUtil;
@@ -111,6 +112,9 @@ public abstract class VectorizationProvider {
 
   /** Returns a FlatVectorsScorer that supports the Lucene99 format. */
   public abstract FlatVectorsScorer getLucene99ScalarQuantizedVectorsScorer();
+
+  /** Returns a scorer that supports the Lucene104 scalar quantized format. */
+  public abstract Lucene104ScalarQuantizedVectorScorer getLucene104ScalarQuantizedVectorsScorer();
 
   /** Create a new {@link PostingDecodingUtil} for the given {@link IndexInput}. */
   public abstract PostingDecodingUtil newPostingDecodingUtil(IndexInput input) throws IOException;
