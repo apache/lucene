@@ -37,6 +37,7 @@ import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
@@ -209,6 +210,16 @@ public class AssertingLeafReader extends FilterLeafReader {
     public TermsEnum intersect(CompiledAutomaton automaton, BytesRef bytes) throws IOException {
       assertThread("Terms", creationThread);
       TermsEnum termsEnum = in.intersect(automaton, bytes);
+      assert termsEnum != null;
+      assert bytes == null || bytes.isValid();
+      return new AssertingTermsEnum(termsEnum, hasFreqs());
+    }
+
+    @Override
+    public TermsEnum intersect(
+        CompiledAutomaton automaton, BytesRef bytes, QueryTimeout queryTimeout) throws IOException {
+      assertThread("Terms", creationThread);
+      TermsEnum termsEnum = in.intersect(automaton, bytes, queryTimeout);
       assert termsEnum != null;
       assert bytes == null || bytes.isValid();
       return new AssertingTermsEnum(termsEnum, hasFreqs());

@@ -20,6 +20,7 @@ import java.io.IOException;
 import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.store.IndexInput;
@@ -68,6 +69,11 @@ final class IntersectTermsEnum extends BaseTermsEnum {
   private final SegmentTermsEnum.OutputAccumulator outputAccumulator =
       new SegmentTermsEnum.OutputAccumulator();
 
+  // A single next() may scan many terms, so the timeout is checked every 512 scan steps.
+  private final QueryTimeout queryTimeout;
+  private static final int NUM_SCAN_STEPS_PER_TIMEOUT_CHECK_MASK = (1 << 9) - 1;
+  private int scanSteps;
+
   // TODO: in some cases we can filter by length?  eg
   // regexp foo*bar must be at least length 6 bytes
   public IntersectTermsEnum(
@@ -75,9 +81,11 @@ final class IntersectTermsEnum extends BaseTermsEnum {
       TransitionAccessor automaton,
       ByteRunnable runAutomaton,
       BytesRef commonSuffix,
-      BytesRef startTerm)
+      BytesRef startTerm,
+      QueryTimeout queryTimeout)
       throws IOException {
     this.fr = fr;
+    this.queryTimeout = queryTimeout;
 
     assert automaton != null;
     assert runAutomaton != null;
@@ -388,6 +396,10 @@ final class IntersectTermsEnum extends BaseTermsEnum {
 
     nextTerm:
     while (true) {
+      if (queryTimeout != null && (++scanSteps & NUM_SCAN_STEPS_PER_TIMEOUT_CHECK_MASK) == 0) {
+        queryTimeout.throwIfShouldExit();
+      }
+
       assert currentFrame.transition == currentTransition;
 
       int state;

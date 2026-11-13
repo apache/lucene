@@ -20,6 +20,7 @@ import static com.carrotsearch.randomizedtesting.RandomizedTest.atMost;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Locale;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -40,11 +41,15 @@ import org.apache.lucene.search.PrefixQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.AssertingDirectoryReader;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOFunction;
 import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.TestVectorUtil;
+import org.apache.lucene.util.automaton.CompiledAutomaton;
+import org.apache.lucene.util.automaton.RegExp;
 import org.hamcrest.Matchers;
 
 /**
@@ -285,6 +290,69 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
     searcher.search(query, 10);
     reader.close();
     directory.close();
+  }
+
+  /** A match-nothing leading wildcard scans every term in one next() call; it must be stoppable. */
+  public void testExitableTermsIntersectChecksTimeoutDuringScan() throws IOException {
+    final int numTerms = 20_000;
+    try (Directory directory = newDirectory()) {
+      IndexWriterConfig iwc =
+          newIndexWriterConfig()
+              .setCodec(TestUtil.alwaysPostingsFormat(TestUtil.getDefaultPostingsFormat()));
+      try (IndexWriter writer = new IndexWriter(directory, iwc)) {
+        for (int i = 0; i < numTerms; i++) {
+          Document doc = new Document();
+          doc.add(new StringField("f", String.format(Locale.ROOT, "%010d", i), Field.Store.NO));
+          writer.addDocument(doc);
+        }
+        writer.forceMerge(1);
+      }
+      CompiledAutomaton matchNothing = new CompiledAutomaton(new RegExp(".*q999").toAutomaton());
+      DirectoryReader reader = DirectoryReader.open(directory);
+      if (random().nextBoolean()) {
+        reader = new AssertingDirectoryReader(reader);
+      }
+      try {
+        // Poll 1 is in the ExitableTermsEnum constructor; polls 2 and 3 come from inside next().
+        int[] polls = new int[1];
+        QueryTimeout exitOnThirdPoll = () -> ++polls[0] >= 3;
+        TermsEnum te =
+            getOnlyLeafReader(new ExitableDirectoryReader(reader, exitOnThirdPoll))
+                .terms("f")
+                .intersect(matchNothing, null);
+        expectThrows(ExitingReaderException.class, te::next);
+        assertEquals(3, polls[0]);
+
+        CountingQueryTimeout neverExit = new CountingQueryTimeout();
+        te =
+            getOnlyLeafReader(new ExitableDirectoryReader(reader, neverExit))
+                .terms("f")
+                .intersect(matchNothing, null);
+        assertNull(te.next());
+        assertTrue(
+            "polls=" + neverExit.getShouldExitCallCount(),
+            neverExit.getShouldExitCallCount() > numTerms / 1024);
+
+        class CustomException extends RuntimeException {}
+        QueryTimeout custom =
+            new QueryTimeout() {
+              @Override
+              public boolean shouldExit() {
+                return true;
+              }
+
+              @Override
+              public void throwIfShouldExit() {
+                throw new CustomException();
+              }
+            };
+        TermsEnum customTe =
+            getOnlyLeafReader(reader).terms("f").intersect(matchNothing, null, custom);
+        expectThrows(CustomException.class, customTe::next);
+      } finally {
+        reader.close();
+      }
+    }
   }
 
   public void testExitableTermsMinAndMax() throws IOException {
