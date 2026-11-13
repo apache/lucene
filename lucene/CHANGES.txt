@@ -228,6 +228,10 @@ API Changes
 
 New Features
 ---------------------
+* GITHUB#16571: A merge can write more than one segment. A merge policy returns document ranges
+  from MergePolicy.OneMerge#getDocRangePartitions and the merge writes one output segment per
+  range. (Jim Ferenczi)
+
 * GITHUB#16723: Support SIMD Faiss library variants with runtime fallback. (Abhinav Chinnala)
 
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
@@ -368,6 +372,9 @@ Bug Fixes
 ---------------------
 * GITHUB#16983: UnifiedHighlighter.Builder#withFlags is no longer ignored when building the
   highlighter. (Christoph Büscher)
+
+* GITHUB#17000: Fix ramBytesUsed of the hppc *ObjectHashMap classes to measure values rather than
+  cursors. (Chris Parrinello)
 
 * GITHUB#16867: Apply buffered soft-update/delete terms before the global delete buffer reaches the 2GB
   addressing limit of its ByteBlockPool, and stall indexing if the limit is hit during a full flush.
