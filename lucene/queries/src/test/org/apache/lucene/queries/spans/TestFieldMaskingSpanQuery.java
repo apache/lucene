@@ -18,6 +18,7 @@ package org.apache.lucene.queries.spans;
 
 import static org.apache.lucene.queries.spans.SpanTestUtil.assertFinished;
 import static org.apache.lucene.queries.spans.SpanTestUtil.assertNext;
+import static org.hamcrest.Matchers.greaterThan;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -28,7 +29,9 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
+import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.similarities.TFIDFSimilarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
@@ -245,6 +248,28 @@ public class TestFieldMaskingSpanQuery extends LuceneTestCase {
     check(q, new int[] {0, 2});
     q = new SpanNearQuery(new SpanQuery[] {new FieldMaskingSpanQuery(q1, "last"), q2}, -1, false);
     check(q, new int[] {0, 2});
+  }
+
+  public void testMaskingFieldNotIndexed() throws Exception {
+    assertNull(searcher.fieldStats("missing"));
+    SpanQuery q1 =
+        new FieldMaskingSpanQuery(new SpanTermQuery(new Term("first", "james")), "missing");
+    SpanQuery q2 =
+        new FieldMaskingSpanQuery(new SpanTermQuery(new Term("last", "jones")), "missing");
+
+    // SpanNearQuery only matches in segments that index its field
+    check(new SpanNearQuery(new SpanQuery[] {q1, q2}, -1, false), new int[] {});
+
+    SpanQuery q3 =
+        new FieldMaskingSpanQuery(new SpanTermQuery(new Term("first", "bob")), "missing");
+    SpanQuery or = new SpanOrQuery(q1, q3);
+    check(or, new int[] {0, 1, 2, 3});
+
+    TopDocs topDocs = searcher.search(or, 10);
+    assertEquals(4, topDocs.totalHits.value());
+    for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
+      assertThat(scoreDoc.score, greaterThan(0f));
+    }
   }
 
   public void testSimple2() throws Exception {

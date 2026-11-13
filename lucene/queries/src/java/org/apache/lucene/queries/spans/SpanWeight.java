@@ -111,12 +111,38 @@ public abstract class SpanWeight extends Weight {
             searcher.termStats(entry.getKey(), ts.docFreq(), ts.totalTermFreq());
       }
     }
-    FieldStats fieldStats = searcher.fieldStats(query.getField());
     if (termUpTo > 0) {
-      return similarity.scorer(boost, fieldStats, ArrayUtil.copyOfSubArray(termStats, 0, termUpTo));
+      termStats = ArrayUtil.copyOfSubArray(termStats, 0, termUpTo);
+      FieldStats fieldStats = searcher.fieldStats(query.getField());
+      if (fieldStats == null) {
+        // the query field and term fields can be different (see FieldMaskingSpanQuery);
+        // if the query field has no indexed documents then the stats will be missing
+        // So calculate some stats that are roughly right from the term stats
+        fieldStats = fieldStatsFromTerms(query.getField(), searcher, termStats);
+      }
+      return similarity.scorer(boost, fieldStats, termStats);
     } else {
       return null; // no terms at all exist, we won't use similarity
     }
+  }
+
+  /**
+   * The query field can differ from the fields of its terms (see {@link FieldMaskingSpanQuery}), so
+   * the query field can have no indexed documents when the terms do. In that case, derive pseudo
+   * field statistics from the term statistics.
+   */
+  private static FieldStats fieldStatsFromTerms(
+      String field, IndexSearcher searcher, TermStats[] termStats) {
+    long docCount = 0;
+    long sumDocFreq = 0;
+    long sumTotalTermFreq = 0;
+    for (TermStats ts : termStats) {
+      docCount = Math.max(docCount, ts.docFreq());
+      sumDocFreq += ts.docFreq();
+      sumTotalTermFreq += ts.totalTermFreq();
+    }
+    long maxDoc = Math.max(searcher.getIndexReader().maxDoc(), docCount);
+    return new FieldStats(field, maxDoc, docCount, sumTotalTermFreq, sumDocFreq);
   }
 
   /**
