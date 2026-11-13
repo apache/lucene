@@ -1009,15 +1009,9 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           } else {
             final long mul = entry.gcd;
             final long delta = entry.minValue;
-            final LongValues decodedValues =
-                new LongValues() {
-                  @Override
-                  public long get(long index) {
-                    return mul * values.get(index) + delta;
-                  }
-                };
             return new DenseNumericDocValues(maxDoc) {
               private byte[] bulkBytes = new byte[0];
+              private LongValues decodedValues;
 
               @Override
               public long longValue() throws IOException {
@@ -1068,6 +1062,15 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
                       bitSet,
                       offset);
                 } else {
+                  if (decodedValues == null) {
+                    decodedValues =
+                        new LongValues() {
+                          @Override
+                          public long get(long index) {
+                            return mul * values.get(index) + delta;
+                          }
+                        };
+                  }
                   Lucene90DocValuesProducer.rangeIntoBitSet(
                       decodedValues, fromDoc, toDoc, minValue, maxValue, bitSet, offset);
                 }

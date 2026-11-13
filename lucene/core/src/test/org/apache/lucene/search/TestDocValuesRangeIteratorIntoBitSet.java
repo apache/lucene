@@ -1260,6 +1260,100 @@ public class TestDocValuesRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
     }
   }
 
+  public void testGcdEncodingRangeIntoBitSetRandomized() throws Exception {
+    int numDocs = 512 + random().nextInt(10000);
+    for (boolean dense : new boolean[] {true, false}) {
+      for (int valueCount : new int[] {1, 2}) {
+        for (boolean includeExtremes : new boolean[] {false, true}) {
+          doTestGcdEncodingRangeIntoBitSetRandomized(numDocs, dense, valueCount, includeExtremes);
+        }
+      }
+    }
+  }
+
+  private void doTestGcdEncodingRangeIntoBitSetRandomized(
+      int numDocs, boolean dense, int valueCount, boolean includeExtremes) throws Exception {
+    long gcd = random().nextLong(2, 1000);
+    long delta = random().nextLong(-1_000_000_000, 1_000_000_000);
+    long[] extremes = {
+      Long.MIN_VALUE, Long.MIN_VALUE + 1, -1, 0, 1, Long.MAX_VALUE - 1, Long.MAX_VALUE
+    };
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = new IndexWriterConfig().setCodec(new Lucene104Codec());
+      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+        long[][] indexedValues = new long[numDocs][];
+        for (int doc = 0; doc < numDocs; doc++) {
+          Document document = new Document();
+          if (dense || random().nextBoolean()) {
+            indexedValues[doc] = new long[valueCount];
+            for (int i = 0; i < valueCount; i++) {
+              long value = delta + gcd * random().nextInt(10_000);
+              if (includeExtremes && random().nextBoolean()) {
+                value = extremes[random().nextInt(extremes.length)];
+              }
+              indexedValues[doc][i] = value;
+              document.add(SortedNumericDocValuesField.indexedField("sorted_numeric", value));
+              if (i == 0) {
+                document.add(NumericDocValuesField.indexedField("numeric", value));
+              }
+            }
+          }
+          writer.addDocument(document);
+        }
+        writer.forceMerge(1);
+        try (DirectoryReader reader = DirectoryReader.open(writer)) {
+          var leaf = reader.leaves().getFirst().reader();
+          List<long[]> ranges =
+              new ArrayList<long[]>(
+                  List.of(
+                      new long[] {Long.MIN_VALUE, Long.MIN_VALUE},
+                      new long[] {Long.MAX_VALUE, Long.MAX_VALUE},
+                      new long[] {Long.MIN_VALUE, Long.MIN_VALUE + 1},
+                      new long[] {Long.MAX_VALUE - 1, Long.MAX_VALUE},
+                      new long[] {Long.MIN_VALUE, -1},
+                      new long[] {1, Long.MAX_VALUE},
+                      new long[] {Long.MIN_VALUE, Long.MAX_VALUE},
+                      new long[] {-1, 1}));
+          int numQueries = 30 + random().nextInt(20);
+          for (int query = 0; query < numQueries; query++) {
+            long a = delta + random().nextLong(10000 * gcd);
+            long b = a + random().nextInt(10000);
+            ranges.add(new long[] {Math.min(a, b), Math.max(a, b)});
+          }
+          for (long[] range : ranges) {
+            long min = range[0];
+            long max = range[1];
+            int fromDoc = random().nextInt(numDocs - 5);
+            int toDoc = random().nextInt(fromDoc + 1, numDocs);
+            for (String field : new String[] {"numeric", "sorted_numeric"}) {
+              FixedBitSet expected = new FixedBitSet(toDoc - fromDoc);
+              for (int doc = fromDoc; doc < toDoc; doc++) {
+                if (indexedValues[doc] != null) {
+                  int count = field.equals("numeric") ? 1 : indexedValues[doc].length;
+                  for (int i = 0; i < count; i++) {
+                    long value = indexedValues[doc][i];
+                    if (value >= min && value <= max) {
+                      expected.set(doc - fromDoc);
+                    }
+                  }
+                }
+              }
+              FixedBitSet actual = new FixedBitSet(toDoc - fromDoc);
+              if (field.equals("numeric")) {
+                leaf.getNumericDocValues(field)
+                    .rangeIntoBitSet(fromDoc, toDoc, min, max, actual, fromDoc);
+              } else {
+                leaf.getSortedNumericDocValues(field)
+                    .rangeIntoBitSet(fromDoc, toDoc, min, max, actual, fromDoc);
+              }
+              assertEquals(expected, actual);
+            }
+          }
+        }
+      }
+    }
+  }
+
   private static long[] rangeValues(int numDocs, LongUnaryOperator valueFunction) {
     long[] values = new long[numDocs];
     for (int i = 0; i < numDocs; i++) {
