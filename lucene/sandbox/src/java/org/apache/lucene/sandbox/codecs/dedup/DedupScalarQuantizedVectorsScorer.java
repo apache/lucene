@@ -17,7 +17,6 @@
 package org.apache.lucene.sandbox.codecs.dedup;
 
 import java.io.IOException;
-import org.apache.lucene.codecs.hnsw.AsymmetricFlatVectorsScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
 import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorScorer;
 import org.apache.lucene.index.KnnVectorValues;
@@ -37,7 +36,7 @@ import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
  */
 final class DedupScalarQuantizedVectorsScorer extends DedupFlatVectorsScorer {
 
-  private static final AsymmetricFlatVectorsScorer QUANTIZED_SCORER =
+  private static final Lucene104ScalarQuantizedVectorScorer QUANTIZED_SCORER =
       FlatVectorScorerUtil.getLucene104ScalarQuantizedVectorsScorer();
 
   DedupScalarQuantizedVectorsScorer() {

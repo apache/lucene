@@ -21,7 +21,6 @@ import static org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
 import static org.apache.lucene.index.VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT;
 
 import java.io.IOException;
-import org.apache.lucene.codecs.hnsw.AsymmetricFlatVectorsScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -39,7 +38,7 @@ import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncod
  *
  * @lucene.experimental
  */
-public class Lucene104ScalarQuantizedVectorScorer implements AsymmetricFlatVectorsScorer {
+public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
   private final FlatVectorsScorer nonQuantizedDelegate;
 
   public Lucene104ScalarQuantizedVectorScorer(FlatVectorsScorer nonQuantizedDelegate) {
@@ -64,7 +63,7 @@ public class Lucene104ScalarQuantizedVectorScorer implements AsymmetricFlatVecto
     if (vectorValues instanceof QuantizedByteVectorValues qv) {
       FlatVectorsScorer.checkDimensions(target.length, qv.dimension());
       // We make a copy as the quantization process mutates the input
-      return getRandomQuantizedVectorScorer(similarityFunction, qv, ArrayUtil.copyArray(target));
+      return quantizeQueryAndGetVectorScorer(similarityFunction, qv, ArrayUtil.copyArray(target));
     }
     // It is possible to get to this branch during initial indexing and flush
     return nonQuantizedDelegate.getRandomVectorScorer(similarityFunction, vectorValues, target);
@@ -90,17 +89,13 @@ public class Lucene104ScalarQuantizedVectorScorer implements AsymmetricFlatVecto
       for (int i = 0; i < target.length; i++) {
         inflated[i] = Float.float16ToFloat(target[i]);
       }
-      return getRandomQuantizedVectorScorer(similarityFunction, qv, inflated);
+      return quantizeQueryAndGetVectorScorer(similarityFunction, qv, inflated);
     }
     // It is possible to get to this branch during initial indexing and flush
     return nonQuantizedDelegate.getRandomVectorScorer(similarityFunction, vectorValues, target);
   }
 
-  /**
-   * Quantizes {@code query} against the centroid of {@code qv} and returns a scorer over the
-   * quantized vectors. {@code query} is modified in place.
-   */
-  private RandomVectorScorer getRandomQuantizedVectorScorer(
+  private RandomVectorScorer quantizeQueryAndGetVectorScorer(
       VectorSimilarityFunction similarityFunction, QuantizedByteVectorValues qv, float[] query)
       throws IOException {
     OptimizedScalarQuantizer quantizer = qv.getQuantizer();
@@ -124,7 +119,7 @@ public class Lucene104ScalarQuantizedVectorScorer implements AsymmetricFlatVecto
         || scalarEncoding == ScalarEncoding.DIBIT_QUERY_NIBBLE) {
       OptimizedScalarQuantizer.transposeHalfByte(scratch, targetQuantized);
     }
-    return getQuantizedQueryScorer(similarityFunction, qv, targetQuantized, targetCorrectiveTerms);
+    return getVectorScorer(similarityFunction, qv, targetQuantized, targetCorrectiveTerms);
   }
 
   /**
@@ -134,9 +129,8 @@ public class Lucene104ScalarQuantizedVectorScorer implements AsymmetricFlatVecto
    * @param quantizedQuery the query, quantized to {@link ScalarEncoding#getQueryBits()} and packed
    *     like the query side of the encoding
    * @param queryCorrections the corrective terms of the quantized query
-   * @lucene.internal
    */
-  protected RandomVectorScorer getQuantizedQueryScorer(
+  protected RandomVectorScorer getVectorScorer(
       VectorSimilarityFunction similarityFunction,
       QuantizedByteVectorValues qv,
       byte[] quantizedQuery,
@@ -150,7 +144,12 @@ public class Lucene104ScalarQuantizedVectorScorer implements AsymmetricFlatVecto
     };
   }
 
-  @Override
+  /**
+   * Returns a supplier of scorers of the vectors of {@code scoringVectors}, quantized like the
+   * query side of the encoding of {@code targetVectors}, against {@code targetVectors}.
+   *
+   * @throws IOException if the vectors cannot be read
+   */
   public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
       VectorSimilarityFunction similarityFunction,
       QuantizedByteVectorValues scoringVectors,
@@ -282,8 +281,6 @@ public class Lucene104ScalarQuantizedVectorScorer implements AsymmetricFlatVecto
   /**
    * Scores the quantized query against the vector at {@code targetOrd} of {@code targetVectors},
    * reading the vector on heap.
-   *
-   * @lucene.internal
    */
   protected static float quantizedScore(
       byte[] quantizedQuery,
@@ -305,7 +302,8 @@ public class Lucene104ScalarQuantizedVectorScorer implements AsymmetricFlatVecto
         };
     OptimizedScalarQuantizer.QuantizationResult indexCorrections =
         targetVectors.getCorrectiveTerms(targetOrd);
-    return quantizedScore(
+
+    return convertToQuantizedScore(
         qcDist,
         queryCorrections,
         indexCorrections.lowerInterval(),
@@ -320,17 +318,9 @@ public class Lucene104ScalarQuantizedVectorScorer implements AsymmetricFlatVecto
 
   /**
    * Turns {@code qcDist}, the dot product of a quantized query and a quantized vector, into a
-   * similarity score using the corrective terms of both. The corrective terms of the vector and the
-   * properties of its field are passed as values, so that a caller that reads them from the index
-   * allocates nothing and needs no {@link QuantizedByteVectorValues}.
-   *
-   * @param scalarEncoding the encoding of the vectors
-   * @param dimension the dimension of the vectors
-   * @param centroidDp the dot product of the centroid with itself, see {@link
-   *     QuantizedByteVectorValues#getCentroidDP}
-   * @lucene.internal
+   * similarity score using the corrective terms of both.
    */
-  protected static float quantizedScore(
+  protected static float convertToQuantizedScore(
       float qcDist,
       OptimizedScalarQuantizer.QuantizationResult queryCorrections,
       float lowerInterval,

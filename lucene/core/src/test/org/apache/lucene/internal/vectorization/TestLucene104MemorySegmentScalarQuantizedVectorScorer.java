@@ -27,7 +27,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.lucene.codecs.hnsw.AsymmetricFlatVectorsScorer;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorScorer;
 import org.apache.lucene.codecs.lucene104.OffHeapScalarQuantizedVectorValues;
@@ -63,7 +62,7 @@ public class TestLucene104MemorySegmentScalarQuantizedVectorScorer extends Lucen
   // scorers are checked against each other.
   private static final Lucene104ScalarQuantizedVectorScorer DEFAULT_SCORER =
       new Lucene104ScalarQuantizedVectorScorer(DefaultFlatVectorScorer.INSTANCE);
-  private static final AsymmetricFlatVectorsScorer MEMSEG_SCORER =
+  private static final Lucene104ScalarQuantizedVectorScorer MEMSEG_SCORER =
       VectorizationProvider.lookup(true).getLucene104ScalarQuantizedVectorsScorer();
 
   // dimensions around the widths of the vector kernels and their tails
@@ -476,7 +475,8 @@ public class TestLucene104MemorySegmentScalarQuantizedVectorScorer extends Lucen
       return encoding + " " + similarity + " dims=" + dims + " size=" + size;
     }
 
-    RandomVectorScorerSupplier supplier(AsymmetricFlatVectorsScorer scorer) throws IOException {
+    RandomVectorScorerSupplier supplier(Lucene104ScalarQuantizedVectorScorer scorer)
+        throws IOException {
       return encoding.isAsymmetric()
           ? scorer.getRandomVectorScorerSupplier(similarity, queryValues, values)
           : scorer.getRandomVectorScorerSupplier(similarity, values);

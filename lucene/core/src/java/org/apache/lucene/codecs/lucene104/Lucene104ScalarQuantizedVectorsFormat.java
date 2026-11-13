@@ -17,7 +17,6 @@
 package org.apache.lucene.codecs.lucene104;
 
 import java.io.IOException;
-import org.apache.lucene.codecs.hnsw.AsymmetricFlatVectorsScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
@@ -137,7 +136,7 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
   private static final FlatVectorsFormat rawVectorFormat =
       new Lucene99FlatVectorsFormat(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
 
-  private static final AsymmetricFlatVectorsScorer scorer =
+  private static final Lucene104ScalarQuantizedVectorScorer scorer =
       FlatVectorScorerUtil.getLucene104ScalarQuantizedVectorsScorer();
 
   private final ScalarEncoding encoding;

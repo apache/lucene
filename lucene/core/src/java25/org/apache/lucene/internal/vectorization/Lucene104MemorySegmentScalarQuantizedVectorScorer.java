@@ -69,9 +69,9 @@ final class Lucene104MemorySegmentScalarQuantizedVectorScorer
       throws IOException {
     if (vectorValues instanceof QuantizedByteVectorValues qv
         && qv.getScalarEncoding().isAsymmetric() == false) {
-      Records records = Records.of(qv, similarityFunction);
-      if (records != null) {
-        return new OffHeapScorerSupplier(records, qv, qv);
+      QuantizedVectorField quantizedVectorField = QuantizedVectorField.of(qv, similarityFunction);
+      if (quantizedVectorField != null) {
+        return new OffHeapScorerSupplier(quantizedVectorField, qv, qv);
       }
     }
     return super.getRandomVectorScorerSupplier(similarityFunction, vectorValues);
@@ -84,39 +84,35 @@ final class Lucene104MemorySegmentScalarQuantizedVectorScorer
       QuantizedByteVectorValues targetVectors)
       throws IOException {
     if (targetVectors.getScalarEncoding().isAsymmetric()) {
-      Records records = Records.of(targetVectors, similarityFunction);
-      if (records != null) {
-        return new OffHeapScorerSupplier(records, targetVectors, scoringVectors);
+      QuantizedVectorField quantizedVectorField =
+          QuantizedVectorField.of(targetVectors, similarityFunction);
+      if (quantizedVectorField != null) {
+        return new OffHeapScorerSupplier(quantizedVectorField, targetVectors, scoringVectors);
       }
     }
     return super.getRandomVectorScorerSupplier(similarityFunction, scoringVectors, targetVectors);
   }
 
   @Override
-  protected RandomVectorScorer getQuantizedQueryScorer(
+  protected RandomVectorScorer getVectorScorer(
       VectorSimilarityFunction similarityFunction,
       QuantizedByteVectorValues qv,
       byte[] quantizedQuery,
       QuantizationResult queryCorrections)
       throws IOException {
-    Records records = Records.of(qv, similarityFunction);
-    if (records != null) {
-      return QueryScorer.create(records, qv, quantizedQuery, queryCorrections);
+    QuantizedVectorField quantizedVectorField = QuantizedVectorField.of(qv, similarityFunction);
+    if (quantizedVectorField != null) {
+      return ScorerBase.create(quantizedVectorField, qv, quantizedQuery, queryCorrections);
     }
-    return super.getQuantizedQueryScorer(similarityFunction, qv, quantizedQuery, queryCorrections);
+    return super.getVectorScorer(similarityFunction, qv, quantizedQuery, queryCorrections);
   }
 
   /**
-   * The records of one field in a segment: each is the packed vector followed by its corrective
-   * terms, three floats and an int. Holds values only, so one instance serves every scorer of a
-   * supplier and its copies.
-   *
-   * <p>The segment is that of the whole slice, like in {@link
-   * Lucene99MemorySegmentFlatVectorsScorer}. Scoring after the input is closed fails on the
-   * segment, not with an {@link org.apache.lucene.store.AlreadyClosedException}.
+   * Represent quantized vectors in a single field. {@code dataSeg} contains the vectors laid out
+   * serially as entries, each entry consists of quantized bytes followed by corrective terms.
    */
-  private record Records(
-      MemorySegment segment,
+  private record QuantizedVectorField(
+      MemorySegment dataSeg,
       VectorSimilarityFunction similarity,
       ScalarEncoding encoding,
       int size,
@@ -131,12 +127,8 @@ final class Lucene104MemorySegmentScalarQuantizedVectorScorer
     static final ValueLayout.OfInt LE_INT =
         ValueLayout.JAVA_INT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
 
-    /**
-     * Returns the records of {@code values}, or null if they cannot be scored this way: when they
-     * are not off heap, or when they span more than one mapped chunk.
-     */
-    static Records of(QuantizedByteVectorValues values, VectorSimilarityFunction similarity)
-        throws IOException {
+    static QuantizedVectorField of(
+        QuantizedByteVectorValues values, VectorSimilarityFunction similarity) throws IOException {
       if (values instanceof OffHeapScalarQuantizedVectorValues == false) {
         return null;
       }
@@ -154,7 +146,7 @@ final class Lucene104MemorySegmentScalarQuantizedVectorScorer
       if (segment.byteSize() < (long) stride * values.size()) {
         throw new IllegalArgumentException("input length is less than expected vector data");
       }
-      return new Records(
+      return new QuantizedVectorField(
           segment,
           similarity,
           values.getScalarEncoding(),
@@ -196,14 +188,14 @@ final class Lucene104MemorySegmentScalarQuantizedVectorScorer
   }
 
   /**
-   * Scores one quantized query, held on heap, against {@link Records}: four vectors per {@link
-   * #bulkScore} pass in place, and {@link #score} like the superclass, reading the vector on heap.
-   * There is one subclass per kernel, chosen once per scorer, so that no encoding is looked up
-   * while scoring.
+   * Scores one quantized query, held on heap, against {@link QuantizedVectorField}: four vectors
+   * per {@link #bulkScore} pass in place, and {@link #score} like the superclass, reading the
+   * vector on heap. There is one subclass per kernel, chosen once per scorer, so that no encoding
+   * is looked up while scoring.
    */
-  private abstract static class QueryScorer extends RandomVectorScorer.AbstractRandomVectorScorer {
-    final Records records;
-    final MemorySegment segment;
+  private abstract static class ScorerBase extends RandomVectorScorer.AbstractRandomVectorScorer {
+    final QuantizedVectorField quantizedVectorField;
+    final MemorySegment dataSeg;
     final int packedLength;
 
     /** The values {@link #score} reads from; not shared with another scorer. */
@@ -213,38 +205,40 @@ final class Lucene104MemorySegmentScalarQuantizedVectorScorer
     byte[] query;
     private QuantizationResult queryCorrections;
 
-    QueryScorer(
-        Records records,
+    ScorerBase(
+        QuantizedVectorField quantizedVectorField,
         QuantizedByteVectorValues values,
         byte[] query,
         QuantizationResult queryCorrections) {
       super(values);
-      this.records = records;
-      this.segment = records.segment();
-      this.packedLength = records.packedLength();
+      this.quantizedVectorField = quantizedVectorField;
+      this.dataSeg = quantizedVectorField.dataSeg();
+      this.packedLength = quantizedVectorField.packedLength();
       this.values = values;
       setQuery(query, queryCorrections);
     }
 
-    static QueryScorer create(
-        Records records,
+    static ScorerBase create(
+        QuantizedVectorField quantizedVectorField,
         QuantizedByteVectorValues values,
         byte[] query,
         QuantizationResult queryCorrections) {
-      return switch (records.encoding()) {
+      return switch (quantizedVectorField.encoding()) {
         // SEVEN_BIT values are in [0, 127], where signed and unsigned products agree
         case UNSIGNED_BYTE, SEVEN_BIT ->
-            new Uint8QueryScorer(records, values, query, queryCorrections);
-        case PACKED_NIBBLE -> new NibbleQueryScorer(records, values, query, queryCorrections);
+            new Uint8Scorer(quantizedVectorField, values, query, queryCorrections);
+        case PACKED_NIBBLE ->
+            new NibbleScorer(quantizedVectorField, values, query, queryCorrections);
         case SINGLE_BIT_QUERY_NIBBLE ->
-            new BitQueryScorer(records, values, query, queryCorrections);
-        case DIBIT_QUERY_NIBBLE -> new DibitQueryScorer(records, values, query, queryCorrections);
+            new BitScorer(quantizedVectorField, values, query, queryCorrections);
+        case DIBIT_QUERY_NIBBLE ->
+            new DibitScorer(quantizedVectorField, values, query, queryCorrections);
       };
     }
 
     /** Scores the given query from now on. */
     void setQuery(byte[] query, QuantizationResult queryCorrections) {
-      records.checkQuery(query);
+      quantizedVectorField.checkQuery(query);
       this.query = query;
       this.queryCorrections = queryCorrections;
     }
@@ -254,8 +248,9 @@ final class Lucene104MemorySegmentScalarQuantizedVectorScorer
 
     @Override
     public float score(int node) throws IOException {
-      records.checkOrdinal(node);
-      return quantizedScore(query, queryCorrections, values, node, records.similarity());
+      quantizedVectorField.checkOrdinal(node);
+      return quantizedScore(
+          query, queryCorrections, values, node, quantizedVectorField.similarity());
     }
 
     @Override
@@ -263,10 +258,10 @@ final class Lucene104MemorySegmentScalarQuantizedVectorScorer
       float max = Float.NEGATIVE_INFINITY;
       int i = 0;
       for (; i + 4 <= numNodes; i += 4) {
-        long o1 = records.offset(nodes[i]);
-        long o2 = records.offset(nodes[i + 1]);
-        long o3 = records.offset(nodes[i + 2]);
-        long o4 = records.offset(nodes[i + 3]);
+        long o1 = quantizedVectorField.offset(nodes[i]);
+        long o2 = quantizedVectorField.offset(nodes[i + 1]);
+        long o3 = quantizedVectorField.offset(nodes[i + 2]);
+        long o4 = quantizedVectorField.offset(nodes[i + 3]);
         dotProducts(o1, o2, o3, o4, dotProducts);
         scores[i] = score(dotProducts[0], o1);
         max = Math.max(max, scores[i]);
@@ -288,108 +283,111 @@ final class Lucene104MemorySegmentScalarQuantizedVectorScorer
     /** Scores the dot product with the vector at {@code offset}, with its corrective terms. */
     private float score(int dotProduct, long offset) {
       long at = offset + packedLength;
-      return quantizedScore(
+      return convertToQuantizedScore(
           dotProduct,
           queryCorrections,
-          segment.get(Records.LE_FLOAT, at),
-          segment.get(Records.LE_FLOAT, at + Float.BYTES),
-          segment.get(Records.LE_FLOAT, at + 2 * Float.BYTES),
-          segment.get(Records.LE_INT, at + 3 * Float.BYTES),
-          records.encoding(),
-          records.dimension(),
-          records.centroidDp(),
-          records.similarity());
+          dataSeg.get(QuantizedVectorField.LE_FLOAT, at),
+          dataSeg.get(QuantizedVectorField.LE_FLOAT, at + Float.BYTES),
+          dataSeg.get(QuantizedVectorField.LE_FLOAT, at + 2 * Float.BYTES),
+          dataSeg.get(QuantizedVectorField.LE_INT, at + 3 * Float.BYTES),
+          quantizedVectorField.encoding(),
+          quantizedVectorField.dimension(),
+          quantizedVectorField.centroidDp(),
+          quantizedVectorField.similarity());
     }
   }
 
-  private static final class Uint8QueryScorer extends QueryScorer {
-    Uint8QueryScorer(
-        Records records,
+  private static final class Uint8Scorer extends ScorerBase {
+    Uint8Scorer(
+        QuantizedVectorField quantizedVectorField,
         QuantizedByteVectorValues values,
         byte[] query,
         QuantizationResult queryCorrections) {
-      super(records, values, query, queryCorrections);
+      super(quantizedVectorField, values, query, queryCorrections);
     }
 
     @Override
     void dotProducts(long o1, long o2, long o3, long o4, int[] results) {
       MemorySegmentQuantizedVectorOps.uint8DotProductBulk(
-          query, segment, o1, o2, o3, o4, packedLength, results);
+          query, dataSeg, o1, o2, o3, o4, packedLength, results);
     }
   }
 
-  private static final class NibbleQueryScorer extends QueryScorer {
-    NibbleQueryScorer(
-        Records records,
+  private static final class NibbleScorer extends ScorerBase {
+    NibbleScorer(
+        QuantizedVectorField quantizedVectorField,
         QuantizedByteVectorValues values,
         byte[] query,
         QuantizationResult queryCorrections) {
-      super(records, values, query, queryCorrections);
+      super(quantizedVectorField, values, query, queryCorrections);
     }
 
     @Override
     void dotProducts(long o1, long o2, long o3, long o4, int[] results) {
       MemorySegmentQuantizedVectorOps.int4DotProductSinglePackedBulk(
-          query, segment, o1, o2, o3, o4, packedLength, results);
+          query, dataSeg, o1, o2, o3, o4, packedLength, results);
     }
   }
 
-  private static final class BitQueryScorer extends QueryScorer {
-    BitQueryScorer(
-        Records records,
+  private static final class BitScorer extends ScorerBase {
+    BitScorer(
+        QuantizedVectorField quantizedVectorField,
         QuantizedByteVectorValues values,
         byte[] query,
         QuantizationResult queryCorrections) {
-      super(records, values, query, queryCorrections);
+      super(quantizedVectorField, values, query, queryCorrections);
     }
 
     @Override
     void dotProducts(long o1, long o2, long o3, long o4, int[] results) {
       MemorySegmentQuantizedVectorOps.int4BitDotProductBulk(
-          query, segment, o1, o2, o3, o4, packedLength, results);
+          query, dataSeg, o1, o2, o3, o4, packedLength, results);
     }
   }
 
   /** A 2 bit vector is two bit planes of half the packed length each. */
-  private static final class DibitQueryScorer extends QueryScorer {
-    DibitQueryScorer(
-        Records records,
+  private static final class DibitScorer extends ScorerBase {
+    DibitScorer(
+        QuantizedVectorField quantizedVectorField,
         QuantizedByteVectorValues values,
         byte[] query,
         QuantizationResult queryCorrections) {
-      super(records, values, query, queryCorrections);
+      super(quantizedVectorField, values, query, queryCorrections);
     }
 
     @Override
     void dotProducts(long o1, long o2, long o3, long o4, int[] results) {
       MemorySegmentQuantizedVectorOps.int4DibitDotProductBulk(
-          query, segment, o1, o2, o3, o4, packedLength >> 1, results);
+          query, dataSeg, o1, o2, o3, o4, packedLength >> 1, results);
     }
   }
 
   /**
-   * Scores vectors of {@code queryVectors} against {@link Records}. Both are the same vectors for
-   * symmetric encodings, where a {@link ScalarEncoding#PACKED_NIBBLE} vector is unpacked into the
-   * query layout; for asymmetric encodings the query vectors already have the query layout.
+   * Scores vectors of {@code queryVectors} against {@link QuantizedVectorField}. Both are the same
+   * vectors for symmetric encodings, where a {@link ScalarEncoding#PACKED_NIBBLE} vector is
+   * unpacked into the query layout; for asymmetric encodings the query vectors already have the
+   * query layout.
    */
   private static final class OrdinalScorer
       extends UpdateableRandomVectorScorer.AbstractUpdateableRandomVectorScorer {
-    private final Records records;
+    private final QuantizedVectorField quantizedVectorField;
     private final QuantizedByteVectorValues values;
     private final QuantizedByteVectorValues queryVectors;
     private final byte[] unpacked;
-    private QueryScorer scorer;
+    private ScorerBase scorer;
 
     /** Both values are this scorer's own copies. */
     OrdinalScorer(
-        Records records, QuantizedByteVectorValues values, QuantizedByteVectorValues queryVectors) {
+        QuantizedVectorField quantizedVectorField,
+        QuantizedByteVectorValues values,
+        QuantizedByteVectorValues queryVectors) {
       super(values);
-      this.records = records;
+      this.quantizedVectorField = quantizedVectorField;
       this.values = values;
       this.queryVectors = queryVectors;
       this.unpacked =
-          records.encoding() == ScalarEncoding.PACKED_NIBBLE
-              ? new byte[records.queryLength()]
+          quantizedVectorField.encoding() == ScalarEncoding.PACKED_NIBBLE
+              ? new byte[quantizedVectorField.queryLength()]
               : null;
     }
 
@@ -402,7 +400,7 @@ final class Lucene104MemorySegmentScalarQuantizedVectorScorer
       }
       QuantizationResult corrections = queryVectors.getCorrectiveTerms(node);
       if (scorer == null) {
-        scorer = QueryScorer.create(records, values, query, corrections);
+        scorer = ScorerBase.create(quantizedVectorField, values, query, corrections);
       } else {
         scorer.setQuery(query, corrections);
       }
@@ -418,7 +416,7 @@ final class Lucene104MemorySegmentScalarQuantizedVectorScorer
       return scorer().bulkScore(nodes, scores, numNodes);
     }
 
-    private QueryScorer scorer() {
+    private ScorerBase scorer() {
       if (scorer == null) {
         throw new IllegalStateException("setScoringOrdinal was not called");
       }
@@ -426,23 +424,20 @@ final class Lucene104MemorySegmentScalarQuantizedVectorScorer
     }
   }
 
-  /**
-   * A supplier of {@link OrdinalScorer}s. {@code values} are the records as {@link
-   * QuantizedByteVectorValues}, for {@link RandomVectorScorer#score}; a {@link #copy} gets its own
-   * copies of both values, and each scorer gets its own copies of those.
-   */
   private record OffHeapScorerSupplier(
-      Records records, QuantizedByteVectorValues values, QuantizedByteVectorValues queryVectors)
+      QuantizedVectorField quantizedVectorField,
+      QuantizedByteVectorValues values,
+      QuantizedByteVectorValues queryVectors)
       implements RandomVectorScorerSupplier {
 
     @Override
     public UpdateableRandomVectorScorer scorer() throws IOException {
-      return new OrdinalScorer(records, values.copy(), queryVectors.copy());
+      return new OrdinalScorer(quantizedVectorField, values.copy(), queryVectors.copy());
     }
 
     @Override
     public RandomVectorScorerSupplier copy() throws IOException {
-      return new OffHeapScorerSupplier(records, values.copy(), queryVectors.copy());
+      return new OffHeapScorerSupplier(quantizedVectorField, values.copy(), queryVectors.copy());
     }
   }
 }

@@ -20,7 +20,6 @@ package org.apache.lucene.internal.vectorization;
 import java.io.IOException;
 import java.util.Locale;
 import java.util.logging.Logger;
-import org.apache.lucene.codecs.hnsw.AsymmetricFlatVectorsScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorScorer;
 import org.apache.lucene.store.IndexInput;
@@ -79,7 +78,7 @@ final class NativeVectorizationProvider extends VectorizationProvider {
   }
 
   @Override
-  public AsymmetricFlatVectorsScorer getLucene104ScalarQuantizedVectorsScorer() {
+  public Lucene104ScalarQuantizedVectorScorer getLucene104ScalarQuantizedVectorsScorer() {
     if (NativeVectorUtilSupport.isLibraryLoaded()) {
       // The bulk kernels of the Panama scorer have no native equivalent, so the generic scorer is
       // used, which reaches the native kernels through VectorUtil.

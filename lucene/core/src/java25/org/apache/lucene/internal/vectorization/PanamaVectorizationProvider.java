@@ -21,8 +21,8 @@ import java.lang.foreign.MemorySegment;
 import java.util.Locale;
 import java.util.logging.Logger;
 import jdk.incubator.vector.FloatVector;
-import org.apache.lucene.codecs.hnsw.AsymmetricFlatVectorsScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
+import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorScorer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.MemorySegmentAccessInput;
 import org.apache.lucene.util.Constants;
@@ -85,7 +85,7 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
   }
 
   @Override
-  public AsymmetricFlatVectorsScorer getLucene104ScalarQuantizedVectorsScorer() {
+  public Lucene104ScalarQuantizedVectorScorer getLucene104ScalarQuantizedVectorsScorer() {
     return Lucene104MemorySegmentScalarQuantizedVectorScorer.INSTANCE;
   }
 
