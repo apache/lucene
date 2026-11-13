@@ -22,6 +22,7 @@ import jdk.incubator.vector.VectorOperators;
 import jdk.incubator.vector.VectorSpecies;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.LongValues;
+import org.apache.lucene.util.packed.DirectPackedValues;
 
 /** Panama Vector API implementation of {@link DocValuesRangeSupport}. */
 final class PanamaDocValuesRangeSupport implements DocValuesRangeSupport {
@@ -41,6 +42,14 @@ final class PanamaDocValuesRangeSupport implements DocValuesRangeSupport {
       long maxValue,
       FixedBitSet bitSet,
       int offset) {
+    // Fast path: values packed by DirectWriter and memory-mapped can be compared in bulk, straight
+    // from the memory segment.
+    if (values instanceof DirectPackedValues packed
+        && MemorySegmentDocValuesRangeUtil.rangeIntoBitSet(
+            packed, fromDoc, toDoc, minValue, maxValue, bitSet, offset)) {
+      return;
+    }
+
     final int vectorLen = LONG_SPECIES.length();
 
     // Scratch buffer for loading values before SIMD comparison
