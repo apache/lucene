@@ -66,6 +66,8 @@ public class FuzzyQuery extends MultiTermQuery {
   private final boolean transpositions;
   private final int prefixLength;
   private final Term term;
+  // Deliberately not part of equals/hashCode: it only changes how automata are obtained.
+  private final FuzzyAutomatonCache automatonCache;
 
   /**
    * Create a new FuzzyQuery that will match terms with an edit distance of at most <code>maxEdits
@@ -90,6 +92,40 @@ public class FuzzyQuery extends MultiTermQuery {
       int maxExpansions,
       boolean transpositions,
       RewriteMethod rewriteMethod) {
+    this(term, maxEdits, prefixLength, maxExpansions, transpositions, rewriteMethod, null);
+  }
+
+  /**
+   * Create a new FuzzyQuery that obtains its Levenshtein automata from the given {@link
+   * FuzzyAutomatonCache}, so that they are built once and then shared with every other query that
+   * uses the same cache and the same term text, {@code maxEdits}, {@code prefixLength} and {@code
+   * transpositions}, whatever its field.
+   *
+   * <p>The cache has no effect on which documents match, on scores, or on {@link #equals(Object)}
+   * and {@link #hashCode()}.
+   *
+   * @param term the term to search for
+   * @param maxEdits must be {@code >= 0} and {@code <=} {@link
+   *     LevenshteinAutomata#MAXIMUM_SUPPORTED_DISTANCE}.
+   * @param prefixLength length of common (non-fuzzy) prefix
+   * @param maxExpansions the maximum number of terms to match. If this number is greater than
+   *     {@link IndexSearcher#getMaxClauseCount} when the query is rewritten, then the
+   *     maxClauseCount will be used instead.
+   * @param transpositions true if transpositions should be treated as a primitive edit operation.
+   *     If this is false, comparisons will implement the classic Levenshtein algorithm.
+   * @param rewriteMethod the rewrite method to use to build the final query
+   * @param automatonCache the cache to get automata from, or {@code null} to build them every time
+   *     this query is rewritten
+   * @lucene.experimental
+   */
+  public FuzzyQuery(
+      Term term,
+      int maxEdits,
+      int prefixLength,
+      int maxExpansions,
+      boolean transpositions,
+      RewriteMethod rewriteMethod,
+      FuzzyAutomatonCache automatonCache) {
     super(term.field(), rewriteMethod);
 
     if (maxEdits < 0 || maxEdits > LevenshteinAutomata.MAXIMUM_SUPPORTED_DISTANCE) {
@@ -108,6 +144,7 @@ public class FuzzyQuery extends MultiTermQuery {
     this.prefixLength = prefixLength;
     this.transpositions = transpositions;
     this.maxExpansions = maxExpansions;
+    this.automatonCache = automatonCache;
   }
 
   /**
@@ -167,8 +204,23 @@ public class FuzzyQuery extends MultiTermQuery {
     return transpositions;
   }
 
+  /**
+   * Returns the cache this query gets its automata from, or {@code null} if it builds them every
+   * time.
+   *
+   * @lucene.experimental
+   */
+  public FuzzyAutomatonCache getAutomatonCache() {
+    return automatonCache;
+  }
+
   /** Returns the compiled automata used to match terms */
   public CompiledAutomaton getAutomata() {
+    if (automatonCache != null) {
+      // The automaton for the maximum edit distance is the last one of the cached set.
+      return automatonCache.getOrBuild(term.text(), maxEdits, prefixLength, transpositions)
+          .automata()[maxEdits];
+    }
     return getFuzzyAutomaton(term.text(), maxEdits, prefixLength, transpositions);
   }
 
@@ -205,7 +257,8 @@ public class FuzzyQuery extends MultiTermQuery {
     if (maxEdits == 0) { // can only match if it's exact
       return new SingleTermsEnum(terms.iterator(), term.bytes());
     }
-    return new FuzzyTermsEnum(terms, atts, getTerm(), maxEdits, prefixLength, transpositions);
+    return new FuzzyTermsEnum(
+        terms, atts, getTerm(), maxEdits, prefixLength, transpositions, automatonCache);
   }
 
   /** Returns the pattern term. */
