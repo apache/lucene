@@ -312,7 +312,7 @@
  * {@link org.apache.lucene.search.similarities.Similarity#computeNorm} method.
  *
  * <ul>
- *   <li>{@link org.apache.lucene.index.FieldInvertState#getLength}: Returns the number of tokens
+ *   <li>{@link org.apache.lucene.index.FieldInvertState#getNumTerms}: Returns the number of tokens
  *       for this field in the document. Note that this is just the number of times that {@link
  *       org.apache.lucene.analysis.TokenStream#incrementToken} returned true, and is unrelated to
  *       the values in {@link

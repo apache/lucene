@@ -529,7 +529,7 @@ public class TestSimilarityBase extends LuceneTestCase {
         new DFRSimilarity(new BasicModelIne(), new AfterEffectB(), new NormalizationH2(), false);
     FieldInvertState state =
         new FieldInvertState(Version.LATEST.major, "foo", IndexOptions.DOCS_AND_FREQS);
-    state.setLength(5);
+    state.setNumTerms(5);
     state.setNumOverlap(2);
     assertEquals(expected0.computeNorm(state), actual0.computeNorm(state));
     final BM25Similarity expected1 = new BM25Similarity(true);

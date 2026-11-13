@@ -2302,7 +2302,7 @@ public class TestIndexSorting extends LuceneTestCase {
     @Override
     public long computeNorm(FieldInvertState state) {
       if (state.getName().equals("norms")) {
-        return state.getLength();
+        return state.getNumTerms();
       } else {
         return in.computeNorm(state);
       }
