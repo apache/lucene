@@ -68,17 +68,28 @@ public class FuzzySet implements Accountable {
   static final int[] usableBitSetSizes;
 
   static {
-    usableBitSetSizes = new int[26];
+    // Sizes run from 2^6-1 to 2^30-1; see MAX_USABLE_BIT_SET_SIZE
+    usableBitSetSizes = new int[25];
     for (int i = 0; i < usableBitSetSizes.length; i++) {
       usableBitSetSizes[i] = (1 << (i + 6)) - 1;
     }
   }
 
   /**
-   * Rounds down required maxNumberOfBits to the nearest number that is made up of all ones as a
-   * binary number. Use this method where controlling memory use is paramount.
+   * The largest usable bit set size. A size is used as an all-ones mask, so the backing bit set
+   * needs {@code size + 1} bits, and {@link FixedBitSet} addresses bits with an {@code int}. The
+   * largest power of two that an {@code int} can express is therefore 2^30, capping a set at 2^30
+   * bits (128MB) and its size at 2^30-1.
    */
-  private static int getNearestSetSize(int maxNumberOfBits) {
+  private static final int MAX_USABLE_BIT_SET_SIZE =
+      usableBitSetSizes[usableBitSetSizes.length - 1];
+
+  /**
+   * Rounds down required maxNumberOfBits to the nearest number that is made up of all ones as a
+   * binary number. Use this method where controlling memory use is paramount. Requests above {@link
+   * #MAX_USABLE_BIT_SET_SIZE} are clamped.
+   */
+  private static int getNearestSetSize(long maxNumberOfBits) {
     int result = usableBitSetSizes[0];
     for (int usableBitSetSize : usableBitSetSizes) {
       if (usableBitSetSize <= maxNumberOfBits) {
@@ -89,18 +100,24 @@ public class FuzzySet implements Accountable {
   }
 
   public static FuzzySet createSetBasedOnMaxMemory(int maxNumBytes) {
-    int setSize = getNearestSetSize(maxNumBytes * Byte.SIZE);
+    int setSize = getNearestSetSize((long) maxNumBytes * Byte.SIZE);
     return new FuzzySet(new FixedBitSet(setSize + 1), setSize, 1);
   }
 
+  /**
+   * Returns a set sized to hold maxNumUniqueValues at no worse than targetMaxFpp.
+   *
+   * <p>The target is best effort: a value count needing more bits than this class can address gets
+   * the largest available set, 2^30 bits, whose false-positive rate is worse than requested.
+   */
   public static FuzzySet createOptimalSet(int maxNumUniqueValues, float targetMaxFpp) {
-    int setSize =
-        (int)
-            Math.ceil(
-                (maxNumUniqueValues * Math.log(targetMaxFpp))
-                    / Math.log(1 / Math.pow(2, Math.log(2))));
-    setSize = getNearestSetSize(2 * setSize);
-    int optimalK = (int) Math.round(((double) setSize / maxNumUniqueValues) * Math.log(2));
+    double optimalNumBits =
+        Math.ceil(
+            (maxNumUniqueValues * Math.log(targetMaxFpp)) / Math.log(1 / Math.pow(2, Math.log(2))));
+    int setSize = getNearestSetSize((long) Math.min(2 * optimalNumBits, MAX_USABLE_BIT_SET_SIZE));
+    // A set with no hash functions can never answer NO, so always keep at least one.
+    int optimalK =
+        Math.max(1, (int) Math.round(((double) setSize / maxNumUniqueValues) * Math.log(2)));
     return new FuzzySet(new FixedBitSet(setSize + 1), setSize, optimalK);
   }
 
