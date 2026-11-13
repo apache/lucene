@@ -435,6 +435,91 @@ public class TestNeighborArray extends LuceneTestCase {
     assertNodesEqual(new int[] {0, 2, 1, 3}, neighbors);
   }
 
+  public void testAddAndEnsureDiversityNoOverflow() throws IOException {
+    NeighborArray neighbors = new NeighborArray(3, true);
+
+    float[][] values = {
+      {1.0f, 0f},
+      {0.9f, 0f},
+      {0.8f, 0f}
+    };
+    Vector2dScorer scorer = new Vector2dScorer(values);
+
+    neighbors.addAndEnsureDiversity(1, scorer.base(1), 0, scorer);
+    neighbors.addAndEnsureDiversity(2, scorer.base(2), 0, scorer);
+
+    // both nodes fit within capacity, no eviction
+    assertEquals(2, neighbors.size());
+    assertScoresEqual(new float[] {scorer.base(1), scorer.base(2)}, neighbors);
+    assertNodesEqual(new int[] {1, 2}, neighbors);
+  }
+
+  public void testAddAndEnsureDiversityRemoveUncheckNode() throws IOException {
+    NeighborArray neighbors = new NeighborArray(3, true);
+
+    float[][] values = {
+      {1.0f, 0f},
+      {0.9f, 0f},
+      {0.8f, 0f},
+      {1.5f, 0f}
+    };
+    Vector2dScorer scorer = new Vector2dScorer(values);
+
+    neighbors.addOutOfOrder(1, scorer.base(1));
+    neighbors.addOutOfOrder(2, scorer.base(2));
+    neighbors.addAndEnsureDiversity(3, scorer.base(3), 0, scorer);
+
+    // 2 is closer to 1 than to 0, so it is excluded as non-diverse; 3 survives
+    assertEquals(2, neighbors.size());
+    assertScoresEqual(new float[] {scorer.base(1), scorer.base(3)}, neighbors);
+    assertNodesEqual(new int[] {1, 3}, neighbors);
+  }
+
+  public void testAddAndEnsureDiversityRemoveCheckNode() throws IOException {
+    NeighborArray neighbors = new NeighborArray(4, true);
+
+    float[][] values = {
+      {1.0f, 0f},
+      {0.9f, 0f},
+      {1.5f, 0f},
+      {0.45f, 0f},
+      {1.2f, 0f}
+    };
+    Vector2dScorer scorer = new Vector2dScorer(values);
+
+    // addInOrder marks nodes as checked before the diversity scan runs
+    neighbors.addInOrder(1, scorer.base(1));
+    neighbors.addInOrder(2, scorer.base(2));
+    neighbors.addInOrder(3, scorer.base(3));
+    neighbors.addAndEnsureDiversity(4, scorer.base(4), 0, scorer);
+
+    // 2 is closer to 4 than to 0, so it is excluded as non-diverse; 3 survives
+    assertEquals(3, neighbors.size());
+    assertScoresEqual(new float[] {scorer.base(1), scorer.base(4), scorer.base(3)}, neighbors);
+    assertNodesEqual(new int[] {1, 4, 3}, neighbors);
+  }
+
+  public void testAddAndEnsureDiversityFallback() throws IOException {
+    NeighborArray neighbors = new NeighborArray(3, true);
+
+    float[][] values = {
+      {0f, 0f},
+      {0.1f, 0f},
+      {0f, 0.4f},
+      {-0.2f, 0f}
+    };
+    Vector2dScorer scorer = new Vector2dScorer(values);
+
+    neighbors.addInOrder(1, scorer.base(1));
+    neighbors.addInOrder(2, scorer.base(2));
+    neighbors.addAndEnsureDiversity(3, scorer.base(3), 0, scorer);
+
+    // no node covers any other, so the fallback drops the worst base score (2)
+    assertEquals(2, neighbors.size());
+    assertScoresEqual(new float[] {scorer.base(1), scorer.base(3)}, neighbors);
+    assertNodesEqual(new int[] {1, 3}, neighbors);
+  }
+
   private void assertScoresEqual(float[] scores, NeighborArray neighbors) {
     for (int i = 0; i < scores.length; i++) {
       assertEquals(scores[i], neighbors.getScores(i), 0.01f);
@@ -461,6 +546,40 @@ public class TestNeighborArray extends LuceneTestCase {
     @Override
     default Bits getAcceptOrds(Bits acceptDocs) {
       throw new UnsupportedOperationException();
+    }
+  }
+
+  static class Vector2dScorer implements UpdateableRandomVectorScorer {
+
+    private final float[][] points;
+    private int current;
+
+    Vector2dScorer(float[]... points) {
+      this.points = points;
+    }
+
+    /** Similarity from node 0 (the base) to node {@code i}. */
+    float base(int i) {
+      return score(points[0], points[i]);
+    }
+
+    private float score(float[] a, float[] b) {
+      return 1.0f - (Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]));
+    }
+
+    @Override
+    public void setScoringOrdinal(int node) {
+      current = node;
+    }
+
+    @Override
+    public float score(int node) {
+      return score(points[current], points[node]);
+    }
+
+    @Override
+    public int maxOrd() {
+      return points.length;
     }
   }
 }
