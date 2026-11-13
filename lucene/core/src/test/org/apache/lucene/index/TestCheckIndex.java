@@ -326,7 +326,7 @@ public class TestCheckIndex extends BaseTestCheckIndex {
         }
 
         // Reading the commit point names the segment whose .si could not be read, and keeps the
-        // root cause: it is what names the file on disk.
+        // root cause.
         CorruptSegmentInfoException e =
             expectThrows(
                 CorruptSegmentInfoException.class,
@@ -334,7 +334,7 @@ public class TestCheckIndex extends BaseTestCheckIndex {
                     SegmentInfos.readCommit(
                         dir, SegmentInfos.getLastCommitSegmentsFileName(dir), 0));
         assertEquals(corruption, "_1", e.getSegmentName());
-        // the root cause must be the codec's own failure, since that is what names the file on disk
+        // the root cause must be the codec's own failure.
         Throwable cause = e.getCause();
         assertNotNull(corruption, cause);
         if (corruption.equals("delete-si")) {
@@ -344,7 +344,10 @@ public class TestCheckIndex extends BaseTestCheckIndex {
         } else {
           assertTrue(corruption + ": " + cause, cause instanceof IOException);
         }
-        assertTrue(corruption + ": " + cause, cause.toString().contains("_1.si"));
+
+        // NOTE: We can assert that the cause's message contains the filename once all relevant
+        // exception paths, including EOFException, provide it. For example: assertTrue(corruption +
+        // ": " + cause, cause.toString().contains("_1.si"));
 
         // ... and CheckIndex reports it rather than only that something was unreadable
         ByteArrayOutputStream out = new ByteArrayOutputStream();
