@@ -48,6 +48,8 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
+import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
+import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
 import org.apache.lucene.util.quantization.LegacyQuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 
@@ -304,6 +306,100 @@ public class TestLucene99ScalarQuantizedVectorScorer extends LuceneTestCase {
         assertEquals("C", storedFields.document(hits.scoreDocs[2].doc).get("id"));
       }
     }
+  }
+
+  public void testScoreCorrectionConstantAfterReadingAnotherOrdinal() throws IOException {
+    float[] corrections = {1f, 2f, 3f};
+    for (boolean compress : new boolean[] {true, false}) {
+      try (Directory dir = newDirectory()) {
+        String fileName = getTestName() + "-" + compress;
+        writeInt4Vectors(dir, fileName, corrections, compress);
+        try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
+          OffHeapQuantizedByteVectorValues values = int4Values(in, corrections.length, compress);
+          values.vectorValue(0);
+          assertEquals(corrections[1], values.getScoreCorrectionConstant(1), 0f);
+          assertEquals(corrections[0], values.getScoreCorrectionConstant(0), 0f);
+        }
+      }
+    }
+  }
+
+  public void testCompressedInt4SelfScoreAfterScoringAnotherOrdinal() throws IOException {
+    float[] corrections = {1f, 2f, 3f};
+    try (Directory dir = newDirectory()) {
+      writeInt4Vectors(dir, getTestName(), corrections, true);
+      try (IndexInput in = dir.openInput(getTestName(), IOContext.DEFAULT)) {
+        RandomVectorScorerSupplier supplier = int4DotProductSupplier(in, corrections.length);
+        UpdateableRandomVectorScorer scorer = supplier.scorer();
+        scorer.setScoringOrdinal(0);
+        scorer.score(1);
+        assertEquals(scoreWithFreshScorer(supplier, 0, 0), scorer.score(0), 0f);
+      }
+    }
+  }
+
+  public void testCompressedInt4ResetOrdinalAfterScoringAnotherOrdinal() throws IOException {
+    float[] corrections = {1f, 2f, 3f};
+    try (Directory dir = newDirectory()) {
+      writeInt4Vectors(dir, getTestName(), corrections, true);
+      try (IndexInput in = dir.openInput(getTestName(), IOContext.DEFAULT)) {
+        RandomVectorScorerSupplier supplier = int4DotProductSupplier(in, corrections.length);
+        UpdateableRandomVectorScorer scorer = supplier.scorer();
+        scorer.setScoringOrdinal(0);
+        scorer.score(1);
+        scorer.setScoringOrdinal(0);
+        assertEquals(scoreWithFreshScorer(supplier, 0, 2), scorer.score(2), 0f);
+      }
+    }
+  }
+
+  private static final int INT4_DIMS = 8;
+
+  /** Writes one random int4 vector per correction, each followed by its score correction. */
+  private static void writeInt4Vectors(
+      Directory dir, String fileName, float[] corrections, boolean compress) throws IOException {
+    try (IndexOutput out = dir.createOutput(fileName, IOContext.DEFAULT)) {
+      for (float correction : corrections) {
+        byte[] vector = new byte[INT4_DIMS];
+        for (int i = 0; i < vector.length; i++) {
+          vector[i] = (byte) random().nextInt(16);
+        }
+        if (compress) {
+          byte[] compressed = new byte[INT4_DIMS / 2];
+          compressBytes(vector, compressed);
+          vector = compressed;
+        }
+        byte[] bytes = concat(vector, floatToByteArray(correction));
+        out.writeBytes(bytes, 0, bytes.length);
+      }
+    }
+  }
+
+  private static OffHeapQuantizedByteVectorValues int4Values(
+      IndexInput in, int size, boolean compress) {
+    return new OffHeapQuantizedByteVectorValues.DenseOffHeapVectorValues(
+        INT4_DIMS,
+        size,
+        new ScalarQuantizer(0.1f, 0.9f, (byte) 4),
+        compress,
+        VectorSimilarityFunction.DOT_PRODUCT,
+        new Lucene99ScalarQuantizedVectorScorer(new DefaultFlatVectorScorer()),
+        in);
+  }
+
+  private static RandomVectorScorerSupplier int4DotProductSupplier(IndexInput in, int size)
+      throws IOException {
+    return new Lucene99ScalarQuantizedVectorScorer(new DefaultFlatVectorScorer())
+        .getRandomVectorScorerSupplier(
+            VectorSimilarityFunction.DOT_PRODUCT, int4Values(in, size, true));
+  }
+
+  /** Scores {@code node} against {@code query} on a copy of the supplier, with nothing cached. */
+  private static float scoreWithFreshScorer(
+      RandomVectorScorerSupplier supplier, int query, int node) throws IOException {
+    UpdateableRandomVectorScorer scorer = supplier.copy().scorer();
+    scorer.setScoringOrdinal(query);
+    return scorer.score(node);
   }
 
   private static byte[] floatToByteArray(float value) {
