@@ -373,6 +373,10 @@ Optimizations
   IOContext, allowing MMapDirectory to open them with confined areas and avoiding JVM-wide
   handshakes when the files are closed. (Alan Woodward)
 
+* GITHUB#17013: Perform off-heap bulk scoring for Lucene104 scalar quantized vectors, which avoids
+  an unnecessary copy to heap, amortizes query loads across multiple documents, and enables
+  overlapped cache misses for a chunk of document vectors. (Kaival Parikh)
+
 Bug Fixes
 ---------------------
 * GITHUB#16983: UnifiedHighlighter.Builder#withFlags is no longer ignored when building the
