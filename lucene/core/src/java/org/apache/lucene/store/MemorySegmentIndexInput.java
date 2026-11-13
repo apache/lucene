@@ -58,7 +58,6 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
   final MemorySegment[] segments;
   final Function<IOContext, ReadAdvice> toReadAdvice;
   final PrefetchBackoff backoff;
-  int prefetchCalls; // this input's own count, starting at nextCounterStart(); see PrefetchBackoff
   // the advice applied when this input was opened or sliced, or null if any advice reads the same
   final ReadAdvice readAdvice;
 
@@ -66,6 +65,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
   MemorySegment
       curSegment; // redundant for speed: segments[curSegmentIndex], also marker if closed!
   long curPosition; // relative to curSegment, not globally
+  int prefetchCalls; // this input's own count, starting at nextCounterStart(); see PrefetchBackoff
 
   public static MemorySegmentIndexInput newInstance(
       String resourceDescription,
