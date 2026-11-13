@@ -362,6 +362,8 @@ Optimizations
   disk, opening soft-deletes readers, and sandbox FAISS KNN search over segments with deletions.
   (Costin Leau)
 
+* GITHUB#16790: Vectorize OptimizedScalarQuantizer with osqCenter, osqGridStats and osqAssign. (Jakub Slowinski)
+
 * GITHUB#15902: Improve DiversifyingChildren performance by using primitive arrays (Alessandro Benedetti)
 
 * GITHUB#16970: SortingStoredFieldsConsumer reads its temporary files using a single-threaded

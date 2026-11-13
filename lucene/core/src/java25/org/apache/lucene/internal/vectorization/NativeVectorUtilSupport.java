@@ -123,6 +123,19 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
           JAVA_FLOAT,
           JAVA_INT);
 
+  // (POINTER, POINTER, POINTER, INT) -> void
+  private static final FunctionDescriptor osqCenterDesc =
+      FunctionDescriptor.ofVoid(POINTER, POINTER, POINTER, JAVA_INT);
+
+  // (POINTER, FLOAT, FLOAT, INT, POINTER, INT) -> void
+  private static final FunctionDescriptor osqGridStatsDesc =
+      FunctionDescriptor.ofVoid(POINTER, JAVA_FLOAT, JAVA_FLOAT, JAVA_INT, POINTER, JAVA_INT);
+
+  // (POINTER, FLOAT, FLOAT, FLOAT, POINTER, INT) -> INT
+  private static final FunctionDescriptor osqAssignDesc =
+      FunctionDescriptor.of(
+          JAVA_INT, POINTER, JAVA_FLOAT, JAVA_FLOAT, JAVA_FLOAT, POINTER, JAVA_INT);
+
   // (POINTER, POINTER, DOUBLE, INT) -> INT
   private static final FunctionDescriptor filterByScoreDesc =
       FunctionDescriptor.of(JAVA_INT, POINTER, POINTER, JAVA_DOUBLE, JAVA_INT);
@@ -158,6 +171,9 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
   private static final MethodHandle int4DibitDotProduct$MH;
   private static final MethodHandle minMaxScalarQuantize$MH;
   private static final MethodHandle recalculateScalarQuantizationOffset$MH;
+  private static final MethodHandle osqCenter$MH;
+  private static final MethodHandle osqGridStats$MH;
+  private static final MethodHandle osqAssign$MH;
   private static final MethodHandle filterByScore$MH;
   private static final MethodHandle l2normalize$MH;
   private static final MethodHandle expand8$MH;
@@ -194,6 +210,9 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
       minMaxScalarQuantize$MH = getMethodHandle("minMaxScalarQuantize", minMaxScalarQuantizeDesc);
       recalculateScalarQuantizationOffset$MH =
           getMethodHandle("recalculateScalarQuantizationOffset", recalculateOffsetDesc);
+      osqCenter$MH = getMethodHandle("osqCenter", osqCenterDesc);
+      osqGridStats$MH = getMethodHandle("osqGridStats", osqGridStatsDesc);
+      osqAssign$MH = getMethodHandle("osqAssign", osqAssignDesc);
       filterByScore$MH = getMethodHandle("filterByScore", filterByScoreDesc);
       l2normalize$MH = getMethodHandle("l2normalize", l2normalizeDesc);
       expand8$MH = getMethodHandle("expand8", expand8Desc);
@@ -220,6 +239,9 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
       int4DibitDotProduct$MH = null;
       minMaxScalarQuantize$MH = null;
       recalculateScalarQuantizationOffset$MH = null;
+      osqCenter$MH = null;
+      osqGridStats$MH = null;
+      osqAssign$MH = null;
       filterByScore$MH = null;
       l2normalize$MH = null;
       expand8$MH = null;
@@ -568,6 +590,49 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
         alpha,
         minQuantile,
         maxQuantile,
+        vector.length);
+  }
+
+  @Override
+  public void osqCenter(float[] vector, float[] centroid, float[] stats) {
+    invokeOrDelegate(
+        osqCenter$MH,
+        () -> {
+          delegateVectorUtilSupport.osqCenter(vector, centroid, stats);
+          return null;
+        },
+        MemorySegment.ofArray(vector),
+        MemorySegment.ofArray(centroid),
+        MemorySegment.ofArray(stats),
+        vector.length);
+  }
+
+  @Override
+  public void osqGridStats(float[] vector, float lower, float upper, int points, double[] stats) {
+    invokeOrDelegate(
+        osqGridStats$MH,
+        () -> {
+          delegateVectorUtilSupport.osqGridStats(vector, lower, upper, points, stats);
+          return null;
+        },
+        MemorySegment.ofArray(vector),
+        lower,
+        upper,
+        points,
+        MemorySegment.ofArray(stats),
+        vector.length);
+  }
+
+  @Override
+  public int osqAssign(float[] vector, float lower, float upper, float step, byte[] dest) {
+    return invokeOrDelegate(
+        osqAssign$MH,
+        () -> delegateVectorUtilSupport.osqAssign(vector, lower, upper, step, dest),
+        MemorySegment.ofArray(vector),
+        lower,
+        upper,
+        step,
+        MemorySegment.ofArray(dest),
         vector.length);
   }
 
