@@ -223,7 +223,6 @@ public class CharTermAttributeImpl extends AttributeImpl
     t.termBuffer = new char[this.termLength];
     System.arraycopy(this.termBuffer, 0, t.termBuffer, 0, this.termLength);
     t.builder = new BytesRefBuilder();
-    t.builder.copyBytes(builder.get());
     return t;
   }
 

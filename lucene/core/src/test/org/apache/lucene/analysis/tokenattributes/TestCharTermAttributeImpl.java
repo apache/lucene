@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.regex.Pattern;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.RamUsageTester;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.AttributeImpl;
 import org.apache.lucene.util.BytesRef;
@@ -103,6 +104,18 @@ public class TestCharTermAttributeImpl extends LuceneTestCase {
     CharTermAttributeImpl copy = assertCloneIsEqual(t);
     assertEquals(t.toString(), copy.toString());
     assertNotSame(buf, copy.buffer());
+  }
+
+  public void testCloneDoesNotRetainBytesOfPreviousTerm() {
+    CharTermAttributeImpl t = new CharTermAttributeImpl();
+    String longTerm = "a".repeat(10_000);
+    t.append(longTerm);
+    t.getBytesRef();
+    t.setEmpty().append("hello");
+    CharTermAttributeImpl copy = t.clone();
+    assertEquals(new BytesRef("hello"), copy.getBytesRef());
+    long ramUsed = RamUsageTester.ramUsed(copy);
+    assertTrue("clone uses " + ramUsed + " bytes", ramUsed < longTerm.length());
   }
 
   public void testEquals() throws Exception {
