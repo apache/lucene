@@ -270,11 +270,10 @@ public class CompiledAutomaton implements Accountable {
     }
   }
 
-  private Transition transition = new Transition();
-
   // private static final boolean DEBUG = BlockTreeTermsWriter.DEBUG;
 
-  private BytesRef addTail(int state, BytesRefBuilder term, int idx, int leadLabel) {
+  private BytesRef addTail(
+      int state, BytesRefBuilder term, int idx, int leadLabel, Transition transition) {
     // System.out.println("addTail state=" + state + " term=" + term.utf8ToString() + " idx=" + idx
     // + " leadLabel=" + (char) leadLabel);
     // System.out.println(automaton.toDot());
@@ -404,6 +403,8 @@ public class CompiledAutomaton implements Accountable {
     }
 
     final IntArrayList stack = new IntArrayList();
+    // Scratch is local so that concurrent calls on a shared instance don't interfere:
+    final Transition transition = new Transition();
 
     int idx = 0;
     while (true) {
@@ -467,7 +468,7 @@ public class CompiledAutomaton implements Accountable {
 
         // if (DEBUG) System.out.println("  label=" + (char) label + " idx=" + idx);
 
-        return addTail(state, output, idx, label);
+        return addTail(state, output, idx, label, transition);
 
       } else {
         output.grow(1 + idx);
@@ -557,7 +558,6 @@ public class CompiledAutomaton implements Accountable {
         + RamUsageEstimator.sizeOfObject(commonSuffixRef)
         + RamUsageEstimator.sizeOfObject(runAutomaton)
         + RamUsageEstimator.sizeOfObject(nfaRunAutomaton)
-        + RamUsageEstimator.sizeOfObject(term)
-        + RamUsageEstimator.sizeOfObject(transition);
+        + RamUsageEstimator.sizeOfObject(term);
   }
 }
