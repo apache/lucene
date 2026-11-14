@@ -18,6 +18,7 @@
 package org.apache.lucene.codecs.lucene95;
 
 import java.io.IOException;
+import java.util.ArrayDeque;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.FloatVectorValues;
@@ -43,6 +44,18 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
   protected final VectorSimilarityFunction similarityFunction;
   protected final FlatVectorsScorer flatVectorsScorer;
 
+  /** An input returned by {@link IndexInput#prefetchRange}, with the ordinal it holds. */
+  protected record Prefetched(int ord, IndexInput input) {}
+
+  /**
+   * Prefetched vectors, oldest first, shared by reference with every instance {@link #copy()}
+   * produces, since rescoring prefetches through one copy and reads through another.
+   *
+   * <p>This is a FIFO because rescoring reads its candidates in the order it prefetched them. Not
+   * thread safe, matching the same-thread contract of {@code prefetchRange}.
+   */
+  protected final ArrayDeque<Prefetched> prefetched;
+
   OffHeapFloatVectorValues(
       int dimension,
       int size,
@@ -50,6 +63,25 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
       int byteSize,
       FlatVectorsScorer flatVectorsScorer,
       VectorSimilarityFunction similarityFunction) {
+    this(
+        dimension,
+        size,
+        slice,
+        byteSize,
+        flatVectorsScorer,
+        similarityFunction,
+        new ArrayDeque<>());
+  }
+
+  OffHeapFloatVectorValues(
+      int dimension,
+      int size,
+      IndexInput slice,
+      int byteSize,
+      FlatVectorsScorer flatVectorsScorer,
+      VectorSimilarityFunction similarityFunction,
+      ArrayDeque<Prefetched> prefetched) {
+    this.prefetched = prefetched;
     this.dimension = dimension;
     this.size = size;
     this.slice = slice;
@@ -79,6 +111,24 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
     if (lastOrd == targetOrd) {
       return value;
     }
+    if (prefetched.isEmpty() == false) {
+      Prefetched next = prefetched.removeFirst();
+      try (IndexInput handle = next.input()) {
+        if (next.ord() != targetOrd) {
+          // Rescoring reads vectors in the order it prefetched them, so this is not expected to
+          // happen. Callers that read out of order could be supported by keeping the prefetched
+          // inputs in a map keyed by ordinal instead of a queue (not implemented).
+          throw new IllegalStateException(
+              "vector "
+                  + targetOrd
+                  + " read out of prefetch order, next prefetched is "
+                  + next.ord());
+        }
+        handle.readFloats(value, 0, value.length);
+      }
+      lastOrd = targetOrd;
+      return value;
+    }
     slice.seek((long) targetOrd * byteSize);
     slice.readFloats(value, 0, value.length);
     lastOrd = targetOrd;
@@ -90,10 +140,23 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
     if (ord < 0 || ord >= size || count <= 0) {
       return false;
     }
-    // Vectors are laid out contiguously by ordinal, so a run of them is a single read.
     final int runLength = Math.min(count, size - ord);
-    return slice.prefetch((long) ord * byteSize, (long) runLength * byteSize);
+    // One input per vector, since vectorValue() reads one ordinal at a time. A null result means
+    // the directory has no buffer to hand out, so fall back to the plain hint for the whole run.
+    IndexInput first = slice.prefetchRange(PREFETCH_RANGE_DESC, (long) ord * byteSize, byteSize);
+    if (first == null) {
+      return slice.prefetch((long) ord * byteSize, (long) runLength * byteSize);
+    }
+    prefetched.addLast(new Prefetched(ord, first));
+    for (int i = 1; i < runLength; i++) {
+      long offset = (long) (ord + i) * byteSize;
+      prefetched.addLast(
+          new Prefetched(ord + i, slice.prefetchRange(PREFETCH_RANGE_DESC, offset, byteSize)));
+    }
+    return true;
   }
+
+  private static final String PREFETCH_RANGE_DESC = "prefetched-vector";
 
   public static OffHeapFloatVectorValues load(
       VectorSimilarityFunction vectorSimilarityFunction,
@@ -146,10 +209,27 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
       super(dimension, size, slice, byteSize, flatVectorsScorer, similarityFunction);
     }
 
+    private DenseOffHeapVectorValues(
+        int dimension,
+        int size,
+        IndexInput slice,
+        int byteSize,
+        FlatVectorsScorer flatVectorsScorer,
+        VectorSimilarityFunction similarityFunction,
+        ArrayDeque<Prefetched> prefetched) {
+      super(dimension, size, slice, byteSize, flatVectorsScorer, similarityFunction, prefetched);
+    }
+
     @Override
     public DenseOffHeapVectorValues copy() throws IOException {
       return new DenseOffHeapVectorValues(
-          dimension, size, slice.clone(), byteSize, flatVectorsScorer, similarityFunction);
+          dimension,
+          size,
+          slice.clone(),
+          byteSize,
+          flatVectorsScorer,
+          similarityFunction,
+          prefetched);
     }
 
     @Override
@@ -208,8 +288,35 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
         FlatVectorsScorer flatVectorsScorer,
         VectorSimilarityFunction similarityFunction)
         throws IOException {
+      this(
+          configuration,
+          dataIn,
+          slice,
+          dimension,
+          byteSize,
+          flatVectorsScorer,
+          similarityFunction,
+          new ArrayDeque<>());
+    }
 
-      super(dimension, configuration.size, slice, byteSize, flatVectorsScorer, similarityFunction);
+    private SparseOffHeapVectorValues(
+        OrdToDocDISIReaderConfiguration configuration,
+        IndexInput dataIn,
+        IndexInput slice,
+        int dimension,
+        int byteSize,
+        FlatVectorsScorer flatVectorsScorer,
+        VectorSimilarityFunction similarityFunction,
+        ArrayDeque<Prefetched> prefetched)
+        throws IOException {
+      super(
+          dimension,
+          configuration.size,
+          slice,
+          byteSize,
+          flatVectorsScorer,
+          similarityFunction,
+          prefetched);
       this.configuration = configuration;
       final RandomAccessInput addressesData =
           dataIn.randomAccessSlice(configuration.addressesOffset, configuration.addressesLength);
@@ -234,7 +341,8 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
           dimension,
           byteSize,
           flatVectorsScorer,
-          similarityFunction);
+          similarityFunction,
+          prefetched);
     }
 
     @Override

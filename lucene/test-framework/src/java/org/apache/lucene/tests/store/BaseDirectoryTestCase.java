@@ -1589,6 +1589,51 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
     }
   }
 
+  /** A range inside the input is accepted, and any returned input reads the right bytes. */
+  public void testPrefetchRange() throws IOException {
+    try (Directory dir = getDirectory(createTempDir())) {
+      byte[] arr = new byte[TestUtil.nextInt(random(), 2048, 8192)];
+      random().nextBytes(arr);
+      try (IndexOutput out = dir.createOutput("temp.bin", IOContext.DEFAULT)) {
+        out.writeBytes(arr, arr.length);
+      }
+      try (IndexInput in = dir.openInput("temp.bin", IOContext.DEFAULT)) {
+        int offset = TestUtil.nextInt(random(), 0, arr.length - 1);
+        int length = TestUtil.nextInt(random(), 1, arr.length - offset);
+        IndexInput handle = in.prefetchRange("range", offset, length);
+        if (handle != null) {
+          try (handle) {
+            assertEquals(length, handle.length());
+            assertEquals(0, handle.getFilePointer());
+            byte[] actual = new byte[length];
+            handle.readBytes(actual, 0, length);
+            assertArrayEquals(ArrayUtil.copyOfSubArray(arr, offset, offset + length), actual);
+          }
+        }
+      }
+    }
+  }
+
+  /** A range past the end fails on every directory, including those keeping the default. */
+  public void testPrefetchRangePastEOF() throws IOException {
+    try (Directory dir = getDirectory(createTempDir())) {
+      byte[] arr = new byte[1024];
+      random().nextBytes(arr);
+      try (IndexOutput out = dir.createOutput("temp.bin", IOContext.DEFAULT)) {
+        out.writeBytes(arr, arr.length);
+      }
+      try (IndexInput in = dir.openInput("temp.bin", IOContext.DEFAULT)) {
+        expectThrows(EOFException.class, () -> in.prefetchRange("past-eof", 1000, 100));
+        expectThrows(EOFException.class, () -> in.prefetchRange("past-eof", 1024, 1));
+        expectThrows(EOFException.class, () -> in.prefetchRange("negative", -1, 8));
+        expectThrows(EOFException.class, () -> in.prefetchRange("negative", 0, -1));
+        // An empty range at the end is legal, as for slice(); past the end is not.
+        expectThrows(EOFException.class, () -> in.prefetchRange("past-eof", 1025, 0));
+        IOUtils.close(in.prefetchRange("empty-at-eof", 1024, 0));
+      }
+    }
+  }
+
   public void testIsLoaded() throws IOException {
     testIsLoaded(0);
   }

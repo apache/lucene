@@ -209,9 +209,10 @@ public class TestOffHeapVectorValues extends LuceneTestCase {
     @Override
     public void seek(long pos) throws IOException {}
 
+    /** Long enough for every fixture, since {@link IndexInput#prefetchRange} checks its range. */
     @Override
     public long length() {
-      return 0;
+      return 100 * Float.BYTES;
     }
 
     @Override
