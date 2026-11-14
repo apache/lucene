@@ -394,8 +394,10 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
   }
 
   // https://github.com/apache/lucene/issues/13593
-  // A merge that becomes pending in the window between the stall check and
-  // getNextMerge must not push us over maxMergeCount:
+  // A merge that becomes pending while the scheduler sits at maxMergeCount
+  // must not push us over the cap: the producer must not stall while no merge
+  // is pending, the late merge must not be pulled at the cap, and it must
+  // still run once there is room below the cap:
   @SuppressForbidden(reason = "Wall clock bounds the best-effort overshoot detection window")
   public void testMaxMergeCountNotExceededByLatePendingMerge() throws Exception {
     Directory dir = newDirectory();
@@ -408,10 +410,11 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
     final CountDownLatch firstMergeRunning = new CountDownLatch(1);
     final CountDownLatch firstMergeMayFinish = new CountDownLatch(1);
 
-    // Fake MergeSource that reproduces the race window deterministically: the
-    // late merge materializes inside getNextMerge, after hasPendingMerges was
-    // already evaluated as false, just as if IndexWriter had registered it in
-    // between under its own lock:
+    // Fake MergeSource that reproduces the original race window if the
+    // scheduler pulls from an empty queue while at the cap: the late merge
+    // materializes inside getNextMerge, after hasPendingMerges was already
+    // evaluated as false, just as if IndexWriter had registered it in between
+    // under its own lock:
     MergeScheduler.MergeSource source =
         new MergeScheduler.MergeSource() {
           @Override
@@ -476,29 +479,50 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
         pending.add(firstMerge);
       }
 
-      // Let the first merge finish once it is running. If the scheduler is
-      // buggy it will have started a second merge thread in the meantime; give
-      // it a brief chance to do so, so the overshoot is recorded:
-      Thread finishFirstMerge =
+      // Run the producer on its own thread: with the first merge about to
+      // occupy the single thread slot and nothing else pending, maybeStall
+      // must return false right away instead of stalling the producer; the
+      // merge threads can wait on the producer, so stalling here could
+      // deadlock a flush:
+      Thread producer =
           new Thread(
               () -> {
                 try {
-                  if (firstMergeRunning.await(30, TimeUnit.SECONDS) == false) {
-                    fail("first merge never started");
-                  }
-                } catch (InterruptedException ie) {
-                  throw new RuntimeException(ie);
+                  cms.merge(source, MergeTrigger.SEGMENT_FLUSH);
+                } catch (IOException ioe) {
+                  throw new RuntimeException(ioe);
                 }
-                long deadline = System.currentTimeMillis() + 1000;
-                while (runningMergeCount.get() < 2 && System.currentTimeMillis() < deadline) {
-                  Thread.yield();
-                }
-                firstMergeMayFinish.countDown();
               });
-      finishFirstMerge.start();
+      producer.start();
+      producer.join(30000);
+      assertFalse("producer stalled at maxMergeCount with no merge pending", producer.isAlive());
 
+      // Wait for the first merge to start, then give a buggy scheduler a
+      // brief chance to start a second thread for the late merge, so the
+      // overshoot is recorded:
+      if (firstMergeRunning.await(30, TimeUnit.SECONDS) == false) {
+        fail("first merge never started");
+      }
+      long deadline = System.currentTimeMillis() + 1000;
+      while (runningMergeCount.get() < 2 && System.currentTimeMillis() < deadline) {
+        Thread.yield();
+      }
+      assertEquals(
+          "maxMergeCount was exceeded: " + maxRunningMergeCount.get(),
+          1,
+          maxRunningMergeCount.get());
+
+      // Register the late merge, as IndexWriter would, and let the first
+      // merge finish. The registration path calls merge() again, which must
+      // schedule the late merge once there is room below the cap (unless a
+      // buggy overshoot path already queued it):
+      if (lateMergeQueued.compareAndSet(false, true)) {
+        synchronized (pending) {
+          pending.add(lateMerge);
+        }
+      }
+      firstMergeMayFinish.countDown();
       cms.merge(source, MergeTrigger.SEGMENT_FLUSH);
-      finishFirstMerge.join();
 
       // Wait for all merge threads to wrap up:
       cms.sync();
@@ -511,6 +535,7 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
           1,
           maxRunningMergeCount.get());
     } finally {
+      firstMergeMayFinish.countDown();
       dir.close();
     }
   }
