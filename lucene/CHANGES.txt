@@ -11,9 +11,9 @@ API Changes
 
 New Features
 ---------------------
-* FuzzyQuery can take a FuzzyAutomatonCache, which keeps the Levenshtein automata of recently
-  searched terms so that they are built once and shared across queries, fields and requests instead
-  of on every rewrite. (Anil Behera)
+* GITHUB#17025: FuzzyQuery can take a FuzzyAutomatonCache, which keeps the Levenshtein automata of
+  recently searched terms so that they are built once and shared across queries, fields and
+  requests instead of on every rewrite. (Anil Behera)
 
 Improvements
 ---------------------
