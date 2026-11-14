@@ -16,14 +16,19 @@
  */
 package org.apache.lucene.tests.index;
 
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.index.Terms;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.IOUtils;
@@ -68,5 +73,67 @@ public class TestAssertingLeafReader extends LuceneTestCase {
     thread.join();
 
     IOUtils.close(r, dir);
+  }
+
+  /**
+   * {@link AssertingLeafReader.AssertingFields} wraps the {@link org.apache.lucene.index.Fields}
+   * that term vectors expose, so it must reject a field iteration order that {@link
+   * org.apache.lucene.index.Fields#iterator()} forbids. This path is separate from the one {@code
+   * AssertingPostingsFormat} covers.
+   */
+  public void testAssertingFieldsRejectsUnsortedFieldNames() throws Exception {
+    assumeTrue("Test designed to work only with assertions enabled.", TEST_ASSERTS_ENABLED);
+    Fields unsorted =
+        new Fields() {
+          @Override
+          public Iterator<String> iterator() {
+            return List.of("zebra", "mid", "alpha").iterator();
+          }
+
+          @Override
+          public Terms terms(String field) {
+            return null;
+          }
+
+          @Override
+          public int size() {
+            return 3;
+          }
+        };
+
+    AssertionError e =
+        expectThrows(
+            AssertionError.class,
+            () -> {
+              Iterator<String> it = new AssertingLeafReader.AssertingFields(unsorted).iterator();
+              while (it.hasNext()) {
+                it.next();
+              }
+            });
+    assertTrue(e.getMessage(), e.getMessage().contains("ascending order"));
+  }
+
+  public void testAssertingFieldsAcceptsSortedFieldNames() throws Exception {
+    Fields sorted =
+        new Fields() {
+          @Override
+          public Iterator<String> iterator() {
+            return List.of("alpha", "mid", "zebra").iterator();
+          }
+
+          @Override
+          public Terms terms(String field) {
+            return null;
+          }
+
+          @Override
+          public int size() {
+            return 3;
+          }
+        };
+
+    List<String> seen = new ArrayList<>();
+    new AssertingLeafReader.AssertingFields(sorted).forEach(seen::add);
+    assertEquals(List.of("alpha", "mid", "zebra"), seen);
   }
 }
