@@ -512,10 +512,21 @@ public class TestTermInSetQuery extends LuceneTestCase {
           if (random().nextInt(20) == 0) {
             doc.add(new KeywordField("all", "x", Store.NO));
           }
+          if (random().nextInt(4) == 0) {
+            // "x" is in every document with the field "dense", "y" in some of them
+            doc.add(new KeywordField("dense", "x", Store.NO));
+            if (random().nextBoolean()) {
+              doc.add(new KeywordField("dense", "y", Store.NO));
+            }
+          }
+          doc.add(new StringField("id", Integer.toString(i), Store.NO));
           w.addDocument(doc);
           if (random().nextInt(50) == 0) {
             w.commit();
           }
+        }
+        for (int i = 0; i < numDocs / 10; i++) {
+          w.deleteDocuments(new Term("id", Integer.toString(random().nextInt(numDocs))));
         }
       }
       try (DirectoryReader reader = DirectoryReader.open(dir)) {
@@ -539,6 +550,21 @@ public class TestTermInSetQuery extends LuceneTestCase {
                 new TermInSetQuery(method, "all", List.of(newBytesRef("x"))),
                 new TermInSetQuery(
                     MultiTermQuery.CONSTANT_SCORE_BOOLEAN_REWRITE, "all", List.of(newBytesRef("x")))
+              });
+          // several query terms, at most one of them in the index
+          List<BytesRef> withAbsent = List.of(term, newBytesRef("absent1"), newBytesRef("absent2"));
+          pairs.add(
+              new Query[] {
+                new TermInSetQuery(method, "f", withAbsent),
+                new TermInSetQuery(MultiTermQuery.CONSTANT_SCORE_BOOLEAN_REWRITE, "f", withAbsent)
+              });
+          // several terms, one of which matches every document of the field
+          List<BytesRef> withDense = List.of(newBytesRef("x"), newBytesRef("y"), newBytesRef("z"));
+          pairs.add(
+              new Query[] {
+                new TermInSetQuery(method, "dense", withDense),
+                new TermInSetQuery(
+                    MultiTermQuery.CONSTANT_SCORE_BOOLEAN_REWRITE, "dense", withDense)
               });
           // a prefix that matches one term
           pairs.add(
