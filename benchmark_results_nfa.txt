@@ -1,0 +1,415 @@
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/Users/Jacky/Desktop/projects/fork/lucene/lucene/benchmark-jmh/build/benchmarks/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# JMH version: 1.37
+# VM version: JDK 24.0.2, OpenJDK 64-Bit Server VM, 24.0.2
+# VM invoker: /usr/local/Cellar/openjdk/24.0.2/libexec/openjdk.jdk/Contents/Home/bin/java
+# VM options: -Xmx2g -Xms2g
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 3 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: org.apache.lucene.benchmark.jmh.RegexDeterminizeBenchmark.determinize
+# Parameters: (regexPattern = ^(a)?a, workLimit = 10000)
+
+# Run progress: 0.00% complete, ETA 00:03:51
+# Fork: 1 of 1
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/Users/Jacky/Desktop/projects/fork/lucene/lucene/benchmark-jmh/build/benchmarks/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: 0.001 ms/op
+# Warmup Iteration   2: 0.001 ms/op
+# Warmup Iteration   3: 0.001 ms/op
+Iteration   1: 0.001 ms/op
+Iteration   2: 0.001 ms/op
+Iteration   3: 0.001 ms/op
+Iteration   4: 0.001 ms/op
+Iteration   5: 0.001 ms/op
+
+
+Result "org.apache.lucene.benchmark.jmh.RegexDeterminizeBenchmark.determinize":
+  0.001 ±(99.9%) 0.001 ms/op [Average]
+  (min, avg, max) = (0.001, 0.001, 0.001), stdev = 0.001
+  CI (99.9%): [≈ 0, 0.002] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 24.0.2, OpenJDK 64-Bit Server VM, 24.0.2
+# VM invoker: /usr/local/Cellar/openjdk/24.0.2/libexec/openjdk.jdk/Contents/Home/bin/java
+# VM options: -Xmx2g -Xms2g
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 3 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: org.apache.lucene.benchmark.jmh.RegexDeterminizeBenchmark.determinize
+# Parameters: (regexPattern = ((a|b)?b)+, workLimit = 10000)
+
+# Run progress: 9.09% complete, ETA 00:03:37
+# Fork: 1 of 1
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/Users/Jacky/Desktop/projects/fork/lucene/lucene/benchmark-jmh/build/benchmarks/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: 0.006 ms/op
+# Warmup Iteration   2: 0.004 ms/op
+# Warmup Iteration   3: 0.005 ms/op
+Iteration   1: 0.006 ms/op
+Iteration   2: 0.004 ms/op
+Iteration   3: 0.003 ms/op
+Iteration   4: 0.003 ms/op
+Iteration   5: 0.003 ms/op
+
+
+Result "org.apache.lucene.benchmark.jmh.RegexDeterminizeBenchmark.determinize":
+  0.004 ±(99.9%) 0.006 ms/op [Average]
+  (min, avg, max) = (0.003, 0.004, 0.006), stdev = 0.001
+  CI (99.9%): [≈ 0, 0.010] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 24.0.2, OpenJDK 64-Bit Server VM, 24.0.2
+# VM invoker: /usr/local/Cellar/openjdk/24.0.2/libexec/openjdk.jdk/Contents/Home/bin/java
+# VM options: -Xmx2g -Xms2g
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 3 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: org.apache.lucene.benchmark.jmh.RegexDeterminizeBenchmark.determinize
+# Parameters: (regexPattern = (aaa)?aaa, workLimit = 10000)
+
+# Run progress: 18.18% complete, ETA 00:03:16
+# Fork: 1 of 1
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/Users/Jacky/Desktop/projects/fork/lucene/lucene/benchmark-jmh/build/benchmarks/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: 0.002 ms/op
+# Warmup Iteration   2: 0.002 ms/op
+# Warmup Iteration   3: 0.002 ms/op
+Iteration   1: 0.001 ms/op
+Iteration   2: 0.002 ms/op
+Iteration   3: 0.002 ms/op
+Iteration   4: 0.001 ms/op
+Iteration   5: 0.001 ms/op
+
+
+Result "org.apache.lucene.benchmark.jmh.RegexDeterminizeBenchmark.determinize":
+  0.001 ±(99.9%) 0.001 ms/op [Average]
+  (min, avg, max) = (0.001, 0.001, 0.002), stdev = 0.001
+  CI (99.9%): [0.001, 0.002] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 24.0.2, OpenJDK 64-Bit Server VM, 24.0.2
+# VM invoker: /usr/local/Cellar/openjdk/24.0.2/libexec/openjdk.jdk/Contents/Home/bin/java
+# VM options: -Xmx2g -Xms2g
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 3 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: org.apache.lucene.benchmark.jmh.RegexDeterminizeBenchmark.determinize
+# Parameters: (regexPattern = ^(a(b(c)?)?)?abc, workLimit = 10000)
+
+# Run progress: 27.27% complete, ETA 00:02:54
+# Fork: 1 of 1
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/Users/Jacky/Desktop/projects/fork/lucene/lucene/benchmark-jmh/build/benchmarks/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: 0.004 ms/op
+# Warmup Iteration   2: 0.002 ms/op
+# Warmup Iteration   3: 0.002 ms/op
+Iteration   1: 0.002 ms/op
+Iteration   2: 0.002 ms/op
+Iteration   3: 0.002 ms/op
+Iteration   4: 0.002 ms/op
+Iteration   5: 0.002 ms/op
+
+
+Result "org.apache.lucene.benchmark.jmh.RegexDeterminizeBenchmark.determinize":
+  0.002 ±(99.9%) 0.001 ms/op [Average]
+  (min, avg, max) = (0.002, 0.002, 0.002), stdev = 0.001
+  CI (99.9%): [0.002, 0.003] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 24.0.2, OpenJDK 64-Bit Server VM, 24.0.2
+# VM invoker: /usr/local/Cellar/openjdk/24.0.2/libexec/openjdk.jdk/Contents/Home/bin/java
+# VM options: -Xmx2g -Xms2g
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 3 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: org.apache.lucene.benchmark.jmh.RegexDeterminizeBenchmark.determinize
+# Parameters: (regexPattern = (a+)+, workLimit = 10000)
+
+# Run progress: 36.36% complete, ETA 00:02:32
+# Fork: 1 of 1
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/Users/Jacky/Desktop/projects/fork/lucene/lucene/benchmark-jmh/build/benchmarks/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: 0.002 ms/op
+# Warmup Iteration   2: 0.001 ms/op
+# Warmup Iteration   3: 0.001 ms/op
+Iteration   1: 0.001 ms/op
+Iteration   2: 0.002 ms/op
+Iteration   3: 0.002 ms/op
+Iteration   4: 0.003 ms/op
+Iteration   5: 0.003 ms/op
+
+
+Result "org.apache.lucene.benchmark.jmh.RegexDeterminizeBenchmark.determinize":
+  0.002 ±(99.9%) 0.004 ms/op [Average]
+  (min, avg, max) = (0.001, 0.002, 0.003), stdev = 0.001
+  CI (99.9%): [≈ 0, 0.006] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 24.0.2, OpenJDK 64-Bit Server VM, 24.0.2
+# VM invoker: /usr/local/Cellar/openjdk/24.0.2/libexec/openjdk.jdk/Contents/Home/bin/java
+# VM options: -Xmx2g -Xms2g
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 3 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: org.apache.lucene.benchmark.jmh.RegexDeterminizeBenchmark.determinize
+# Parameters: (regexPattern = (a*)+, workLimit = 10000)
+
+# Run progress: 45.45% complete, ETA 00:02:10
+# Fork: 1 of 1
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/Users/Jacky/Desktop/projects/fork/lucene/lucene/benchmark-jmh/build/benchmarks/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: 0.001 ms/op
+# Warmup Iteration   2: 0.001 ms/op
+# Warmup Iteration   3: 0.002 ms/op
+Iteration   1: 0.002 ms/op
+Iteration   2: 0.001 ms/op
+Iteration   3: 0.001 ms/op
+Iteration   4: 0.001 ms/op
+Iteration   5: 0.002 ms/op
+
+
+Result "org.apache.lucene.benchmark.jmh.RegexDeterminizeBenchmark.determinize":
+  0.001 ±(99.9%) 0.003 ms/op [Average]
+  (min, avg, max) = (0.001, 0.001, 0.002), stdev = 0.001
+  CI (99.9%): [≈ 0, 0.004] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 24.0.2, OpenJDK 64-Bit Server VM, 24.0.2
+# VM invoker: /usr/local/Cellar/openjdk/24.0.2/libexec/openjdk.jdk/Contents/Home/bin/java
+# VM options: -Xmx2g -Xms2g
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 3 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: org.apache.lucene.benchmark.jmh.RegexDeterminizeBenchmark.determinize
+# Parameters: (regexPattern = (b+)+, workLimit = 10000)
+
+# Run progress: 54.55% complete, ETA 00:01:48
+# Fork: 1 of 1
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/Users/Jacky/Desktop/projects/fork/lucene/lucene/benchmark-jmh/build/benchmarks/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: 0.002 ms/op
+# Warmup Iteration   2: 0.002 ms/op
+# Warmup Iteration   3: 0.003 ms/op
+Iteration   1: 0.003 ms/op
+Iteration   2: 0.003 ms/op
+Iteration   3: 0.003 ms/op
+Iteration   4: 0.002 ms/op
+Iteration   5: 0.002 ms/op
+
+
+Result "org.apache.lucene.benchmark.jmh.RegexDeterminizeBenchmark.determinize":
+  0.003 ±(99.9%) 0.003 ms/op [Average]
+  (min, avg, max) = (0.002, 0.003, 0.003), stdev = 0.001
+  CI (99.9%): [≈ 10⁻⁴, 0.005] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 24.0.2, OpenJDK 64-Bit Server VM, 24.0.2
+# VM invoker: /usr/local/Cellar/openjdk/24.0.2/libexec/openjdk.jdk/Contents/Home/bin/java
+# VM options: -Xmx2g -Xms2g
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 3 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: org.apache.lucene.benchmark.jmh.RegexDeterminizeBenchmark.determinize
+# Parameters: (regexPattern = (|f)?+, workLimit = 10000)
+
+# Run progress: 63.64% complete, ETA 00:01:27
+# Fork: 1 of 1
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/Users/Jacky/Desktop/projects/fork/lucene/lucene/benchmark-jmh/build/benchmarks/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: 0.002 ms/op
+# Warmup Iteration   2: 0.002 ms/op
+# Warmup Iteration   3: 0.002 ms/op
+Iteration   1: 0.002 ms/op
+Iteration   2: 0.003 ms/op
+Iteration   3: 0.003 ms/op
+Iteration   4: 0.003 ms/op
+Iteration   5: 0.003 ms/op
+
+
+Result "org.apache.lucene.benchmark.jmh.RegexDeterminizeBenchmark.determinize":
+  0.003 ±(99.9%) 0.001 ms/op [Average]
+  (min, avg, max) = (0.002, 0.003, 0.003), stdev = 0.001
+  CI (99.9%): [0.002, 0.004] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 24.0.2, OpenJDK 64-Bit Server VM, 24.0.2
+# VM invoker: /usr/local/Cellar/openjdk/24.0.2/libexec/openjdk.jdk/Contents/Home/bin/java
+# VM options: -Xmx2g -Xms2g
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 3 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: org.apache.lucene.benchmark.jmh.RegexDeterminizeBenchmark.determinize
+# Parameters: (regexPattern = (y+)*, workLimit = 10000)
+
+# Run progress: 72.73% complete, ETA 00:01:05
+# Fork: 1 of 1
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/Users/Jacky/Desktop/projects/fork/lucene/lucene/benchmark-jmh/build/benchmarks/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: 0.001 ms/op
+# Warmup Iteration   2: 0.001 ms/op
+# Warmup Iteration   3: 0.001 ms/op
+Iteration   1: 0.001 ms/op
+Iteration   2: 0.001 ms/op
+Iteration   3: 0.001 ms/op
+Iteration   4: 0.002 ms/op
+Iteration   5: 0.002 ms/op
+
+
+Result "org.apache.lucene.benchmark.jmh.RegexDeterminizeBenchmark.determinize":
+  0.001 ±(99.9%) 0.001 ms/op [Average]
+  (min, avg, max) = (0.001, 0.001, 0.002), stdev = 0.001
+  CI (99.9%): [≈ 10⁻⁴, 0.002] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 24.0.2, OpenJDK 64-Bit Server VM, 24.0.2
+# VM invoker: /usr/local/Cellar/openjdk/24.0.2/libexec/openjdk.jdk/Contents/Home/bin/java
+# VM options: -Xmx2g -Xms2g
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 3 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: org.apache.lucene.benchmark.jmh.RegexDeterminizeBenchmark.determinize
+# Parameters: (regexPattern = (foo|foobar)*, workLimit = 10000)
+
+# Run progress: 81.82% complete, ETA 00:00:43
+# Fork: 1 of 1
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/Users/Jacky/Desktop/projects/fork/lucene/lucene/benchmark-jmh/build/benchmarks/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: 0.010 ms/op
+# Warmup Iteration   2: 0.004 ms/op
+# Warmup Iteration   3: 0.002 ms/op
+Iteration   1: 0.002 ms/op
+Iteration   2: 0.002 ms/op
+Iteration   3: 0.002 ms/op
+Iteration   4: 0.002 ms/op
+Iteration   5: 0.002 ms/op
+
+
+Result "org.apache.lucene.benchmark.jmh.RegexDeterminizeBenchmark.determinize":
+  0.002 ±(99.9%) 0.001 ms/op [Average]
+  (min, avg, max) = (0.002, 0.002, 0.002), stdev = 0.001
+  CI (99.9%): [0.001, 0.002] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 24.0.2, OpenJDK 64-Bit Server VM, 24.0.2
+# VM invoker: /usr/local/Cellar/openjdk/24.0.2/libexec/openjdk.jdk/Contents/Home/bin/java
+# VM options: -Xmx2g -Xms2g
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 3 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: org.apache.lucene.benchmark.jmh.RegexDeterminizeBenchmark.determinize
+# Parameters: (regexPattern = (aa+|bb+)+, workLimit = 10000)
+
+# Run progress: 90.91% complete, ETA 00:00:21
+# Fork: 1 of 1
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/Users/Jacky/Desktop/projects/fork/lucene/lucene/benchmark-jmh/build/benchmarks/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: 0.036 ms/op
+# Warmup Iteration   2: 0.009 ms/op
+# Warmup Iteration   3: 0.011 ms/op
+Iteration   1: 0.012 ms/op
+Iteration   2: 0.015 ms/op
+Iteration   3: 0.016 ms/op
+Iteration   4: 0.015 ms/op
+Iteration   5: 0.011 ms/op
+
+
+Result "org.apache.lucene.benchmark.jmh.RegexDeterminizeBenchmark.determinize":
+  0.014 ±(99.9%) 0.009 ms/op [Average]
+  (min, avg, max) = (0.011, 0.014, 0.016), stdev = 0.002
+  CI (99.9%): [0.005, 0.022] (assumes normal distribution)
+
+
+# Run complete. Total time: 00:03:59
+
+REMEMBER: The numbers below are just data. To gain reusable insights, you need to follow up on
+why the numbers are the way they are. Use profilers (see -prof, -lprof), design factorial
+experiments, perform baseline and negative tests that provide experimental control, make sure
+the benchmarking environment is safe on JVM/OS/HW level, ask for reviews from the domain experts.
+Do not assume the numbers tell you what you want them to tell.
+
+NOTE: Current JVM experimentally supports Compiler Blackholes, and they are in use. Please exercise
+extra caution when trusting the results, look into the generated code to check the benchmark still
+works, and factor in a small probability of new VM bugs. Additionally, while comparisons between
+different JVMs are already problematic, the performance difference caused by different Blackhole
+modes can be very significant. Please make sure you use the consistent Blackhole mode for comparisons.
+
+Benchmark                                (regexPattern)  (workLimit)  Mode  Cnt  Score    Error  Units
+RegexDeterminizeBenchmark.determinize            ^(a)?a        10000  avgt    5  0.001 ±  0.001  ms/op
+RegexDeterminizeBenchmark.determinize        ((a|b)?b)+        10000  avgt    5  0.004 ±  0.006  ms/op
+RegexDeterminizeBenchmark.determinize         (aaa)?aaa        10000  avgt    5  0.001 ±  0.001  ms/op
+RegexDeterminizeBenchmark.determinize  ^(a(b(c)?)?)?abc        10000  avgt    5  0.002 ±  0.001  ms/op
+RegexDeterminizeBenchmark.determinize             (a+)+        10000  avgt    5  0.002 ±  0.004  ms/op
+RegexDeterminizeBenchmark.determinize             (a*)+        10000  avgt    5  0.001 ±  0.003  ms/op
+RegexDeterminizeBenchmark.determinize             (b+)+        10000  avgt    5  0.003 ±  0.003  ms/op
+RegexDeterminizeBenchmark.determinize            (|f)?+        10000  avgt    5  0.003 ±  0.001  ms/op
+RegexDeterminizeBenchmark.determinize             (y+)*        10000  avgt    5  0.001 ±  0.001  ms/op
+RegexDeterminizeBenchmark.determinize     (foo|foobar)*        10000  avgt    5  0.002 ±  0.001  ms/op
+RegexDeterminizeBenchmark.determinize        (aa+|bb+)+        10000  avgt    5  0.014 ±  0.009  ms/op
