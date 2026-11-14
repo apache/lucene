@@ -886,8 +886,9 @@ public class IndexWriter
   }
 
   /**
-   * Obtain the number of deleted docs for a pooled reader. If the reader isn't being pooled, the
-   * segmentInfo's delCount is returned.
+   * Obtain the number of deleted docs for a pooled reader, including soft deletes whose doc values
+   * updates are not written yet. If the reader isn't being pooled, the segmentInfo's delCount is
+   * returned.
    */
   @Override
   public int numDeletedDocs(SegmentCommitInfo info) {
@@ -895,7 +896,8 @@ public class IndexWriter
     validate(info);
     final ReadersAndUpdates rld = getPooledInstance(info, false);
     if (rld != null) {
-      return rld.getDelCount(); // get the full count from here since SCI might change concurrently
+      // get the full count from here since SCI might change concurrently
+      return rld.getDelCountWithUnwrittenSoftDeletes();
     } else {
       final int delCount = info.getDelCount(softDeletesEnabled);
       assert delCount <= info.info.maxDoc()
@@ -1450,11 +1452,12 @@ public class IndexWriter
    */
   public synchronized boolean hasDeletions() {
     ensureOpen();
-    if (bufferedUpdatesStream.any() || docWriter.anyDeletions() || readerPool.anyDeletions()) {
+    if (bufferedUpdatesStream.any() || docWriter.anyDeletions()) {
       return true;
     }
     for (final SegmentCommitInfo info : segmentInfos) {
-      if (info.hasDeletions()) {
+      // counts soft deletes too, also the ones that aren't written yet
+      if (numDeletedDocs(info) > 0) {
         return true;
       }
     }

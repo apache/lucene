@@ -1363,4 +1363,90 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
     writer.close();
     mockDirectory.close();
   }
+
+  public void testSoftDeletesDuringMergeCountAfterMergeCommits() throws Exception {
+    doTestDeletesDuringMergeCountAfterMergeCommits(true);
+  }
+
+  public void testHardDeletesDuringMergeCountAfterMergeCommits() throws Exception {
+    doTestDeletesDuringMergeCountAfterMergeCommits(false);
+  }
+
+  /**
+   * Deletes a document while a merge runs, and checks that {@link IndexWriter#getDocStats()} still
+   * counts the delete once the merge commits.
+   */
+  private void doTestDeletesDuringMergeCountAfterMergeCommits(boolean softDelete) throws Exception {
+    CountDownLatch waitForInitMergeReader = new CountDownLatch(1);
+    CountDownLatch waitForDelete = new CountDownLatch(1);
+    MergePolicy mergePolicy =
+        new OneMergeWrappingMergePolicy(
+            new LogDocMergePolicy() {
+              @Override
+              public MergeSpecification findMerges(
+                  MergeTrigger mergeTrigger, SegmentInfos segmentInfos, MergeContext mergeContext) {
+                // only allow force merge
+                return null;
+              }
+            },
+            merge ->
+                new MergePolicy.OneMerge(merge.segments) {
+                  @Override
+                  void initMergeReaders(
+                      IOFunction<SegmentCommitInfo, MergePolicy.MergeReader> readerFactory)
+                      throws IOException {
+                    super.initMergeReaders(readerFactory);
+                    waitForInitMergeReader.countDown();
+                  }
+
+                  @Override
+                  public CodecReader wrapForMerge(CodecReader reader) throws IOException {
+                    try {
+                      waitForDelete.await();
+                    } catch (InterruptedException e) {
+                      throw new AssertionError(e);
+                    }
+                    return super.wrapForMerge(reader);
+                  }
+                });
+    try (Directory dir = newDirectory();
+        IndexWriter writer =
+            new IndexWriter(
+                dir,
+                newIndexWriterConfig()
+                    .setMergePolicy(mergePolicy)
+                    .setMergeScheduler(new ConcurrentMergeScheduler())
+                    .setSoftDeletesField("soft_delete"))) {
+      for (int i = 0; i < 4; i++) {
+        Document doc = new Document();
+        doc.add(new StringField("id", Integer.toString(i), Field.Store.NO));
+        writer.addDocument(doc);
+        if (i % 2 == 1) {
+          writer.flush();
+        }
+      }
+      writer.forceMerge(1, false);
+      waitForInitMergeReader.await();
+
+      if (softDelete) {
+        writer.updateDocValues(new Term("id", "0"), new NumericDocValuesField("soft_delete", 1));
+      } else {
+        writer.deleteDocuments(new Term("id", "0"));
+      }
+      // An NRT reader applies the delete and makes the writer pool its readers
+      try (DirectoryReader reader = DirectoryReader.open(writer)) {
+        assertEquals(3, reader.numDocs());
+      }
+      assertEquals(3, writer.getDocStats().numDocs);
+
+      waitForDelete.countDown();
+      writer.waitForMerges();
+      assertEquals(1, writer.getSegmentCount());
+      assertEquals(3, writer.getDocStats().numDocs);
+      assertTrue(writer.hasDeletions());
+      try (DirectoryReader reader = DirectoryReader.open(writer)) {
+        assertEquals(3, reader.numDocs());
+      }
+    }
+  }
 }
