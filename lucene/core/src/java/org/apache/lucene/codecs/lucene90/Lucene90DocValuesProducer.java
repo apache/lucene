@@ -543,19 +543,32 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
    * values satisfy {@code stored = raw * mul + delta}. Returns {@code {encodedMin, encodedMax}} or
    * {@code null} if the range is empty (no raw value can match).
    */
-  private static long[] transformGcdBounds(long minValue, long maxValue, long mul, long delta) {
+  static long[] transformGcdBounds(
+      long minValue, long maxValue, long mul, long delta, int bitsPerValue) {
     assert mul > 0;
-    long encodedMin = saturatingShiftLower(minValue, delta);
-    long encodedMax = saturatingShiftUpper(maxValue, delta);
-    if (mul != 1) {
-      encodedMin = Math.ceilDiv(encodedMin, mul);
-      encodedMax = Math.floorDiv(encodedMax, mul);
+    if (maxValue < delta) {
+      return null;
     }
-    encodedMin = Math.max(0, encodedMin);
+    assert canTransformGcdBounds(minValue, maxValue, delta, bitsPerValue);
+    long encodedMin = minValue <= delta ? 0 : Math.ceilDiv(minValue - delta, mul);
+    long encodedMax =
+        maxValue == Long.MAX_VALUE ? Long.MAX_VALUE : Math.floorDiv(maxValue - delta, mul);
     if (encodedMin > encodedMax) {
       return null;
     }
     return new long[] {encodedMin, encodedMax};
+  }
+
+  /** Checks whether query bounds can be safely transformed to encoded bounds. */
+  static boolean canTransformGcdBounds(long minValue, long maxValue, long delta, int bitsPerValue) {
+    if (maxValue < delta || delta >= 0) {
+      return true;
+    }
+    long highestSafeBound = Long.MAX_VALUE + delta;
+    boolean lowerSafe = minValue <= delta || minValue <= highestSafeBound;
+    boolean upperSafe =
+        maxValue <= highestSafeBound || (maxValue == Long.MAX_VALUE && bitsPerValue < Long.SIZE);
+    return lowerSafe && upperSafe;
   }
 
   /**
@@ -570,44 +583,12 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       long maxValue,
       long mul,
       long delta,
+      int bitsPerValue,
       FixedBitSet bitSet,
       int offset) {
-    long[] bounds = transformGcdBounds(minValue, maxValue, mul, delta);
+    long[] bounds = transformGcdBounds(minValue, maxValue, mul, delta, bitsPerValue);
     if (bounds != null) {
       rangeIntoBitSet(values, fromDoc, toDoc, bounds[0], bounds[1], bitSet, offset);
-    }
-  }
-
-  /**
-   * Returns {@code minValue - delta}, saturating to {@code Long.MIN_VALUE} when the real value
-   * would underflow (every non-negative stored value satisfies the lower bound) or to {@code
-   * Long.MAX_VALUE} when it would overflow (no stored value can satisfy the lower bound). Stored
-   * values are non-negative, so the caller can keep using the SIMD path with these saturated
-   * sentinels.
-   */
-  private static long saturatingShiftLower(long minValue, long delta) {
-    try {
-      return Math.subtractExact(minValue, delta);
-    } catch (
-        @SuppressWarnings("unused")
-        ArithmeticException overflow) {
-      return delta > 0 ? Long.MIN_VALUE : Long.MAX_VALUE;
-    }
-  }
-
-  /**
-   * Symmetric counterpart of {@link #saturatingShiftLower}: returns {@code maxValue - delta},
-   * saturating to {@code Long.MAX_VALUE} when the real value would overflow (every stored value
-   * satisfies the upper bound) or to {@code Long.MIN_VALUE} when it would underflow (no stored
-   * value can satisfy the upper bound).
-   */
-  private static long saturatingShiftUpper(long maxValue, long delta) {
-    try {
-      return Math.subtractExact(maxValue, delta);
-    } catch (
-        @SuppressWarnings("unused")
-        ArithmeticException overflow) {
-      return delta < 0 ? Long.MAX_VALUE : Long.MIN_VALUE;
     }
   }
 
@@ -1030,6 +1011,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
             final long delta = entry.minValue;
             return new DenseNumericDocValues(maxDoc) {
               private byte[] bulkBytes = new byte[0];
+              private LongValues decodedValues;
 
               @Override
               public long longValue() throws IOException {
@@ -1067,8 +1049,31 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
                   long maxValue,
                   FixedBitSet bitSet,
                   int offset) {
-                Lucene90DocValuesProducer.rangeGcdDeltaIntoBitSet(
-                    values, fromDoc, toDoc, minValue, maxValue, mul, delta, bitSet, offset);
+                if (canTransformGcdBounds(minValue, maxValue, delta, entry.bitsPerValue)) {
+                  Lucene90DocValuesProducer.rangeGcdDeltaIntoBitSet(
+                      values,
+                      fromDoc,
+                      toDoc,
+                      minValue,
+                      maxValue,
+                      mul,
+                      delta,
+                      entry.bitsPerValue,
+                      bitSet,
+                      offset);
+                } else {
+                  if (decodedValues == null) {
+                    decodedValues =
+                        new LongValues() {
+                          @Override
+                          public long get(long index) {
+                            return mul * values.get(index) + delta;
+                          }
+                        };
+                  }
+                  Lucene90DocValuesProducer.rangeIntoBitSet(
+                      decodedValues, fromDoc, toDoc, minValue, maxValue, bitSet, offset);
+                }
               }
             };
           }
@@ -2088,8 +2093,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           }
           LongValues v;
           long lo, hi;
-          if (hasGcdEncoding) {
-            long[] bounds = transformGcdBounds(minValue, maxValue, entry.gcd, entry.minValue);
+          if (hasGcdEncoding
+              && canTransformGcdBounds(minValue, maxValue, entry.minValue, entry.bitsPerValue)) {
+            long[] bounds =
+                transformGcdBounds(
+                    minValue, maxValue, entry.gcd, entry.minValue, entry.bitsPerValue);
             if (bounds == null) {
               return;
             }
@@ -2219,8 +2227,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           }
           LongValues v;
           long lo, hi;
-          if (hasGcdEncoding) {
-            long[] bounds = transformGcdBounds(minValue, maxValue, entry.gcd, entry.minValue);
+          if (hasGcdEncoding
+              && canTransformGcdBounds(minValue, maxValue, entry.minValue, entry.bitsPerValue)) {
+            long[] bounds =
+                transformGcdBounds(
+                    minValue, maxValue, entry.gcd, entry.minValue, entry.bitsPerValue);
             if (bounds == null) {
               set = false;
               return;
