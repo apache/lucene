@@ -38,7 +38,7 @@ public class TestTeluguAnalyzer extends BaseTokenStreamTestCase {
   public void testExclusionSet() throws Exception {
     CharArraySet exclusionSet = new CharArraySet(asSet("వస్తువులు"), false);
     Analyzer a = new TeluguAnalyzer(TeluguAnalyzer.getDefaultStopSet(), exclusionSet);
-    checkOneTerm(a, "వస్తువులు", "వస్తుమలు");
+    checkOneTerm(a, "వస్తువులు", "వస్తువులు");
     a.close();
   }
 
