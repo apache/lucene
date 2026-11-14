@@ -104,13 +104,16 @@ final class ReaderPool implements Closeable {
                 segReader.getHardLiveDocs(),
                 segReader.numDocs(),
                 true);
+        SegmentCommitInfo info = newReader.getOriginalSegmentInfo();
+        // Only an NRT reader's live docs include soft deletes and deletes that aren't written yet.
+        // The live docs of a reader opened from disk are the commit's hard deletes, so load the
+        // deletes like a writer that opens the segment from disk:
+        PendingDeletes pendingDeletes =
+            segReader.isNRT ? newPendingDeletes(newReader, info) : newPendingDeletes(info);
         readerMap.put(
-            newReader.getOriginalSegmentInfo(),
+            info,
             new ReadersAndUpdates(
-                segmentInfos.getIndexCreatedVersionMajor(),
-                newReader,
-                newPendingDeletes(newReader, newReader.getOriginalSegmentInfo()),
-                config));
+                segmentInfos.getIndexCreatedVersionMajor(), newReader, pendingDeletes, config));
       }
     }
   }
