@@ -47,7 +47,7 @@ import org.apache.lucene.search.similarities.Normalization.NoNormalization;
  *   <li>{@link Distribution}: Probabilistic distribution used to model term occurrence
  *       <ul>
  *         <li>{@link DistributionLL}: Log-logistic
- *         <li>{@link DistributionLL}: Smoothed power-law
+ *         <li>{@link DistributionSPL}: Smoothed power-law
  *       </ul>
  *   <li>{@link Lambda}: &lambda;<sub>w</sub> parameter of the probability distribution
  *       <ul>
