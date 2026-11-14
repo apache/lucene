@@ -29,12 +29,15 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
+import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.document.TextField;
 import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
@@ -621,6 +624,129 @@ public class TestSoftDeletesRetentionMergePolicy extends LuceneTestCase {
       assertEquals(2, reader.maxDoc());
       assertEquals(2, reader.numDocs());
     }
+    IOUtils.close(writer, dir);
+  }
+
+  public void testUndeleteThenHardDelete() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig config =
+        newIndexWriterConfig()
+            .setSoftDeletesField("soft_delete")
+            .setMaxBufferedDocs(2)
+            .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
+            .setMergePolicy(NoMergePolicy.INSTANCE);
+    config.setReaderPooling(true);
+    IndexWriter writer = new IndexWriter(dir, config);
+    for (int i = 0; i < 2; i++) {
+      Document d = new Document();
+      d.add(new StringField("id", Integer.toString(i), Field.Store.YES));
+      writer.addDocument(d);
+    }
+    // the doc is live, so this changes nothing, but it still buffers a doc values update
+    writer.updateDocValues(new Term("id", "0"), new NumericDocValuesField("soft_delete", null));
+    // these two docs trigger a flush, which resolves the update but doesn't write it
+    for (int i = 2; i < 4; i++) {
+      Document d = new Document();
+      d.add(new StringField("id", Integer.toString(i), Field.Store.YES));
+      writer.addDocument(d);
+    }
+    writer.deleteDocuments(new Term("id", "0"));
+    try (DirectoryReader reader = DirectoryReader.open(writer)) {
+      assertEquals(4, reader.maxDoc());
+      assertEquals(3, reader.numDocs());
+    }
+    writer.commit();
+    SegmentCommitInfo si = writer.cloneSegmentInfos().info(0);
+    assertEquals(0, si.getSoftDelCount());
+    assertEquals(1, si.getDelCount());
+    IOUtils.close(writer, dir);
+  }
+
+  public void testTryUndeleteThenHardDelete() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig config =
+        newIndexWriterConfig()
+            .setSoftDeletesField("soft_delete")
+            .setMaxBufferedDocs(2)
+            .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
+            .setMergePolicy(NoMergePolicy.INSTANCE);
+    config.setReaderPooling(true);
+    IndexWriter writer = new IndexWriter(dir, config);
+    Document d = new Document();
+    d.add(new StringField("id", "0", Field.Store.YES));
+    d.add(new NumericDocValuesField("soft_delete", 1));
+    writer.addDocument(d);
+    d = new Document();
+    d.add(new StringField("id", "1", Field.Store.YES));
+    writer.addDocument(d);
+    try (DirectoryReader reader = DirectoryReader.open(writer)) {
+      assertEquals(2, reader.maxDoc());
+      assertEquals(1, reader.numDocs());
+      assertTrue(
+          writer.tryUpdateDocValue(reader, 0, new NumericDocValuesField("soft_delete", null)) > 0);
+    }
+    // hard delete the doc before the undelete is written
+    writer.deleteDocuments(new Term("id", "0"));
+    try (DirectoryReader reader = DirectoryReader.open(writer)) {
+      assertEquals(2, reader.maxDoc());
+      assertEquals(1, reader.numDocs());
+    }
+    writer.commit();
+    SegmentCommitInfo si = writer.cloneSegmentInfos().info(0);
+    assertEquals(0, si.getSoftDelCount());
+    assertEquals(1, si.getDelCount());
+    IOUtils.close(writer, dir);
+  }
+
+  public void testTryUndeleteRejectedDocument() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig config =
+        newIndexWriterConfig()
+            .setSoftDeletesField("soft_delete")
+            .setMaxBufferedDocs(10)
+            .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
+            .setMergePolicy(NoMergePolicy.INSTANCE);
+    IndexWriter writer = new IndexWriter(dir, config);
+    // a document that fails indexing is hard deleted
+    Document rejected = new Document();
+    rejected.add(new StringField("id", "0", Field.Store.YES));
+    rejected.add(
+        new Field(
+            "body",
+            new TokenStream() {
+              {
+                addAttribute(CharTermAttribute.class);
+              }
+
+              @Override
+              public boolean incrementToken() {
+                throw new IllegalStateException("rejected");
+              }
+            },
+            TextField.TYPE_NOT_STORED));
+    expectThrows(IllegalStateException.class, () -> writer.addDocument(rejected));
+    Document d = new Document();
+    d.add(new StringField("id", "1", Field.Store.YES));
+    writer.addDocument(d);
+    // another soft deleted doc, so undeleting the rejected doc wouldn't make the count negative
+    d = new Document();
+    d.add(new StringField("id", "2", Field.Store.YES));
+    d.add(new NumericDocValuesField("soft_delete", 1));
+    writer.addDocument(d);
+    try (DirectoryReader reader = DirectoryReader.open(writer)) {
+      assertEquals(3, reader.maxDoc());
+      assertEquals(1, reader.numDocs());
+      assertTrue(
+          writer.tryUpdateDocValue(reader, 0, new NumericDocValuesField("soft_delete", null)) > 0);
+    }
+    try (DirectoryReader reader = DirectoryReader.open(writer)) {
+      assertEquals(3, reader.maxDoc());
+      assertEquals(1, reader.numDocs());
+    }
+    writer.commit();
+    SegmentCommitInfo si = writer.cloneSegmentInfos().info(0);
+    assertEquals(1, si.getSoftDelCount());
+    assertEquals(1, si.getDelCount());
     IOUtils.close(writer, dir);
   }
 

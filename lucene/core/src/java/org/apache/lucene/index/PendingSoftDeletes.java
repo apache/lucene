@@ -80,7 +80,8 @@ final class PendingSoftDeletes extends PendingDeletes {
       var iterator = FieldExistsQuery.getDocValuesDocIdSetIterator(field, reader);
       if (iterator != null && iterator.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
         iterator = FieldExistsQuery.getDocValuesDocIdSetIterator(field, reader);
-        newDelCount = applySoftDeletes(iterator, getMutableBits());
+        // the reader's doc values only have documents with a value, so nothing is undeleted
+        newDelCount = applySoftDeletes(iterator, getMutableBits(), null);
         assert newDelCount >= 0 : " illegal pending delete count: " + newDelCount;
       } else {
         // nothing is deleted we don't have a soft deletes field in this segment
@@ -117,13 +118,18 @@ final class PendingSoftDeletes extends PendingDeletes {
   }
 
   /**
-   * Clears all bits in the given bitset that are set and are also in the given DocIdSetIterator.
+   * Clears all bits in the given bitset that are set and are also in the given DocIdSetIterator. If
+   * the iterator is a {@link DocValuesFieldUpdates.Iterator}, a document without a value is
+   * undeleted: its bit is set again, unless the document is hard deleted.
    *
    * @param iterator the doc ID set iterator for apply
    * @param bits the bit set to apply the deletes to
-   * @return the number of bits changed by this function
+   * @param hardLiveDocs the hard live docs, or <code>null</code> if no document is hard deleted or
+   *     the iterator isn't a {@link DocValuesFieldUpdates.Iterator}
+   * @return the number of bits cleared minus the number of bits set by this function
    */
-  static int applySoftDeletes(DocIdSetIterator iterator, FixedBitSet bits) throws IOException {
+  static int applySoftDeletes(DocIdSetIterator iterator, FixedBitSet bits, Bits hardLiveDocs)
+      throws IOException {
     assert iterator != null;
     int newDeletes = 0;
     int docID;
@@ -140,7 +146,7 @@ final class PendingSoftDeletes extends PendingDeletes {
           // below.
         }
       } else {
-        if (bits.getAndSet(docID) == false) {
+        if ((hardLiveDocs == null || hardLiveDocs.get(docID)) && bits.getAndSet(docID) == false) {
           newDeletes--;
         }
       }
@@ -152,7 +158,7 @@ final class PendingSoftDeletes extends PendingDeletes {
   void onDocValuesUpdate(FieldInfo info, DocValuesFieldUpdates.Iterator iterator)
       throws IOException {
     if (this.field.equals(info.name)) {
-      pendingDeleteCount += applySoftDeletes(iterator, getMutableBits());
+      pendingDeleteCount += applySoftDeletes(iterator, getMutableBits(), getHardLiveDocs());
       assert assertPendingDeletes();
       this.info.setSoftDelCount(this.info.getSoftDelCount() + pendingDeleteCount);
       super.dropChanges();
