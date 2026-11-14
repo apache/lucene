@@ -16,8 +16,10 @@
  */
 package org.apache.lucene.index;
 
+import java.util.List;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
@@ -57,5 +59,107 @@ public class TestRollback extends LuceneTestCase {
     assertEquals("index should contain same number of docs post rollback", 5, r.numDocs());
     r.close();
     dir.close();
+  }
+
+  // A writer opened on an older commit rolls back to that commit's segments. The default deletion
+  // policy deletes that commit when the writer is created. Once the writer merged the segments
+  // away, only a rollback still needs their files, so they must still exist then.
+  public void testRollbackAfterMergingAwayDeletedStartingCommit() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriter w =
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig()
+                .setIndexDeletionPolicy(NoDeletionPolicy.INSTANCE)
+                .setMergePolicy(new TieredMergePolicy()));
+    for (int i = 0; i < 2; i++) {
+      w.addDocument(new Document());
+      w.commit();
+    }
+    IndexCommit olderCommit = DirectoryReader.listCommits(dir).get(1);
+    w.forceMerge(1);
+    w.close(); // the latest commit has the merged segment only
+
+    w =
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig()
+                .setIndexDeletionPolicy(new KeepOnlyLastCommitDeletionPolicy())
+                .setMergePolicy(new TieredMergePolicy())
+                .setIndexCommit(olderCommit));
+    assertFalse(slowFileExists(dir, olderCommit.getSegmentsFileName()));
+    w.addDocument(new Document());
+    w.forceMerge(1);
+    w.rollback();
+
+    try (DirectoryReader r = DirectoryReader.open(dir)) {
+      assertEquals(2, r.numDocs());
+    }
+    dir.close();
+  }
+
+  /**
+   * An NRT reader kept after its writer was rolled back must not be current once a later writer
+   * commits, even if that commit has the same version as the reader: the later writer counts
+   * versions again from the last commit, so it can reach a version that the rolled back writer gave
+   * to this reader, with different documents.
+   */
+  public void testNRTReaderOfRolledBackWriterAfterNextWriterCommits() throws Exception {
+    for (int refreshes = 0; refreshes <= 8; refreshes++) {
+      for (int openMode = 0; openMode < 3; openMode++) {
+        boolean viaClose = random().nextBoolean();
+        Directory dir = newDirectory();
+        IndexWriter writer =
+            new IndexWriter(
+                dir,
+                newIndexWriterConfig(new MockAnalyzer(random()))
+                    .setMergePolicy(NoMergePolicy.INSTANCE)
+                    .setCommitOnClose(viaClose == false));
+        writer.addDocument(new Document());
+        writer.commit();
+        DirectoryReader reader = DirectoryReader.open(writer);
+        for (int i = 0; i < refreshes; i++) {
+          writer.addDocument(new Document());
+          DirectoryReader newReader = DirectoryReader.openIfChanged(reader, writer);
+          reader.close();
+          reader = newReader;
+        }
+        if (viaClose) {
+          writer.close();
+        } else {
+          writer.rollback();
+        }
+        assertEquals(refreshes == 0, reader.isCurrent());
+
+        IndexWriterConfig config =
+            newIndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(NoMergePolicy.INSTANCE);
+        switch (openMode) {
+          case 0 -> config.setOpenMode(OpenMode.APPEND);
+          case 1 -> config.setOpenMode(OpenMode.CREATE);
+          default -> {
+            List<IndexCommit> commits = DirectoryReader.listCommits(dir);
+            config.setIndexCommit(commits.get(commits.size() - 1));
+          }
+        }
+        try (IndexWriter next = new IndexWriter(dir, config)) {
+          for (int i = 0; i < 8; i++) {
+            next.addDocument(new Document());
+            next.commit();
+            assertFalse(
+                "refreshes="
+                    + refreshes
+                    + " commit="
+                    + i
+                    + " reader version="
+                    + reader.getVersion()
+                    + " latest commit version="
+                    + SegmentInfos.readLatestCommit(dir).getVersion(),
+                reader.isCurrent());
+          }
+        }
+        reader.close();
+        dir.close();
+      }
+    }
   }
 }

@@ -494,4 +494,92 @@ public class TestIndexWriterFromReader extends LuceneTestCase {
     assertEquals(2, w2.getDocStats().maxDoc);
     IOUtils.close(r, w2, dir);
   }
+
+  // The new writer's deletion policy deletes the reader's commit when the writer is created,
+  // because it isn't the latest commit. Rolling back the new writer must not delete that commit's
+  // files again.
+  public void testRollbackAfterReaderCommitIsDeleted() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc =
+        newIndexWriterConfig()
+            .setIndexDeletionPolicy(NoDeletionPolicy.INSTANCE)
+            .setMergePolicy(new TieredMergePolicy());
+    IndexWriter w = new IndexWriter(dir, iwc);
+    w.addDocument(new Document());
+    w.commit();
+    w.addDocument(new Document());
+    w.commit();
+    DirectoryReader r = DirectoryReader.open(w);
+    assertEquals(2, r.leaves().size());
+
+    // the reader still points at the second commit, but its segments were merged since:
+    w.forceMerge(1);
+    DirectoryReader r2 = DirectoryReader.openIfChanged(r);
+    assertNotNull(r2);
+    r.close();
+    assertEquals(1, r2.leaves().size());
+    String readerCommit = r2.getIndexCommit().getSegmentsFileName();
+    w.close(); // commits the merge
+    assertNotEquals(readerCommit, SegmentInfos.readLatestCommit(dir).getSegmentsFileName());
+
+    iwc =
+        newIndexWriterConfig()
+            .setIndexDeletionPolicy(new KeepOnlyLastCommitDeletionPolicy())
+            .setIndexCommit(r2.getIndexCommit());
+    IndexWriter w2 = new IndexWriter(dir, iwc);
+    assertFalse(slowFileExists(dir, readerCommit));
+    assertEquals(2, w2.getDocStats().maxDoc);
+    if (random().nextBoolean()) {
+      w2.addDocument(new Document());
+    }
+    w2.rollback();
+
+    DirectoryReader r3 = DirectoryReader.open(dir);
+    assertEquals(2, r3.numDocs());
+    IOUtils.close(r2, r3, dir);
+  }
+
+  // The writer rolls back to the reader's segments. Here the reader's deletes file isn't part of
+  // any commit, so once the writer merged that segment away, only a rollback still needs the file.
+  // It must still exist then, even when all commits are kept.
+  public void testRollbackAfterMergingAwayReaderSegments() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriter w =
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig()
+                .setIndexDeletionPolicy(NoDeletionPolicy.INSTANCE)
+                .setMergePolicy(NoMergePolicy.INSTANCE));
+    for (int i = 0; i < 3; i++) {
+      Document doc = new Document();
+      doc.add(newStringField("id", Integer.toString(i), Field.Store.NO));
+      w.addDocument(doc);
+    }
+    w.commit();
+    w.deleteDocuments(new Term("id", "0"));
+    // writes the reader's deletes to a new file:
+    DirectoryReader r = DirectoryReader.open(w, true, true);
+    assertEquals(2, r.numDocs());
+    w.deleteDocuments(new Term("id", "1"));
+    w.close(); // commits the second delete in yet another file
+
+    IndexWriterConfig iwc =
+        newIndexWriterConfig()
+            .setIndexDeletionPolicy(
+                random().nextBoolean()
+                    ? NoDeletionPolicy.INSTANCE
+                    : new KeepOnlyLastCommitDeletionPolicy())
+            .setMergePolicy(new TieredMergePolicy())
+            .setIndexCommit(r.getIndexCommit());
+    IndexWriter w2 = new IndexWriter(dir, iwc);
+    assertEquals(2, w2.getDocStats().numDocs);
+    w2.addDocument(new Document());
+    w2.forceMerge(1);
+    w2.rollback();
+
+    try (DirectoryReader r2 = DirectoryReader.open(dir)) {
+      assertEquals(1, r2.numDocs());
+    }
+    IOUtils.close(r, dir);
+  }
 }
