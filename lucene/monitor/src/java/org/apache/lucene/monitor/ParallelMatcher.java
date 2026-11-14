@@ -41,6 +41,9 @@ import org.apache.lucene.search.Query;
  * latency. The matcher distributes queries amongst its worker threads using a BlockingQueue, and
  * synchronization overhead may affect performance if the individual queries are very fast.
  *
+ * <p>This matcher cannot be used with a Monitor configured with an executor, see {@link
+ * MonitorConfiguration#setExecutor}.
+ *
  * @param <T> the QueryMatch type returned
  * @see PartitionMatcher
  */
@@ -96,15 +99,7 @@ public class ParallelMatcher<T extends QueryMatch> extends CandidateMatcher<T> {
       }
 
       for (Future<CandidateMatcher<T>> future : futures) {
-        MultiMatchingQueries<T> matches = future.get().finish(0, 0);
-        for (int doc = 0; doc < matches.getBatchSize(); doc++) {
-          for (T match : matches.getMatches(doc)) {
-            this.addMatch(match, doc);
-          }
-        }
-        for (Map.Entry<String, Exception> error : matches.getErrors().entrySet()) {
-          this.reportError(error.getKey(), error.getValue());
-        }
+        addAll(future.get().finish(0, 0));
       }
 
     } catch (InterruptedException | ExecutionException e) {

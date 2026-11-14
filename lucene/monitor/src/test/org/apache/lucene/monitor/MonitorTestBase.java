@@ -20,6 +20,9 @@ package org.apache.lucene.monitor;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.queryparser.classic.ParseException;
@@ -28,11 +31,17 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.NamedThreadFactory;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 
 public abstract class MonitorTestBase extends LuceneTestCase {
 
   public static final String FIELD = "field";
   public static final Analyzer ANALYZER = new StandardAnalyzer();
+
+  protected static ExecutorService executor;
 
   public static Query parse(String query) {
     QueryParser parser = new QueryParser(FIELD, ANALYZER);
@@ -59,7 +68,25 @@ public abstract class MonitorTestBase extends LuceneTestCase {
 
   protected Monitor newMonitor(Analyzer analyzer) throws IOException {
     // TODO: randomize presearcher
-    return new Monitor(analyzer);
+    MonitorConfiguration config = new MonitorConfiguration();
+    if (random().nextBoolean()) {
+      config.setExecutor(executor).setMaxQueriesPerSlice(TestUtil.nextInt(random(), 1, 100));
+    }
+    return new Monitor(analyzer, config);
+  }
+
+  @BeforeClass
+  public static void setUpExecutor() {
+    executor =
+        Executors.newFixedThreadPool(
+            TestUtil.nextInt(random(), 1, 4), new NamedThreadFactory("MonitorTestBase"));
+  }
+
+  @AfterClass
+  public static void shutDownExecutor() throws InterruptedException {
+    executor.shutdown();
+    assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS));
+    executor = null;
   }
 
   public static class ThrowOnRewriteQuery extends Query {

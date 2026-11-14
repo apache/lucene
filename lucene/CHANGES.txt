@@ -264,6 +264,9 @@ New Features
 
 * GITHUB#16710: Add scalar quantization support for FLOAT16 vectors in the dedup KNN codec. (Pranshu Shukla)
 
+* GITHUB#16995: Add MonitorConfiguration#setExecutor to search the queryindex of a Monitor and match
+  its candidate queries concurrently. (Eugene Rizhkov)
+
 Improvements
 ---------------------
 * GITHUB#15704: Replace LinkedList with more efficient data structure. (Renato Haeberli)
