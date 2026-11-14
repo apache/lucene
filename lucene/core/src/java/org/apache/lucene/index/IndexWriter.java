@@ -4660,9 +4660,13 @@ public class IndexWriter
           for (DocValuesFieldUpdates u : residual) {
             minResidual = Math.min(minResidual, u.delGen);
           }
+          // The carried-over on-disk value already folds in every update applied before the
+          // merge, so its delGen must order below both the smallest still-buffered update and the
+          // last completed one. Otherwise an older update could overwrite it (and a tie trips
+          // assertNoDupGen). Clamp to the lower of the two.
           final long diskDelGen =
               minResidual != Long.MAX_VALUE
-                  ? minResidual - 1
+                  ? Math.min(minResidual - 1, bufferedUpdatesStream.getCompletedDelGen())
                   : bufferedUpdatesStream.getCompletedDelGen();
           LongObjectHashMap<DocValuesFieldUpdates> byGen =
               mapped.computeIfAbsent(field, _ -> new LongObjectHashMap<>());
