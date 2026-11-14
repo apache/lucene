@@ -36,6 +36,7 @@ public class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
   private final TernaryLongHeap heap;
   final int totalHitsThreshold;
   final MaxScoreAccumulator minScoreAcc;
+  private float constantScore = Float.NaN;
 
   // prevents instantiation
   TopScoreDocCollector(
@@ -60,7 +61,31 @@ public class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
   }
 
   @Override
+  public void setWeight(Weight weight) {
+    constantScore = Float.NaN;
+    if (weight instanceof ConstantScoreWeight constantWeight) {
+      constantScore = constantWeight.score();
+    } else if (weight.getQuery() instanceof BooleanQuery booleanQuery
+        && booleanQuery.hasScoringClauses() == false) {
+      constantScore = 0f;
+    }
+  }
+
+  @Override
   public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
+    if (totalHitsThreshold != Integer.MAX_VALUE && Float.isNaN(constantScore) == false) {
+      long globalBoundary =
+          totalHits > totalHitsThreshold ? heap.top() : DocScoreEncoder.LEAST_COMPETITIVE_CODE;
+      if (minScoreAcc != null) {
+        globalBoundary = Math.max(globalBoundary, minScoreAcc.getRaw());
+      }
+      // Current reader cannot beat the recorded score/docID boundary.
+      if (DocScoreEncoder.encode(context.docBase, constantScore) < globalBoundary) {
+        totalHitsRelation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
+        throw new CollectionTerminatedException();
+      }
+    }
+
     final int docBase = context.docBase;
     final ScoreDoc after = this.after;
     final float afterScore;
