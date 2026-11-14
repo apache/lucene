@@ -72,20 +72,31 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
 
     private int readCompressedLengths(
         DataInput in, int originalLength, int dictLength, int blockLength) throws IOException {
-      in.readVInt(); // compressed length of the dictionary, unused
-      int totalLength = dictLength;
+      compressedLengths = ArrayUtil.growNoCopy(compressedLengths, originalLength / blockLength + 2);
       int i = 0;
-      compressedLengths = ArrayUtil.growNoCopy(compressedLengths, originalLength / blockLength + 1);
+      compressedLengths[i++] = in.readVInt(); // compressed length of the dictionary
+      int totalLength = dictLength;
       while (totalLength < originalLength) {
-
         compressedLengths[i++] = in.readVInt();
         totalLength += blockLength;
       }
-      return i;
+      return i - 1;
     }
 
     @Override
     public void decompress(DataInput in, int originalLength, int offset, int length, BytesRef bytes)
+        throws IOException {
+      decompress(in, originalLength, offset, length, bytes, false);
+    }
+
+    @Override
+    public void decompress(
+        DataInput in,
+        int originalLength,
+        int offset,
+        int length,
+        BytesRef bytes,
+        boolean reuseIfPossible)
         throws IOException {
       assert offset + length <= originalLength;
 
@@ -98,12 +109,16 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
       final int blockLength = in.readVInt();
 
       final int numBlocks = readCompressedLengths(in, originalLength, dictLength, blockLength);
-
-      buffer = ArrayUtil.growNoCopy(buffer, dictLength + blockLength);
       bytes.length = 0;
-      // Read the dictionary
-      if (LZ4.decompress(in, dictLength, buffer, 0) != dictLength) {
-        throw new CorruptIndexException("Illegal dict length", in);
+      if (reuseIfPossible) {
+        assert buffer.length >= dictLength + blockLength;
+        in.skipBytes(compressedLengths[0]);
+      } else {
+        // Read the dictionary
+        buffer = ArrayUtil.growNoCopy(buffer, dictLength + blockLength);
+        if (LZ4.decompress(in, dictLength, buffer, 0) != dictLength) {
+          throw new CorruptIndexException("Illegal dict length", in);
+        }
       }
 
       int offsetInBlock = dictLength;
@@ -114,7 +129,7 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
         // Skip unneeded blocks
         int numBytesToSkip = 0;
         for (int i = 0; i < numBlocks && offsetInBlock + blockLength < offset; ++i) {
-          int compressedBlockLength = compressedLengths[i];
+          int compressedBlockLength = compressedLengths[i + 1];
           numBytesToSkip += compressedBlockLength;
           offsetInBlock += blockLength;
           offsetInBytesRef -= blockLength;

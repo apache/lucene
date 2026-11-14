@@ -450,6 +450,8 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
 
     // the start pointer at which you can read the compressed documents
     private long startPointer;
+    // whether the preset dictionary has been decompressed and can be reused
+    private boolean dictDecompressed;
 
     private final BytesRef spare;
     private final BytesRef bytes;
@@ -483,6 +485,7 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
     }
 
     private void doReset(int docID) throws IOException {
+      dictDecompressed = false;
       docBase = fieldsStream.readVInt();
       final int token = fieldsStream.readVInt();
       chunkDocs = token >>> 2;
@@ -639,7 +642,12 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
             };
       } else {
         fieldsStream.seek(startPointer);
-        decompressor.decompress(fieldsStream, totalLength, offset, length, bytes);
+        boolean reuseIfPossible = dictDecompressed;
+        // clear first so a failed decompression cannot leave stale reusable state.
+        dictDecompressed = false;
+        decompressor.decompress(fieldsStream, totalLength, offset, length, bytes, reuseIfPossible);
+        // reset the decompressed state
+        dictDecompressed = true;
         assert bytes.length == length;
         documentInput = new ByteArrayDataInput(bytes.bytes, bytes.offset, bytes.length);
       }
