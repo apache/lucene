@@ -373,6 +373,9 @@ Optimizations
   IOContext, allowing MMapDirectory to open them with confined areas and avoiding JVM-wide
   handshakes when the files are closed. (Alan Woodward)
 
+* GITHUB#XXXXX: Constant-score multi-term queries that match a single term in a segment iterate
+  that term's postings directly instead of building a BooleanQuery per segment. (Asharam)
+
 Bug Fixes
 ---------------------
 * GITHUB#16983: UnifiedHighlighter.Builder#withFlags is no longer ignored when building the

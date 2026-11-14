@@ -494,6 +494,93 @@ public class TestTermInSetQuery extends LuceneTestCase {
     assertEquals("field:([ff fe])", query.toString());
   }
 
+  /**
+   * Segments where a constant-score multi-term query collects a single term iterate that term's
+   * postings directly. Check that this matches the BooleanQuery-based rewrite, including segments
+   * without the term and terms that match every document of the field.
+   */
+  public void testSingleTermPerSegment() throws IOException {
+    try (Directory dir = newDirectory()) {
+      try (RandomIndexWriter w = new RandomIndexWriter(random(), dir)) {
+        int numDocs = atLeast(200);
+        for (int i = 0; i < numDocs; i++) {
+          Document doc = new Document();
+          if (random().nextInt(10) != 0) {
+            doc.add(new KeywordField("f", "v" + random().nextInt(5), Store.NO));
+          }
+          doc.add(new KeywordField("g", Integer.toString(random().nextInt(3)), Store.NO));
+          if (random().nextInt(20) == 0) {
+            doc.add(new KeywordField("all", "x", Store.NO));
+          }
+          w.addDocument(doc);
+          if (random().nextInt(50) == 0) {
+            w.commit();
+          }
+        }
+      }
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = newSearcher(reader);
+        BytesRef term = newBytesRef("v" + random().nextInt(6));
+        float boost = random().nextInt(5) + 0.5f;
+        for (MultiTermQuery.RewriteMethod method :
+            List.of(
+                MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE,
+                MultiTermQuery.CONSTANT_SCORE_REWRITE)) {
+          List<Query[]> pairs = new ArrayList<>();
+          pairs.add(
+              new Query[] {
+                new TermInSetQuery(method, "f", List.of(term, term)),
+                new TermInSetQuery(
+                    MultiTermQuery.CONSTANT_SCORE_BOOLEAN_REWRITE, "f", List.of(term))
+              });
+          // "x" is in every document that has the field "all"
+          pairs.add(
+              new Query[] {
+                new TermInSetQuery(method, "all", List.of(newBytesRef("x"))),
+                new TermInSetQuery(
+                    MultiTermQuery.CONSTANT_SCORE_BOOLEAN_REWRITE, "all", List.of(newBytesRef("x")))
+              });
+          // a prefix that matches one term
+          pairs.add(
+              new Query[] {
+                new PrefixQuery(new Term("f", term), method),
+                new PrefixQuery(new Term("f", term), MultiTermQuery.CONSTANT_SCORE_BOOLEAN_REWRITE)
+              });
+          for (Query[] pair : pairs) {
+            assertSameScores(
+                searcher, new BoostQuery(pair[0], boost), new BoostQuery(pair[1], boost));
+            Query other = new TermQuery(new Term("g", "1"));
+            for (Occur occur : List.of(Occur.MUST, Occur.SHOULD, Occur.FILTER, Occur.MUST_NOT)) {
+              assertSameScores(
+                  searcher,
+                  new BooleanQuery.Builder()
+                      .add(other, Occur.MUST)
+                      .add(new BoostQuery(pair[0], boost), occur)
+                      .build(),
+                  new BooleanQuery.Builder()
+                      .add(other, Occur.MUST)
+                      .add(new BoostQuery(pair[1], boost), occur)
+                      .build());
+            }
+            assertEquals(searcher.count(pair[1]), searcher.count(pair[0]));
+          }
+        }
+      }
+    }
+  }
+
+  private static void assertSameScores(IndexSearcher searcher, Query actual, Query expected)
+      throws IOException {
+    int n = searcher.getIndexReader().maxDoc();
+    ScoreDoc[] actualHits = searcher.search(actual, n).scoreDocs;
+    ScoreDoc[] expectedHits = searcher.search(expected, n).scoreDocs;
+    assertEquals(expectedHits.length, actualHits.length);
+    for (int i = 0; i < expectedHits.length; i++) {
+      assertEquals(expectedHits[i].doc, actualHits[i].doc);
+      assertEquals(expectedHits[i].score, actualHits[i].score, 0f);
+    }
+  }
+
   public void testIsConsideredCostlyByQueryCache() throws IOException {
     TermInSetQuery query =
         new TermInSetQuery("foo", List.of(newBytesRef("bar"), newBytesRef("baz")));
