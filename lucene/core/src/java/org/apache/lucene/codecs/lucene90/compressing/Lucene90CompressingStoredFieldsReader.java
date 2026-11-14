@@ -154,7 +154,7 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
     numDocs = si.maxDoc();
     this.directory = d;
     this.dataContext =
-        context.withHints(FileTypeHint.DATA, DataAccessHint.RANDOM, NoReuseHint.INSTANCE);
+        context.overrideHints(FileTypeHint.DATA, DataAccessHint.RANDOM, NoReuseHint.INSTANCE);
     this.original = this;
 
     this.fieldsStreamFN = IndexFileNames.segmentFileName(segment, segmentSuffix, FIELDS_EXTENSION);

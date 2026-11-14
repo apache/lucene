@@ -92,7 +92,7 @@ public class TestProtectedTermFilterFactory extends BaseTokenStreamFactoryTestCa
                 "protected-1.txt",
                 "wrappedFilters",
                 "lowercase, truncate",
-                "truncate.prefixLength",
+                "truncate.truncateAfterChars",
                 "2")
             .create(stream);
     assertTokenStreamContents(stream, new String[] {"Foo", "cl", "Bar", "da"});
@@ -110,9 +110,9 @@ public class TestProtectedTermFilterFactory extends BaseTokenStreamFactoryTestCa
                 "protected-1.txt",
                 "wrappedFilters",
                 "truncate-A, reversestring, truncate-B",
-                "truncate-A.prefixLength",
+                "truncate-A.truncateAfterChars",
                 "3",
-                "truncate-B.prefixLength",
+                "truncate-B.truncateAfterChars",
                 "2")
             .create(stream);
     assertTokenStreamContents(stream, new String[] {"Foo", "al", "Bar", "va"});
@@ -128,9 +128,9 @@ public class TestProtectedTermFilterFactory extends BaseTokenStreamFactoryTestCa
                 "protected-1.txt",
                 "wrappedFilters",
                 "truncate, reversestring, truncate-A",
-                "truncate.prefixLength",
+                "truncate.truncateAfterChars",
                 "3",
-                "truncate-A.prefixLength",
+                "truncate-A.truncateAfterChars",
                 "2")
             .create(stream);
     assertTokenStreamContents(stream, new String[] {"Foo", "al", "Bar", "va"});
@@ -146,9 +146,9 @@ public class TestProtectedTermFilterFactory extends BaseTokenStreamFactoryTestCa
                 "protected-1.txt",
                 "wrappedFilters",
                 "TRUNCATE-a, reversestring, truncate-b",
-                "truncate-A.prefixLength",
+                "truncate-A.truncateAfterChars",
                 "3",
-                "TRUNCATE-B.prefixLength",
+                "TRUNCATE-B.truncateAfterChars",
                 "2")
             .create(stream);
     assertTokenStreamContents(stream, new String[] {"Foo", "al", "Bar", "va"});
@@ -214,11 +214,12 @@ public class TestProtectedTermFilterFactory extends BaseTokenStreamFactoryTestCa
                     "protected-1.txt",
                     "wrappedFilters",
                     "truncate-A, reversestring, truncate-B",
-                    "truncate.prefixLength",
+                    "truncate.truncateAfterChars",
                     "3",
-                    "truncate-A.prefixLength",
+                    "truncate-A.truncateAfterChars",
                     "2"));
-    assertTrue(exception.getMessage().contains("Unknown parameters: {truncate.prefixLength=3}"));
+    assertTrue(
+        exception.getMessage().contains("Unknown parameters: {truncate.truncateAfterChars=3}"));
 
     // missing required arg(s) for wrapped filter
     String str = "Foo Clara Bar David";

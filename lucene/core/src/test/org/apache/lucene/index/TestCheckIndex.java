@@ -91,7 +91,7 @@ public class TestCheckIndex extends BaseTestCheckIndex {
       // preserves soft-deletes across merges
       config.setMergePolicy(
           new SoftDeletesRetentionMergePolicy(
-              "soft_delete", MatchAllDocsQuery::new, config.getMergePolicy()));
+              "soft_delete", () -> MatchAllDocsQuery.INSTANCE, config.getMergePolicy()));
       try (IndexWriter w = new IndexWriter(dir, config)) {
         for (int i = 0; i < liveDocCount; i++) {
           Document doc = new Document();

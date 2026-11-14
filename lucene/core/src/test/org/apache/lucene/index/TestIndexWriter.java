@@ -3823,7 +3823,7 @@ public class TestIndexWriter extends LuceneTestCase {
             .setSoftDeletesField("my_deletes")
             .setMergePolicy(
                 new SoftDeletesRetentionMergePolicy(
-                    "my_deletes", MatchAllDocsQuery::new, newMergePolicy()));
+                    "my_deletes", () -> MatchAllDocsQuery.INSTANCE, newMergePolicy()));
     writer = new IndexWriter(dir, softDeleteConfig);
     Document tombstone = new Document();
     tombstone.add(new StringField("id", "tombstone", Field.Store.YES));

@@ -600,7 +600,7 @@ public class TestSoftDeletesRetentionMergePolicy extends LuceneTestCase {
             .setSoftDeletesField(softDelete)
             .setMergePolicy(
                 new SoftDeletesRetentionMergePolicy(
-                    "soft_delete", MatchAllDocsQuery::new, new LogDocMergePolicy()));
+                    "soft_delete", () -> MatchAllDocsQuery.INSTANCE, new LogDocMergePolicy()));
     config.setReaderPooling(true);
     config.setMergePolicy(new LogDocMergePolicy());
     IndexWriter writer = new IndexWriter(dir, config);
@@ -632,7 +632,7 @@ public class TestSoftDeletesRetentionMergePolicy extends LuceneTestCase {
             .setSoftDeletesField(softDelete)
             .setMergePolicy(
                 new SoftDeletesRetentionMergePolicy(
-                    "soft_delete", MatchAllDocsQuery::new, new LogDocMergePolicy()));
+                    "soft_delete", () -> MatchAllDocsQuery.INSTANCE, new LogDocMergePolicy()));
     config.setReaderPooling(true);
     IndexWriter writer = new IndexWriter(dir, config);
     Document d = new Document();
@@ -673,7 +673,7 @@ public class TestSoftDeletesRetentionMergePolicy extends LuceneTestCase {
             .setSoftDeletesField("soft_delete")
             .setMergePolicy(
                 new SoftDeletesRetentionMergePolicy(
-                    "soft_delete", MatchAllDocsQuery::new, newLogMergePolicy()));
+                    "soft_delete", () -> MatchAllDocsQuery.INSTANCE, newLogMergePolicy()));
     IndexWriter writer = new IndexWriter(dir, config);
     SearcherManager sm = new SearcherManager(writer, new SearcherFactory());
     Document d = new Document();
@@ -703,7 +703,7 @@ public class TestSoftDeletesRetentionMergePolicy extends LuceneTestCase {
             .setSoftDeletesField(softDeletesField)
             .setMergePolicy(
                 new SoftDeletesRetentionMergePolicy(
-                    softDeletesField, MatchAllDocsQuery::new, newMergePolicy()));
+                    softDeletesField, () -> MatchAllDocsQuery.INSTANCE, newMergePolicy()));
     IndexWriter writer = new IndexWriter(dir, config);
     int numDocs = 10 + random().nextInt(100);
     Set<String> liveDocs = new HashSet<>();

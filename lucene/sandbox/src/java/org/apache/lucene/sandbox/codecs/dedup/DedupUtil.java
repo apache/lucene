@@ -225,12 +225,13 @@ final class DedupUtil {
     return dest;
   }
 
-  static long alignBytes(IndexOutput output, VectorEncoding encoding) throws IOException {
-    int alignBytes =
-        switch (encoding) {
-          case BYTE -> 4;
-          case FLOAT32, FLOAT16 -> 64;
-        };
-    return output.alignFilePointer(alignBytes);
+  /**
+   * Page-aligns vector data for every encoding, so a vector whose size divides 4 KB or is a
+   * multiple of it (e.g. 1024-dim float32, 1024- or 4096-dim float16, 1024-dim byte) never
+   * straddles a page boundary and a rescoring read touches no extra page. Also a multiple of the
+   * 64-byte alignment that is optimal for Arm Neoverse machines.
+   */
+  static long alignRawVectorData(IndexOutput output) throws IOException {
+    return output.alignFilePointer(4096);
   }
 }

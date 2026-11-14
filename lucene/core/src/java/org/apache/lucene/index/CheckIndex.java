@@ -664,7 +664,7 @@ public final class CheckIndex implements Closeable {
           long genB = SegmentInfos.generationFromSegmentsFileName(b);
 
           // reversed natural sort (largest generation first):
-          return -Long.compare(genA, genB);
+          return Long.compare(genB, genA);
         });
 
     for (String fileName : allSegmentsFiles) {
@@ -1865,8 +1865,7 @@ public final class CheckIndex implements Closeable {
                           + ": startOffset "
                           + startOffset
                           + " < lastStartOffset "
-                          + lastOffset
-                          + "; consider using the FixBrokenOffsets tool in Lucene's backward-codecs module to correct your index");
+                          + lastOffset);
                 }
                 if (endOffset < 0) {
                   throw new CheckIndexException(

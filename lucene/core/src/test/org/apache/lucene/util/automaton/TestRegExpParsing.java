@@ -68,7 +68,7 @@ public class TestRegExpParsing extends LuceneTestCase {
   }
 
   public void testCaseInsensitiveChar() {
-    RegExp re = new RegExp("c", RegExp.NONE, RegExp.ASCII_CASE_INSENSITIVE);
+    RegExp re = new RegExp("c", RegExp.NONE, RegExp.CASE_INSENSITIVE);
     assertEquals("c", re.toString());
     assertEquals("REGEXP_CHAR char=c\n", re.toStringTree());
 
@@ -81,7 +81,7 @@ public class TestRegExpParsing extends LuceneTestCase {
 
   // individual characters (only) inside a class are treated as case insensitive.
   public void testCaseInsensitiveClassChar() {
-    RegExp re = new RegExp("[c]", RegExp.NONE, RegExp.ASCII_CASE_INSENSITIVE);
+    RegExp re = new RegExp("[c]", RegExp.NONE, RegExp.CASE_INSENSITIVE);
     assertEquals(
         "REGEXP_CHAR_CLASS starts=[U+0043 U+0063] ends=[U+0043 U+0063]\n", re.toStringTree());
     AutomatonTestUtil.assertMinimalDFA(re.toAutomaton());
@@ -89,7 +89,7 @@ public class TestRegExpParsing extends LuceneTestCase {
 
   // ranges aren't treated as case-insensitive, unless special flag is provided
   public void testCaseInsensitiveClassRangeDisabled() {
-    RegExp re = new RegExp("[c-d]", RegExp.NONE, RegExp.ASCII_CASE_INSENSITIVE);
+    RegExp re = new RegExp("[c-d]", RegExp.NONE, RegExp.CASE_INSENSITIVE);
     assertEquals("REGEXP_CHAR_RANGE from=c to=d\n", re.toStringTree());
     AutomatonTestUtil.assertMinimalDFA(re.toAutomaton());
   }
@@ -112,7 +112,7 @@ public class TestRegExpParsing extends LuceneTestCase {
   }
 
   public void testCaseInsensitiveCharUpper() {
-    RegExp re = new RegExp("C", RegExp.NONE, RegExp.ASCII_CASE_INSENSITIVE);
+    RegExp re = new RegExp("C", RegExp.NONE, RegExp.CASE_INSENSITIVE);
     assertEquals("C", re.toString());
     assertEquals("REGEXP_CHAR char=C\n", re.toStringTree());
 
@@ -124,7 +124,7 @@ public class TestRegExpParsing extends LuceneTestCase {
   }
 
   public void testCaseInsensitiveCharNotSensitive() {
-    RegExp re = new RegExp("4", RegExp.NONE, RegExp.ASCII_CASE_INSENSITIVE);
+    RegExp re = new RegExp("4", RegExp.NONE, RegExp.CASE_INSENSITIVE);
     assertEquals("\\4", re.toString());
     assertEquals("REGEXP_CHAR char=4\n", re.toStringTree());
 
@@ -136,7 +136,7 @@ public class TestRegExpParsing extends LuceneTestCase {
   }
 
   public void testCaseInsensitiveCharNonAscii() {
-    RegExp re = new RegExp("Ж", RegExp.NONE, RegExp.ASCII_CASE_INSENSITIVE);
+    RegExp re = new RegExp("Ж", RegExp.NONE, RegExp.CASE_INSENSITIVE);
     assertEquals("\\Ж", re.toString());
     assertEquals("REGEXP_CHAR char=Ж\n", re.toStringTree());
 
@@ -623,7 +623,7 @@ public class TestRegExpParsing extends LuceneTestCase {
   }
 
   public void testCaseInsensitiveString() {
-    RegExp re = new RegExp("boo", RegExp.NONE, RegExp.ASCII_CASE_INSENSITIVE);
+    RegExp re = new RegExp("boo", RegExp.NONE, RegExp.CASE_INSENSITIVE);
     assertEquals("\"boo\"", re.toString());
     assertEquals("REGEXP_STRING string=boo\n", re.toStringTree());
 

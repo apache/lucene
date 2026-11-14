@@ -40,6 +40,14 @@ public class TestRegExp extends LuceneTestCase {
     assertFalse(run.run("ad"));
   }
 
+  public void testRemovedAsciiCaseInsensitiveRawFlag() {
+    // raw value of the removed ASCII_CASE_INSENSITIVE flag is rejected instead of silently ignored
+    expectThrows(IllegalArgumentException.class, () -> new RegExp("A", RegExp.ALL, 0x0100));
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> new RegExp("A", RegExp.ALL, 0x0100 | RegExp.CASE_INSENSITIVE));
+  }
+
   public void testUnicodeAsciiInsensitiveFlags() {
     RegExp r;
     // ASCII behaves appropriately with different flags
@@ -47,12 +55,6 @@ public class TestRegExp extends LuceneTestCase {
     assertFalse(new CharacterRunAutomaton(r.toAutomaton()).run("a"));
 
     r = new RegExp("A", RegExp.ALL, RegExp.CASE_INSENSITIVE);
-    assertTrue(new CharacterRunAutomaton(r.toAutomaton()).run("a"));
-
-    r = new RegExp("A", RegExp.ALL, RegExp.ASCII_CASE_INSENSITIVE);
-    assertTrue(new CharacterRunAutomaton(r.toAutomaton()).run("a"));
-
-    r = new RegExp("A", RegExp.ALL, RegExp.ASCII_CASE_INSENSITIVE | RegExp.CASE_INSENSITIVE);
     assertTrue(new CharacterRunAutomaton(r.toAutomaton()).run("a"));
 
     // class 1 Unicode characters behaves appropriately with different flags
@@ -63,13 +65,6 @@ public class TestRegExp extends LuceneTestCase {
     r = new RegExp("σ");
     assertFalse(new CharacterRunAutomaton(r.toAutomaton()).run("ς"));
 
-    r = new RegExp("Σ", RegExp.ALL, RegExp.ASCII_CASE_INSENSITIVE);
-    assertTrue(new CharacterRunAutomaton(r.toAutomaton()).run("σ"));
-    assertTrue(new CharacterRunAutomaton(r.toAutomaton()).run("ς"));
-
-    r = new RegExp("σ", RegExp.ALL, RegExp.ASCII_CASE_INSENSITIVE);
-    assertTrue(new CharacterRunAutomaton(r.toAutomaton()).run("ς"));
-
     r = new RegExp("Σ", RegExp.ALL, RegExp.CASE_INSENSITIVE);
     assertTrue(new CharacterRunAutomaton(r.toAutomaton()).run("σ"));
     assertTrue(new CharacterRunAutomaton(r.toAutomaton()).run("ς"));
@@ -77,11 +72,11 @@ public class TestRegExp extends LuceneTestCase {
     r = new RegExp("σ", RegExp.ALL, RegExp.CASE_INSENSITIVE);
     assertTrue(new CharacterRunAutomaton(r.toAutomaton()).run("ς"));
 
-    r = new RegExp("Σ", RegExp.ALL, RegExp.ASCII_CASE_INSENSITIVE | RegExp.CASE_INSENSITIVE);
+    r = new RegExp("Σ", RegExp.ALL, RegExp.CASE_INSENSITIVE);
     assertTrue(new CharacterRunAutomaton(r.toAutomaton()).run("σ"));
     assertTrue(new CharacterRunAutomaton(r.toAutomaton()).run("ς"));
 
-    r = new RegExp("σ", RegExp.ALL, RegExp.ASCII_CASE_INSENSITIVE | RegExp.CASE_INSENSITIVE);
+    r = new RegExp("σ", RegExp.ALL, RegExp.CASE_INSENSITIVE);
     assertTrue(new CharacterRunAutomaton(r.toAutomaton()).run("ς"));
 
     // class 2 Unicode characters behaves appropriately with different flags
@@ -297,8 +292,7 @@ public class TestRegExp extends LuceneTestCase {
             : Pattern.compile(regexPattern, Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
     assertThat(docValue, matchesRegex(pattern));
 
-    int matchFlags =
-        caseSensitiveQuery ? 0 : RegExp.ASCII_CASE_INSENSITIVE | RegExp.CASE_INSENSITIVE;
+    int matchFlags = caseSensitiveQuery ? 0 : RegExp.CASE_INSENSITIVE;
     RegExp regex = new RegExp(regexPattern, RegExp.ALL, matchFlags);
     Automaton automaton =
         Operations.determinize(regex.toAutomaton(), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);

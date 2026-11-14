@@ -43,6 +43,9 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.store.FilterDirectory;
+import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.index.MockRandomMergePolicy;
@@ -51,7 +54,9 @@ import org.apache.lucene.tests.store.MockDirectoryWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.LuceneTestCase.SuppressCodecs;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.InfoStream;
 import org.junit.Ignore;
 
 @SuppressCodecs("SimpleText") // too slow here
@@ -1510,5 +1515,130 @@ public class TestIndexWriterDelete extends LuceneTestCase {
 
     w.close();
     dir.close();
+  }
+
+  private static Document softUpdateDoc(Term term) {
+    Document doc = new Document();
+    doc.add(new StringField("id", term.bytes(), Field.Store.NO));
+    return doc;
+  }
+
+  private static Term bigTerm(int len) {
+    byte[] bytes = new byte[len];
+    java.util.Arrays.fill(bytes, (byte) 'x');
+    return new Term("id", new BytesRef(bytes));
+  }
+
+  /** Buffered soft updates must be applied at a hard limit even with a huge RAM buffer. */
+  public void testSoftUpdateBufferHardLimit() throws Exception {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc =
+          new IndexWriterConfig()
+              .setRAMBufferSizeMB(1000)
+              .setMaxBufferedDocs(IndexWriterConfig.DISABLE_AUTO_FLUSH)
+              .setSoftDeletesField("soft")
+              .setMergePolicy(NoMergePolicy.INSTANCE);
+      try (IndexWriter w = new IndexWriter(dir, iwc)) {
+        long limit = 256 * 1024;
+        w.docWriter.flushControl.maxDeleteBytes = limit;
+        Term term = bigTerm(1024);
+        Document doc = softUpdateDoc(term);
+        long max = 0;
+        for (int i = 0; i < 2000; i++) {
+          w.softUpdateDocument(term, doc, new NumericDocValuesField("soft", 1));
+          max = Math.max(max, w.docWriter.flushControl.getDeleteBytesUsed());
+        }
+        // allow slack for the update that crosses the limit and for block granularity
+        assertTrue("max delete bytes " + max, max < limit + 128 * 1024);
+      }
+    }
+  }
+
+  /** Indexing must stall, not overflow, if deletes hit the hard limit during a full flush. */
+  public void testSoftUpdateBufferHardLimitDuringFullFlush() throws Exception {
+    CountDownLatch entered = new CountDownLatch(1);
+    CountDownLatch release = new CountDownLatch(1);
+    AtomicBoolean hold = new AtomicBoolean();
+    CountDownLatch stalled = new CountDownLatch(1);
+    InfoStream stallListener =
+        new InfoStream() {
+          @Override
+          public void message(String component, String message) {
+            if (message.contains("now stalling flushes")) {
+              stalled.countDown();
+            }
+          }
+
+          @Override
+          public boolean isEnabled(String component) {
+            return "DWFC".equals(component);
+          }
+
+          @Override
+          public void close() {}
+        };
+    try (Directory dir =
+        new FilterDirectory(newDirectory()) {
+          @Override
+          public IndexOutput createOutput(String name, IOContext context) throws IOException {
+            if (Thread.currentThread().getName().equals("held-full-flush")
+                && hold.compareAndSet(true, false)) {
+              entered.countDown();
+              try {
+                release.await();
+              } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+              }
+            }
+            return super.createOutput(name, context);
+          }
+        }) {
+      IndexWriterConfig iwc =
+          new IndexWriterConfig()
+              .setRAMBufferSizeMB(1000)
+              .setInfoStream(stallListener)
+              .setSoftDeletesField("soft")
+              .setMergePolicy(NoMergePolicy.INSTANCE);
+      IndexWriter w = new IndexWriter(dir, iwc);
+      Term term = bigTerm(1024);
+      Document doc = softUpdateDoc(term);
+      w.addDocument(doc);
+      w.docWriter.flushControl.maxDeleteBytes = 256 * 1024;
+      hold.set(true);
+      Thread flusher =
+          new Thread(
+              () -> {
+                try {
+                  w.flush();
+                } catch (IOException e) {
+                  throw new UncheckedIOException(e);
+                }
+              },
+              "held-full-flush");
+      flusher.start();
+      assertTrue(entered.await(30, TimeUnit.SECONDS));
+      AtomicInteger done = new AtomicInteger();
+      Thread indexer =
+          new Thread(
+              () -> {
+                try {
+                  for (int i = 0; i < 2000; i++) {
+                    w.softUpdateDocument(term, doc, new NumericDocValuesField("soft", 1));
+                    done.incrementAndGet();
+                  }
+                } catch (IOException e) {
+                  throw new UncheckedIOException(e);
+                }
+              });
+      indexer.start();
+      assertTrue("indexing never stalled", stalled.await(30, TimeUnit.SECONDS));
+      assertTrue(done.get() < 2000);
+      assertTrue(w.docWriter.flushControl.getDeleteBytesUsed() < 512 * 1024);
+      release.countDown();
+      flusher.join();
+      indexer.join();
+      assertEquals(2000, done.get());
+      w.rollback();
+    }
   }
 }

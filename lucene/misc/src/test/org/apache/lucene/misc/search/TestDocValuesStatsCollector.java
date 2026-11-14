@@ -210,6 +210,41 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
     }
   }
 
+  public void testDoubleExtrema() throws IOException {
+    for (boolean sorted : new boolean[] {false, true}) {
+      for (double[] values :
+          new double[][] {
+            {-5, -3, -4}, {0.0}, {Double.NEGATIVE_INFINITY}, {Double.POSITIVE_INFINITY}
+          }) {
+        try (Directory dir = newDirectory();
+            RandomIndexWriter writer = new RandomIndexWriter(random(), dir)) {
+          for (double value : values) {
+            Document doc = new Document();
+            doc.add(
+                sorted
+                    ? new SortedNumericDocValuesField("double", Double.doubleToRawLongBits(value))
+                    : new DoubleDocValuesField("double", value));
+            writer.addDocument(doc);
+          }
+          try (DirectoryReader reader = writer.getReader()) {
+            DocValuesStatsCollectorManager<Double, DocValuesStats<Double>> manager =
+                new DocValuesStatsCollectorManager<>(
+                    () ->
+                        sorted
+                            ? new SortedDoubleDocValuesStats("double")
+                            : new DoubleDocValuesStats("double"));
+            DocValuesStats<Double> stats =
+                newSearcher(reader).search(MatchAllDocsQuery.INSTANCE, manager);
+            DoubleSummaryStatistics expected = Arrays.stream(values).summaryStatistics();
+            assertEquals(expected.getCount(), stats.count());
+            assertEquals(expected.getMin(), stats.min().doubleValue(), 0.0);
+            assertEquals(expected.getMax(), stats.max().doubleValue(), 0.0);
+          }
+        }
+      }
+    }
+  }
+
   public void testDocsWithMultipleLongValues() throws IOException {
     try (Directory dir = newDirectory()) {
       try (RandomIndexWriter indexWriter = new RandomIndexWriter(random(), dir)) {

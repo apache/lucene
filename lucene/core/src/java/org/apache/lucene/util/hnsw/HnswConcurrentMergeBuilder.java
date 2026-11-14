@@ -523,7 +523,9 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
           hnsw,
           hnswLock,
           new MergeSearcher(
-              new NeighborQueue(beamWidth, true), hnswLock, new FixedBitSet(hnsw.maxNodeId() + 1)));
+              new NeighborQueue(beamWidth, true),
+              hnswLock,
+              HnswGraphSearcher.createVisitedSet(beamWidth, HnswGraphSearcher.getGraphSize(hnsw))));
       this.workProgress = workProgress;
       this.initializedNodes = initializedNodes;
     }
@@ -614,7 +616,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
     private int upto;
     private int size;
 
-    private MergeSearcher(NeighborQueue candidates, HnswLock hnswLock, BitSet visited) {
+    private MergeSearcher(NeighborQueue candidates, HnswLock hnswLock, VisitedSet visited) {
       super(candidates, visited);
       this.hnswLock = hnswLock;
     }

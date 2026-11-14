@@ -271,7 +271,6 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "AnnotationPosition:OFF", // TODO: new, not checked if applicable to Lucene
     "AnnotationValueToString:OFF", // TODO: new, not checked if applicable to Lucene
     "ArgumentSelectionDefectChecker:OFF", // noisy
-    "ArrayAsKeyOfSetOrMap:OFF", // TODO: there are problems
     "ArrayEquals:ERROR",
     "ArrayFillIncompatibleType:ERROR",
     "ArrayHashCode:ERROR",
@@ -346,7 +345,6 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "ClosingStandardOutputStreams:WARN",
     "CollectionIncompatibleType:OFF", // TODO: new, not checked if applicable to Lucene
     "CollectionToArraySafeParameter:ERROR",
-    "CollectionUndefinedEquality:OFF", // TODO: there are problems
     "CollectorShouldNotUseState:WARN",
     "ComparableAndComparator:WARN",
     "ComparableType:OFF",
@@ -469,6 +467,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "GuiceInjectOnFinalField:OFF", // we don't use guice
     "GuiceNestedCombine:OFF", // we don't use guice
     "HardCodedSdCardPath:OFF", // TODO: new, not checked if applicable to Lucene
+    "HashCodeInObjectsHash:OFF", // TODO: there are problems (single-argument Objects.hash calls)
     "HashtableContains:ERROR",
     "HidingField:OFF", // noisy
     "ICCProfileGetInstance:OFF", // we use forbidden-apis for this
@@ -592,6 +591,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "LongLiteralLowerCaseSuffix:OFF", // TODO: new, not checked if applicable to Lucene
     "LoopConditionChecker:ERROR",
     "LoopOverCharArray:WARN",
+    "LoopToTestParameter:OFF", // irrelevant (TestParameterInjector)
     "LossyPrimitiveCompare:ERROR",
     "MalformedInlineTag:WARN",
     "MathAbsoluteNegative:OFF", // TODO: there are problems
@@ -609,6 +609,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "MissingDefault:OFF", // TODO: new, not checked if applicable to Lucene
     "MissingFail:OFF", // TODO: there are problems
     "MissingImplementsComparable:WARN",
+    "MissingJavadoc:OFF", // redundant (missing-doclet takes care of this)
     "MissingOverride:OFF", // ECJ takes care of this
     "MissingRefasterAnnotation:OFF", // we don't use this annotation
     "MissingRuntimeRetention:OFF", // we don't use this annotation
@@ -701,8 +702,10 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "PeriodTimeMath:OFF", // we don't use Period
     "PreconditionsCheckNotNullRepeated:OFF", // we don't use guava
     "PreconditionsInvalidPlaceholder:OFF", // we don't use guava
+    "PreferCharsetOverload:WARN",
     "PreferInstanceofOverGetKind:OFF", // TODO: new, not checked if applicable to Lucene
     "PreferJavaTimeOverload:OFF", // TODO: new, not checked if applicable to Lucene
+    "PreferPreconditions:OFF", // we don't use guava
     "PreferTestParameter:OFF", // irrelevant
     "PreferThrowsTag:OFF", // TODO: perhaps worth considering
     "PreferredInterfaceType:OFF", // TODO: new, not checked if applicable to Lucene
@@ -738,6 +741,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "ReferenceEquality:OFF", // noisy
     "RefersToDaggerCodegen:OFF", // TODO: new, not checked if applicable to Lucene
     "RemoveUnusedImports:OFF", // TODO: new, not checked if applicable to Lucene
+    "RequireNonNullRefactoring:OFF", // noisy, stylistic
     "RequiredModifiers:OFF", // we don't use this annotation
     "RestrictedApi:OFF", // we don't use this annotation
     "RethrowReflectiveOperationExceptionAsLinkageError:WARN",
@@ -761,6 +765,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "SetUnrecognized:OFF", // we don't use protobuf
     "ShortCircuitBoolean:OFF", // TODO: there are problems
     "ShouldHaveEvenArgs:OFF", // we don't use truth
+    "SimplifyTestParameter:OFF", // irrelevant (TestParameterInjector)
     "SizeGreaterThanOrEqualsZero:ERROR",
     "StatementSwitchToExpressionSwitch:OFF", // TODO: there are problems
     "StaticAssignmentInConstructor:OFF",
@@ -813,6 +818,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "TimeUnitMismatch:OFF", // TODO: new, not checked if applicable to Lucene
     "ToStringReturnsNull:OFF", // TODO: there are problems
     "TooManyParameters:OFF", // TODO: new, not checked if applicable to Lucene
+    "TraditionalJavadocToMarkdown:OFF", // we use traditional javadoc comments
     "TraditionalSwitchExpression:OFF", // TODO: new, not checked if applicable to Lucene
     "TransientMisuse:OFF", // TODO: new, not checked if applicable to Lucene
     "TreeToString:OFF", // we don't use javac API
@@ -884,6 +890,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "UseCorrectAssertInTests:OFF", // noisy
     "UseEnumSwitch:OFF", // TODO: new, not checked if applicable to Lucene
     "UsingJsr305CheckReturnValue:OFF", // TODO: new, not checked if applicable to Lucene
+    "ValueClassIdentity:OFF", // false positives: flags legitimate IdentityHashMap uses
     "Var:OFF", // TODO: new, not checked if applicable to Lucene
     "VarTypeName:ERROR",
     "VarWithPrimitive:OFF", // very subjective
@@ -953,6 +960,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
               List<String> excludedPaths =
                   switch (project.getPath()) {
                     case ":lucene:core" -> List.of(".*/StandardTokenizerImpl.java");
+                    case ":lucene:benchmark-jmh" -> List.of(".*/jmh_generated/.*");
                     case ":lucene:analysis:common" ->
                         List.of(
                             ".*/HTMLStripCharFilter.java", ".*/UAX29URLEmailTokenizerImpl.java");

@@ -1895,7 +1895,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
     }
 
     Weight weight =
-        new ConstantScoreWeight(new MatchAllDocsQuery(), 1.0f) {
+        new ConstantScoreWeight(MatchAllDocsQuery.INSTANCE, 1.0f) {
           @Override
           public ScorerSupplier scorerSupplier(LeafReaderContext context) {
             return new ScorerSupplier() {
