@@ -309,6 +309,9 @@ Optimizations
   The first prefetch on a file always probes: a hit on a warm file switches to sampling immediately, a miss
   makes the file earn the 1024 hits. (Michael Marshall)
 
+* GITHUB#16868: LongRangeFacetCutter: use the single-valued leaf cutter for single-valued segments,
+  with or without a doc-values skip index. (Jakub Slowinski)
+
 * GITHUB#16746: Speed up decoding long overlapping LZ4 matches using bulk copies
   of initialized bytes. (Andre Kurait)
 
