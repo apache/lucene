@@ -454,6 +454,8 @@ Bug Fixes
 
 * GITHUB#16972: Fix Brazilian "logias" stem replacement. (Simranjeet Singh)
 
+* GITHUB#16993: Preserve distinct suggestions when a duplicate arrives. (Simranjeet Singh)
+
 * GITHUB#16947: Disable index-sort early termination for indexes with parent-child docs.  Index sorts
   only apply to parent documents so naive early termination checks can read the sort value from a child
   document as meaning no later documents would be competitive, and incorrectly miss parent documents.
