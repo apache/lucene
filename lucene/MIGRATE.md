@@ -453,6 +453,23 @@ Automaton dfa = Operations.determinize(WildcardQuery.toAutomaton(new Term("myfie
 Query query = new AutomatonQuery(new Term("myfield", pattern), dfa);
 ```
 
+### Implicit determinization removed from SimplePatternTokenizer and SimplePatternSplitTokenizer (GITHUB#16999)
+
+`SimplePatternTokenizer` and `SimplePatternSplitTokenizer` now accept non-deterministic automata, and
+only determinize as-needed while matching. The `(AttributeFactory, String, int determinizeWorkLimit)`
+constructors have been removed; use `(AttributeFactory, new RegExp(regexp).toAutomaton())` instead.
+The `determinizeWorkLimit` argument of `SimplePatternTokenizerFactory` and
+`SimplePatternSplitTokenizerFactory` has also been removed.
+
+If you'd like to force the previous behavior, determinize the automaton yourself and pass it to the
+tokenizer:
+
+```java
+String re = "ab|ac";
+Automaton dfa = Operations.determinize(new RegExp(re).toAutomaton(), 10000);
+Tokenizer tokenizer = new SimplePatternTokenizer(dfa);
+```
+
 ### `QueryVisitor.consumeTermsMatching` takes `Supplier<ByteRunnable>`
 
 Because automata may now be a DFA or an NFA, `consumeTermsMatching` takes

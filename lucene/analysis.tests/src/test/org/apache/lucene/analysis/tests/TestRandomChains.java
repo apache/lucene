@@ -446,11 +446,14 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
                   });
               put(
                   Automaton.class,
-                  random ->
-                      Operations.determinize(
-                          new RegExp(AutomatonTestUtil.randomRegexp(random), RegExp.NONE)
-                              .toAutomaton(),
-                          Operations.DEFAULT_DETERMINIZE_WORK_LIMIT));
+                  random -> {
+                    Automaton a =
+                        new RegExp(AutomatonTestUtil.randomRegexp(random), RegExp.NONE)
+                            .toAutomaton();
+                    return random.nextBoolean()
+                        ? a
+                        : Operations.determinize(a, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
+                  });
               put(
                   PatternTypingFilter.PatternTypingRule[].class,
                   random -> {

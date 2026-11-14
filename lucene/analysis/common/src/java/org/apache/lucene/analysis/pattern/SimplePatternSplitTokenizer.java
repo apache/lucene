@@ -24,15 +24,16 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.AttributeFactory;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.CharacterRunAutomaton;
+import org.apache.lucene.util.automaton.NFARunAutomaton;
 import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
 
 /**
- * This tokenizer uses a Lucene {@link RegExp} or (expert usage) a pre-built determinized {@link
- * Automaton}, to locate tokens. The regexp syntax is more limited than {@link PatternTokenizer},
- * but the tokenization is quite a bit faster. This is just like {@link SimplePatternTokenizer}
- * except that the pattern should make valid token separator characters, like {@code String.split}.
- * Empty string tokens are never produced.
+ * This tokenizer uses a Lucene {@link RegExp} or (expert usage) a pre-built {@link Automaton}, to
+ * locate tokens. The regexp syntax is more limited than {@link PatternTokenizer}, but the
+ * tokenization is quite a bit faster. This is just like {@link SimplePatternTokenizer} except that
+ * the pattern should make valid token separator characters, like {@code String.split}. Empty string
+ * tokens are never produced.
  *
  * @lucene.experimental
  */
@@ -41,7 +42,10 @@ public final class SimplePatternSplitTokenizer extends Tokenizer {
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
   private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
 
+  // deterministic automata run on the faster CharacterRunAutomaton; others are determinized lazily
+  // by NFARunAutomaton. Exactly one of these is non-null:
   private final CharacterRunAutomaton runDFA;
+  private final NFARunAutomaton runNFA;
 
   // TODO: this is copied from SimplePatternTokenizer, but there are subtle differences e.g. we
   // track sepUpto an tokenUpto;
@@ -63,32 +67,36 @@ public final class SimplePatternSplitTokenizer extends Tokenizer {
 
   /** See {@link RegExp} for the accepted syntax. */
   public SimplePatternSplitTokenizer(String regexp) {
-    this(DEFAULT_TOKEN_ATTRIBUTE_FACTORY, regexp, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
+    this(DEFAULT_TOKEN_ATTRIBUTE_FACTORY, new RegExp(regexp).toAutomaton());
   }
 
   /** Runs a pre-built automaton. */
-  public SimplePatternSplitTokenizer(Automaton dfa) {
-    this(DEFAULT_TOKEN_ATTRIBUTE_FACTORY, dfa);
+  public SimplePatternSplitTokenizer(Automaton automaton) {
+    this(DEFAULT_TOKEN_ATTRIBUTE_FACTORY, automaton);
   }
 
-  /** See {@link RegExp} for the accepted syntax. */
-  public SimplePatternSplitTokenizer(
-      AttributeFactory factory, String regexp, int determinizeWorkLimit) {
-    this(factory, Operations.determinize(new RegExp(regexp).toAutomaton(), determinizeWorkLimit));
-  }
-
-  /** Runs a pre-built automaton. */
-  public SimplePatternSplitTokenizer(AttributeFactory factory, Automaton dfa) {
+  /**
+   * Runs a pre-built automaton. A deterministic automaton is run as a DFA; otherwise it is
+   * determinized lazily, as needed, while matching. To force up-front DFA execution, pass the
+   * result of {@link Operations#determinize}.
+   */
+  public SimplePatternSplitTokenizer(AttributeFactory factory, Automaton automaton) {
     super(factory);
-
-    // we require user to do this up front because it is a possibly very costly operation, and user
-    // may be creating us frequently, not
-    // realizing this ctor is otherwise trappy
-    if (dfa.isDeterministic() == false) {
-      throw new IllegalArgumentException("please determinize the incoming automaton first");
+    if (automaton.isDeterministic()) {
+      runDFA = new CharacterRunAutomaton(automaton);
+      runNFA = null;
+    } else {
+      runDFA = null;
+      runNFA = new NFARunAutomaton(automaton);
     }
+  }
 
-    runDFA = new CharacterRunAutomaton(dfa);
+  private int step(int state, int ch) {
+    return runDFA != null ? runDFA.step(state, ch) : runNFA.step(state, ch);
+  }
+
+  private boolean isAccept(int state) {
+    return runDFA != null ? runDFA.isAccept(state) : runNFA.isAccept(state);
   }
 
   private void fillToken(int offsetStart) {
@@ -108,7 +116,7 @@ public final class SimplePatternSplitTokenizer extends Tokenizer {
     while (true) {
       sepUpto = 0;
 
-      // The runDFA operates in Unicode space, not UTF16 (java's char):
+      // The automaton operates in Unicode space, not UTF16 (java's char):
       int ch = nextCodePoint();
       if (ch == -1) {
         if (tokenUpto > 0) {
@@ -118,14 +126,14 @@ public final class SimplePatternSplitTokenizer extends Tokenizer {
           return false;
         }
       }
-      int state = runDFA.step(0, ch);
+      int state = step(0, ch);
 
       if (state != -1) {
         // a token separator just possibly started; keep scanning to see if the token is accepted:
         int lastAcceptLength = -1;
         do {
 
-          if (runDFA.isAccept(state)) {
+          if (isAccept(state)) {
             // record that the token separator matches here, but keep scanning in case a longer
             // match also works (greedy):
             lastAcceptLength = sepUpto;
@@ -135,7 +143,7 @@ public final class SimplePatternSplitTokenizer extends Tokenizer {
           if (ch == -1) {
             break;
           }
-          state = runDFA.step(state, ch);
+          state = step(state, ch);
         } while (state != -1);
 
         if (lastAcceptLength != -1) {

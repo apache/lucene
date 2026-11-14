@@ -29,6 +29,9 @@ import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.automaton.Automaton;
+import org.apache.lucene.util.automaton.Operations;
+import org.apache.lucene.util.automaton.RegExp;
+import org.apache.lucene.util.automaton.TooComplexToDeterminizeException;
 
 public class TestSimplePatternSplitTokenizer extends BaseTokenStreamTestCase {
 
@@ -173,7 +176,37 @@ public class TestSimplePatternSplitTokenizer extends BaseTokenStreamTestCase {
     a.addTransition(start, mid2, 'a', 'z');
     a.addTransition(mid1, end, 'b');
     a.addTransition(mid2, end, 'b');
-    expectThrows(IllegalArgumentException.class, () -> new SimplePatternSplitTokenizer(a));
+    a.finishState();
+    assertFalse(a.isDeterministic());
+    Tokenizer t = new SimplePatternSplitTokenizer(a);
+    t.setReader(new StringReader("1xb2ab3"));
+    assertTokenStreamContents(
+        t, new String[] {"1", "2", "3"}, new int[] {0, 3, 6}, new int[] {1, 4, 7});
+  }
+
+  public void testNonDeterministicRegExp() throws Exception {
+    assertFalse(new RegExp("ab|ac").toAutomaton().isDeterministic());
+    Tokenizer t = new SimplePatternSplitTokenizer("ab|ac");
+    t.setReader(new StringReader("xabyacz"));
+    assertTokenStreamContents(
+        t, new String[] {"x", "y", "z"}, new int[] {0, 3, 6}, new int[] {1, 4, 7});
+  }
+
+  public void testTooComplexToDeterminize() throws Exception {
+    String regexp = "(a|b)*a(a|b){20}";
+    expectThrows(
+        TooComplexToDeterminizeException.class,
+        () ->
+            Operations.determinize(
+                new RegExp(regexp).toAutomaton(), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT));
+    String separator = "a" + "b".repeat(20);
+    Tokenizer t = new SimplePatternSplitTokenizer(regexp);
+    t.setReader(new StringReader("c" + separator + "c"));
+    assertTokenStreamContents(t, new String[] {"c", "c"}, new int[] {0, 22}, new int[] {1, 23});
+  }
+
+  public void testRandomNFAMatchesDFA() throws Exception {
+    TestSimplePatternTokenizer.checkRandomNFAMatchesDFA(random(), SimplePatternSplitTokenizer::new);
   }
 
   public void testOffsetCorrection() throws Exception {
@@ -241,6 +274,18 @@ public class TestSimplePatternSplitTokenizer extends BaseTokenStreamTestCase {
         };
     checkRandomData(random(), b, 200 * RANDOM_MULTIPLIER);
     b.close();
+
+    assertFalse(new RegExp("ab|ac").toAutomaton().isDeterministic());
+    Analyzer c =
+        new Analyzer() {
+          @Override
+          protected TokenStreamComponents createComponents(String fieldName) {
+            Tokenizer tokenizer = new SimplePatternSplitTokenizer("ab|ac");
+            return new TokenStreamComponents(tokenizer);
+          }
+        };
+    checkRandomData(random(), c, 200 * RANDOM_MULTIPLIER);
+    c.close();
   }
 
   public void testEndLookahead() throws Exception {
