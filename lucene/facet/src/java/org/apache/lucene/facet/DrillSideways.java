@@ -465,6 +465,7 @@ public class DrillSideways {
             baseQuery, drillSidewaysCollectorManagers, drillDownQueries, scoreSubDocsAtOnce());
 
     T collectorResult = searcher.search(dsq, drillDownCollectorManager);
+    dsq.finishDrillSidewaysLeafCollectors();
     List<R> drillSidewaysResults = new ArrayList<>(drillDownDims.size());
     assert drillSidewaysCollectorManagers != null
         : "Case without drill sideways dimensions is handled above";

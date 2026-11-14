@@ -202,10 +202,6 @@ public abstract class SandboxFacetTestCase extends LuceneTestCase {
   protected IndexSearcher getNewSearcherForDrillSideways(IndexReader reader) {
     // Do not wrap with an asserting searcher, since DrillSidewaysQuery doesn't
     // implement all the required components like Weight#scorer.
-    IndexSearcher searcher = newSearcher(reader, true, false, Concurrency.INTER_SEGMENT);
-    // DrillSideways requires the entire range of docs to be scored at once, so it doesn't support
-    // timeouts whose implementation scores one window of doc IDs at a time.
-    searcher.setTimeout(null);
-    return searcher;
+    return newSearcher(reader, true, false, Concurrency.INTRA_SEGMENT);
   }
 }
