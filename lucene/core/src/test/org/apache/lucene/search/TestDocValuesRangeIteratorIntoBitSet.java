@@ -1304,7 +1304,7 @@ public class TestDocValuesRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
         try (DirectoryReader reader = DirectoryReader.open(writer)) {
           var leaf = reader.leaves().getFirst().reader();
           List<long[]> ranges =
-              new ArrayList<long[]>(
+              new ArrayList<>(
                   List.of(
                       new long[] {Long.MIN_VALUE, Long.MIN_VALUE},
                       new long[] {Long.MAX_VALUE, Long.MAX_VALUE},
