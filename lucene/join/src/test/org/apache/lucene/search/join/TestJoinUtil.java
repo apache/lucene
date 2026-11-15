@@ -509,6 +509,52 @@ public class TestJoinUtil extends LuceneTestCase {
     context.close();
   }
 
+  public void testGlobalOrdinalsJoinWithSegmentPartitions() throws Exception {
+    int numKeys = 8;
+    int docsPerKey = 128;
+    int numDocs = numKeys * docsPerKey;
+    try (Directory dir = newDirectory();
+        IndexWriter w =
+            new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()))) {
+      for (int i = 0; i < numDocs; i++) {
+        w.addDocument(
+            List.of(new SortedDocValuesField("key", new BytesRef(Integer.toString(i % numKeys)))));
+      }
+      w.forceMerge(1);
+      try (DirectoryReader reader = DirectoryReader.open(w);
+          ExecutorService executor =
+              Executors.newFixedThreadPool(4, new NamedThreadFactory("TestJoinUtil"))) {
+        assertEquals(1, reader.leaves().size());
+        // Four partitions of the single segment, searched concurrently.
+        IndexSearcher searcher =
+            new IndexSearcher(reader, executor) {
+              @Override
+              protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
+                return IndexSearcher.slices(leaves, numDocs / 4, 1, true);
+              }
+            };
+        assertEquals(4, searcher.getSlices().length);
+        Query all = MatchAllDocsQuery.INSTANCE;
+        for (ScoreMode mode : ScoreMode.values()) {
+          // Exact occurrence bounds: every key must be counted exactly docsPerKey times.
+          Query join =
+              JoinUtil.createJoinQuery(
+                  "key", all, all, searcher, mode, null, docsPerKey, docsPerKey);
+          if (mode == ScoreMode.None) {
+            assertEquals(numDocs, searcher.count(join));
+          } else {
+            TopDocs hits = searcher.search(join, numDocs);
+            assertEquals(numDocs, hits.scoreDocs.length);
+            float expected = mode == ScoreMode.Total ? docsPerKey : 1f;
+            for (ScoreDoc hit : hits.scoreDocs) {
+              assertEquals(expected, hit.score, 0f);
+            }
+          }
+        }
+      }
+    }
+  }
+
   public void testMinMaxScore() throws Exception {
     String priceField = "price";
     Query priceQuery = numericDocValuesScoreQuery(priceField);
