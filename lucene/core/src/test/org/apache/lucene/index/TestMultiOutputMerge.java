@@ -29,6 +29,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -83,8 +84,16 @@ public class TestMultiOutputMerge extends LuceneTestCase {
     enabled = false;
   }
 
-  private IndexWriterConfig config() {
+  /** Segment boundaries are explicit, so every input segment holds at least OUTPUTS docs. */
+  private IndexWriterConfig noAutoFlush() {
     IndexWriterConfig iwc = newIndexWriterConfig(analyzer);
+    iwc.setMaxBufferedDocs(IndexWriterConfig.DISABLE_AUTO_FLUSH);
+    iwc.setRAMBufferSizeMB(64);
+    return iwc;
+  }
+
+  private IndexWriterConfig config() {
+    IndexWriterConfig iwc = noAutoFlush();
     // A contiguous doc range is a contiguous key range only when sorted.
     iwc.setIndexSort(new Sort(new SortField("sort", SortField.Type.STRING)));
     iwc.setMergePolicy(new PartitioningMergePolicy());
@@ -1132,6 +1141,8 @@ public class TestMultiOutputMerge extends LuceneTestCase {
    * output's share on its own, and this is that sentence as an assertion.
    */
   public void testOutputsMatchDirectlyIndexedSegments() throws Exception {
+    // The same text is indexed twice here, so the analyzer must give identical terms each time.
+    analyzer = new StandardAnalyzer();
     try (Directory dir = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, config())) {
         for (int seg = 0; seg < SEGMENTS; seg++) {
@@ -1293,7 +1304,7 @@ public class TestMultiOutputMerge extends LuceneTestCase {
 
   /** Boundaries on even document counts, which take no notice of blocks. */
   private IndexWriterConfig misalignedBlockConfig() {
-    IndexWriterConfig iwc = newIndexWriterConfig(analyzer);
+    IndexWriterConfig iwc = noAutoFlush();
     iwc.setIndexSort(new Sort(new SortField("sort", SortField.Type.STRING)));
     iwc.setParentField("_parent");
     iwc.setMergePolicy(new PartitioningMergePolicy());
