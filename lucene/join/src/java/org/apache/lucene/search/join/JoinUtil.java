@@ -579,7 +579,13 @@ public final class JoinUtil {
     }
     GlobalOrdinalsWithScoreCollectorManager globalOrdinalsWithScoreCollectorManager =
         new GlobalOrdinalsWithScoreCollectorManager(
-            joinField, ordinalMap, valueCount, scoreMode, min, max);
+            joinField,
+            ordinalMap,
+            valueCount,
+            scoreMode,
+            min,
+            max,
+            searcher.getSlices().length > 1);
     searcher.search(rewrittenFromQuery, globalOrdinalsWithScoreCollectorManager);
     return new GlobalOrdinalsWithScoreQuery(
         globalOrdinalsWithScoreCollectorManager,
