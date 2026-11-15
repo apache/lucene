@@ -375,7 +375,7 @@ Optimizations
 
 Bug Fixes
 ---------------------
-* GITHUB#XXXXX: Fix lost matches and scores in JoinUtil global ordinal joins over a single segment
+* GITHUB#17028: Fix lost matches and scores in JoinUtil global ordinal joins over a single segment
   when concurrent search splits the segment into several slices. (Asharam)
 
 * GITHUB#16983: UnifiedHighlighter.Builder#withFlags is no longer ignored when building the
