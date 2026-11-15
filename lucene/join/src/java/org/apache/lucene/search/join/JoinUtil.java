@@ -585,6 +585,8 @@ public final class JoinUtil {
             scoreMode,
             min,
             max,
+            // IndexSearcher creates one collector per slice and collects each slice on its own
+            // thread, so with a single slice the collector needs no locking.
             searcher.getSlices().length > 1);
     searcher.search(rewrittenFromQuery, globalOrdinalsWithScoreCollectorManager);
     return new GlobalOrdinalsWithScoreQuery(

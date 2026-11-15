@@ -144,7 +144,7 @@ class GlobalOrdinalsWithScoreCollectorManager implements CollectorManager<Collec
     @Override
     public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
       SortedDocValues docTermOrds = DocValues.getSorted(context.reader(), field);
-      return new OrdinalMapCollector(docTermOrds, globalOrds(context));
+      return new OrdinalCollector(docTermOrds, globalOrds(context));
     }
 
     @Override
@@ -152,13 +152,13 @@ class GlobalOrdinalsWithScoreCollectorManager implements CollectorManager<Collec
       return org.apache.lucene.search.ScoreMode.COMPLETE;
     }
 
-    final class OrdinalMapCollector implements LeafCollector {
+    final class OrdinalCollector implements LeafCollector {
 
       private final SortedDocValues docTermOrds;
       private final LongValues segmentOrdToGlobalOrdLookup;
       private Scorable scorer;
 
-      OrdinalMapCollector(SortedDocValues docTermOrds, LongValues segmentOrdToGlobalOrdLookup) {
+      OrdinalCollector(SortedDocValues docTermOrds, LongValues segmentOrdToGlobalOrdLookup) {
         this.docTermOrds = docTermOrds;
         this.segmentOrdToGlobalOrdLookup = segmentOrdToGlobalOrdLookup;
       }
