@@ -342,18 +342,14 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       if (info.docValuesSkipIndexType() != DocValuesSkipIndexType.NONE) {
         skippers.put(info.number, readDocValueSkipperMeta(meta));
       }
-      if (type == Lucene90DocValuesFormat.NUMERIC) {
-        numerics.put(info.number, readNumeric(meta));
-      } else if (type == Lucene90DocValuesFormat.BINARY) {
-        binaries.put(info.number, readBinary(meta));
-      } else if (type == Lucene90DocValuesFormat.SORTED) {
-        sorted.put(info.number, readSorted(meta));
-      } else if (type == Lucene90DocValuesFormat.SORTED_SET) {
-        sortedSets.put(info.number, readSortedSet(meta));
-      } else if (type == Lucene90DocValuesFormat.SORTED_NUMERIC) {
-        sortedNumerics.put(info.number, readSortedNumeric(meta));
-      } else {
-        throw new CorruptIndexException("invalid type: " + type, meta);
+      switch (type) {
+        case Lucene90DocValuesFormat.NUMERIC -> numerics.put(info.number, readNumeric(meta));
+        case Lucene90DocValuesFormat.BINARY -> binaries.put(info.number, readBinary(meta));
+        case Lucene90DocValuesFormat.SORTED -> sorted.put(info.number, readSorted(meta));
+        case Lucene90DocValuesFormat.SORTED_SET -> sortedSets.put(info.number, readSortedSet(meta));
+        case Lucene90DocValuesFormat.SORTED_NUMERIC ->
+            sortedNumerics.put(info.number, readSortedNumeric(meta));
+        default -> throw new CorruptIndexException("invalid type: " + type, meta);
       }
     }
   }

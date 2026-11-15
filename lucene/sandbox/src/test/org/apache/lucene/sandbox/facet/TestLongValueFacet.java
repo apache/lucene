@@ -277,7 +277,7 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
       // sort by count
       expectedCounts.sort(
           (a, b) -> {
-            int cmp = -Integer.compare(a.getValue(), b.getValue());
+            int cmp = Integer.compare(b.getValue(), a.getValue());
             if (cmp == 0) {
               // tie break by value
               cmp = Long.compare(a.getKey(), b.getKey());
@@ -376,7 +376,7 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
       // sort by count
       expectedCounts.sort(
           (a, b) -> {
-            int cmp = -Integer.compare(a.getValue(), b.getValue());
+            int cmp = Integer.compare(b.getValue(), a.getValue());
             if (cmp == 0) {
               // tie break by value
               cmp = Long.compare(a.getKey(), b.getKey());
@@ -540,7 +540,7 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
       // sort by count
       expectedCounts.sort(
           (a, b) -> {
-            int cmp = -Integer.compare(a.getValue(), b.getValue());
+            int cmp = Integer.compare(b.getValue(), a.getValue());
             if (cmp == 0) {
               // tie break by value
               cmp = Long.compare(a.getKey(), b.getKey());
@@ -617,7 +617,7 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
       // sort by count
       expectedCounts.sort(
           (a, b) -> {
-            int cmp = -Integer.compare(a.getValue(), b.getValue());
+            int cmp = Integer.compare(b.getValue(), a.getValue());
             if (cmp == 0) {
               // tie break by value
               cmp = Long.compare(a.getKey(), b.getKey());

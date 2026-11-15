@@ -202,27 +202,33 @@ class GermanStemmer {
    */
   private void resubstitute(StringBuilder buffer) {
     for (int c = 0; c < buffer.length(); c++) {
-      if (buffer.charAt(c) == '*') {
-        char x = buffer.charAt(c - 1);
-        buffer.setCharAt(c, x);
-      } else if (buffer.charAt(c) == '$') {
-        buffer.setCharAt(c, 's');
-        buffer.insert(c + 1, new char[] {'c', 'h'}, 0, 2);
-      } else if (buffer.charAt(c) == '§') {
-        buffer.setCharAt(c, 'c');
-        buffer.insert(c + 1, 'h');
-      } else if (buffer.charAt(c) == '%') {
-        buffer.setCharAt(c, 'e');
-        buffer.insert(c + 1, 'i');
-      } else if (buffer.charAt(c) == '&') {
-        buffer.setCharAt(c, 'i');
-        buffer.insert(c + 1, 'e');
-      } else if (buffer.charAt(c) == '#') {
-        buffer.setCharAt(c, 'i');
-        buffer.insert(c + 1, 'g');
-      } else if (buffer.charAt(c) == '!') {
-        buffer.setCharAt(c, 's');
-        buffer.insert(c + 1, 't');
+      switch (buffer.charAt(c)) {
+        case '*' -> buffer.setCharAt(c, buffer.charAt(c - 1));
+        case '$' -> {
+          buffer.setCharAt(c, 's');
+          buffer.insert(c + 1, new char[] {'c', 'h'}, 0, 2);
+        }
+        case '§' -> {
+          buffer.setCharAt(c, 'c');
+          buffer.insert(c + 1, 'h');
+        }
+        case '%' -> {
+          buffer.setCharAt(c, 'e');
+          buffer.insert(c + 1, 'i');
+        }
+        case '&' -> {
+          buffer.setCharAt(c, 'i');
+          buffer.insert(c + 1, 'e');
+        }
+        case '#' -> {
+          buffer.setCharAt(c, 'i');
+          buffer.insert(c + 1, 'g');
+        }
+        case '!' -> {
+          buffer.setCharAt(c, 's');
+          buffer.insert(c + 1, 't');
+        }
+        default -> {}
       }
     }
   }
