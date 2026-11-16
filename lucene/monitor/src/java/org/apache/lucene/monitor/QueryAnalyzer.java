@@ -29,6 +29,7 @@ import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.ConstantScoreQuery;
+import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.MultiTermQuery;
 import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
@@ -191,6 +192,11 @@ class QueryAnalyzer {
 
     @Override
     public void visitLeaf(Query query) {
+      if (isNegated && query instanceof MatchAllDocsQuery) {
+        // NOT *:* matches nothing: dropping it is exact in a disjunction, NOT (*:* AND NOT y) = y,
+        // and only selects more documents in a conjunction
+        return;
+      }
       // Under negation only handleNegatedQuery is used: a handler's positive tree may select more
       // documents than the query matches, so negating it would be unsound
       clauses.add(

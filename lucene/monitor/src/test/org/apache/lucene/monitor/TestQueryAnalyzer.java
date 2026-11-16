@@ -336,6 +336,11 @@ public class TestQueryAnalyzer extends LuceneTestCase {
         new Pass(ANY, List.of()), collect(regexp.buildTree(negatedRegexp, TermWeightor.DEFAULT)));
   }
 
+  public void testNegatedMatchAllIsDropped() {
+    // NOT (*:* AND NOT y) = y, rather than ANY
+    assertEquals(new Pass(Set.of(t("y")), List.of()), negativeDisjunctPass("*:* -(+*:* -y)"));
+  }
+
   public void testDoubleNegationIsPositive() {
     // NOT(a AND NOT b) = NOT a OR b
     assertEquals(
