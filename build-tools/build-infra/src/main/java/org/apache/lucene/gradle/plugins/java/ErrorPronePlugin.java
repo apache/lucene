@@ -893,7 +893,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "UseEnumSwitch:OFF", // TODO: new, not checked if applicable to Lucene
     "UsingJsr305CheckReturnValue:OFF", // TODO: new, not checked if applicable to Lucene
     "ValueClassIdentity:OFF", // false positives: flags legitimate IdentityHashMap uses
-    "ValueClassEquals:OFF", // TODO: new, not checked if applicable to Lucene
+    "ValueClassEquals:OFF", // irrelevant (applies to Valhalla value classes only)
     "Var:OFF", // TODO: new, not checked if applicable to Lucene
     "VarTypeName:ERROR",
     "VarWithPrimitive:OFF", // very subjective
