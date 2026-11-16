@@ -38,6 +38,7 @@ import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
+import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.ChecksumIndexInput;
@@ -342,6 +343,16 @@ public final class BloomFilteringPostingsFormat extends PostingsFormat {
       @Override
       public void seekExact(long ord) throws IOException {
         delegate().seekExact(ord);
+      }
+
+      @Override
+      public void seekExact(BytesRef term, TermState state) throws IOException {
+        delegate().seekExact(term, state);
+      }
+
+      @Override
+      public TermState termState() throws IOException {
+        return delegate().termState();
       }
 
       @Override
