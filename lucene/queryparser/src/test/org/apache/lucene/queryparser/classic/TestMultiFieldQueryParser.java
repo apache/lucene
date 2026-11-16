@@ -455,4 +455,34 @@ public class TestMultiFieldQueryParser extends LuceneTestCase {
     // to addMultiTermClauses issue where default operator is ignored
     assertEquals(expected, parser.parse("+foo bar the").toString());
   }
+
+  /** A word that the analyzer drops must not change which clause a following AND/OR applies to. */
+  public void testStopwordBeforeOperator() throws Exception {
+    Analyzer a =
+        new MockAnalyzer(random(), MockTokenizer.WHITESPACE, true, MockTokenFilter.ENGLISH_STOPSET);
+    MultiFieldQueryParser parser = new MultiFieldQueryParser(new String[] {"b", "t"}, a);
+
+    assertEquals(
+        "(b:apple t:apple) +(b:banana t:banana) +(b:cherry t:cherry)",
+        parser.parse("apple banana the AND cherry").toString());
+
+    for (QueryParser.Operator defaultOperator : QueryParser.Operator.values()) {
+      parser.setDefaultOperator(defaultOperator);
+      for (String operator : new String[] {"AND", "OR"}) {
+        Query expected = parser.parse("apple banana " + operator + " cherry");
+        assertEquals(expected, parser.parse("apple banana the " + operator + " cherry"));
+        assertEquals(expected, parser.parse("apple the banana the the " + operator + " cherry"));
+
+        // "apple" is one term position in two fields, which AND/OR must not split
+        assertEquals(
+            parser.parse("apple " + operator + " cherry"),
+            parser.parse("apple the the " + operator + " cherry"));
+      }
+    }
+
+    // with a single field "bar" must stay required under AND, even though "the" is dropped
+    parser = new MultiFieldQueryParser(new String[] {"b"}, a);
+    parser.setDefaultOperator(QueryParser.Operator.AND);
+    assertEquals(parser.parse("+foo bar"), parser.parse("+foo bar the"));
+  }
 }
