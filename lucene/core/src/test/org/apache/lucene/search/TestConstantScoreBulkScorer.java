@@ -172,6 +172,37 @@ public class TestConstantScoreBulkScorer extends LuceneTestCase {
     assertEquals(match, collect(bulkScorer, maxDoc, null));
   }
 
+  public void testSupplierRoutesPlainIteratorsByCost() throws IOException {
+    int maxDoc = 100_000;
+    // Matches fewer than 1 doc out of SPARSE_THRESHOLD_INVERSE: collected one doc at a time.
+    FixedBitSet sparse = modBitSet(maxDoc, 1000);
+    BulkScorer bulkScorer =
+        ConstantScoreScorerSupplier.fromIterator(
+                new BitSetIterator(sparse, sparse.cardinality()),
+                1f,
+                ScoreMode.COMPLETE_NO_SCORES,
+                maxDoc)
+            .bulkScorer();
+    assertTrue(
+        "expected DefaultBulkScorer but got " + bulkScorer.getClass().getName(),
+        bulkScorer instanceof Weight.DefaultBulkScorer);
+    assertEquals(sparse, collect(bulkScorer, maxDoc, null));
+
+    // Denser, but below the threshold of DenseConjunctionBulkScorer: collected through bit sets.
+    FixedBitSet dense = modBitSet(maxDoc, 64);
+    bulkScorer =
+        ConstantScoreScorerSupplier.fromIterator(
+                new BitSetIterator(dense, dense.cardinality()),
+                1f,
+                ScoreMode.COMPLETE_NO_SCORES,
+                maxDoc)
+            .bulkScorer();
+    assertTrue(
+        "expected ConstantScoreBulkScorer but got " + bulkScorer.getClass().getName(),
+        bulkScorer instanceof ConstantScoreBulkScorer);
+    assertEquals(dense, collect(bulkScorer, maxDoc, null));
+  }
+
   public void testSupplierRoutesSparseNonBulkTwoPhase() throws IOException {
     int maxDoc = 100_000;
     FixedBitSet match = modBitSet(maxDoc, 1000);
@@ -193,176 +224,6 @@ public class TestConstantScoreBulkScorer extends LuceneTestCase {
         "expected ConstantScoreBulkScorer but got " + bulkScorer.getClass().getName(),
         bulkScorer instanceof ConstantScoreBulkScorer);
     assertEquals(match, collect(bulkScorer, maxDoc, null));
-  }
-
-  /**
-   * Matches of a plain iterator are collected one by one where they are far apart from each other
-   * and via bit sets where they are close to each other. Check that switching back and forth
-   * between the two does not lose or duplicate matches.
-   */
-  public void testPlainIteratorWithSparseAndDenseRanges() throws IOException {
-    int maxDoc = 200_000;
-    FixedBitSet match = new FixedBitSet(maxDoc);
-    for (int doc = 0; doc < maxDoc; ) {
-      // alternate ranges of doc IDs that have different densities of matches
-      int rangeEnd = Math.min(maxDoc, doc + TestUtil.nextInt(random(), 1, 20_000));
-      int step =
-          switch (random().nextInt(4)) {
-            case 0 -> 1;
-            case 1 -> TestUtil.nextInt(random(), 2, 100);
-            case 2 -> TestUtil.nextInt(random(), 100, 1_000);
-            default -> TestUtil.nextInt(random(), 1_000, 10_000);
-          };
-      for (; doc < rangeEnd; doc += TestUtil.nextInt(random(), 1, step)) {
-        match.set(doc);
-      }
-    }
-    FixedBitSet acceptDocs = random().nextBoolean() ? null : modBitSet(maxDoc, 3);
-    FixedBitSet expected = match.clone();
-    if (acceptDocs != null) {
-      expected.and(acceptDocs);
-    }
-
-    BulkScorer scorer =
-        new ConstantScoreBulkScorer(
-            1f,
-            ScoreMode.COMPLETE_NO_SCORES,
-            new BitSetIterator(match, match.approximateCardinality()));
-    // AssertingBulkScorer randomly splits the scored range into smaller ranges.
-    scorer = AssertingBulkScorer.wrap(random(), scorer, maxDoc);
-
-    FixedBitSet result = new FixedBitSet(maxDoc);
-    int[] lastDoc = {-1};
-    scorer.score(
-        new LeafCollector() {
-          @Override
-          public void setScorer(Scorable scorer) throws IOException {}
-
-          @Override
-          public void collect(int doc) throws IOException {
-            assertTrue("docs must be collected in order", doc > lastDoc[0]);
-            lastDoc[0] = doc;
-            result.set(doc);
-          }
-        },
-        acceptDocs,
-        0,
-        DocIdSetIterator.NO_MORE_DOCS);
-    assertEquals(expected, result);
-  }
-
-  /** Matches that are far apart from each other must not be loaded into bit sets. */
-  public void testSparsePlainIteratorIsCollectedOneByOne() throws IOException {
-    int maxDoc = 1_000_000;
-    FixedBitSet match = modBitSet(maxDoc, TestUtil.nextInt(random(), 200, 10_000));
-    BulkScorer scorer =
-        new ConstantScoreBulkScorer(
-            1f,
-            ScoreMode.COMPLETE_NO_SCORES,
-            new BitSetIterator(match, match.approximateCardinality()));
-    FixedBitSet result = new FixedBitSet(maxDoc);
-    scorer.score(
-        new LeafCollector() {
-          @Override
-          public void setScorer(Scorable scorer) throws IOException {}
-
-          @Override
-          public void collect(int doc) throws IOException {
-            result.set(doc);
-          }
-
-          @Override
-          public void collect(DocIdStream stream) throws IOException {
-            fail("Sparse matches should be collected one by one");
-          }
-        },
-        null,
-        0,
-        DocIdSetIterator.NO_MORE_DOCS);
-    assertEquals(match, result);
-  }
-
-  /**
-   * A dense run of matches followed by sparse matches that each fall right at the end of the
-   * previous window. The gap between the end of a window and the next match is then zero, so
-   * matches must still be counted periodically to go back to collecting them one by one.
-   */
-  public void testSparseTailAtWindowBoundariesGoesBackToOneByOne() throws IOException {
-    int windowSize = DenseConjunctionBulkScorer.WINDOW_SIZE;
-    int maxDoc = 200 * windowSize;
-    FixedBitSet match = new FixedBitSet(maxDoc);
-    for (int doc = 0; doc < 64; ++doc) {
-      match.set(doc);
-    }
-    for (int doc = windowSize; doc < maxDoc; doc += windowSize) {
-      match.set(doc);
-    }
-    BulkScorer scorer =
-        new ConstantScoreBulkScorer(
-            1f,
-            ScoreMode.COMPLETE_NO_SCORES,
-            new BitSetIterator(match, match.approximateCardinality()));
-    FixedBitSet result = new FixedBitSet(maxDoc);
-    int[] streams = new int[1];
-    scorer.score(
-        new LeafCollector() {
-          @Override
-          public void setScorer(Scorable scorer) throws IOException {}
-
-          @Override
-          public void collect(int doc) throws IOException {
-            result.set(doc);
-          }
-
-          @Override
-          public void collect(DocIdStream stream) throws IOException {
-            streams[0]++;
-            stream.forEach(result::set);
-          }
-        },
-        null,
-        0,
-        DocIdSetIterator.NO_MORE_DOCS);
-    assertEquals(match, result);
-    assertTrue(
-        "Too many windows collected via bit sets: " + streams[0],
-        streams[0] <= ConstantScoreBulkScorer.MAX_WINDOWS_BETWEEN_SPARSE_CHECKS);
-  }
-
-  /** Matches that are close to each other must be loaded into bit sets. */
-  public void testDensePlainIteratorIsCollectedViaBitSets() throws IOException {
-    int maxDoc = 1_000_000;
-    FixedBitSet match = modBitSet(maxDoc, TestUtil.nextInt(random(), 1, 100));
-    BulkScorer scorer =
-        new ConstantScoreBulkScorer(
-            1f,
-            ScoreMode.COMPLETE_NO_SCORES,
-            new BitSetIterator(match, match.approximateCardinality()));
-    FixedBitSet result = new FixedBitSet(maxDoc);
-    int[] collectedOneByOne = new int[1];
-    scorer.score(
-        new LeafCollector() {
-          @Override
-          public void setScorer(Scorable scorer) throws IOException {}
-
-          @Override
-          public void collect(int doc) throws IOException {
-            collectedOneByOne[0]++;
-            result.set(doc);
-          }
-
-          @Override
-          public void collect(DocIdStream stream) throws IOException {
-            stream.forEach(result::set);
-          }
-        },
-        null,
-        0,
-        DocIdSetIterator.NO_MORE_DOCS);
-    assertEquals(match, result);
-    // Only the first matches are collected one by one, until we know that matches are close to
-    // each other.
-    assertEquals(ConstantScoreBulkScorer.MIN_WINDOW_MATCHES, collectedOneByOne[0]);
   }
 
   /**

@@ -20,9 +20,7 @@ import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.not;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
@@ -219,63 +217,7 @@ public class TestBooleanScorer extends LuceneTestCase {
     dir.close();
   }
 
-  public void testConstantScoreScorerSupplierUsesIntoBitSet() throws IOException {
-    // 100 adjacent docs followed by 2 docs that are far from each other
-    int numAdjacentDocs = 100;
-    int[] docs = new int[numAdjacentDocs + 2];
-    for (int i = 0; i < numAdjacentDocs; ++i) {
-      docs[i] = i;
-    }
-    docs[numAdjacentDocs] = 5000;
-    docs[numAdjacentDocs + 1] = 8195;
-    CountingDocIdSetIterator iterator = new CountingDocIdSetIterator(docs);
-
-    FixedBitSet liveDocs = new FixedBitSet(9000);
-    liveDocs.set(0, 9000);
-    liveDocs.clear(2);
-    liveDocs.clear(50);
-    liveDocs.clear(5000);
-
-    List<Integer> collected = new ArrayList<>();
-    int[] collectedOneByOne = new int[1];
-    LeafCollector collector =
-        new LeafCollector() {
-          @Override
-          public void setScorer(Scorable scorer) {}
-
-          @Override
-          public void collect(int doc) {
-            collected.add(doc);
-            collectedOneByOne[0]++;
-          }
-
-          @Override
-          public void collect(DocIdStream stream) throws IOException {
-            stream.forEach(collected::add);
-          }
-        };
-
-    BulkScorer bulkScorer =
-        ConstantScoreScorerSupplier.fromIterator(iterator, 1f, ScoreMode.COMPLETE_NO_SCORES, 9000)
-            .bulkScorer();
-    assertThat(bulkScorer, instanceOf(ConstantScoreBulkScorer.class));
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, bulkScorer.score(collector, liveDocs, 0, 9000));
-
-    List<Integer> expected = new ArrayList<>();
-    for (int doc : docs) {
-      if (liveDocs.get(doc)) {
-        expected.add(doc);
-      }
-    }
-    assertEquals(expected, collected);
-    // The first matches are collected one by one until enough matches that are close to each other
-    // have been seen. One of them is deleted.
-    assertEquals(ConstantScoreBulkScorer.MIN_WINDOW_MATCHES - 1, collectedOneByOne[0]);
-    // One window for the remaining adjacent docs, another one for the two trailing docs.
-    assertEquals(2, iterator.intoBitSetCalls);
-  }
-
-  public void testConstantScoreScorerSupplierCollectsSparseMatchesOneByOne() throws IOException {
+  public void testConstantScoreBulkScorerUsesIntoBitSet() throws IOException {
     int[] docs = {1, 2, 4097, 5000, 8195};
     CountingDocIdSetIterator iterator = new CountingDocIdSetIterator(docs);
 
@@ -285,7 +227,8 @@ public class TestBooleanScorer extends LuceneTestCase {
     liveDocs.clear(4097);
     liveDocs.clear(5000);
 
-    List<Integer> collected = new ArrayList<>();
+    int[] collected = new int[docs.length];
+    int[] count = new int[1];
     LeafCollector collector =
         new LeafCollector() {
           @Override
@@ -293,22 +236,24 @@ public class TestBooleanScorer extends LuceneTestCase {
 
           @Override
           public void collect(int doc) {
-            collected.add(doc);
+            fail("ConstantScoreBulkScorer should collect via DocIdStream");
           }
 
           @Override
-          public void collect(DocIdStream stream) {
-            fail("Sparse matches should be collected one by one");
+          public void collect(DocIdStream stream) throws IOException {
+            int[] buffer = new int[docs.length];
+            for (int size = stream.intoArray(buffer); size != 0; size = stream.intoArray(buffer)) {
+              System.arraycopy(buffer, 0, collected, count[0], size);
+              count[0] += size;
+            }
           }
         };
 
-    BulkScorer bulkScorer =
-        ConstantScoreScorerSupplier.fromIterator(iterator, 1f, ScoreMode.COMPLETE_NO_SCORES, 9000)
-            .bulkScorer();
-    assertThat(bulkScorer, instanceOf(ConstantScoreBulkScorer.class));
+    // These docs are too sparse for the scorer supplier to pick ConstantScoreBulkScorer.
+    BulkScorer bulkScorer = new ConstantScoreBulkScorer(1f, ScoreMode.COMPLETE_NO_SCORES, iterator);
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, bulkScorer.score(collector, liveDocs, 0, 9000));
-    assertEquals(List.of(1, 8195), collected);
-    assertEquals(0, iterator.intoBitSetCalls);
+    assertArrayEquals(new int[] {1, 8195}, Arrays.copyOf(collected, count[0]));
+    assertEquals(3, iterator.intoBitSetCalls);
   }
 
   public void testCachedFilterOptionalConjunctionUsesConstantScoreBulkScorerDocIdStream()
@@ -375,7 +320,6 @@ public class TestBooleanScorer extends LuceneTestCase {
     int[] collected = new int[expectedHitCount];
     int[] count = new int[1];
     int[] streamCount = new int[1];
-    int[] collectedOneByOne = new int[1];
     LeafCollector collector =
         new LeafCollector() {
           @Override
@@ -383,9 +327,7 @@ public class TestBooleanScorer extends LuceneTestCase {
 
           @Override
           public void collect(int doc) {
-            // Only used until enough matches that are close to each other have been seen.
-            collectedOneByOne[0]++;
-            collected[count[0]++] = doc;
+            fail("Cached filtered optional conjunction should collect via ConstantScoreBulkScorer");
           }
 
           @Override
@@ -400,7 +342,6 @@ public class TestBooleanScorer extends LuceneTestCase {
         };
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, bulkScorer.score(collector, null, 0, maxDoc));
     assertTrue(streamCount[0] > 0);
-    assertEquals(ConstantScoreBulkScorer.MIN_WINDOW_MATCHES, collectedOneByOne[0]);
     assertEquals(expectedHitCount, count[0]);
     for (int i = 0; i < count[0]; ++i) {
       assertEquals(1 + i * 50, collected[i]);

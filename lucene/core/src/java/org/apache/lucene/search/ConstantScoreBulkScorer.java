@@ -24,35 +24,16 @@ import org.apache.lucene.util.MathUtil;
 /**
  * Bulk scorer for no-score constant-score iterators that batches doc IDs via {@link
  * DocIdSetIterator#intoBitSet}.
- *
- * <p>Loading a window of doc IDs into a bit set, collecting it and clearing it has a cost that is
- * proportional to the size of the window rather than to the number of matches in the window. This
- * only pays off if windows contain enough matches, so iterators are collected one doc at a time for
- * as long as their matches are too far apart from each other.
  */
 final class ConstantScoreBulkScorer extends BulkScorer {
 
   /**
-   * Minimum number of matches that a window of {@link DenseConjunctionBulkScorer#WINDOW_SIZE} doc
-   * IDs must have for {@link DocIdSetIterator#intoBitSet} to be used.
+   * Plain iterators that are expected to match less than one doc out of this number are better
+   * collected one doc at a time: loading, collecting and clearing a window costs the same however
+   * few matches it has. This is 32 matches per window of {@link
+   * DenseConjunctionBulkScorer#WINDOW_SIZE} docs.
    */
-  static final int MIN_WINDOW_MATCHES = DenseConjunctionBulkScorer.WINDOW_SIZE / 128;
-
-  /**
-   * Number of doc IDs between the end of a window and the next match above which we check whether
-   * the window had fewer than {@link #MIN_WINDOW_MATCHES} matches. This is several times the
-   * average gap between matches of a window that has {@link #MIN_WINDOW_MATCHES} matches, so that
-   * windows whose number of matches is slightly above this threshold rarely pay for the check.
-   */
-  private static final int MIN_GAP_FOR_SPARSE_CHECK = DenseConjunctionBulkScorer.WINDOW_SIZE / 8;
-
-  /**
-   * Maximum number of consecutive windows that are collected through bit sets without checking
-   * whether they had fewer than {@link #MIN_WINDOW_MATCHES} matches. This bounds the number of
-   * windows collected through bit sets when sparse matches keep falling right after the end of each
-   * window, so that the gap check never triggers. Must be a power of two.
-   */
-  static final int MAX_WINDOWS_BETWEEN_SPARSE_CHECKS = 8;
+  static final int SPARSE_THRESHOLD_INVERSE = 128;
 
   private final Scorer scorer;
   private final DocIdSetIterator iterator;
@@ -60,11 +41,6 @@ final class ConstantScoreBulkScorer extends BulkScorer {
   // twoPhase#intoBitSet rather than taken as-is.
   private final TwoPhaseIterator twoPhase;
   private final FixedBitSet windowMatches = new FixedBitSet(DenseConjunctionBulkScorer.WINDOW_SIZE);
-  // Whether matches were too far apart from each other for bit sets to be used last time we
-  // checked. Only used with plain iterators, two-phase iterators always use bit sets.
-  private boolean sparse = true;
-  // Number of windows collected through bit sets since matches were last counted.
-  private int windowsSinceSparseCheck;
 
   ConstantScoreBulkScorer(float score, ScoreMode scoreMode, DocIdSetIterator iterator) {
     this(score, scoreMode, iterator, null);
@@ -161,44 +137,12 @@ final class ConstantScoreBulkScorer extends BulkScorer {
     }
     for (int doc = iterator.docID(); doc < max; ) {
       int windowBase = doc;
-
-      if (twoPhase == null && sparse) {
-        // Collect matches one by one, and only start using bit sets if we find enough matches that
-        // are close to each other.
-        final int sparseMax =
-            MathUtil.unsignedMin(max, windowBase + DenseConjunctionBulkScorer.WINDOW_SIZE);
-        int numMatches = 0;
-        do {
-          if (acceptDocs == null || acceptDocs.get(doc)) {
-            collector.collect(doc);
-          }
-          doc = iterator.nextDoc();
-        } while (++numMatches < MIN_WINDOW_MATCHES && doc < sparseMax);
-        if (doc >= sparseMax) {
-          continue;
-        }
-        sparse = false;
-        // Keep the base of the bit set a multiple of 64 away from the first match that we
-        // collected. Iterators that have long runs of adjacent doc IDs, e.g. postings of an index
-        // that is sorted, can then keep copying entire words into the bit set.
-        windowBase = doc - ((doc - windowBase) & 0x3F);
-      }
-
       int windowMax =
           MathUtil.unsignedMin(max, windowBase + DenseConjunctionBulkScorer.WINDOW_SIZE);
 
       assert windowMatches.scanIsEmpty();
       if (twoPhase == null) {
         iterator.intoBitSet(windowMax, windowMatches, windowBase);
-        // Go back to collecting matches one by one if this window had few matches. Counting
-        // matches of every window would be wasteful, so only do it if the next match is far
-        // enough from the end of this window to suggest that matches are getting sparse, or once
-        // every MAX_WINDOWS_BETWEEN_SPARSE_CHECKS windows.
-        if (iterator.docID() - windowMax >= MIN_GAP_FOR_SPARSE_CHECK
-            || ++windowsSinceSparseCheck == MAX_WINDOWS_BETWEEN_SPARSE_CHECKS) {
-          windowsSinceSparseCheck = 0;
-          sparse = windowMatches.cardinality() < MIN_WINDOW_MATCHES;
-        }
       } else {
         twoPhase.intoBitSet(windowMax, windowMatches, windowBase);
       }
