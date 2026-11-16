@@ -103,7 +103,22 @@ public abstract class CandidateMatcher<T extends QueryMatch> {
    * @return the matches from this matcher
    */
   public final MultiMatchingQueries<T> finish(long buildTime, int queryCount) {
+    return finish(buildTime, queryCount, List.of());
+  }
+
+  /**
+   * Finishes this matcher and the other matchers, which searched the same documents, and adds their
+   * matches and errors to this one. Matches for the same query are combined with {@link #resolve}.
+   *
+   * @param others matchers of the other slices of a concurrent search
+   */
+  final MultiMatchingQueries<T> finish(
+      long buildTime, int queryCount, List<? extends CandidateMatcher<T>> others) {
     doFinish();
+    // doFinish may replace the matches of this matcher, so add the others afterwards
+    for (CandidateMatcher<T> other : others) {
+      addAll(other.finish(0, 0));
+    }
     this.searchTime =
         TimeUnit.MILLISECONDS.convert(System.nanoTime() - searchTime, TimeUnit.NANOSECONDS);
     List<Map<String, T>> results = new ArrayList<>();
@@ -116,6 +131,21 @@ public abstract class CandidateMatcher<T extends QueryMatch> {
 
   /** Called when all monitoring of a batch of documents is complete */
   protected void doFinish() {}
+
+  /**
+   * Adds the matches and errors of a finished matcher's results over the same documents. Matches
+   * for the same query are combined with {@link #resolve}.
+   */
+  void addAll(MultiMatchingQueries<T> other) {
+    for (int doc = 0; doc < other.getBatchSize(); doc++) {
+      for (T match : other.getMatches(doc)) {
+        addMatch(match, doc);
+      }
+    }
+    for (Map.Entry<String, Exception> error : other.getErrors().entrySet()) {
+      reportError(error.getKey(), error.getValue());
+    }
+  }
 
   /** Copy all matches from another CandidateMatcher */
   protected void copyMatches(CandidateMatcher<T> other) {

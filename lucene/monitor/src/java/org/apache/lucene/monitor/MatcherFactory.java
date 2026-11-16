@@ -29,6 +29,10 @@ public interface MatcherFactory<T extends QueryMatch> {
   /**
    * Create a new {@link CandidateMatcher} object, to select queries to match against the passed-in
    * IndexSearcher
+   *
+   * <p>With an executor ({@link MonitorConfiguration#setExecutor}), this is called once per
+   * queryindex slice, and the matchers run on different threads. Only the matches and errors of the
+   * matchers of other slices are kept. Any other state they hold is dropped.
    */
   CandidateMatcher<T> createMatcher(IndexSearcher searcher);
 }

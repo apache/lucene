@@ -30,6 +30,9 @@ import org.apache.lucene.search.Query;
 /**
  * Split a disjunction query into its constituent parts, so that they can be indexed and run
  * separately in the Monitor.
+ *
+ * <p>Subclasses must be thread-safe if the Monitor has an executor ({@link
+ * MonitorConfiguration#setExecutor}).
  */
 public class QueryDecomposer {
 

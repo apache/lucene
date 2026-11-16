@@ -21,7 +21,11 @@ import java.io.IOException;
 import java.util.Map;
 import org.apache.lucene.search.Query;
 
-/** Notified of the time it takes to run individual queries against a set of documents */
+/**
+ * Notified of the time it takes to run individual queries against a set of documents
+ *
+ * <p>Must be thread-safe if the Monitor has an executor ({@link MonitorConfiguration#setExecutor}).
+ */
 public interface QueryTimeListener {
 
   /** How long it took to run a particular query */

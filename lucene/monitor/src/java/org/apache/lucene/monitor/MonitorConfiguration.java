@@ -19,6 +19,7 @@ package org.apache.lucene.monitor;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.analysis.core.KeywordAnalyzer;
 import org.apache.lucene.index.IndexWriter;
@@ -32,6 +33,8 @@ import org.apache.lucene.util.IOSupplier;
 /** Encapsulates various configuration settings for a Monitor's query index */
 public class MonitorConfiguration {
 
+  static final int DEFAULT_MAX_QUERIES_PER_SLICE = 10_000;
+
   private int queryUpdateBufferSize = 5000;
   private long purgeFrequency = 5;
   private TimeUnit purgeFrequencyUnits = TimeUnit.MINUTES;
@@ -39,6 +42,8 @@ public class MonitorConfiguration {
   private MonitorQuerySerializer serializer;
   private boolean readOnly = false;
   private IOSupplier<Directory> directoryProvider = () -> new ByteBuffersDirectory();
+  private Executor executor;
+  private int maxQueriesPerSlice = DEFAULT_MAX_QUERIES_PER_SLICE;
 
   private static IndexWriterConfig defaultIndexWriterConfig() {
     IndexWriterConfig iwc = new IndexWriterConfig(new KeywordAnalyzer());
@@ -164,5 +169,49 @@ public class MonitorConfiguration {
    */
   public int getQueryUpdateBufferSize() {
     return queryUpdateBufferSize;
+  }
+
+  /**
+   * Set an {@link Executor} used to search the queryindex concurrently.
+   *
+   * <p>A large queryindex is split into slices that are searched in parallel, and the candidate
+   * queries found in each slice are matched on the thread that searches that slice. A small
+   * queryindex is searched in a single slice, so this mainly helps large queryindexes; {@link
+   * ParallelMatcher} and {@link PartitionMatcher} parallelize the matching of the candidate queries
+   * instead. {@link PartitionMatcher} can be combined with it.
+   *
+   * <p>The {@link MonitorQuerySerializer}, the {@link QueryDecomposer} and any {@link
+   * QueryTimeListener} may be called from multiple threads at once, so they must be thread-safe.
+   *
+   * <p>A {@link ParallelMatcher} cannot be combined with an executor, because its workers could
+   * block those of other slices, so matching with one throws an {@link IllegalArgumentException}. A
+   * wrapped one is not detected.
+   *
+   * <p>The executor is not shut down when the Monitor is closed.
+   *
+   * @param executor the executor, or {@code null} to search the queryindex on the calling thread
+   * @return the current configuration
+   */
+  public MonitorConfiguration setExecutor(Executor executor) {
+    this.executor = executor;
+    return this;
+  }
+
+  /**
+   * @return the {@link Executor} used to search the queryindex, or {@code null} if it is searched
+   *     on the calling thread
+   */
+  public Executor getExecutor() {
+    return executor;
+  }
+
+  // package-private for testing
+  MonitorConfiguration setMaxQueriesPerSlice(int maxQueriesPerSlice) {
+    this.maxQueriesPerSlice = maxQueriesPerSlice;
+    return this;
+  }
+
+  int getMaxQueriesPerSlice() {
+    return maxQueriesPerSlice;
   }
 }

@@ -19,7 +19,6 @@ package org.apache.lucene.monitor;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -39,7 +38,6 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
@@ -76,7 +74,8 @@ class WritableQueryIndex extends QueryIndex {
 
     this.writer = configuration.buildIndexWriter();
     this.queries = new ConcurrentHashMap<>();
-    this.manager = new SearcherManager(writer, true, true, new TermsHashBuilder(termFilters));
+    this.manager =
+        new SearcherManager(writer, true, true, new TermsHashBuilder(termFilters, configuration));
     this.decomposer = configuration.getQueryDecomposer();
     this.serializer = configuration.getQuerySerializer();
     this.presearcher = presearcher;
@@ -149,18 +148,17 @@ class WritableQueryIndex extends QueryIndex {
       }
       return;
     }
-    Set<String> ids = new HashSet<>();
-    List<Exception> errors = new ArrayList<>();
+    Set<String> ids = ConcurrentHashMap.newKeySet();
+    List<Exception> errors = Collections.synchronizedList(new ArrayList<>());
     purgeCache(
         newCache ->
             scan(
                 (id, _, dataValues) -> {
-                  if (ids.contains(id)) {
+                  if (ids.add(id) == false) {
                     // this is a branch of a query that has already been reconstructed, but
                     // then split by decomposition - we don't need to parse it again
                     return;
                   }
-                  ids.add(id);
                   try {
                     MonitorQuery mq = serializer.deserialize(dataValues.mq.binaryValue());
                     for (QueryCacheEntry entry : QueryCacheEntry.decompose(mq, decomposer)) {
@@ -203,7 +201,8 @@ class WritableQueryIndex extends QueryIndex {
   }
 
   @Override
-  public long search(QueryBuilder queryBuilder, QueryCollector matcher) throws IOException {
+  <C extends QueryCollector> long search(
+      QueryBuilder queryBuilder, QueryCollectorManager<C> collectorManager) throws IOException {
     IndexSearcher searcher = null;
     try {
       Map<String, QueryCacheEntry> queries;
@@ -216,7 +215,6 @@ class WritableQueryIndex extends QueryIndex {
         purgeLock.readLock().unlock();
       }
 
-      MonitorQueryCollector collector = new MonitorQueryCollector(queries, matcher);
       long buildTime = System.nanoTime();
       Query query =
           queryBuilder.buildQuery(
@@ -224,19 +222,10 @@ class WritableQueryIndex extends QueryIndex {
       buildTime = System.nanoTime() - buildTime;
       searcher.search(
           query,
-          new CollectorManager<MonitorQueryCollector, Void>() {
-            @Override
-            public MonitorQueryCollector newCollector() {
-              return collector;
-            }
-
-            @Override
-            public Void reduce(Collection<MonitorQueryCollector> collectors) {
-              assert collectors.size() == 1
-                  : "QueryCollector needs to be made thread-safe before an executor can be provided to the index searcher used by monitor";
-              return null;
-            }
-          });
+          collectorManager(
+              collectorManager,
+              matcher -> new MonitorQueryCollector<>(queries, matcher),
+              collector -> collector.matcher));
       return buildTime;
     } finally {
       if (searcher != null) {
@@ -360,13 +349,13 @@ class WritableQueryIndex extends QueryIndex {
   // ---------------------------------------------
 
   /** A Collector that decodes the stored query for each document hit. */
-  static final class MonitorQueryCollector extends SimpleCollector {
+  static final class MonitorQueryCollector<C extends QueryCollector> extends SimpleCollector {
 
     private final Map<String, QueryCacheEntry> queries;
-    private final QueryCollector matcher;
+    private final C matcher;
     private final DataValues dataValues = new DataValues();
 
-    MonitorQueryCollector(Map<String, QueryCacheEntry> queries, QueryCollector matcher) {
+    MonitorQueryCollector(Map<String, QueryCacheEntry> queries, C matcher) {
       this.queries = queries;
       this.matcher = matcher;
     }

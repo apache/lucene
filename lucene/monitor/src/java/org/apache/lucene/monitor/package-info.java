@@ -49,6 +49,9 @@
  *
  * Matchers can be wrapped in {@link org.apache.lucene.monitor.PartitionMatcher} or {@link
  * org.apache.lucene.monitor.ParallelMatcher} to increase performance in low-concurrency systems.
+ * Alternatively, set an executor with {@link
+ * org.apache.lucene.monitor.MonitorConfiguration#setExecutor} to search the queryindex and match
+ * the candidate queries in parallel, which works best with large queryindexes.
  *
  * <h3>Pre-filtering of queries</h3>
  *

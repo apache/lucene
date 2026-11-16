@@ -32,6 +32,8 @@ import org.apache.lucene.util.BytesRef;
  * Serializes and deserializes MonitorQuery objects into byte streams
  *
  * <p>Use this for persistent query indexes
+ *
+ * <p>Must be thread-safe if the Monitor has an executor ({@link MonitorConfiguration#setExecutor}).
  */
 public interface MonitorQuerySerializer {
 

@@ -22,10 +22,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
+import java.util.function.Supplier;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.LeafReader;
@@ -47,6 +49,7 @@ public class Monitor implements Closeable {
   private final QueryIndex queryIndex;
 
   private final long commitBatchSize;
+  private final boolean hasExecutor;
 
   /**
    * Create a non-persistent Monitor instance with the default term-filtering Presearcher
@@ -96,6 +99,7 @@ public class Monitor implements Closeable {
     }
 
     this.commitBatchSize = configuration.getQueryUpdateBufferSize();
+    this.hasExecutor = configuration.getExecutor() != null;
   }
 
   /**
@@ -214,15 +218,20 @@ public class Monitor implements Closeable {
    * @param <T> the type of {@link QueryMatch} to return
    * @return a {@link MatchingQueries} object summarizing the match run.
    * @throws IOException on IO errors
+   * @throws IllegalArgumentException if the factory creates a {@link ParallelMatcher} and the
+   *     Monitor is configured with an executor
    */
   public <T extends QueryMatch> MultiMatchingQueries<T> match(
       Document[] docs, MatcherFactory<T> factory) throws IOException {
     try (DocumentBatch batch = DocumentBatch.of(analyzer, docs)) {
       LeafReader reader = batch.get();
-      CandidateMatcher<T> matcher = factory.createMatcher(new IndexSearcher(batch.get()));
-      StandardQueryCollector<T> collector = new StandardQueryCollector<>(matcher);
-      long buildTime = queryIndex.search(t -> presearcher.buildQuery(reader, t), collector);
-      return matcher.finish(buildTime, collector.queryCount);
+      IndexSearcher searcher = new IndexSearcher(reader);
+      CandidateMatcher<T> matcher = createPrimaryMatcher(factory, searcher);
+      MatchingCollectorManager<T, StandardQueryCollector<T>> collectorManager =
+          new MatchingCollectorManager<>(
+              matcher, () -> factory.createMatcher(searcher), StandardQueryCollector::new);
+      long buildTime = queryIndex.search(t -> presearcher.buildQuery(reader, t), collectorManager);
+      return collectorManager.finish(buildTime);
     }
   }
 
@@ -274,9 +283,80 @@ public class Monitor implements Closeable {
    * @throws IOException on IO errors
    */
   public Set<String> getQueryIds() throws IOException {
-    final Set<String> ids = new HashSet<>();
+    final Set<String> ids = ConcurrentHashMap.newKeySet();
     queryIndex.scan((id, _, _) -> ids.add(id));
     return ids;
+  }
+
+  private <T extends QueryMatch> CandidateMatcher<T> createPrimaryMatcher(
+      MatcherFactory<T> factory, IndexSearcher searcher) {
+    CandidateMatcher<T> matcher = factory.createMatcher(searcher);
+    // ParallelMatcher starts blocking workers in its constructor, one set per slice, which can
+    // exhaust the executor and hang the search.
+    // TODO: a MatcherFactory that says whether it supports an executor would remove this guard
+    if (hasExecutor && matcher instanceof ParallelMatcher) {
+      IllegalArgumentException e =
+          new IllegalArgumentException(
+              "ParallelMatcher cannot be used with a Monitor configured with an executor");
+      try {
+        // releases the workers that the matcher already started
+        matcher.finish(0, 0);
+      } catch (RuntimeException suppressed) {
+        e.addSuppressed(suppressed);
+      }
+      throw e;
+    }
+    return matcher;
+  }
+
+  /**
+   * Creates a collector for each slice of the queryindex. The first slice uses the matcher that the
+   * match run returns its results from, and the matches of the other slices are added to it when
+   * the match run finishes.
+   */
+  private static class MatchingCollectorManager<
+          T extends QueryMatch, C extends StandardQueryCollector<T>>
+      implements QueryIndex.QueryCollectorManager<C> {
+
+    final CandidateMatcher<T> primaryMatcher;
+    final Supplier<CandidateMatcher<T>> sliceMatcherFactory;
+    final Function<CandidateMatcher<T>, C> collectorFactory;
+    boolean firstCollectorCreated = false;
+    List<C> collectors = List.of();
+
+    MatchingCollectorManager(
+        CandidateMatcher<T> primaryMatcher,
+        Supplier<CandidateMatcher<T>> sliceMatcherFactory,
+        Function<CandidateMatcher<T>, C> collectorFactory) {
+      this.primaryMatcher = primaryMatcher;
+      this.sliceMatcherFactory = sliceMatcherFactory;
+      this.collectorFactory = collectorFactory;
+    }
+
+    @Override
+    public C newCollector() {
+      CandidateMatcher<T> sliceMatcher =
+          firstCollectorCreated ? sliceMatcherFactory.get() : primaryMatcher;
+      firstCollectorCreated = true;
+      return collectorFactory.apply(sliceMatcher);
+    }
+
+    @Override
+    public void reduce(List<C> collectors) {
+      this.collectors = collectors;
+    }
+
+    MultiMatchingQueries<T> finish(long buildTime) {
+      int queryCount = 0;
+      List<CandidateMatcher<T>> sliceMatchers = new ArrayList<>();
+      for (C collector : collectors) {
+        queryCount += collector.queryCount;
+        if (collector.matcher != primaryMatcher) {
+          sliceMatchers.add(collector.matcher);
+        }
+      }
+      return primaryMatcher.finish(buildTime, queryCount, sliceMatchers);
+    }
   }
 
   // For each query selected by the presearcher, pass on to a CandidateMatcher
@@ -313,6 +393,8 @@ public class Monitor implements Closeable {
    * @param <T> the type of QueryMatch produced by the CandidateMatcher
    * @return a {@link PresearcherMatches} object containing debug information
    * @throws IOException on IO errors
+   * @throws IllegalArgumentException if the factory creates a {@link ParallelMatcher} and the
+   *     Monitor is configured with an executor
    */
   public <T extends QueryMatch> PresearcherMatches<T> debug(
       Document[] docs, MatcherFactory<T> factory) throws IOException {
@@ -320,12 +402,20 @@ public class Monitor implements Closeable {
       LeafReader reader = batch.get();
       IndexSearcher searcher = new IndexSearcher(reader);
       searcher.setQueryCache(null);
-      PresearcherQueryCollector<T> collector =
-          new PresearcherQueryCollector<>(factory.createMatcher(searcher));
+      CandidateMatcher<T> matcher = createPrimaryMatcher(factory, searcher);
+      MatchingCollectorManager<T, PresearcherQueryCollector<T>> collectorManager =
+          new MatchingCollectorManager<>(
+              matcher, () -> factory.createMatcher(searcher), PresearcherQueryCollector::new);
       long buildTime =
           queryIndex.search(
-              t -> new ForceNoBulkScoringQuery(presearcher.buildQuery(reader, t)), collector);
-      return collector.getMatches(buildTime);
+              t -> new ForceNoBulkScoringQuery(presearcher.buildQuery(reader, t)),
+              collectorManager);
+      Map<String, StringBuilder> matchingTerms = new HashMap<>();
+      for (PresearcherQueryCollector<T> collector : collectorManager.collectors) {
+        collector.matchingTerms.forEach(
+            (id, terms) -> matchingTerms.merge(id, terms, StringBuilder::append));
+      }
+      return new PresearcherMatches<>(matchingTerms, collectorManager.finish(buildTime));
     }
   }
 
@@ -345,16 +435,13 @@ public class Monitor implements Closeable {
     return debug(new Document[] {doc}, factory);
   }
 
-  private class PresearcherQueryCollector<T extends QueryMatch> extends StandardQueryCollector<T> {
+  private static class PresearcherQueryCollector<T extends QueryMatch>
+      extends StandardQueryCollector<T> {
 
     final Map<String, StringBuilder> matchingTerms = new HashMap<>();
 
     private PresearcherQueryCollector(CandidateMatcher<T> matcher) {
       super(matcher);
-    }
-
-    public PresearcherMatches<T> getMatches(long buildTime) {
-      return new PresearcherMatches<>(matchingTerms, matcher.finish(buildTime, queryCount));
     }
 
     @Override
