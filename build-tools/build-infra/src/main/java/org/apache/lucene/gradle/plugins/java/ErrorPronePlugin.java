@@ -262,6 +262,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "AddNullMarkedToPackageInfo:OFF", // we don't use jspecify
     "AddressSelection:OFF", // TODO: new, not checked if applicable to Lucene
     "AlmostJavadoc:OFF", // noisy (e.g. commented-out code misinterpreted as javadocs)
+    "AlmostExhaustiveTestParameter:OFF", // irrelevant (TestParameterInjector)
     "AlreadyChecked:OFF", // TODO: there are problems
     "AlwaysThrows:OFF", // we don't use guava
     "AmbiguousMethodReference:OFF",
@@ -706,7 +707,6 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "PreferInstanceofOverGetKind:OFF", // TODO: new, not checked if applicable to Lucene
     "PreferJavaTimeOverload:OFF", // TODO: new, not checked if applicable to Lucene
     "PreferPreconditions:OFF", // we don't use guava
-    "PreferTestParameter:OFF", // irrelevant
     "PreferThrowsTag:OFF", // TODO: perhaps worth considering
     "PreferredInterfaceType:OFF", // TODO: new, not checked if applicable to Lucene
     "PrimitiveArrayPassedToVarargsMethod:OFF", // TODO: new, not checked if applicable to Lucene
@@ -766,6 +766,8 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "ShortCircuitBoolean:OFF", // TODO: there are problems
     "ShouldHaveEvenArgs:OFF", // we don't use truth
     "SimplifyTestParameter:OFF", // irrelevant (TestParameterInjector)
+    "SingleTestParameter:OFF", // irrelevant (TestParameterInjector)
+    "SingleValueTestParameter:OFF", // irrelevant (TestParameterInjector)
     "SizeGreaterThanOrEqualsZero:ERROR",
     "StatementSwitchToExpressionSwitch:OFF", // TODO: there are problems
     "StaticAssignmentInConstructor:OFF",
@@ -891,6 +893,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "UseEnumSwitch:OFF", // TODO: new, not checked if applicable to Lucene
     "UsingJsr305CheckReturnValue:OFF", // TODO: new, not checked if applicable to Lucene
     "ValueClassIdentity:OFF", // false positives: flags legitimate IdentityHashMap uses
+    "ValueClassEquals:OFF", // irrelevant (applies to Valhalla value classes only)
     "Var:OFF", // TODO: new, not checked if applicable to Lucene
     "VarTypeName:ERROR",
     "VarWithPrimitive:OFF", // very subjective
