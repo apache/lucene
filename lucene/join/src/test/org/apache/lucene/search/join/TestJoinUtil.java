@@ -1955,17 +1955,16 @@ public class TestJoinUtil extends LuceneTestCase {
       hitsToJoinScores = context.toHitsToJoinScore.get(queryValue);
     }
     List<Map.Entry<Integer, JoinScore>> hits = new ArrayList<>(hitsToJoinScores.entrySet());
-    hits.sort(
-        (hit1, hit2) -> {
-          float score1 = hit1.getValue().score(scoreMode);
-          float score2 = hit2.getValue().score(scoreMode);
+    hits.sort((hit1, hit2) -> {
+      float score1 = hit1.getValue().score(scoreMode);
+      float score2 = hit2.getValue().score(scoreMode);
 
-          int cmp = Float.compare(score2, score1);
-          if (cmp != 0) {
-            return cmp;
-          }
-          return hit1.getKey() - hit2.getKey();
-        });
+      int cmp = Float.compare(score2, score1);
+      if (cmp != 0) {
+        return cmp;
+      }
+      return hit1.getKey() - hit2.getKey();
+    });
     ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(10, hits.size())];
     for (int i = 0; i < scoreDocs.length; i++) {
       Map.Entry<Integer, JoinScore> hit = hits.get(i);

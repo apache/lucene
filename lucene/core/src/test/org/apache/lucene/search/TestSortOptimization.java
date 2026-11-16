@@ -72,9 +72,8 @@ import org.apache.lucene.util.IOUtils;
 public class TestSortOptimization extends LuceneTestCase {
 
   public void testLongSortOptimizationPointIndex() throws Exception {
-    testLongSortOptimization(
-        (field, value) ->
-            List.of(new LongPoint(field, value), new NumericDocValuesField(field, value)));
+    testLongSortOptimization((field, value) ->
+        List.of(new LongPoint(field, value), new NumericDocValuesField(field, value)));
   }
 
   public void testLongSortOptimizationSkipperIndex() throws Exception {
@@ -192,9 +191,8 @@ public class TestSortOptimization extends LuceneTestCase {
   }
 
   public void testSortOptimizationWithMissingValuesPointIndex() throws Exception {
-    testSortOptimizationWithMissingValues(
-        (field, value) ->
-            List.of(new LongPoint(field, value), new NumericDocValuesField(field, value)));
+    testSortOptimizationWithMissingValues((field, value) ->
+        List.of(new LongPoint(field, value), new NumericDocValuesField(field, value)));
   }
 
   public void testSortOptimizationWithMissingValuesSkipperIndex() throws Exception {
@@ -299,9 +297,8 @@ public class TestSortOptimization extends LuceneTestCase {
   }
 
   public void testNumericDocValuesOptimizationWithMissingValuesPointIndex() throws Exception {
-    testNumericDocValuesOptimizationWithMissingValues(
-        (field, value) ->
-            List.of(new LongPoint(field, value), new NumericDocValuesField(field, value)));
+    testNumericDocValuesOptimizationWithMissingValues((field, value) ->
+        List.of(new LongPoint(field, value), new NumericDocValuesField(field, value)));
   }
 
   public void testNumericDocValuesOptimizationWithMissingValuesSkipperIndex() throws Exception {
@@ -375,9 +372,8 @@ public class TestSortOptimization extends LuceneTestCase {
   }
 
   public void testSortOptimizationEqualValuesPointIndex() throws Exception {
-    testSortOptimizationEqualValues(
-        (field, value) ->
-            List.of(new IntPoint(field, value), new NumericDocValuesField(field, value)));
+    testSortOptimizationEqualValues((field, value) ->
+        List.of(new IntPoint(field, value), new NumericDocValuesField(field, value)));
   }
 
   public void testSortOptimizationEqualValuesSkipperIndex() throws Exception {
@@ -466,15 +462,13 @@ public class TestSortOptimization extends LuceneTestCase {
   }
 
   public void testFloatSortOptimizationPointIndex() throws Exception {
-    testFloatSortOptimization(
-        (field, value) ->
-            List.of(new FloatPoint(field, value), new FloatDocValuesField(field, value)));
+    testFloatSortOptimization((field, value) ->
+        List.of(new FloatPoint(field, value), new FloatDocValuesField(field, value)));
   }
 
   public void testFloatSortOptimizationSkpperIndex() throws Exception {
-    testFloatSortOptimization(
-        (field, value) ->
-            List.of(FloatDocValuesField.indexedField(field, Float.floatToRawIntBits(value))));
+    testFloatSortOptimization((field, value) ->
+        List.of(FloatDocValuesField.indexedField(field, Float.floatToRawIntBits(value))));
   }
 
   private void testFloatSortOptimization(

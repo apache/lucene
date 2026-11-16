@@ -35,11 +35,10 @@ public class HacksPlugin extends LuceneGradlePlugin {
 
     rootProject
         .getAllprojects()
-        .forEach(
-            project -> {
-              applyRetryDownloads(project);
-              addDummyOutputs(project);
-            });
+        .forEach(project -> {
+          applyRetryDownloads(project);
+          addDummyOutputs(project);
+        });
   }
 
   /**
@@ -51,43 +50,39 @@ public class HacksPlugin extends LuceneGradlePlugin {
   private void addDummyOutputs(Project project) {
     project
         .getTasks()
-        .matching(
-            task -> {
-              var taskName = task.getName();
-              return taskName.startsWith(EcjLintPlugin.TASK_PREFIX)
-                  || taskName.equals(CheckGradlewScriptsTweakedPlugin.TASK_NAME);
-            })
-        .configureEach(
-            task -> {
-              File dummyOutput =
-                  project
-                      .getLayout()
-                      .getBuildDirectory()
-                      .file("tasks/" + task.getName() + "/dummy-output.txt")
-                      .get()
-                      .getAsFile();
-              task.getOutputs().file(dummyOutput);
+        .matching(task -> {
+          var taskName = task.getName();
+          return taskName.startsWith(EcjLintPlugin.TASK_PREFIX)
+              || taskName.equals(CheckGradlewScriptsTweakedPlugin.TASK_NAME);
+        })
+        .configureEach(task -> {
+          File dummyOutput =
+              project
+                  .getLayout()
+                  .getBuildDirectory()
+                  .file("tasks/" + task.getName() + "/dummy-output.txt")
+                  .get()
+                  .getAsFile();
+          task.getOutputs().file(dummyOutput);
 
-              task.doLast(
-                  _ -> {
-                    if (!dummyOutput.exists()) {
-                      try {
-                        Files.createFile(dummyOutput.toPath());
-                      } catch (IOException e) {
-                        throw new UncheckedIOException(e);
-                      }
-                    }
-                  });
-            });
+          task.doLast(_ -> {
+            if (!dummyOutput.exists()) {
+              try {
+                Files.createFile(dummyOutput.toPath());
+              } catch (IOException e) {
+                throw new UncheckedIOException(e);
+              }
+            }
+          });
+        });
   }
 
   private void applyRetryDownloads(Project project) {
     project
         .getTasks()
         .withType(Download.class)
-        .configureEach(
-            task -> {
-              task.retries(3);
-            });
+        .configureEach(task -> {
+          task.retries(3);
+        });
   }
 }

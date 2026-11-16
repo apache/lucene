@@ -63,7 +63,7 @@ interface GenericTermsCollector extends Collector {
 
   static Function<SortedSetDocValues> verbose(
       PrintStream out, Function<SortedSetDocValues> mvFunction) {
-    return (ctx) -> {
+    return ctx -> {
       final SortedSetDocValues target = mvFunction.apply(ctx);
       return new SortedSetDocValues() {
 

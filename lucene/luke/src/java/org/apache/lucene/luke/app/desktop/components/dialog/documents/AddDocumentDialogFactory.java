@@ -319,11 +319,10 @@ public final class AddDocumentDialogFactory
     wrapper1.setOpaque(false);
     JComboBox<String> typeCombo = new JComboBox<>(typeList);
     typeCombo.setSelectedItem(typeList[0]);
-    typeCombo.addActionListener(
-        _ -> {
-          String selected = (String) typeCombo.getSelectedItem();
-          descTA.setText(MessageUtils.getLocalizedMessage("help.fieldtype." + selected));
-        });
+    typeCombo.addActionListener(_ -> {
+      String selected = (String) typeCombo.getSelectedItem();
+      descTA.setText(MessageUtils.getLocalizedMessage("help.fieldtype." + selected));
+    });
     wrapper1.add(typeCombo);
     header.add(wrapper1);
     JPanel wrapper2 = new JPanel(new FlowLayout(FlowLayout.LEADING));
@@ -630,7 +629,7 @@ public final class AddDocumentDialogFactory
                             title,
                             500,
                             500,
-                            (factory) -> factory.setNewField(newFieldList.get(row)));
+                            factory -> factory.setNewField(newFieldList.get(row)));
                   }
                 }
               });

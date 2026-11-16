@@ -96,24 +96,22 @@ public class RegenerateTasksSupportPlugin extends LuceneGradlePlugin {
     // configured.
     rootProject
         .getGradle()
-        .projectsEvaluated(
-            _ -> {
-              for (var taskCollection : regenTasks) {
-                for (Task task : taskCollection.stream().toList()) {
-                  configureRegenerateTask(task);
-                }
-              }
-            });
+        .projectsEvaluated(_ -> {
+          for (var taskCollection : regenTasks) {
+            for (Task task : taskCollection.stream().toList()) {
+              configureRegenerateTask(task);
+            }
+          }
+        });
 
     // Nearly all regeneration tasks touch input sources, which are inputs to checkLicenses
     // so schedule this globally, once.
     rootProject
         .getTasks()
         .matching(task -> task.getName().equals(CheckLicensesPlugin.CHECK_LICENSES_TASK))
-        .configureEach(
-            task -> {
-              task.mustRunAfter(regenTasks);
-            });
+        .configureEach(task -> {
+          task.mustRunAfter(regenTasks);
+        });
   }
 
   private static TaskCollection<Task> applyRegeneratePlugin(Project project) {
@@ -123,23 +121,21 @@ public class RegenerateTasksSupportPlugin extends LuceneGradlePlugin {
         tasks.matching(task -> REGEN_TASK_PATTERN.matcher(task.getName()).matches());
 
     // Configure the extension for each regenerate task.
-    regenerateTasks.configureEach(
-        task -> {
-          // Add a task extension to allow tasks to modify their behavior upon 'regenerate'.
-          task.getExtensions().create("regenerate", RegenerateTaskExtension.class);
-        });
+    regenerateTasks.configureEach(task -> {
+      // Add a task extension to allow tasks to modify their behavior upon 'regenerate'.
+      task.getExtensions().create("regenerate", RegenerateTaskExtension.class);
+    });
 
     // If the source task is of type QuietExec, configure a subset of its
     // ignored properties automatically.
     regenerateTasks
         .withType(QuietExec.class)
-        .configureEach(
-            task -> {
-              task.getExtensions()
-                  .getByType(RegenerateTaskExtension.class)
-                  .getIgnoredInputs()
-                  .addAll(Set.of("args", "executable", "ignoreExitValue"));
-            });
+        .configureEach(task -> {
+          task.getExtensions()
+              .getByType(RegenerateTaskExtension.class)
+              .getIgnoredInputs()
+              .addAll(Set.of("args", "executable", "ignoreExitValue"));
+        });
 
     // register a single task to invoke all regeneration tasks.
     tasks.register(
@@ -187,31 +183,27 @@ public class RegenerateTasksSupportPlugin extends LuceneGradlePlugin {
               }
 
               // only run if the delegate ran and did the job successfully.
-              t.onlyIf(
-                  _ -> {
-                    return delegate.getState().getFailure() == null;
-                  });
+              t.onlyIf(_ -> {
+                return delegate.getState().getFailure() == null;
+              });
 
               t.getOutputs().file(checksumsFile);
               t.getOutputs()
-                  .upToDateWhen(
-                      _ -> {
-                        return !delegate.getState().getDidWork();
-                      });
+                  .upToDateWhen(_ -> {
+                    return !delegate.getState().getDidWork();
+                  });
 
               // compare checksums and write them back, if they have changed.
-              t.doFirst(
-                  _ -> {
-                    var current = computeChecksummedEntries(delegate);
-                    var expected = loadChecksums(checksumsFile);
+              t.doFirst(_ -> {
+                var current = computeChecksummedEntries(delegate);
+                var expected = loadChecksums(checksumsFile);
 
-                    if (!current.equals(expected)) {
-                      writeChecksums(checksumsFile, computeChecksummedEntries(delegate));
-                      t.getLogger()
-                          .info(
-                              "Updated the derived resources checksum file for task: {}", taskName);
-                    }
-                  });
+                if (!current.equals(expected)) {
+                  writeChecksums(checksumsFile, computeChecksummedEntries(delegate));
+                  t.getLogger()
+                      .info("Updated the derived resources checksum file for task: {}", taskName);
+                }
+              });
             });
 
     // Configure task dependencies and wiring of after/before.
@@ -226,10 +218,9 @@ public class RegenerateTasksSupportPlugin extends LuceneGradlePlugin {
         project
             .getTasks()
             .matching(task -> taskNames.contains(task.getName()))
-            .configureEach(
-                other -> {
-                  other.mustRunAfter(checksumSaveTask);
-                });
+            .configureEach(other -> {
+              other.mustRunAfter(checksumSaveTask);
+            });
       }
 
       // ensure proper scheduling of any followedUpBy tasks (those happening before
@@ -240,10 +231,9 @@ public class RegenerateTasksSupportPlugin extends LuceneGradlePlugin {
         project
             .getTasks()
             .matching(task -> taskNames.contains(task.getName()))
-            .configureEach(
-                other -> {
-                  other.mustRunAfter(delegate);
-                });
+            .configureEach(other -> {
+              other.mustRunAfter(delegate);
+            });
       }
 
       // configure explicit skipping of other tasks if they are listed
@@ -257,12 +247,11 @@ public class RegenerateTasksSupportPlugin extends LuceneGradlePlugin {
           shouldRerun.set(
               project
                   .getProviders()
-                  .provider(
-                      () -> {
-                        var current = computeChecksummedEntries(delegate);
-                        var expected = loadChecksums(checksumsFile);
-                        return !current.equals(expected);
-                      }));
+                  .provider(() -> {
+                    var current = computeChecksummedEntries(delegate);
+                    var expected = loadChecksums(checksumsFile);
+                    return !current.equals(expected);
+                  }));
         }
 
         delegate.onlyIf(_ -> shouldRerun.get());
@@ -284,54 +273,53 @@ public class RegenerateTasksSupportPlugin extends LuceneGradlePlugin {
               // if we're regenerating, run any checks after the save.
               t.mustRunAfter(checksumSaveTask);
 
-              t.doFirst(
-                  _ -> {
-                    var currentChecksums = computeChecksummedEntries(delegate);
-                    var expectedChecksums = loadChecksums(checksumsFile);
+              t.doFirst(_ -> {
+                var currentChecksums = computeChecksummedEntries(delegate);
+                var expectedChecksums = loadChecksums(checksumsFile);
 
-                    if (!currentChecksums.equals(expectedChecksums)) {
-                      // This can be made prettier but leave it verbose for now:
-                      Map<String, String> current = new TreeMap<>(currentChecksums);
-                      Map<String, String> expected = new TreeMap<>(expectedChecksums);
+                if (!currentChecksums.equals(expectedChecksums)) {
+                  // This can be made prettier but leave it verbose for now:
+                  Map<String, String> current = new TreeMap<>(currentChecksums);
+                  Map<String, String> expected = new TreeMap<>(expectedChecksums);
 
-                      // remove the intersection of identical entries.
-                      Map<String, String> sameEntries = new TreeMap<>(current);
-                      sameEntries.entrySet().retainAll(expected.entrySet());
-                      current.entrySet().removeAll(sameEntries.entrySet());
-                      expected.entrySet().removeAll(sameEntries.entrySet());
+                  // remove the intersection of identical entries.
+                  Map<String, String> sameEntries = new TreeMap<>(current);
+                  sameEntries.entrySet().retainAll(expected.entrySet());
+                  current.entrySet().removeAll(sameEntries.entrySet());
+                  expected.entrySet().removeAll(sameEntries.entrySet());
 
-                      Function<Map<String, String>, String> mapToString =
-                          map ->
-                              map.isEmpty()
-                                  ? "(empty)"
-                                  : map.entrySet().stream()
-                                      .map(e -> "  - " + e.getKey() + "=" + e.getValue())
-                                      .collect(Collectors.joining("\n"));
-
-                      Function<FileCollection, String> filesToString =
-                          files ->
-                              files.getFiles().stream()
-                                  .map(f -> "  - " + f)
+                  Function<Map<String, String>, String> mapToString =
+                      map ->
+                          map.isEmpty()
+                              ? "(empty)"
+                              : map.entrySet().stream()
+                                  .map(e -> "  - " + e.getKey() + "=" + e.getValue())
                                   .collect(Collectors.joining("\n"));
 
-                      throw new GradleException(
-                          "Checksums mismatch for generated resources; you might have"
-                              + " modified a generated resource "
-                              + ("(regenerate task: "
-                                  + taskName
-                                  + ", checksum file: "
-                                  + checksumsFile
-                                  + ").\n\n")
-                              + ("Current checksums:\n" + mapToString.apply(current) + "\n\n")
-                              + ("Expected checksums:\n" + mapToString.apply(expected) + "\n\n")
-                              + ("Input files for this task are:\n"
-                                  + filesToString.apply(delegate.getInputs().getFiles())
-                                  + "\n\n")
-                              + ("Files generated by this task are:\n"
-                                  + filesToString.apply(delegate.getOutputs().getFiles())
-                                  + "\n"));
-                    }
-                  });
+                  Function<FileCollection, String> filesToString =
+                      files ->
+                          files.getFiles().stream()
+                              .map(f -> "  - " + f)
+                              .collect(Collectors.joining("\n"));
+
+                  throw new GradleException(
+                      "Checksums mismatch for generated resources; you might have"
+                          + " modified a generated resource "
+                          + ("(regenerate task: "
+                              + taskName
+                              + ", checksum file: "
+                              + checksumsFile
+                              + ").\n\n")
+                          + ("Current checksums:\n" + mapToString.apply(current) + "\n\n")
+                          + ("Expected checksums:\n" + mapToString.apply(expected) + "\n\n")
+                          + ("Input files for this task are:\n"
+                              + filesToString.apply(delegate.getInputs().getFiles())
+                              + "\n\n")
+                          + ("Files generated by this task are:\n"
+                              + filesToString.apply(delegate.getOutputs().getFiles())
+                              + "\n"));
+                }
+              });
             });
 
     // Attach checksum check to the check task.
@@ -376,10 +364,9 @@ public class RegenerateTasksSupportPlugin extends LuceneGradlePlugin {
     var regenerateExt = sourceTask.getExtensions().getByType(RegenerateTaskExtension.class);
     props.keySet().removeAll(regenerateExt.getIgnoredInputs().get());
 
-    props.forEach(
-        (k, v) -> {
-          allEntries.put("property:" + k, valueToString(sourceTask.getPath(), k, v));
-        });
+    props.forEach((k, v) -> {
+      allEntries.put("property:" + k, valueToString(sourceTask.getPath(), k, v));
+    });
 
     // Collect all task input and output files and compute their checksums.
     FileCollection allFiles =

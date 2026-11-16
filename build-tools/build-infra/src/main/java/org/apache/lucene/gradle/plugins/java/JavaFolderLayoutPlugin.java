@@ -48,29 +48,26 @@ public class JavaFolderLayoutPlugin extends LuceneGradlePlugin {
         .getTasks()
         .withType(ProcessResources.class)
         .named("processTestResources")
-        .configure(
-            task -> {
-              task.from("src/test").exclude("**/*.java");
-            });
+        .configure(task -> {
+          task.from("src/test").exclude("**/*.java");
+        });
 
     // if 'src/tools' exists, add it as a separate sourceSet.
     File toolsSrc = project.file("src/tools/java");
     if (toolsSrc.exists()) {
       sourceSets
           .create("tools")
-          .java(
-              srcSet -> {
-                srcSet.setSrcDirs(List.of(toolsSrc));
-              });
+          .java(srcSet -> {
+            srcSet.setSrcDirs(List.of(toolsSrc));
+          });
 
       // and inherit any dependencies for this source set from the main source set.
       ConfigurationContainer configurations = project.getConfigurations();
       configurations
           .named("toolsImplementation")
-          .configure(
-              conf -> {
-                conf.extendsFrom(configurations.named("implementation").get());
-              });
+          .configure(conf -> {
+            conf.extendsFrom(configurations.named("implementation").get());
+          });
     }
   }
 }

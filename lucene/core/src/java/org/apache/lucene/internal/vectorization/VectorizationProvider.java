@@ -229,9 +229,8 @@ public abstract class VectorizationProvider {
 
   private static void ensureCaller() {
     final boolean validCaller =
-        STACKWALKER.walk(
-            s ->
-                s.skip(2).limit(1).map(StackFrame::getClassName).anyMatch(VALID_CALLERS::contains));
+        STACKWALKER.walk(s ->
+            s.skip(2).limit(1).map(StackFrame::getClassName).anyMatch(VALID_CALLERS::contains));
     if (!validCaller) {
       throw new IllegalCallerException(
           "VectorizationProvider is internal and can only be used by known Lucene classes.");

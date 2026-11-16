@@ -154,83 +154,78 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
   public void testDemoClassesCanBeLoaded() {
     ModuleLayer bootLayer = ModuleLayer.boot();
     Assertions.assertThatNoException()
-        .isThrownBy(
-            () -> {
-              String demoModuleId = "org.apache.lucene.demo";
+        .isThrownBy(() -> {
+          String demoModuleId = "org.apache.lucene.demo";
 
-              Configuration configuration =
-                  bootLayer
-                      .configuration()
-                      .resolve(
-                          luceneCoreAndThirdPartyModulesFinder,
-                          ModuleFinder.of(),
-                          List.of(demoModuleId));
+          Configuration configuration =
+              bootLayer
+                  .configuration()
+                  .resolve(
+                      luceneCoreAndThirdPartyModulesFinder,
+                      ModuleFinder.of(),
+                      List.of(demoModuleId));
 
-              ModuleLayer layer =
-                  bootLayer.defineModulesWithOneLoader(
-                      configuration, ClassLoader.getSystemClassLoader());
+          ModuleLayer layer =
+              bootLayer.defineModulesWithOneLoader(
+                  configuration, ClassLoader.getSystemClassLoader());
 
-              for (String className :
-                  List.of(
-                      "org.apache.lucene.demo.IndexFiles",
-                      "org.apache.lucene.demo.SearchFiles",
-                      "org.apache.lucene.index.CheckIndex")) {
-                Assertions.assertThat(layer.findLoader(demoModuleId).loadClass(className))
-                    .isNotNull();
-              }
-            });
+          for (String className :
+              List.of(
+                  "org.apache.lucene.demo.IndexFiles",
+                  "org.apache.lucene.demo.SearchFiles",
+                  "org.apache.lucene.index.CheckIndex")) {
+            Assertions.assertThat(layer.findLoader(demoModuleId).loadClass(className)).isNotNull();
+          }
+        });
   }
 
   /** Checks that Lucene Core is a MR-JAR and has Panama foreign classes */
   public void testMultiReleaseJar() {
     ModuleLayer bootLayer = ModuleLayer.boot();
     Assertions.assertThatNoException()
-        .isThrownBy(
-            () -> {
-              String coreModuleId = "org.apache.lucene.core";
+        .isThrownBy(() -> {
+          String coreModuleId = "org.apache.lucene.core";
 
-              Configuration configuration =
-                  bootLayer
-                      .configuration()
-                      .resolve(
-                          luceneCoreAndThirdPartyModulesFinder,
-                          ModuleFinder.of(),
-                          List.of(coreModuleId));
+          Configuration configuration =
+              bootLayer
+                  .configuration()
+                  .resolve(
+                      luceneCoreAndThirdPartyModulesFinder,
+                      ModuleFinder.of(),
+                      List.of(coreModuleId));
 
-              ModuleLayer layer =
-                  bootLayer.defineModulesWithOneLoader(
-                      configuration, ClassLoader.getSystemClassLoader());
+          ModuleLayer layer =
+              bootLayer.defineModulesWithOneLoader(
+                  configuration, ClassLoader.getSystemClassLoader());
 
-              ClassLoader loader = layer.findLoader(coreModuleId);
+          ClassLoader loader = layer.findLoader(coreModuleId);
 
-              final Set<Integer> mrJarVersions = Set.of(23);
-              final Integer baseVersion = 23;
+          final Set<Integer> mrJarVersions = Set.of(23);
+          final Integer baseVersion = 23;
 
-              // the Java 23 PanamaVectorizationProvider must always be in main section of JAR file:
-              final String panamaClassName =
-                  "org/apache/lucene/internal/vectorization/PanamaVectorizationProvider.class";
-              Assertions.assertThat(loader.getResource(panamaClassName)).isNotNull();
+          // the Java 23 PanamaVectorizationProvider must always be in main section of JAR file:
+          final String panamaClassName =
+              "org/apache/lucene/internal/vectorization/PanamaVectorizationProvider.class";
+          Assertions.assertThat(loader.getResource(panamaClassName)).isNotNull();
 
-              // additional versions must be in MR-JAR part
-              mrJarVersions.stream()
-                  .filter(Predicate.not(baseVersion::equals))
-                  .forEach(
-                      v -> {
-                        Assertions.assertThat(
-                                loader.getResource("META-INF/versions/" + v + panamaClassName))
-                            .isNotNull();
-                      });
-            });
+          // additional versions must be in MR-JAR part
+          mrJarVersions.stream()
+              .filter(Predicate.not(baseVersion::equals))
+              .forEach(v -> {
+                Assertions.assertThat(
+                        loader.getResource("META-INF/versions/" + v + panamaClassName))
+                    .isNotNull();
+              });
+        });
   }
 
   /** Make sure we don't publish automatic modules. */
   public void testAllCoreModulesAreNamedModules() {
     Assertions.assertThat(allLuceneModules)
-        .allSatisfy(
-            module ->
-                Assertions.assertThat(module.descriptor().isAutomatic())
-                    .as(module.descriptor().name())
-                    .isFalse());
+        .allSatisfy(module ->
+            Assertions.assertThat(module.descriptor().isAutomatic())
+                .as(module.descriptor().name())
+                .isFalse());
   }
 
   /** Ensure all modules have the same (expected) version. */
@@ -325,11 +320,10 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
       Set<ModuleDescriptor.Exports> moduleExports = new HashSet<>(module.descriptor().exports());
 
       if (module.descriptor().name().equals("org.apache.lucene.luke")) {
-        jarPackages.removeIf(
-            entry -> {
-              // Luke's packages are not exported.
-              return entry.startsWith("org.apache.lucene.luke");
-            });
+        jarPackages.removeIf(entry -> {
+          // Luke's packages are not exported.
+          return entry.startsWith("org.apache.lucene.luke");
+        });
       }
 
       if (module.descriptor().name().equals("org.apache.lucene.core")) {
@@ -337,32 +331,30 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
         jarPackages.removeIf(entry -> entry.startsWith("org.apache.lucene.internal"));
 
         // Internal packages should use qualified exports.
-        moduleExports.removeIf(
-            export -> {
-              boolean isInternal = export.source().startsWith("org.apache.lucene.internal");
-              if (isInternal && export.source().equals("org.apache.lucene.internal.hppc")) {
-                return true;
-              }
-              if (export.source().equals("org.apache.lucene.internal.tests")) {
-                Assertions.assertThat(export.targets())
-                    .containsExactlyInAnyOrder("org.apache.lucene.test_framework");
-              }
-              // Allow export to JMH benchmarks
-              if (export.source().equals("org.apache.lucene.internal.vectorization")) {
-                Assertions.assertThat(export.targets())
-                    .containsExactlyInAnyOrder("org.apache.lucene.benchmark.jmh");
-              }
-              return isInternal;
-            });
+        moduleExports.removeIf(export -> {
+          boolean isInternal = export.source().startsWith("org.apache.lucene.internal");
+          if (isInternal && export.source().equals("org.apache.lucene.internal.hppc")) {
+            return true;
+          }
+          if (export.source().equals("org.apache.lucene.internal.tests")) {
+            Assertions.assertThat(export.targets())
+                .containsExactlyInAnyOrder("org.apache.lucene.test_framework");
+          }
+          // Allow export to JMH benchmarks
+          if (export.source().equals("org.apache.lucene.internal.vectorization")) {
+            Assertions.assertThat(export.targets())
+                .containsExactlyInAnyOrder("org.apache.lucene.benchmark.jmh");
+          }
+          return isInternal;
+        });
       }
 
       Assertions.assertThat(moduleExports)
           .as("Exported packages in module: " + module.descriptor().name())
-          .allSatisfy(
-              export ->
-                  Assertions.assertThat(export.targets())
-                      .as("We only support unqualified exports for now?")
-                      .isEmpty())
+          .allSatisfy(export ->
+              Assertions.assertThat(export.targets())
+                  .as("We only support unqualified exports for now?")
+                  .isEmpty())
           .map(ModuleDescriptor.Exports::source)
           .containsExactlyInAnyOrderElementsOf(jarPackages);
     }
@@ -384,11 +376,10 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
 
       Assertions.assertThat(moduleOpens)
           .as("Open packages in module: " + module.descriptor().name())
-          .allSatisfy(
-              export ->
-                  Assertions.assertThat(export.targets())
-                      .as("Opens should only be targeted to Lucene Core.")
-                      .containsExactly("org.apache.lucene.core"))
+          .allSatisfy(export ->
+              Assertions.assertThat(export.targets())
+                  .as("Opens should only be targeted to Lucene Core.")
+                  .containsExactly("org.apache.lucene.core"))
           .map(ModuleDescriptor.Opens::source)
           .containsExactlyInAnyOrderElementsOf(jarPackages);
     }
@@ -399,12 +390,11 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
     try (ModuleReader reader = module.open()) {
       return reader
           .list()
-          .filter(
-              entry ->
-                  !entry.startsWith("META-INF/")
-                      && !entry.equals("module-info.class")
-                      && !entry.endsWith("/")
-                      && entryFilter.test(entry))
+          .filter(entry ->
+              !entry.startsWith("META-INF/")
+                  && !entry.equals("module-info.class")
+                  && !entry.endsWith("/")
+                  && entryFilter.test(entry))
           .map(entry -> entry.replaceAll("/[^/]+$", ""))
           .map(entry -> entry.replace('/', '.'))
           .collect(Collectors.toCollection(TreeSet::new));

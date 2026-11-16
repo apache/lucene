@@ -68,20 +68,19 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
         final byte[] accum = new byte[nInts * Integer.BYTES];
         final CountDownLatch shotgun = new CountDownLatch(1);
         final Thread t1 =
-            new Thread(
-                () -> {
-                  try {
-                    shotgun.await();
-                    for (int i = 0; i < 10; i++) {
-                      clone.seek(0);
-                      clone.readBytes(accum, 0, accum.length);
-                    }
-                  } catch (AlreadyClosedException _) {
-                    // OK
-                  } catch (InterruptedException | IOException e) {
-                    throw new RuntimeException(e);
-                  }
-                });
+            new Thread(() -> {
+              try {
+                shotgun.await();
+                for (int i = 0; i < 10; i++) {
+                  clone.seek(0);
+                  clone.readBytes(accum, 0, accum.length);
+                }
+              } catch (AlreadyClosedException _) {
+                // OK
+              } catch (InterruptedException | IOException e) {
+                throw new RuntimeException(e);
+              }
+            });
         t1.start();
         shotgun.countDown();
         // this triggers "bad behaviour": closing input while other threads are running
@@ -343,10 +342,9 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
       int perListSize = (names.size() + nThreads) / nThreads;
       List<List<String>> nameLists =
           IntStream.range(0, nThreads)
-              .mapToObj(
-                  i ->
-                      names.subList(
-                          perListSize * i, Math.min(perListSize * i + perListSize, names.size())))
+              .mapToObj(i ->
+                  names.subList(
+                      perListSize * i, Math.min(perListSize * i + perListSize, names.size())))
               .toList();
 
       var threadFactory = new NamedThreadFactory("testArenas");

@@ -1,7 +1,7 @@
 {
     "lucene/analysis/common/src/java/org/tartarus/snowball/Among.java": "a6f5b9a43b3ca4ae7cbecea08e24d06774b0aee5",
     "lucene/analysis/common/src/java/org/tartarus/snowball/SnowballProgram.java": "a91e02a89c0eb81163e73e61645ea5d27e851f0d",
-    "lucene/analysis/common/src/java/org/tartarus/snowball/SnowballStemmer.java": "2b2661c49ae61bb11aab089088ee442200d9b4f5",
+    "lucene/analysis/common/src/java/org/tartarus/snowball/SnowballStemmer.java": "64ea3674aafce8f8084c5f01804086027409a52f",
     "lucene/analysis/common/src/java/org/tartarus/snowball/ext/ArabicStemmer.java": "f3058c5cbf923b6cbb2829730bfd1659f89f0696",
     "lucene/analysis/common/src/java/org/tartarus/snowball/ext/ArmenianStemmer.java": "9df577283f0f16349b6ee5e1cd0fc67434e37c2d",
     "lucene/analysis/common/src/java/org/tartarus/snowball/ext/BasqueStemmer.java": "e68ae1e4bb68f248c56b904d7843b533fd9d4cc6",

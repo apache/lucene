@@ -33,57 +33,55 @@ public class TestsSummaryPlugin extends LuceneGradlePlugin {
     project
         .getTasks()
         .withType(Test.class)
-        .configureEach(
-            task -> {
-              if (!task.getLogger().isLifecycleEnabled()) {
-                return;
-              }
+        .configureEach(task -> {
+          if (!task.getLogger().isLifecycleEnabled()) {
+            return;
+          }
 
-              task.addTestListener(
-                  new TestListener() {
-                    @Override
-                    public void afterSuite(TestDescriptor suite, TestResult result) {
-                      if (suite.getParent() == null) {
-                        if (result.getTestCount() > 0) {
-                          StringBuilder sb = new StringBuilder();
-                          sb.append(task.getPath())
-                              .append(" (")
-                              .append(result.getResultType().name())
-                              .append("): ");
+          task.addTestListener(
+              new TestListener() {
+                @Override
+                public void afterSuite(TestDescriptor suite, TestResult result) {
+                  if (suite.getParent() == null) {
+                    if (result.getTestCount() > 0) {
+                      StringBuilder sb = new StringBuilder();
+                      sb.append(task.getPath())
+                          .append(" (")
+                          .append(result.getResultType().name())
+                          .append("): ");
 
-                          sb.append(pluralize(result.getTestCount(), "test"));
-                          if (result.getFailedTestCount() > 0) {
-                            sb.append(", ")
-                                .append(pluralize(result.getFailedTestCount(), " failure"));
-                          }
-                          if (result.getSkippedTestCount() > 0) {
-                            sb.append(", ").append(result.getSkippedTestCount()).append(" skipped");
-                          }
-
-                          task.getLogger().lifecycle(sb.toString());
-                        }
+                      sb.append(pluralize(result.getTestCount(), "test"));
+                      if (result.getFailedTestCount() > 0) {
+                        sb.append(", ").append(pluralize(result.getFailedTestCount(), " failure"));
                       }
-                    }
+                      if (result.getSkippedTestCount() > 0) {
+                        sb.append(", ").append(result.getSkippedTestCount()).append(" skipped");
+                      }
 
-                    private static String pluralize(long count, String verb) {
-                      return count + " " + verb + (count == 1 ? "" : "s");
+                      task.getLogger().lifecycle(sb.toString());
                     }
+                  }
+                }
 
-                    @Override
-                    public void beforeSuite(TestDescriptor suite) {
-                      // empty.
-                    }
+                private static String pluralize(long count, String verb) {
+                  return count + " " + verb + (count == 1 ? "" : "s");
+                }
 
-                    @Override
-                    public void beforeTest(TestDescriptor testDescriptor) {
-                      // empty.
-                    }
+                @Override
+                public void beforeSuite(TestDescriptor suite) {
+                  // empty.
+                }
 
-                    @Override
-                    public void afterTest(TestDescriptor testDescriptor, TestResult result) {
-                      // empty.
-                    }
-                  });
-            });
+                @Override
+                public void beforeTest(TestDescriptor testDescriptor) {
+                  // empty.
+                }
+
+                @Override
+                public void afterTest(TestDescriptor testDescriptor, TestResult result) {
+                  // empty.
+                }
+              });
+        });
   }
 }

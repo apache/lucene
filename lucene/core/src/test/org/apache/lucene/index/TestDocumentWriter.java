@@ -382,10 +382,9 @@ public class TestDocumentWriter extends LuceneTestCase {
   }
 
   public void testRAMUsageVector() throws IOException {
-    doTestRAMUsage(
-        field ->
-            new KnnFloatVectorField(
-                field, new float[] {1, 2, 3, 4}, VectorSimilarityFunction.EUCLIDEAN));
+    doTestRAMUsage(field ->
+        new KnnFloatVectorField(
+            field, new float[] {1, 2, 3, 4}, VectorSimilarityFunction.EUCLIDEAN));
   }
 
   private record MockIndexableField(String field, BytesRef value, IndexableFieldType fieldType)
