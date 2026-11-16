@@ -167,13 +167,15 @@ class GlobalOrdinalsWithScoreCollectorManager implements CollectorManager<Collec
       public void collect(int doc) throws IOException {
         if (docTermOrds.advanceExact(doc)) {
           final int globalOrd = (int) segmentOrdToGlobalOrdLookup.get(docTermOrds.ordValue());
+          // The scorer is owned by this leaf collector, so score outside the lock.
+          final double newScore = scorer.score();
           if (locks == null) {
-            collectOrd(globalOrd);
+            collectOrd(globalOrd, newScore);
           } else {
             Lock lock = locks[globalOrd / arraySize];
             lock.lock();
             try {
-              collectOrd(globalOrd);
+              collectOrd(globalOrd, newScore);
             } finally {
               lock.unlock();
             }
@@ -181,10 +183,9 @@ class GlobalOrdinalsWithScoreCollectorManager implements CollectorManager<Collec
         }
       }
 
-      private void collectOrd(int globalOrd) throws IOException {
+      private void collectOrd(int globalOrd, double newScore) {
         collectedOrds.set(globalOrd);
         double existingScore = scores.getScore(globalOrd);
-        double newScore = scorer.score();
         doScore(globalOrd, existingScore, newScore);
         if (occurrences != null) {
           occurrences.increment(globalOrd);
