@@ -276,7 +276,7 @@ jobs:
           ATTEMPT: ${{ matrix.attempt }}
         run: |
           touch bench/bench.log
-          os_name=$(. /etc/os-release && echo "$PRETTY_NAME") || os_name=""
+          os_name=$(awk -F= '$1 == "PRETTY_NAME" {gsub(/"/, "", $2); print $2}' /etc/os-release) || os_name=""
           cpu_model=$(lscpu | awk -F': *' '$1 == "Model name" && $2 != "-" {print $2; exit}') || cpu_model=""
           memory_gb=$(awk '/^MemTotal:/ {printf "%d", $2 / 1048576 + 0.5}' /proc/meminfo) || memory_gb=""
           disk_gb=$(df -BG --output=size "$GITHUB_WORKSPACE" | tail -n 1 | tr -dc '0-9') || disk_gb=""

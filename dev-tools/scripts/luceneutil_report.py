@@ -106,7 +106,7 @@ def format_environment(args: argparse.Namespace) -> list[str]:
   rows = [
     ("Runner", args.runner),
     ("OS", args.os),
-    ("CPU", f"{args.cpus} × {args.cpu_model}" if args.cpu_model else f"{args.cpus} CPUs"),
+    ("CPU", f"{args.cpu_model} ({args.cpus} CPUs)" if args.cpu_model else f"{args.cpus} CPUs"),
     ("Memory", f"{args.memory_gb} GB" if args.memory_gb else ""),
     ("Disk", disk),
     ("JDK", args.jdk),
