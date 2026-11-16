@@ -31,7 +31,7 @@ public class TestDocumentsWriterPerThreadPool extends LuceneTestCase {
     try (Directory directory = newDirectory()) {
       DocumentsWriterPerThreadPool pool =
           new DocumentsWriterPerThreadPool(
-              () ->
+              (dwptGroupNumber) ->
                   new DocumentsWriterPerThread(
                       Version.LATEST.major,
                       "",
@@ -41,15 +41,19 @@ public class TestDocumentsWriterPerThreadPool extends LuceneTestCase {
                       new DocumentsWriterDeleteQueue(null),
                       null,
                       new AtomicLong(),
-                      false));
+                      false,
+                      dwptGroupNumber));
 
-      DocumentsWriterPerThread first = pool.getAndLock();
+      DocumentsWriterPerThread first =
+          pool.getAndLock(DWPTGroupingCriteriaDefinition.DEFAULT_DWPT_GROUP_NUMBER);
       assertEquals(1, pool.size());
-      DocumentsWriterPerThread second = pool.getAndLock();
+      DocumentsWriterPerThread second =
+          pool.getAndLock(DWPTGroupingCriteriaDefinition.DEFAULT_DWPT_GROUP_NUMBER);
       assertEquals(2, pool.size());
       pool.marksAsFreeAndUnlock(first);
       assertEquals(2, pool.size());
-      DocumentsWriterPerThread third = pool.getAndLock();
+      DocumentsWriterPerThread third =
+          pool.getAndLock(DWPTGroupingCriteriaDefinition.DEFAULT_DWPT_GROUP_NUMBER);
       assertSame(first, third);
       assertEquals(2, pool.size());
       pool.checkout(third);
@@ -71,7 +75,7 @@ public class TestDocumentsWriterPerThreadPool extends LuceneTestCase {
     try (Directory directory = newDirectory()) {
       DocumentsWriterPerThreadPool pool =
           new DocumentsWriterPerThreadPool(
-              () ->
+              (dwptGroupNumber) ->
                   new DocumentsWriterPerThread(
                       Version.LATEST.major,
                       "",
@@ -81,9 +85,11 @@ public class TestDocumentsWriterPerThreadPool extends LuceneTestCase {
                       new DocumentsWriterDeleteQueue(null),
                       null,
                       new AtomicLong(),
-                      false));
+                      false,
+                      dwptGroupNumber));
 
-      DocumentsWriterPerThread first = pool.getAndLock();
+      DocumentsWriterPerThread first =
+          pool.getAndLock(DWPTGroupingCriteriaDefinition.DEFAULT_DWPT_GROUP_NUMBER);
       pool.lockNewWriters();
       CountDownLatch latch = new CountDownLatch(1);
       Thread t =
@@ -91,7 +97,7 @@ public class TestDocumentsWriterPerThreadPool extends LuceneTestCase {
               () -> {
                 try {
                   latch.countDown();
-                  pool.getAndLock();
+                  pool.getAndLock(DWPTGroupingCriteriaDefinition.DEFAULT_DWPT_GROUP_NUMBER);
                   fail();
                 } catch (AlreadyClosedException _) {
                   // fine
