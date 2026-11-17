@@ -180,6 +180,9 @@ public abstract class RunAutomaton implements Accountable {
   /**
    * Returns true if this state can accept all remaining suffixes from now on.
    *
+   * <p>NOTE: This method must only be called when {@link #hasMatchAllSuffixStates()} returns {@code
+   * true}.
+   *
    * @param state the state
    * @return whether this state can accept all remaining suffixes.
    */
