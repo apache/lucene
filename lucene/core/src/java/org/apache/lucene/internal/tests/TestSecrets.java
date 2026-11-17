@@ -142,12 +142,8 @@ public final class TestSecrets {
 
   private static void ensureCallerForSetter(Class<?> allowedCaller, Object needsNull) {
     final boolean validCaller =
-        SW_CLASSREF.walk(
-            s ->
-                s.skip(2)
-                    .limit(1)
-                    .map(StackFrame::getDeclaringClass)
-                    .anyMatch(allowedCaller::equals));
+        SW_CLASSREF.walk(s ->
+            s.skip(2).limit(1).map(StackFrame::getDeclaringClass).anyMatch(allowedCaller::equals));
     if (!validCaller || needsNull != null) {
       throw new IllegalCallerException(
           "The accessor can only be set once by " + allowedCaller.getName() + ".");
@@ -156,15 +152,13 @@ public final class TestSecrets {
 
   private static void ensureCallerForGetter() {
     final boolean validCaller =
-        SW_CLASSNAME.walk(
-            s ->
-                s.skip(2)
-                    .limit(1)
-                    .map(StackFrame::getClassName)
-                    .anyMatch(
-                        c ->
-                            c.startsWith("org.apache.lucene.tests.")
-                                || c.equals("org.apache.lucene.index.TestClassloadingDeadlock")));
+        SW_CLASSNAME.walk(s ->
+            s.skip(2)
+                .limit(1)
+                .map(StackFrame::getClassName)
+                .anyMatch(c ->
+                    c.startsWith("org.apache.lucene.tests.")
+                        || c.equals("org.apache.lucene.index.TestClassloadingDeadlock")));
     if (!validCaller) {
       throw new IllegalCallerException(
           "Lucene TestSecrets can only be used by the test-framework.");

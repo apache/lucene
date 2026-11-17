@@ -1235,28 +1235,27 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     for (int t = 0; t < numThreads; t++) {
       final int threadIdx = t;
       threads[t] =
-          new Thread(
-              () -> {
-                try {
-                  start.await();
-                  int[] docIds = new int[docsPerBatch];
-                  for (int i = 0; i < docsPerBatch; i++) {
-                    docIds[i] = i;
-                  }
-                  for (int b = 0; b < batchesPerThread; b++) {
-                    BytesRef[] ids = new BytesRef[docsPerBatch];
-                    for (int i = 0; i < docsPerBatch; i++) {
-                      ids[i] = newBytesRef("t" + threadIdx + "_b" + b + "_d" + i);
-                    }
-                    w.addBatch(
-                        simpleBatch(
-                            docsPerBatch,
-                            new ArrayBinaryColumn("id", StringField.TYPE_NOT_STORED, docIds, ids)));
-                  }
-                } catch (Exception e) {
-                  throw new AssertionError(e);
+          new Thread(() -> {
+            try {
+              start.await();
+              int[] docIds = new int[docsPerBatch];
+              for (int i = 0; i < docsPerBatch; i++) {
+                docIds[i] = i;
+              }
+              for (int b = 0; b < batchesPerThread; b++) {
+                BytesRef[] ids = new BytesRef[docsPerBatch];
+                for (int i = 0; i < docsPerBatch; i++) {
+                  ids[i] = newBytesRef("t" + threadIdx + "_b" + b + "_d" + i);
                 }
-              });
+                w.addBatch(
+                    simpleBatch(
+                        docsPerBatch,
+                        new ArrayBinaryColumn("id", StringField.TYPE_NOT_STORED, docIds, ids)));
+              }
+            } catch (Exception e) {
+              throw new AssertionError(e);
+            }
+          });
       threads[t].start();
     }
     start.countDown();

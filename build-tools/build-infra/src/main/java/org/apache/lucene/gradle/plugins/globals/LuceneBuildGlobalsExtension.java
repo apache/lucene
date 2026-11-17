@@ -136,17 +136,16 @@ public abstract class LuceneBuildGlobalsExtension {
           }) {
         result =
             getExecOps()
-                .exec(
-                    spec -> {
-                      configureAction.execute(spec);
+                .exec(spec -> {
+                  configureAction.execute(spec);
 
-                      spec.setStandardInput(InputStream.nullInputStream());
-                      spec.setStandardOutput(os);
-                      spec.setErrorOutput(os);
-                      spec.setIgnoreExitValue(true);
+                  spec.setStandardInput(InputStream.nullInputStream());
+                  spec.setStandardOutput(os);
+                  spec.setErrorOutput(os);
+                  spec.setIgnoreExitValue(true);
 
-                      executable.set(spec.getExecutable());
-                    });
+                  executable.set(spec.getExecutable());
+                });
       }
       QuietExec.processResult(result, outputFile, executable.get(), owner.getLogger());
     } catch (IOException e) {
