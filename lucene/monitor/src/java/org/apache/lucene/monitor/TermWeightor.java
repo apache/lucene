@@ -44,10 +44,12 @@ public interface TermWeightor extends ToDoubleFunction<Term> {
   /**
    * The weight of the absence of a term of weight {@code weight}, used for negated clauses
    *
-   * <p>By default the weight is read as surprisal, {@code w = -ln p} where {@code p} is the share
-   * of documents containing the term, giving {@code -ln(1 - e^-w)}: rare terms are weak exclusions
-   * and common terms strong ones. Use {@link #withNegation(DoubleUnaryOperator)} if weights are not
-   * surprisal.
+   * <p>By default the weight is read as <a
+   * href="https://en.wikipedia.org/wiki/Information_content">information content</a>, {@code w =
+   * -ln p} where {@code p} is the share of documents containing the term. The absence of the term
+   * then has probability {@code 1 - p} and information content {@code -ln(1 - e^-w)}: rare terms
+   * are weak exclusions and common terms strong ones. Use {@link
+   * #withNegation(DoubleUnaryOperator)} if weights are not information content.
    */
   default double negate(double weight) {
     return Math.max(MIN_NEGATED_WEIGHT, -Math.log1p(-Math.exp(-weight)));

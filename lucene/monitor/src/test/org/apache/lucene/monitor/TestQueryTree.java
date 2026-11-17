@@ -65,7 +65,7 @@ public class TestQueryTree extends LuceneTestCase {
     assertEquals(0.7, negativeDisjunctWeight(weightor, A, B, C), 0);
   }
 
-  public void testDefaultNegationReadsWeightsAsSurprisal() {
+  public void testDefaultNegationReadsWeightsAsInformationContent() {
     // weights as -ln p: A is in 1% of documents, B in 60%
     TermWeightor weightor = t -> t.equals(A) ? -Math.log(0.01) : -Math.log(0.6);
     assertEquals(-Math.log(0.99), negativeDisjunctWeight(weightor, A), 1e-9);
