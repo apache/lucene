@@ -23,6 +23,7 @@ import static java.lang.foreign.ValueLayout.JAVA_INT;
 import static java.lang.foreign.ValueLayout.JAVA_LONG;
 
 import java.lang.foreign.AddressLayout;
+import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
 import java.lang.foreign.MemorySegment;
@@ -139,6 +140,10 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
   private static final FunctionDescriptor findNextGEQDesc =
       FunctionDescriptor.of(JAVA_INT, POINTER, JAVA_INT, JAVA_INT, JAVA_INT);
 
+  // (POINTER, POINTER, POINTER, INT, INT) -> void
+  private static final FunctionDescriptor bulkFloatDesc =
+      FunctionDescriptor.ofVoid(POINTER, POINTER, POINTER, JAVA_INT, JAVA_INT);
+
   // Method handles
   private static final MethodHandle dotProduct$MH;
   private static final MethodHandle squareDistance$MH;
@@ -146,6 +151,9 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
   private static final MethodHandle dotProductFloat$MH;
   private static final MethodHandle squareDistanceFloat$MH;
   private static final MethodHandle cosineFloat$MH;
+  private static final MethodHandle dotProductBulkFloat$MH;
+  private static final MethodHandle squareDistanceBulkFloat$MH;
+  private static final MethodHandle cosineBulkFloat$MH;
   private static final MethodHandle int4SquareDistance$MH;
   private static final MethodHandle int4SquareDistanceSinglePacked$MH;
   private static final MethodHandle int4SquareDistanceBothPacked$MH;
@@ -198,6 +206,9 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
       l2normalize$MH = getMethodHandle("l2normalize", l2normalizeDesc);
       expand8$MH = getMethodHandle("expand8", expand8Desc);
       findNextGEQ$MH = getMethodHandle("findNextGEQ", findNextGEQDesc);
+      dotProductBulkFloat$MH = getMethodHandle("dotProductBulkFloat", bulkFloatDesc);
+      squareDistanceBulkFloat$MH = getMethodHandle("squareDistanceBulkFloat", bulkFloatDesc);
+      cosineBulkFloat$MH = getMethodHandle("cosineBulkFloat", bulkFloatDesc);
     } else if (Constants.NATIVE_DOT_PRODUCT_ENABLED) {
       throw new RuntimeException("Native library dotProduct missing!");
     } else {
@@ -208,6 +219,9 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
       dotProductFloat$MH = null;
       squareDistanceFloat$MH = null;
       cosineFloat$MH = null;
+      dotProductBulkFloat$MH = null;
+      squareDistanceBulkFloat$MH = null;
+      cosineBulkFloat$MH = null;
       int4SquareDistance$MH = null;
       int4SquareDistanceSinglePacked$MH = null;
       int4SquareDistanceBothPacked$MH = null;
@@ -417,7 +431,59 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public void dotProductBulk(float[] query, float[][] docs, float[] results) {
+    if (dotProductBulkFloat$MH != null && docs.length > 0) {
+      try (Arena arena = Arena.ofConfined()) {
+        MemorySegment qSeg = MemorySegment.ofArray(query);
+        MemorySegment docsSeg = arena.allocate(POINTER, docs.length);
+        for (int i = 0; i < docs.length; i++) {
+          docsSeg.setAtIndex(POINTER, i, MemorySegment.ofArray(docs[i]));
+        }
+        MemorySegment resSeg = MemorySegment.ofArray(results);
+        dotProductBulkFloat$MH.invokeExact(qSeg, docsSeg, resSeg, docs.length, query.length);
+        return;
+      } catch (Throwable ex) {
+        throw new AssertionError("should not reach here", ex);
+      }
+    }
     delegateVectorUtilSupport.dotProductBulk(query, docs, results);
+  }
+
+  @Override
+  public void cosineBulk(float[] query, float[][] docs, float[] results) {
+    if (cosineBulkFloat$MH != null && docs.length > 0) {
+      try (Arena arena = Arena.ofConfined()) {
+        MemorySegment qSeg = MemorySegment.ofArray(query);
+        MemorySegment docsSeg = arena.allocate(POINTER, docs.length);
+        for (int i = 0; i < docs.length; i++) {
+          docsSeg.setAtIndex(POINTER, i, MemorySegment.ofArray(docs[i]));
+        }
+        MemorySegment resSeg = MemorySegment.ofArray(results);
+        cosineBulkFloat$MH.invokeExact(qSeg, docsSeg, resSeg, docs.length, query.length);
+        return;
+      } catch (Throwable ex) {
+        throw new AssertionError("should not reach here", ex);
+      }
+    }
+    delegateVectorUtilSupport.cosineBulk(query, docs, results);
+  }
+
+  @Override
+  public void squareDistanceBulk(float[] query, float[][] docs, float[] results) {
+    if (squareDistanceBulkFloat$MH != null && docs.length > 0) {
+      try (Arena arena = Arena.ofConfined()) {
+        MemorySegment qSeg = MemorySegment.ofArray(query);
+        MemorySegment docsSeg = arena.allocate(POINTER, docs.length);
+        for (int i = 0; i < docs.length; i++) {
+          docsSeg.setAtIndex(POINTER, i, MemorySegment.ofArray(docs[i]));
+        }
+        MemorySegment resSeg = MemorySegment.ofArray(results);
+        squareDistanceBulkFloat$MH.invokeExact(qSeg, docsSeg, resSeg, docs.length, query.length);
+        return;
+      } catch (Throwable ex) {
+        throw new AssertionError("should not reach here", ex);
+      }
+    }
+    delegateVectorUtilSupport.squareDistanceBulk(query, docs, results);
   }
 
   @Override
