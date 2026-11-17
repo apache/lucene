@@ -41,10 +41,25 @@ final class PendingSoftDeletes extends PendingDeletes {
     hardDeletes = new PendingDeletes(info);
   }
 
+  /**
+   * Init from an NRT reader, whose live docs already include the soft deletes of {@code info}'s doc
+   * values generation.
+   */
   PendingSoftDeletes(String field, SegmentReader reader, SegmentCommitInfo info) {
-    super(reader, info);
+    super(info, reader.getLiveDocs(), true);
+    assert reader.isNRT : "the live docs of a reader opened from disk don't include soft deletes";
     this.field = field;
-    hardDeletes = new PendingDeletes(reader, info);
+    Bits hardLiveDocs = reader.getHardLiveDocs();
+    int numHardDeletes =
+        hardLiveDocs == null
+            ? 0
+            : hardLiveDocs.length() - FixedBitSet.copyOf(hardLiveDocs).cardinality();
+    hardDeletes = new PendingDeletes(info, hardLiveDocs, true);
+    hardDeletes.pendingDeleteCount = numHardDeletes - info.getDelCount();
+    // A soft deleted document that was hard deleted since counts as a hard delete. Until that hard
+    // delete is written, info still counts it as soft deleted, so subtract it here.
+    pendingDeleteCount = reader.numDeletedDocs() - numHardDeletes - info.getSoftDelCount();
+    dvGeneration = info.getDocValuesGen();
   }
 
   @Override
