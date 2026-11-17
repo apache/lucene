@@ -921,10 +921,10 @@ public class TestSkipBlockRangeIteratorBitSetOperations extends BaseDocValuesSki
   }
 
   /**
-   * Regression test ensuring the MAYBE branch of applyMask keeps confirming via the bulk (SIMD-
-   * capable) {@link NumericDocValues#rangeIntoBitSet} path instead of falling back to a scalar
-   * per-doc {@code matches()} loop, which would silently lose vectorization once a range clause
-   * becomes a trailing clause in a conjunction rather than the sole/leading clause.
+   * Regression test ensuring the MAYBE branch of applyMask keeps confirming via the bulk
+   * (SIMD-capable) {@link NumericDocValues#rangeIntoBitSet} path instead of falling back to a
+   * scalar per-doc {@code matches()} loop, which would silently lose vectorization once a range
+   * clause becomes a trailing clause in a conjunction rather than the sole/leading clause.
    */
   public void testApplyMaskMaybeBlockUsesVectorizedPath() throws Exception {
     long queryMin = 10;

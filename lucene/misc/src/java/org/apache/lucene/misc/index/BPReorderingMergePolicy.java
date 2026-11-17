@@ -120,20 +120,18 @@ public final class BPReorderingMergePolicy extends FilterMergePolicy {
     for (OneMerge oneMerge : spec.merges) {
 
       newSpec.add(
-          new OneMerge(oneMerge) {
+          new MergePolicy.FilterOneMerge(oneMerge) {
 
             private final SetOnce<Boolean> reordered = new SetOnce<>();
-
-            @Override
-            public CodecReader wrapForMerge(CodecReader reader) throws IOException {
-              return oneMerge.wrapForMerge(reader);
-            }
 
             @Override
             public Sorter.DocMap reorder(CodecReader reader, Directory dir, Executor executor)
                 throws IOException {
               Sorter.DocMap docMap = null;
-              if (reader.numDocs() >= minNumDocs) {
+              // A partitioned merge decides which documents each of its outputs holds, which a
+              // reordering of them all would undo. Leave the order alone, as when there is not
+              // enough RAM.
+              if (isPartitioned() == false && reader.numDocs() >= minNumDocs) {
                 try {
                   docMap = reorderer.computeDocMap(reader, dir, executor);
                 } catch (NotEnoughRAMException _) {

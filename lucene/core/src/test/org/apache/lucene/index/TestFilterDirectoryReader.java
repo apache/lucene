@@ -183,11 +183,10 @@ public class TestFilterDirectoryReader extends LuceneTestCase {
 
     wrapped
         .getReaderCacheHelper()
-        .addClosedListener(
-            key -> {
-              closeCalledCounter.incrementAndGet();
-              assertSame(key, wrapped.getReaderCacheHelper().getKey());
-            });
+        .addClosedListener(key -> {
+          closeCalledCounter.incrementAndGet();
+          assertSame(key, wrapped.getReaderCacheHelper().getKey());
+        });
 
     reader.close();
     assertEquals(1, closeCalledCounter.get());

@@ -149,19 +149,17 @@ public class CodeProfilingPlugin extends LuceneGradlePlugin {
       Provider<List<ConfigurableFileTree>> jfrFiles =
           project
               .getProviders()
-              .provider(
-                  () -> {
-                    return testTasks.stream()
-                        .map(Test::getWorkingDir)
-                        .map(
-                            dir ->
-                                project.fileTree(
-                                    dir,
-                                    cft -> {
-                                      cft.include("*.jfr");
-                                    }))
-                        .toList();
-                  });
+              .provider(() -> {
+                return testTasks.stream()
+                    .map(Test::getWorkingDir)
+                    .map(dir ->
+                        project.fileTree(
+                            dir,
+                            cft -> {
+                              cft.include("*.jfr");
+                            }))
+                    .toList();
+              });
 
       // wipe any previous jfr files.
       var cleanPreviousProfiles =
@@ -179,35 +177,31 @@ public class CodeProfilingPlugin extends LuceneGradlePlugin {
               .getTasks()
               .withType(ShowJfrProfileSummaryTask.class)
               .named(ShowJfrProfileSummaryTask.TASK_NAME);
-      showProfileSummary.configure(
-          task -> {
-            task.getJfrFiles().from(jfrFiles);
-          });
+      showProfileSummary.configure(task -> {
+        task.getJfrFiles().from(jfrFiles);
+      });
 
       // configure Test tasks to start with the jfr.
-      testTasks.configureEach(
-          task -> {
-            task.jvmArgs(
-                List.of(
-                    "-XX:StartFlightRecording=dumponexit=true,maxsize=250M,settings="
-                        + gradlePluginResource(project, profilingSettingsPath()),
-                    "-XX:+UnlockDiagnosticVMOptions",
-                    "-XX:+DebugNonSafepoints"));
-            task.dependsOn(cleanPreviousProfiles);
-            task.finalizedBy(showProfileSummary);
+      testTasks.configureEach(task -> {
+        task.jvmArgs(
+            List.of(
+                "-XX:StartFlightRecording=dumponexit=true,maxsize=250M,settings="
+                    + gradlePluginResource(project, profilingSettingsPath()),
+                "-XX:+UnlockDiagnosticVMOptions",
+                "-XX:+DebugNonSafepoints"));
+        task.dependsOn(cleanPreviousProfiles);
+        task.finalizedBy(showProfileSummary);
 
-            showProfileSummary.configure(
-                t -> {
-                  t.getShouldRunConditions()
-                      .add(
-                          project
-                              .getProviders()
-                              .provider(
-                                  () -> {
-                                    return taskDidNotFail(task);
-                                  }));
-                });
-          });
+        showProfileSummary.configure(t -> {
+          t.getShouldRunConditions()
+              .add(
+                  project
+                      .getProviders()
+                      .provider(() -> {
+                        return taskDidNotFail(task);
+                      }));
+        });
+      });
     }
   }
 

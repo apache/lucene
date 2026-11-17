@@ -30,18 +30,17 @@ public class TestDocumentsWriterPerThreadPool extends LuceneTestCase {
   public void testLockReleaseAndClose() throws IOException {
     try (Directory directory = newDirectory()) {
       DocumentsWriterPerThreadPool pool =
-          new DocumentsWriterPerThreadPool(
-              () ->
-                  new DocumentsWriterPerThread(
-                      Version.LATEST.major,
-                      "",
-                      directory,
-                      directory,
-                      newIndexWriterConfig(),
-                      new DocumentsWriterDeleteQueue(null),
-                      null,
-                      new AtomicLong(),
-                      false));
+          new DocumentsWriterPerThreadPool(() ->
+              new DocumentsWriterPerThread(
+                  Version.LATEST.major,
+                  "",
+                  directory,
+                  directory,
+                  newIndexWriterConfig(),
+                  new DocumentsWriterDeleteQueue(null),
+                  null,
+                  new AtomicLong(),
+                  false));
 
       DocumentsWriterPerThread first = pool.getAndLock();
       assertEquals(1, pool.size());
@@ -70,33 +69,31 @@ public class TestDocumentsWriterPerThreadPool extends LuceneTestCase {
   public void testCloseWhileNewWritersLocked() throws IOException, InterruptedException {
     try (Directory directory = newDirectory()) {
       DocumentsWriterPerThreadPool pool =
-          new DocumentsWriterPerThreadPool(
-              () ->
-                  new DocumentsWriterPerThread(
-                      Version.LATEST.major,
-                      "",
-                      directory,
-                      directory,
-                      newIndexWriterConfig(),
-                      new DocumentsWriterDeleteQueue(null),
-                      null,
-                      new AtomicLong(),
-                      false));
+          new DocumentsWriterPerThreadPool(() ->
+              new DocumentsWriterPerThread(
+                  Version.LATEST.major,
+                  "",
+                  directory,
+                  directory,
+                  newIndexWriterConfig(),
+                  new DocumentsWriterDeleteQueue(null),
+                  null,
+                  new AtomicLong(),
+                  false));
 
       DocumentsWriterPerThread first = pool.getAndLock();
       pool.lockNewWriters();
       CountDownLatch latch = new CountDownLatch(1);
       Thread t =
-          new Thread(
-              () -> {
-                try {
-                  latch.countDown();
-                  pool.getAndLock();
-                  fail();
-                } catch (AlreadyClosedException _) {
-                  // fine
-                }
-              });
+          new Thread(() -> {
+            try {
+              latch.countDown();
+              pool.getAndLock();
+              fail();
+            } catch (AlreadyClosedException _) {
+              // fine
+            }
+          });
       t.start();
       latch.await();
       while (t.getState().equals(Thread.State.WAITING) == false) {

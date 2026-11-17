@@ -58,35 +58,32 @@ public abstract class WipeGradleTempPlugin extends LuceneGradlePlugin {
             "gradleTempCleanupService",
             TempCleanupService.class,
             service -> {
-              service.parameters(
-                  params -> {
-                    params.getProjectRootDir().set(getProjectRootPath(rootProject).toFile());
-                    File gradleUserHome = gradle.getGradleUserHomeDir();
-                    params.getUserHomeDir().set(gradleUserHome);
-                    params
-                        .getGradleDaemonDir()
-                        .set(
-                            gradleUserHome
-                                .toPath()
-                                .resolve("daemon")
-                                .resolve(gradle.getGradleVersion())
-                                .toFile());
-                  });
+              service.parameters(params -> {
+                params.getProjectRootDir().set(getProjectRootPath(rootProject).toFile());
+                File gradleUserHome = gradle.getGradleUserHomeDir();
+                params.getUserHomeDir().set(gradleUserHome);
+                params
+                    .getGradleDaemonDir()
+                    .set(
+                        gradleUserHome
+                            .toPath()
+                            .resolve("daemon")
+                            .resolve(gradle.getGradleVersion())
+                            .toFile());
+              });
             })
         .get(); // make sure it'll run.
 
     rootProject
         .getAllprojects()
-        .forEach(
-            project -> {
-              project
-                  .getPlugins()
-                  .withType(JavaPlugin.class)
-                  .configureEach(
-                      _ -> {
-                        wipeAfterTests(project);
-                      });
-            });
+        .forEach(project -> {
+          project
+              .getPlugins()
+              .withType(JavaPlugin.class)
+              .configureEach(_ -> {
+                wipeAfterTests(project);
+              });
+        });
   }
 
   private void wipeAfterTests(Project project) {
@@ -99,21 +96,19 @@ public abstract class WipeGradleTempPlugin extends LuceneGradlePlugin {
             task -> {
               task.delete(
                   testTasks.stream()
-                      .map(
-                          test -> {
-                            return project.fileTree(
-                                test.getTemporaryDir(),
-                                fileTree -> {
-                                  fileTree.include("jar_extract*");
-                                });
-                          })
+                      .map(test -> {
+                        return project.fileTree(
+                            test.getTemporaryDir(),
+                            fileTree -> {
+                              fileTree.include("jar_extract*");
+                            });
+                      })
                       .toList());
             });
 
-    testTasks.configureEach(
-        task -> {
-          task.finalizedBy(wipeTaskTempTask);
-        });
+    testTasks.configureEach(task -> {
+      task.finalizedBy(wipeTaskTempTask);
+    });
   }
 
   public abstract static class TempCleanupService

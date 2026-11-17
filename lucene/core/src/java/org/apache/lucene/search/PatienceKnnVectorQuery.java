@@ -267,21 +267,22 @@ public class PatienceKnnVectorQuery extends AbstractKnnVectorQuery {
     public KnnCollector newCollector(
         int visitLimit, KnnSearchStrategy searchStrategy, LeafReaderContext ctx)
         throws IOException {
-      return new HnswQueueSaturationCollector(
-          knnCollectorManager.newCollector(visitLimit, searchStrategy, ctx),
-          saturationThreshold,
-          patience);
+      KnnCollector collector = knnCollectorManager.newCollector(visitLimit, searchStrategy, ctx);
+      return collector != null
+          ? new HnswQueueSaturationCollector(collector, saturationThreshold, patience)
+          : null;
     }
 
     @Override
     public KnnCollector newOptimisticCollector(
         int visitLimit, KnnSearchStrategy searchStrategy, LeafReaderContext ctx, int k)
         throws IOException {
-      if (knnCollectorManager.isOptimistic()) {
-        return new HnswQueueSaturationCollector(
-            knnCollectorManager.newOptimisticCollector(visitLimit, searchStrategy, ctx, k),
-            saturationThreshold,
-            patience);
+      KnnCollector collector;
+      if (knnCollectorManager.isOptimistic()
+          && (collector =
+                  knnCollectorManager.newOptimisticCollector(visitLimit, searchStrategy, ctx, k))
+              != null) {
+        return new HnswQueueSaturationCollector(collector, saturationThreshold, patience);
       } else {
         return null;
       }

@@ -646,7 +646,7 @@ public class TestIndexWriterReader extends LuceneTestCase {
             newIndexWriterConfig(new MockAnalyzer(random()))
                 .setMaxBufferedDocs(2)
                 .setMaxFullFlushMergeWaitMillis(0)
-                .setMergedSegmentWarmer((_) -> warmCount.incrementAndGet())
+                .setMergedSegmentWarmer(_ -> warmCount.incrementAndGet())
                 .setMergeScheduler(new ConcurrentMergeScheduler())
                 .setMergePolicy(newLogMergePolicy()));
 
@@ -1006,13 +1006,12 @@ public class TestIndexWriterReader extends LuceneTestCase {
             newIndexWriterConfig(new MockAnalyzer(random()))
                 .setMaxBufferedDocs(2)
                 .setReaderPooling(true)
-                .setMergedSegmentWarmer(
-                    (r) -> {
-                      IndexSearcher s = newSearcher(r);
-                      int count = s.count(new TermQuery(new Term("foo", "bar")));
-                      assertEquals(20, count);
-                      didWarm.set(true);
-                    })
+                .setMergedSegmentWarmer(r -> {
+                  IndexSearcher s = newSearcher(r);
+                  int count = s.count(new TermQuery(new Term("foo", "bar")));
+                  assertEquals(20, count);
+                  didWarm.set(true);
+                })
                 .setMergePolicy(mp));
 
     Document doc = new Document();
@@ -1210,16 +1209,14 @@ public class TestIndexWriterReader extends LuceneTestCase {
     // create a comparator that sort leaf readers according to
     // the min value (asc sort) or max value (desc sort) of its points
     Comparator<LeafReader> leafSorter =
-        Comparator.comparingLong(
-            r -> {
-              PointValues points = r.getPointValues(FIELD_NAME);
-              if (points != null) {
-                byte[] sortValue =
-                    ASC_SORT ? points.getMinPackedValue() : points.getMaxPackedValue();
-                return LongPoint.decodeDimension(sortValue, 0);
-              }
-              return MISSING_VALUE;
-            });
+        Comparator.comparingLong(r -> {
+          PointValues points = r.getPointValues(FIELD_NAME);
+          if (points != null) {
+            byte[] sortValue = ASC_SORT ? points.getMinPackedValue() : points.getMaxPackedValue();
+            return LongPoint.decodeDimension(sortValue, 0);
+          }
+          return MISSING_VALUE;
+        });
     if (ASC_SORT == false) {
       leafSorter = leafSorter.reversed();
     }

@@ -64,10 +64,9 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
               .register(
                   "verifyErrorProneCheckListSanity",
                   t -> {
-                    t.doFirst(
-                        _ -> {
-                          ensureCheckListIsComplete();
-                        });
+                    t.doFirst(_ -> {
+                      ensureCheckListIsComplete();
+                    });
                   });
       project
           .getTasks()
@@ -119,16 +118,14 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
                   boolean hasCheckTask =
                       project.getGradle().getStartParameter().getTaskNames().contains("check");
 
-                  task.onlyIf(
-                      _ -> {
-                        // Only complain if we're running a 'check'.
-                        return hasCheckTask;
-                      });
+                  task.onlyIf(_ -> {
+                    // Only complain if we're running a 'check'.
+                    return hasCheckTask;
+                  });
 
-                  task.doFirst(
-                      t -> {
-                        t.getLogger().warn("Errorprone linting turned off ({})", skipReason);
-                      });
+                  task.doFirst(t -> {
+                    t.getLogger().warn("Errorprone linting turned off ({})", skipReason);
+                  });
                 });
       }
 
@@ -145,19 +142,17 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
               BuiltInCheckerSuppliers.ENABLED_WARNINGS,
               BuiltInCheckerSuppliers.DISABLED_CHECKS)
           .flatMap(Collection::stream)
-          .forEach(
-              bugCheckerInfo -> {
-                var canonicalName = bugCheckerInfo.canonicalName();
-                allCanonicalNames.add(canonicalName);
-                bugCheckerInfo
-                    .allNames()
-                    .forEach(
-                        name -> {
-                          if (!name.equals(canonicalName)) {
-                            altToCanonical.put(name, canonicalName);
-                          }
-                        });
-              });
+          .forEach(bugCheckerInfo -> {
+            var canonicalName = bugCheckerInfo.canonicalName();
+            allCanonicalNames.add(canonicalName);
+            bugCheckerInfo
+                .allNames()
+                .forEach(name -> {
+                  if (!name.equals(canonicalName)) {
+                    altToCanonical.put(name, canonicalName);
+                  }
+                });
+          });
 
       var currentChecks = ALL_CHECKS_PARSED.keySet();
 
@@ -172,15 +167,14 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
                 "Verify the list of error-prone checks in '%s', there are unknown checks declared there:\n%s",
                 pluginClassName,
                 missingChecks.stream()
-                    .map(
-                        name ->
-                            "  - "
-                                + (altToCanonical.containsKey(name)
-                                    ? name
-                                        + " (canonical check name is '"
-                                        + altToCanonical.get(name)
-                                        + "')"
-                                    : name))
+                    .map(name ->
+                        "  - "
+                            + (altToCanonical.containsKey(name)
+                                ? name
+                                    + " (canonical check name is '"
+                                    + altToCanonical.get(name)
+                                    + "')"
+                                : name))
                     .collect(Collectors.joining("\n"))));
       }
 
@@ -194,13 +188,12 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
                     + "error-prone that are not declared there:\n%s",
                 pluginClassName,
                 newChecks.stream()
-                    .map(
-                        name ->
-                            "  - "
-                                + name
-                                + ", docs at: "
-                                + "https://errorprone.info/bugpattern/"
-                                + name)
+                    .map(name ->
+                        "  - "
+                            + name
+                            + ", docs at: "
+                            + "https://errorprone.info/bugpattern/"
+                            + name)
                     .collect(Collectors.joining("\n"))));
       }
     }
@@ -228,10 +221,9 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
       project
           .getTasks()
           .withType(JavaCompile.class)
-          .configureEach(
-              t -> {
-                t.dependsOn(":" + TASK_ERROR_PRONE_SKIPPED);
-              });
+          .configureEach(t -> {
+            t.dependsOn(":" + TASK_ERROR_PRONE_SKIPPED);
+          });
 
       // The errorprone plugin automatically adds test classpath entries.
       // We need to add it here manually so that versions.lock is consistent with or without
@@ -262,6 +254,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "AddNullMarkedToPackageInfo:OFF", // we don't use jspecify
     "AddressSelection:OFF", // TODO: new, not checked if applicable to Lucene
     "AlmostJavadoc:OFF", // noisy (e.g. commented-out code misinterpreted as javadocs)
+    "AlmostExhaustiveTestParameter:OFF", // irrelevant (TestParameterInjector)
     "AlreadyChecked:OFF", // TODO: there are problems
     "AlwaysThrows:OFF", // we don't use guava
     "AmbiguousMethodReference:OFF",
@@ -706,7 +699,6 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "PreferInstanceofOverGetKind:OFF", // TODO: new, not checked if applicable to Lucene
     "PreferJavaTimeOverload:OFF", // TODO: new, not checked if applicable to Lucene
     "PreferPreconditions:OFF", // we don't use guava
-    "PreferTestParameter:OFF", // irrelevant
     "PreferThrowsTag:OFF", // TODO: perhaps worth considering
     "PreferredInterfaceType:OFF", // TODO: new, not checked if applicable to Lucene
     "PrimitiveArrayPassedToVarargsMethod:OFF", // TODO: new, not checked if applicable to Lucene
@@ -766,6 +758,8 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "ShortCircuitBoolean:OFF", // TODO: there are problems
     "ShouldHaveEvenArgs:OFF", // we don't use truth
     "SimplifyTestParameter:OFF", // irrelevant (TestParameterInjector)
+    "SingleTestParameter:OFF", // irrelevant (TestParameterInjector)
+    "SingleValueTestParameter:OFF", // irrelevant (TestParameterInjector)
     "SizeGreaterThanOrEqualsZero:ERROR",
     "StatementSwitchToExpressionSwitch:OFF", // TODO: there are problems
     "StaticAssignmentInConstructor:OFF",
@@ -891,6 +885,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "UseEnumSwitch:OFF", // TODO: new, not checked if applicable to Lucene
     "UsingJsr305CheckReturnValue:OFF", // TODO: new, not checked if applicable to Lucene
     "ValueClassIdentity:OFF", // false positives: flags legitimate IdentityHashMap uses
+    "ValueClassEquals:OFF", // irrelevant (applies to Valhalla value classes only)
     "Var:OFF", // TODO: new, not checked if applicable to Lucene
     "VarTypeName:ERROR",
     "VarWithPrimitive:OFF", // very subjective
@@ -909,13 +904,12 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
 
   private static final Map<String, CheckSeverity> ALL_CHECKS_PARSED =
       Stream.of(ALL_CHECKS)
-          .map(
-              check -> {
-                var colon = check.indexOf(":");
-                var checkName = check.substring(0, colon);
-                var severity = CheckSeverity.valueOf(check.substring(colon + 1));
-                return Map.entry(checkName, severity);
-              })
+          .map(check -> {
+            var colon = check.indexOf(":");
+            var checkName = check.substring(0, colon);
+            var severity = CheckSeverity.valueOf(check.substring(colon + 1));
+            return Map.entry(checkName, severity);
+          })
           .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
   /** Filter out all checks which are disabled. */
@@ -933,68 +927,64 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     project
         .getTasks()
         .withType(JavaCompile.class)
-        .configureEach(
-            t -> {
-              t.dependsOn(":" + CheckEnvironmentPlugin.TASK_CHECK_JDK_INTERNALS_EXPOSED_TO_GRADLE);
+        .configureEach(t -> {
+          t.dependsOn(":" + CheckEnvironmentPlugin.TASK_CHECK_JDK_INTERNALS_EXPOSED_TO_GRADLE);
 
-              var epOptions =
-                  ((ExtensionAware) t.getOptions())
-                      .getExtensions()
-                      .getByType(ErrorProneOptions.class);
+          var epOptions =
+              ((ExtensionAware) t.getOptions()).getExtensions().getByType(ErrorProneOptions.class);
 
-              epOptions.getDisableWarningsInGeneratedCode().set(true);
-              epOptions.getAllErrorsAsWarnings().set(true);
+          epOptions.getDisableWarningsInGeneratedCode().set(true);
+          epOptions.getAllErrorsAsWarnings().set(true);
 
-              // In case a named check is removed, fail.
-              epOptions.getIgnoreUnknownCheckNames().set(false);
+          // In case a named check is removed, fail.
+          epOptions.getIgnoreUnknownCheckNames().set(false);
 
-              // Turn off everything by default, then re-enable what's needed.
-              epOptions.getDisableAllChecks().set(true);
-              epOptions.getChecks().putAll(ENABLED_CHECKS);
-              t.getLogger()
-                  .info(
-                      "Compiling with error prone, enabled checks: "
-                          + String.join(", ", ENABLED_CHECKS.keySet()));
+          // Turn off everything by default, then re-enable what's needed.
+          epOptions.getDisableAllChecks().set(true);
+          epOptions.getChecks().putAll(ENABLED_CHECKS);
+          t.getLogger()
+              .info(
+                  "Compiling with error prone, enabled checks: "
+                      + String.join(", ", ENABLED_CHECKS.keySet()));
 
-              // Exclude certain files (generated ones, mostly).
-              List<String> excludedPaths =
-                  switch (project.getPath()) {
-                    case ":lucene:core" -> List.of(".*/StandardTokenizerImpl.java");
-                    case ":lucene:benchmark-jmh" -> List.of(".*/jmh_generated/.*");
-                    case ":lucene:analysis:common" ->
-                        List.of(
-                            ".*/HTMLStripCharFilter.java", ".*/UAX29URLEmailTokenizerImpl.java");
-                    case ":lucene:test-framework" ->
-                        List.of(
-                            ".*/EmojiTokenizationTestUnicode_11_0.java",
-                            ".*/WordBreakTestUnicode_9_0_0.java");
-                    case ":lucene:queryparser" ->
-                        List.of(
-                            ".*/classic/ParseException.java",
-                            ".*/classic/QueryParser.java",
-                            ".*/classic/QueryParserConstants.java",
-                            ".*/classic/QueryParserTokenManager.java",
-                            ".*/classic/Token.java",
-                            ".*/classic/TokenMgrError.java",
-                            ".*/standard/parser/ParseException.java",
-                            ".*/standard/parser/StandardSyntaxParser.java",
-                            ".*/standard/parser/StandardSyntaxParserConstants.java",
-                            ".*/standard/parser/StandardSyntaxParserTokenManager.java",
-                            ".*/standard/parser/Token.java",
-                            ".*/standard/parser/TokenMgrError.java",
-                            ".*/surround/parser/ParseException.java",
-                            ".*/surround/parser/QueryParser.java",
-                            ".*/surround/parser/QueryParserConstants.java",
-                            ".*/surround/parser/QueryParserTokenManager.java",
-                            ".*/surround/parser/Token.java",
-                            ".*/surround/parser/TokenMgrError.java");
-                    default -> List.of();
-                  };
+          // Exclude certain files (generated ones, mostly).
+          List<String> excludedPaths =
+              switch (project.getPath()) {
+                case ":lucene:core" -> List.of(".*/StandardTokenizerImpl.java");
+                case ":lucene:benchmark-jmh" -> List.of(".*/jmh_generated/.*");
+                case ":lucene:analysis:common" ->
+                    List.of(".*/HTMLStripCharFilter.java", ".*/UAX29URLEmailTokenizerImpl.java");
+                case ":lucene:test-framework" ->
+                    List.of(
+                        ".*/EmojiTokenizationTestUnicode_11_0.java",
+                        ".*/WordBreakTestUnicode_9_0_0.java");
+                case ":lucene:queryparser" ->
+                    List.of(
+                        ".*/classic/ParseException.java",
+                        ".*/classic/QueryParser.java",
+                        ".*/classic/QueryParserConstants.java",
+                        ".*/classic/QueryParserTokenManager.java",
+                        ".*/classic/Token.java",
+                        ".*/classic/TokenMgrError.java",
+                        ".*/standard/parser/ParseException.java",
+                        ".*/standard/parser/StandardSyntaxParser.java",
+                        ".*/standard/parser/StandardSyntaxParserConstants.java",
+                        ".*/standard/parser/StandardSyntaxParserTokenManager.java",
+                        ".*/standard/parser/Token.java",
+                        ".*/standard/parser/TokenMgrError.java",
+                        ".*/surround/parser/ParseException.java",
+                        ".*/surround/parser/QueryParser.java",
+                        ".*/surround/parser/QueryParserConstants.java",
+                        ".*/surround/parser/QueryParserTokenManager.java",
+                        ".*/surround/parser/Token.java",
+                        ".*/surround/parser/TokenMgrError.java");
+                default -> List.of();
+              };
 
-              if (!excludedPaths.isEmpty()) {
-                epOptions.getExcludedPaths().set(String.join("|", excludedPaths));
-              }
-            });
+          if (!excludedPaths.isEmpty()) {
+            epOptions.getExcludedPaths().set(String.join("|", excludedPaths));
+          }
+        });
   }
 
   // Add the local version of errorprone to the errorprone configuration.

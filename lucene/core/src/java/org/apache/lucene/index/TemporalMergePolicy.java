@@ -574,10 +574,8 @@ public class TemporalMergePolicy extends MergePolicy {
         continue;
       }
 
-      bucketSegments.sort(
-          (a, b) ->
-              Double.compare(
-                  deleteRatios.getOrDefault(b, 0.0d), deleteRatios.getOrDefault(a, 0.0d)));
+      bucketSegments.sort((a, b) ->
+          Double.compare(deleteRatios.getOrDefault(b, 0.0d), deleteRatios.getOrDefault(a, 0.0d)));
 
       MergeSpecification bucketSpec = buildSequentialMerges(bucketSegments);
       if (bucketSpec == null) {
