@@ -49,6 +49,8 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -58,9 +60,9 @@ import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
 
 /**
- * Tests that {@link DedupHnswScalarQuantizedVectorsFormat} stores each distinct vector once, in
- * both raw and quantized form. General de-duplication behavior is covered by {@link
- * TestDedupFlatVectorsFormat}; this test focuses on the quantized side.
+ * Tests that {@link DedupHnswScalarQuantizedVectorsFormat} stores each distinct vector of a
+ * document once, in both raw and quantized form. General de-duplication behavior is covered by
+ * {@link TestDedupFlatVectorsFormat}; this test focuses on the quantized side.
  */
 public class TestDedupScalarQuantizedVectorsFormat extends LuceneTestCase {
 
@@ -95,7 +97,7 @@ public class TestDedupScalarQuantizedVectorsFormat extends LuceneTestCase {
         + DedupScalarQuantizedVectorValues.CORRECTIVE_BYTES;
   }
 
-  /** Repeated vectors are stored once, raw and quantized, but still read back per document. */
+  /** A document's repeated vector is stored once, raw and quantized, but read back per field. */
   public void testDuplicatesStoredOnce() throws Exception {
     float[] a = {1, 2, 3, 4};
     float[] b = {5, 6, 7, 8};
@@ -106,6 +108,7 @@ public class TestDedupScalarQuantizedVectorsFormat extends LuceneTestCase {
         Document doc = new Document();
         doc.add(new NumericDocValuesField("id", ord));
         doc.add(new KnnFloatVectorField("f", docVectors[ord], EUCLIDEAN));
+        doc.add(new KnnFloatVectorField("g", docVectors[ord], EUCLIDEAN)); // same vector as f
         w.addDocument(doc);
       }
       w.forceMerge(1);
@@ -113,7 +116,8 @@ public class TestDedupScalarQuantizedVectorsFormat extends LuceneTestCase {
         LeafReader leafReader = getOnlyLeafReader(reader);
         FloatVectorValues values = leafReader.getFloatVectorValues("f");
         assertEquals(docVectors.length, values.size()); // one entry per document
-        assertEquals(2, groupNumVectors(values)); // only two distinct vectors stored
+        assertEquals(
+            docVectors.length, groupNumVectors(values)); // one per document, shared by f and g
 
         // raw vectors read back exactly, resolved per document
         for (int ord = 0; ord < values.size(); ord++) {
@@ -121,10 +125,12 @@ public class TestDedupScalarQuantizedVectorsFormat extends LuceneTestCase {
           assertTrue(Arrays.equals(a, vector) || Arrays.equals(b, vector));
         }
 
-        // the quantized block also holds exactly two records
+        // the quantized block also holds exactly one record per document
         DedupScalarQuantizedVectorsReader sqReader = getQuantizedReader(leafReader, "f");
         DedupScalarQuantizedVectorsReader.FieldEntry entry = sqReader.getEntry("f", FLOAT32);
-        assertEquals(2 * quantizedRecordSize(a.length), entry.quantizedBlock().quantizedDataSize());
+        assertEquals(
+            docVectors.length * quantizedRecordSize(a.length),
+            entry.quantizedBlock().quantizedDataSize());
       }
     }
   }
@@ -183,16 +189,17 @@ public class TestDedupScalarQuantizedVectorsFormat extends LuceneTestCase {
     }
   }
 
-  /** Duplicates spanning multiple segments collapse to a single quantized copy when merged. */
-  public void testDuplicatesAcrossSegmentsDedupOnMerge() throws Exception {
+  /** A document's duplicates share one quantized copy when its segment is merged. */
+  public void testDuplicatesWithinDocumentDedupOnMerge() throws Exception {
     float[] a = {1, 1, 1, 1};
     float[] b = {2, 2, 2, 2};
-    float[][] docVectors = {a, b, a}; // 3 docs across 3 segments, 2 distinct
+    float[][] docVectors = {a, b, a}; // 3 docs across 3 segments
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, config())) {
       for (float[] docVector : docVectors) {
         Document doc = new Document();
         doc.add(new KnnFloatVectorField("f", docVector, EUCLIDEAN));
+        doc.add(new KnnFloatVectorField("g", docVector, EUCLIDEAN)); // same vector as f
         w.addDocument(doc);
         w.commit(); // one segment per document
       }
@@ -201,12 +208,15 @@ public class TestDedupScalarQuantizedVectorsFormat extends LuceneTestCase {
         LeafReader leafReader = getOnlyLeafReader(reader);
         FloatVectorValues values = leafReader.getFloatVectorValues("f");
         assertEquals(docVectors.length, values.size());
-        assertEquals(2, groupNumVectors(values)); // a's duplicate collapsed across segments
+        assertEquals(
+            docVectors.length, groupNumVectors(values)); // one per document, shared by f and g
         assertGraphBuilt(leafReader, "f"); // merge built the HNSW graph, not the tiny shortcut
 
         DedupScalarQuantizedVectorsReader sqReader = getQuantizedReader(leafReader, "f");
         DedupScalarQuantizedVectorsReader.FieldEntry entry = sqReader.getEntry("f", FLOAT32);
-        assertEquals(2 * quantizedRecordSize(a.length), entry.quantizedBlock().quantizedDataSize());
+        assertEquals(
+            docVectors.length * quantizedRecordSize(a.length),
+            entry.quantizedBlock().quantizedDataSize());
       }
     }
   }
@@ -341,6 +351,7 @@ public class TestDedupScalarQuantizedVectorsFormat extends LuceneTestCase {
       for (byte[] docVector : docVectors) {
         Document doc = new Document();
         doc.add(new KnnByteVectorField("f", docVector, EUCLIDEAN));
+        doc.add(new KnnByteVectorField("g", docVector, EUCLIDEAN)); // same vector as f
         w.addDocument(doc);
       }
       w.forceMerge(1);
@@ -348,7 +359,8 @@ public class TestDedupScalarQuantizedVectorsFormat extends LuceneTestCase {
         LeafReader leafReader = getOnlyLeafReader(reader);
         ByteVectorValues values = leafReader.getByteVectorValues("f");
         assertEquals(docVectors.length, values.size());
-        assertEquals(2, groupNumVectors(values)); // still de-duplicated
+        assertEquals(
+            docVectors.length, groupNumVectors(values)); // still de-duplicated per document
 
         DedupScalarQuantizedVectorsReader sqReader = getQuantizedReader(leafReader, "f");
         DedupScalarQuantizedVectorsReader.FieldEntry entry = sqReader.getEntry("f", BYTE);
@@ -358,8 +370,8 @@ public class TestDedupScalarQuantizedVectorsFormat extends LuceneTestCase {
   }
 
   /**
-   * FLOAT16 fields are quantized like FLOAT32: repeated vectors are stored once (raw and
-   * quantized), the raw {@code short[]} still reads back per document, and a quantized block is
+   * FLOAT16 fields are quantized like FLOAT32: a document's repeated vector is stored once (raw and
+   * quantized), the raw {@code short[]} still reads back per field, and a quantized block is
    * present.
    */
   public void testFloat16DuplicatesStoredOnceQuantized() throws Exception {
@@ -371,6 +383,7 @@ public class TestDedupScalarQuantizedVectorsFormat extends LuceneTestCase {
       for (short[] docVector : docVectors) {
         Document doc = new Document();
         doc.add(new KnnFloat16VectorField("f", docVector, EUCLIDEAN));
+        doc.add(new KnnFloat16VectorField("g", docVector, EUCLIDEAN)); // same vector as f
         w.addDocument(doc);
       }
       w.forceMerge(1);
@@ -378,7 +391,8 @@ public class TestDedupScalarQuantizedVectorsFormat extends LuceneTestCase {
         LeafReader leafReader = getOnlyLeafReader(reader);
         Float16VectorValues values = leafReader.getFloat16VectorValues("f");
         assertEquals(docVectors.length, values.size()); // one entry per document
-        assertEquals(2, groupNumVectors(values)); // only two distinct vectors stored
+        assertEquals(
+            docVectors.length, groupNumVectors(values)); // one per document, shared by f and g
 
         // raw float16 vectors read back exactly, resolved per document
         for (int ord = 0; ord < values.size(); ord++) {
@@ -386,18 +400,20 @@ public class TestDedupScalarQuantizedVectorsFormat extends LuceneTestCase {
           assertTrue(Arrays.equals(a, vector) || Arrays.equals(b, vector));
         }
 
-        // the quantized block holds exactly two records
+        // the quantized block holds exactly one record per document
         DedupScalarQuantizedVectorsReader sqReader = getQuantizedReader(leafReader, "f");
         DedupScalarQuantizedVectorsReader.FieldEntry entry = sqReader.getEntry("f", FLOAT16);
         assertNotNull(entry.quantizedBlock());
-        assertEquals(2 * quantizedRecordSize(a.length), entry.quantizedBlock().quantizedDataSize());
+        assertEquals(
+            docVectors.length * quantizedRecordSize(a.length),
+            entry.quantizedBlock().quantizedDataSize());
       }
     }
   }
 
   /**
-   * FLOAT16 duplicates that span multiple segments collapse to a single quantized copy on merge,
-   * and searches rank the query's duplicates together at the top.
+   * FLOAT16 duplicates that span multiple segments are stored per document on merge, and searches
+   * rank the query's duplicates together at the top.
    */
   public void testFloat16DuplicatesAcrossSegmentsAndSearch() throws Exception {
     int dimension = 16;
@@ -428,7 +444,7 @@ public class TestDedupScalarQuantizedVectorsFormat extends LuceneTestCase {
         LeafReader leafReader = getOnlyLeafReader(reader);
         Float16VectorValues values = leafReader.getFloat16VectorValues("f");
         assertEquals(numA + numB, values.size());
-        assertEquals(2, groupNumVectors(values)); // collapsed across segments
+        assertEquals(numA + numB, groupNumVectors(values)); // one vector per document
         assertGraphBuilt(leafReader, "f"); // merge built the HNSW graph, not the tiny shortcut
 
         TopDocs topDocs =
@@ -456,6 +472,43 @@ public class TestDedupScalarQuantizedVectorsFormat extends LuceneTestCase {
       out[i] = Float.floatToFloat16(vector[i]);
     }
     return out;
+  }
+
+  /** With an index sort, the quantized records follow the sorted doc order like the raw vectors. */
+  public void testIndexSortQuantizedRecords() throws Exception {
+    int numDocs = 10;
+    int dimension = 16;
+    float[][] vectors = new float[numDocs][];
+    IndexWriterConfig config =
+        config().setIndexSort(new Sort(new SortField("sort", SortField.Type.LONG, true)));
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, config)) {
+      for (int id = 0; id < numDocs; id++) {
+        vectors[id] = randomVector(dimension);
+        Document doc = new Document();
+        doc.add(new NumericDocValuesField("sort", id));
+        doc.add(new KnnFloatVectorField("f", vectors[id], EUCLIDEAN));
+        doc.add(new KnnFloat16VectorField("f16", toFloat16(vectors[id]), EUCLIDEAN));
+        w.addDocument(doc);
+      }
+      w.forceMerge(1); // the random config may have flushed several segments
+      try (DirectoryReader reader = DirectoryReader.open(w)) {
+        LeafReader leafReader = getOnlyLeafReader(reader);
+        AcceptDocs acceptDocs = AcceptDocs.fromLiveDocs(null, leafReader.maxDoc());
+        for (int id = 0; id < numDocs; id++) {
+          int expectedDoc = numDocs - 1 - id; // sorted in descending order
+          // the document's own vector scores best, through its quantized record
+          TopDocs topDocs =
+              leafReader.searchNearestVectors(
+                  "f", vectors[id], numDocs, acceptDocs, Integer.MAX_VALUE);
+          assertEquals(expectedDoc, topDocs.scoreDocs[0].doc);
+          topDocs =
+              leafReader.searchNearestVectors(
+                  "f16", toFloat16(vectors[id]), numDocs, acceptDocs, Integer.MAX_VALUE);
+          assertEquals(expectedDoc, topDocs.scoreDocs[0].doc);
+        }
+      }
+    }
   }
 
   /**
@@ -512,8 +565,7 @@ public class TestDedupScalarQuantizedVectorsFormat extends LuceneTestCase {
             LeafReader leafReader = getOnlyLeafReader(reader);
             FloatVectorValues values = leafReader.getFloatVectorValues("f");
             assertEquals(context, 2 * numDistinct, values.size());
-            assertEquals(
-                context, numDistinct, groupNumVectors(values)); // de-duplicated across segments
+            assertEquals(context, 2 * numDistinct, groupNumVectors(values)); // one per document
             assertGraphBuilt(leafReader, "f"); // threshold=0 forced the merge-time graph build
 
             float[] query = vectors[0];
@@ -579,7 +631,7 @@ public class TestDedupScalarQuantizedVectorsFormat extends LuceneTestCase {
             LeafReader leafReader = getOnlyLeafReader(reader);
             Float16VectorValues values = leafReader.getFloat16VectorValues("f");
             assertEquals(2 * numDistinct, values.size());
-            assertEquals(numDistinct, groupNumVectors(values)); // de-duplicated across segments
+            assertEquals(2 * numDistinct, groupNumVectors(values)); // one vector per document
             assertGraphBuilt(leafReader, "f"); // threshold=0 forced the merge-time graph build
 
             float[] queryFloat =

@@ -18,7 +18,7 @@
 /**
  * De-duplicating HNSW vector formats.
  *
- * <p>Stores each distinct vector once and shares it across the documents and fields that reference
+ * <p>Stores each distinct vector of a document once and shares it across the fields that reference
  * it, while reusing the Lucene 9.9 HNSW graph. Two formats are provided:
  *
  * <ul>
