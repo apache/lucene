@@ -109,11 +109,10 @@ public class TestPhraseWildcardQuery extends LuceneTestCase {
     searchAndCheckResults(field(1), 100, "e*", "b*");
     assertCounters().singleTermAnalysis(0).multiTermAnalysis(2).segmentUse(4).segmentSkip(0);
 
-    expectDifferentScoreForSpanNearQueryWithMultiTermSubset(
-        () -> {
-          searchAndCheckResults(field(2), 100, "tim*", "t*");
-          assertCounters().singleTermAnalysis(0).multiTermAnalysis(2).segmentUse(2).segmentSkip(1);
-        });
+    expectDifferentScoreForSpanNearQueryWithMultiTermSubset(() -> {
+      searchAndCheckResults(field(2), 100, "tim*", "t*");
+      assertCounters().singleTermAnalysis(0).multiTermAnalysis(2).segmentUse(2).segmentSkip(1);
+    });
   }
 
   public void testThreeMultiTerms() throws Exception {
@@ -123,11 +122,10 @@ public class TestPhraseWildcardQuery extends LuceneTestCase {
     searchAndCheckResults(field(0), 100, "t?e", "u*", "e*");
     assertCounters().singleTermAnalysis(0).multiTermAnalysis(3).segmentUse(4).segmentSkip(1);
 
-    expectDifferentScoreForSpanNearQueryWithMultiTermSubset(
-        () -> {
-          searchAndCheckResults(field(0), 100, "t?e", "b*", "b*");
-          assertCounters().singleTermAnalysis(0).multiTermAnalysis(3).segmentUse(4).segmentSkip(1);
-        });
+    expectDifferentScoreForSpanNearQueryWithMultiTermSubset(() -> {
+      searchAndCheckResults(field(0), 100, "t?e", "b*", "b*");
+      assertCounters().singleTermAnalysis(0).multiTermAnalysis(3).segmentUse(4).segmentSkip(1);
+    });
   }
 
   public void testOneSingleTermTwoMultiTerms() throws Exception {
@@ -192,11 +190,10 @@ public class TestPhraseWildcardQuery extends LuceneTestCase {
     searchAndCheckResults(field(0), 100, 0, true, "t?e", "blind", "e*");
     assertCounters().multiTermAnalysis(1).segmentUse(3).segmentSkip(2).queryEarlyStop(1);
 
-    expectDifferentScoreForSpanNearQueryWithMultiTermSubset(
-        () -> {
-          searchAndCheckResults(field(2), 100, 0, true, "tim*", "t*");
-          assertCounters().multiTermAnalysis(2).segmentUse(2).segmentSkip(1).queryEarlyStop(0);
-        });
+    expectDifferentScoreForSpanNearQueryWithMultiTermSubset(() -> {
+      searchAndCheckResults(field(2), 100, 0, true, "tim*", "t*");
+      assertCounters().multiTermAnalysis(2).segmentUse(2).segmentSkip(1).queryEarlyStop(0);
+    });
   }
 
   public void testMultiplePhraseWildcards() throws Exception {
@@ -225,27 +222,25 @@ public class TestPhraseWildcardQuery extends LuceneTestCase {
           new String[] {"t?e", "utopia"},
           new String[] {"d*", "b*"}
         });
-    expectDifferentScoreForSpanNearQueryWithMultiTermSubset(
-        () ->
-            searchAndCheckResultsMultiplePhraseWildcards(
-                new String[] {field(1), field(0), field(3)},
-                100,
-                0,
-                new String[][] {
-                  new String[] {"e*", "b*"},
-                  new String[] {"b*", "b*"}
-                }));
-    expectDifferentScoreForSpanNearQueryWithMultiTermSubset(
-        () ->
-            searchAndCheckResultsMultiplePhraseWildcards(
-                new String[] {field(1), field(0), field(3)},
-                100,
-                0,
-                new String[][] {
-                  new String[] {"e*", "b*"},
-                  new String[] {"b*", "b*"},
-                  new String[] {"t?e", "utopia"}
-                }));
+    expectDifferentScoreForSpanNearQueryWithMultiTermSubset(() ->
+        searchAndCheckResultsMultiplePhraseWildcards(
+            new String[] {field(1), field(0), field(3)},
+            100,
+            0,
+            new String[][] {
+              new String[] {"e*", "b*"},
+              new String[] {"b*", "b*"}
+            }));
+    expectDifferentScoreForSpanNearQueryWithMultiTermSubset(() ->
+        searchAndCheckResultsMultiplePhraseWildcards(
+            new String[] {field(1), field(0), field(3)},
+            100,
+            0,
+            new String[][] {
+              new String[] {"e*", "b*"},
+              new String[] {"b*", "b*"},
+              new String[] {"t?e", "utopia"}
+            }));
     searchAndCheckResultsMultiplePhraseWildcards(
         new String[] {field(1), field(0), field(3)},
         100,

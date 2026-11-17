@@ -240,10 +240,9 @@ public class FieldInfos implements Iterable<FieldInfo> {
   /** Returns a set of names of fields that have a terms index. The order is undefined. */
   public static Collection<String> getIndexedFields(IndexReader reader) {
     return reader.leaves().stream()
-        .flatMap(
-            l ->
-                StreamSupport.stream(l.reader().getFieldInfos().spliterator(), false)
-                    .filter(fi -> fi.getIndexOptions() != IndexOptions.NONE))
+        .flatMap(l ->
+            StreamSupport.stream(l.reader().getFieldInfos().spliterator(), false)
+                .filter(fi -> fi.getIndexOptions() != IndexOptions.NONE))
         .map(fi -> fi.name)
         .collect(Collectors.toSet());
   }

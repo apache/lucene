@@ -40,10 +40,9 @@ public class TestBitSetDocIdStream extends LuceneTestCase {
     BitSetDocIdStream stream = new BitSetDocIdStream(bitSet, base);
     BitSetIterator iterator = new BitSetIterator(bitSet, bitSet.approximateCardinality());
 
-    stream.forEach(
-        doc -> {
-          assertEquals(base + iterator.nextDoc(), doc);
-        });
+    stream.forEach(doc -> {
+      assertEquals(base + iterator.nextDoc(), doc);
+    });
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, iterator.nextDoc());
   }
 

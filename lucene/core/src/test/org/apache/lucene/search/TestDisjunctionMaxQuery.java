@@ -542,12 +542,11 @@ public class TestDisjunctionMaxQuery extends LuceneTestCase {
 
     final String expected =
         Arrays.stream(terms)
-            .map((term) -> "test:" + term)
+            .map(term -> "test:" + term)
             .collect(Collectors.joining(" | ", "(", ")~1.0"));
 
     DisjunctionMaxQuery source =
-        new DisjunctionMaxQuery(
-            Arrays.stream(terms).map((term) -> tq("test", term)).toList(), 1.0f);
+        new DisjunctionMaxQuery(Arrays.stream(terms).map(term -> tq("test", term)).toList(), 1.0f);
 
     assertEquals(expected, source.toString(""));
     Collection<Query> disjuncts = source.getDisjuncts();
@@ -689,7 +688,7 @@ public class TestDisjunctionMaxQuery extends LuceneTestCase {
   public void testGenerics() {
     var query =
         new DisjunctionMaxQuery(
-            Arrays.stream(new String[] {"term"}).map((term) -> tq("test", term)).toList(), 1.0f);
+            Arrays.stream(new String[] {"term"}).map(term -> tq("test", term)).toList(), 1.0f);
     assertEquals(1, query.getDisjuncts().size());
 
     var disjuncts =

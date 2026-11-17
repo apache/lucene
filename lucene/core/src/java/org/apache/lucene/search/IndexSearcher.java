@@ -779,11 +779,10 @@ public class IndexSearcher {
       for (int i = 0; i < leafSlices.length; ++i) {
         final LeafReaderContextPartition[] leaves = leafSlices[i].partitions;
         final C collector = collectors.get(i);
-        listTasks.add(
-            () -> {
-              search(leaves, weight, collector);
-              return collector;
-            });
+        listTasks.add(() -> {
+          search(leaves, weight, collector);
+          return collector;
+        });
       }
       List<C> results = taskExecutor.invokeAll(listTasks);
       return collectorManager.reduce(results);

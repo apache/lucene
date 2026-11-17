@@ -54,10 +54,9 @@ final class TermVectorsAdapter {
     Terms termVector = reader.termVectors().get(docid, field);
     if (termVector == null) {
       // no term vector available
-      log.warning(
-          () ->
-              String.format(
-                  Locale.ROOT, "No term vector indexed for doc: #%s and field: %s", docid, field));
+      log.warning(() ->
+          String.format(
+              Locale.ROOT, "No term vector indexed for doc: #%s and field: %s", docid, field));
       return Collections.emptyList();
     }
 

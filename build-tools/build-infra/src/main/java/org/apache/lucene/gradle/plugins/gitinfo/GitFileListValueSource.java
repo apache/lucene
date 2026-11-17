@@ -40,26 +40,25 @@ public abstract class GitFileListValueSource
         var out = new BufferedOutputStream(baos)) {
       var result =
           getExecOps()
-              .exec(
-                  spec -> {
-                    spec.setStandardOutput(out);
-                    spec.setErrorOutput(out);
-                    spec.setIgnoreExitValue(true);
+              .exec(spec -> {
+                spec.setStandardOutput(out);
+                spec.setErrorOutput(out);
+                spec.setIgnoreExitValue(true);
 
-                    getParameters().configure(spec);
+                getParameters().configure(spec);
 
-                    spec.setExecutable(getParameters().getGitExec().get());
-                    spec.args(
-                        "ls-files",
-                        // show cached
-                        "-c",
-                        // show others
-                        "-o",
-                        // apply .gitignore exclusions
-                        "--exclude-standard",
-                        // don't quote paths, 0-terminate strings.
-                        "-z");
-                  });
+                spec.setExecutable(getParameters().getGitExec().get());
+                spec.args(
+                    "ls-files",
+                    // show cached
+                    "-c",
+                    // show others
+                    "-o",
+                    // apply .gitignore exclusions
+                    "--exclude-standard",
+                    // don't quote paths, 0-terminate strings.
+                    "-z");
+              });
       out.flush();
 
       // Assume the output is UTF-8, even if it has 0 eols.

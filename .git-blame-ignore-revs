@@ -10,3 +10,5 @@ de3b294be44c2cea51a5e909db05043aa8d15150
 53acee98589bf8180d68eb30ec75acbe3e59ba9f
 # GITHUB#14832 editorconfig indent fixes
 95d019bd881a7a1908a16d3da1eaeb2ab71bafba
+# Reformat sources with google-java-format 2.0.0 (#17009 and its backport).
+8114dc91c57b3aed567c78c25405a68fe1d45dfd

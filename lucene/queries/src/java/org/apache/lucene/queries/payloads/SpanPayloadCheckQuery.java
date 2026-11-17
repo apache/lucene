@@ -57,7 +57,7 @@ public class SpanPayloadCheckQuery extends SpanQuery {
     FLOAT,
     /** STRING is a UTF8 encoded string, decoded from the byte array */
     STRING
-  };
+  }
 
   /** The payload type. This specifies the decoding of the ByteRef for the payload. */
   public enum MatchOperation {
@@ -71,7 +71,7 @@ public class SpanPayloadCheckQuery extends SpanQuery {
     LT,
     /** LTE Matches if the payload value is less than or equal to the reference */
     LTE
-  };
+  }
 
   /**
    * @param match The underlying {@link SpanQuery} to check

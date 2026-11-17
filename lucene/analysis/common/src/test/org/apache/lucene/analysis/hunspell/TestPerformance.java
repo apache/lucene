@@ -237,11 +237,10 @@ public class TestPerformance extends LuceneTestCase {
 
   private Path findAffFile(String code) throws IOException {
     return TestAllDictionaries.findAllAffixFiles()
-        .filter(
-            path -> {
-              String parentName = path.getParent().getFileName().toString();
-              return code.equals(Dictionary.extractLanguageCode(parentName));
-            })
+        .filter(path -> {
+          String parentName = path.getParent().getFileName().toString();
+          return code.equals(Dictionary.extractLanguageCode(parentName));
+        })
         .findFirst()
         .orElseThrow(
             () -> new AssumptionViolatedException("Ignored, cannot find aff/dic for: " + code));

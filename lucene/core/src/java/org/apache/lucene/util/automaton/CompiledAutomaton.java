@@ -58,7 +58,7 @@ public class CompiledAutomaton implements Accountable {
     SINGLE,
     /** Catch-all for any other automata. */
     NORMAL
-  };
+  }
 
   /** If simplify is true this will be the "simplified" type; else, this is NORMAL */
   public final AUTOMATON_TYPE type;
