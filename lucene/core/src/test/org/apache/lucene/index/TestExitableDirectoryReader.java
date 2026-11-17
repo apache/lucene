@@ -333,18 +333,11 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
             "polls=" + neverExit.getShouldExitCallCount(),
             neverExit.getShouldExitCallCount() > numTerms / 1024);
 
+        // A caller can surface its own exception by throwing it from shouldExit().
         class CustomException extends RuntimeException {}
         QueryTimeout custom =
-            new QueryTimeout() {
-              @Override
-              public boolean shouldExit() {
-                return true;
-              }
-
-              @Override
-              public void throwIfShouldExit() {
-                throw new CustomException();
-              }
+            () -> {
+              throw new CustomException();
             };
         TermsEnum customTe =
             getOnlyLeafReader(reader).terms("f").intersect(matchNothing, null, custom);

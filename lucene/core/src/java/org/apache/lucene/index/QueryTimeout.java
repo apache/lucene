@@ -30,18 +30,4 @@ public interface QueryTimeout {
    * @return true if the query should stop, false otherwise
    */
   boolean shouldExit();
-
-  /**
-   * Throws if {@link #shouldExit()} returns true. Called by code that may do a lot of work in a
-   * single call. The default throws {@link ExitableDirectoryReader.ExitingReaderException};
-   * override to throw another unchecked exception.
-   *
-   * @lucene.experimental
-   */
-  default void throwIfShouldExit() {
-    if (shouldExit()) {
-      throw new ExitableDirectoryReader.ExitingReaderException(
-          "The request took too long to complete. Timeout: " + this);
-    }
-  }
 }

@@ -18,6 +18,7 @@ package org.apache.lucene.backward_codecs.lucene90.blocktree;
 
 import java.io.IOException;
 import org.apache.lucene.index.BaseTermsEnum;
+import org.apache.lucene.index.ExitableDirectoryReader.ExitingReaderException;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.QueryTimeout;
@@ -396,8 +397,11 @@ final class IntersectTermsEnum extends BaseTermsEnum {
 
     nextTerm:
     while (true) {
-      if (queryTimeout != null && (++scanSteps & NUM_SCAN_STEPS_PER_TIMEOUT_CHECK_MASK) == 0) {
-        queryTimeout.throwIfShouldExit();
+      if (queryTimeout != null
+          && (++scanSteps & NUM_SCAN_STEPS_PER_TIMEOUT_CHECK_MASK) == 0
+          && queryTimeout.shouldExit()) {
+        throw new ExitingReaderException(
+            "The request took too long to intersect terms. Timeout: " + queryTimeout);
       }
 
       assert currentFrame.transition == currentTransition;
