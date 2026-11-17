@@ -53,7 +53,8 @@ import org.apache.lucene.util.IOUtils;
  * memory the first time it is requested via {@link #terms(String)}.
  *
  * <p>NOTE: Only the footer is validated for Completion dictionary (.lkp) and not the checksum due
- * to random access pattern and checksum validation being too costly at instantiation
+ * to random access pattern and checksum validation being too costly at instantiation. The checksum
+ * is verified by {@link #checkIntegrity(MergePolicy.OneMerge)}.
  */
 final class CompletionFieldsProducer extends FieldsProducer implements Accountable {
 
@@ -63,9 +64,12 @@ final class CompletionFieldsProducer extends FieldsProducer implements Accountab
 
   // copy ctr for merge instance
   private CompletionFieldsProducer(
-      FieldsProducer delegateFieldsProducer, Map<String, CompletionsTermsReader> readers) {
+      FieldsProducer delegateFieldsProducer,
+      Map<String, CompletionsTermsReader> readers,
+      IndexInput dictIn) {
     this.delegateFieldsProducer = delegateFieldsProducer;
     this.readers = readers;
+    this.dictIn = dictIn;
   }
 
   CompletionFieldsProducer(String codecName, SegmentReadState state) throws IOException {
@@ -133,12 +137,12 @@ final class CompletionFieldsProducer extends FieldsProducer implements Accountab
   @Override
   public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
     delegateFieldsProducer.checkIntegrity(merge);
-    // TODO: checkIntegrity should checksum the dictionary and index
+    CodecUtil.checksumEntireFile(dictIn, merge);
   }
 
   @Override
   public FieldsProducer getMergeInstance() {
-    return new CompletionFieldsProducer(delegateFieldsProducer, readers);
+    return new CompletionFieldsProducer(delegateFieldsProducer, readers, dictIn.clone());
   }
 
   @Override
