@@ -30,6 +30,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorScorer;
 import org.apache.lucene.codecs.lucene104.OffHeapScalarQuantizedVectorValues;
+import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -83,8 +84,9 @@ public class TestLucene104MemorySegmentScalarQuantizedVectorScorer extends Lucen
       for (ScalarEncoding encoding : ScalarEncoding.values()) {
         for (VectorSimilarityFunction similarity : VectorSimilarityFunction.values()) {
           for (int dims : DIMENSIONS) {
-            try (Vectors vectors =
-                new Vectors(dir, encoding, similarity, dims, random().nextInt(1, 12))) {
+            try (MockLucene104Vectors vectors =
+                new MockLucene104Vectors(
+                    dir, encoding, similarity, dims, random().nextInt(1, 12))) {
               assertSameScores(vectors, true);
             }
           }
@@ -96,8 +98,8 @@ public class TestLucene104MemorySegmentScalarQuantizedVectorScorer extends Lucen
   public void testRandom() throws IOException {
     try (Directory dir = new MMapDirectory(createTempDir("testRandom"))) {
       for (int iter = 0; iter < 20; iter++) {
-        try (Vectors vectors =
-            new Vectors(
+        try (MockLucene104Vectors vectors =
+            new MockLucene104Vectors(
                 dir,
                 RandomPicks.randomFrom(random(), ScalarEncoding.values()),
                 RandomPicks.randomFrom(random(), VectorSimilarityFunction.values()),
@@ -114,8 +116,8 @@ public class TestLucene104MemorySegmentScalarQuantizedVectorScorer extends Lucen
     long maxChunkSize = random().nextLong(32, 4096);
     try (Directory dir = new MMapDirectory(createTempDir("testSmallChunk"), maxChunkSize)) {
       for (int iter = 0; iter < 10; iter++) {
-        try (Vectors vectors =
-            new Vectors(
+        try (MockLucene104Vectors vectors =
+            new MockLucene104Vectors(
                 dir,
                 RandomPicks.randomFrom(random(), ScalarEncoding.values()),
                 RandomPicks.randomFrom(random(), VectorSimilarityFunction.values()),
@@ -132,8 +134,8 @@ public class TestLucene104MemorySegmentScalarQuantizedVectorScorer extends Lucen
 
   public void testIllegalOrdinal() throws IOException {
     try (Directory dir = new MMapDirectory(createTempDir("testIllegalOrdinal"))) {
-      try (Vectors vectors =
-          new Vectors(
+      try (MockLucene104Vectors vectors =
+          new MockLucene104Vectors(
               dir,
               RandomPicks.randomFrom(random(), ScalarEncoding.values()),
               VectorSimilarityFunction.DOT_PRODUCT,
@@ -175,8 +177,8 @@ public class TestLucene104MemorySegmentScalarQuantizedVectorScorer extends Lucen
               31, 1024, 2046, 2048, 2050, 4094, 4096, 4098, 8190, 8192, 8194, 8320, 8334, 16384,
               16398
             }) {
-          try (Vectors vectors =
-              new Vectors(
+          try (MockLucene104Vectors vectors =
+              new MockLucene104Vectors(
                   dir,
                   encoding,
                   RandomPicks.randomFrom(random(), VectorSimilarityFunction.values()),
@@ -203,8 +205,8 @@ public class TestLucene104MemorySegmentScalarQuantizedVectorScorer extends Lucen
   public void testQueryLengthIsChecked() throws IOException {
     try (Directory dir = new MMapDirectory(createTempDir("testQueryLength"))) {
       for (ScalarEncoding encoding : ScalarEncoding.values()) {
-        try (Vectors vectors =
-            new Vectors(dir, encoding, VectorSimilarityFunction.DOT_PRODUCT, 64, 3)) {
+        try (MockLucene104Vectors vectors =
+            new MockLucene104Vectors(dir, encoding, VectorSimilarityFunction.DOT_PRODUCT, 64, 3)) {
           // a query vector of another dimension is refused before reaching the kernels
           expectThrows(
               IllegalArgumentException.class,
@@ -218,13 +220,13 @@ public class TestLucene104MemorySegmentScalarQuantizedVectorScorer extends Lucen
 
   public void testShortInputIsRejected() throws IOException {
     try (Directory dir = new MMapDirectory(createTempDir("testShortInput"))) {
-      try (Vectors vectors =
-          new Vectors(
+      try (MockLucene104Vectors vectors =
+          new MockLucene104Vectors(
               dir, ScalarEncoding.UNSIGNED_BYTE, VectorSimilarityFunction.DOT_PRODUCT, 16, 4)) {
         // claim one record more than the slice holds
         QuantizedByteVectorValues values = vectors.values(vectors.size + 1);
         expectThrows(
-            IllegalArgumentException.class,
+            CorruptIndexException.class,
             () -> MEMSEG_SCORER.getRandomVectorScorer(vectors.similarity, values, new float[16]));
       }
     }
@@ -233,8 +235,8 @@ public class TestLucene104MemorySegmentScalarQuantizedVectorScorer extends Lucen
   public void testScoringOrdinalMustBeSet() throws IOException {
     try (Directory dir = new MMapDirectory(createTempDir("testOrdinalNotSet"))) {
       for (ScalarEncoding encoding : ScalarEncoding.values()) {
-        try (Vectors vectors =
-            new Vectors(dir, encoding, VectorSimilarityFunction.DOT_PRODUCT, 32, 3)) {
+        try (MockLucene104Vectors vectors =
+            new MockLucene104Vectors(dir, encoding, VectorSimilarityFunction.DOT_PRODUCT, 32, 3)) {
           UpdateableRandomVectorScorer scorer = vectors.supplier(MEMSEG_SCORER).scorer();
           expectThrows(IllegalStateException.class, () -> scorer.score(0));
           expectThrows(
@@ -247,8 +249,8 @@ public class TestLucene104MemorySegmentScalarQuantizedVectorScorer extends Lucen
   /** Values without records have nothing to score, but a query scorer can still be made. */
   public void testNoVectors() throws IOException {
     try (Directory dir = new MMapDirectory(createTempDir("testNoVectors"))) {
-      try (Vectors vectors =
-          new Vectors(
+      try (MockLucene104Vectors vectors =
+          new MockLucene104Vectors(
               dir,
               RandomPicks.randomFrom(random(), ScalarEncoding.values()),
               VectorSimilarityFunction.DOT_PRODUCT,
@@ -268,8 +270,8 @@ public class TestLucene104MemorySegmentScalarQuantizedVectorScorer extends Lucen
   public void testCopiesAcrossThreads() throws Exception {
     try (Directory dir = new MMapDirectory(createTempDir("testCopies"))) {
       for (ScalarEncoding encoding : ScalarEncoding.values()) {
-        try (Vectors vectors =
-            new Vectors(
+        try (MockLucene104Vectors vectors =
+            new MockLucene104Vectors(
                 dir,
                 encoding,
                 RandomPicks.randomFrom(random(), VectorSimilarityFunction.values()),
@@ -326,7 +328,8 @@ public class TestLucene104MemorySegmentScalarQuantizedVectorScorer extends Lucen
   }
 
   /** Compares every scoring path of the two scorers, exactly. */
-  private void assertSameScores(Vectors vectors, boolean expectOffHeap) throws IOException {
+  private void assertSameScores(MockLucene104Vectors vectors, boolean expectOffHeap)
+      throws IOException {
     // float and float16 queries
     for (int q = 0; q < 2; q++) {
       float[] query = vectors.randomQuery();
@@ -394,7 +397,7 @@ public class TestLucene104MemorySegmentScalarQuantizedVectorScorer extends Lucen
   }
 
   /** Quantized vectors written like the Lucene104 format writes them. */
-  private static final class Vectors implements Closeable {
+  private static final class MockLucene104Vectors implements Closeable {
     private static final AtomicInteger fileCount = new AtomicInteger();
     final List<IndexInput> inputs = new ArrayList<>();
 
@@ -413,7 +416,7 @@ public class TestLucene104MemorySegmentScalarQuantizedVectorScorer extends Lucen
     /** Whether every quantized value is the largest one of the encoding, instead of quantized. */
     final boolean saturated;
 
-    Vectors(
+    MockLucene104Vectors(
         Directory dir,
         ScalarEncoding encoding,
         VectorSimilarityFunction similarity,
@@ -423,7 +426,7 @@ public class TestLucene104MemorySegmentScalarQuantizedVectorScorer extends Lucen
       this(dir, encoding, similarity, dims, size, false);
     }
 
-    Vectors(
+    MockLucene104Vectors(
         Directory dir,
         ScalarEncoding encoding,
         VectorSimilarityFunction similarity,

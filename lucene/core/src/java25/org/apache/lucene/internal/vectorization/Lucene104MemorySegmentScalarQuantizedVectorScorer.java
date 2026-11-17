@@ -23,6 +23,7 @@ import java.nio.ByteOrder;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorScorer;
 import org.apache.lucene.codecs.lucene104.OffHeapScalarQuantizedVectorValues;
+import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.FilterIndexInput;
@@ -144,7 +145,7 @@ final class Lucene104MemorySegmentScalarQuantizedVectorScorer
       int packedLength = values.getVectorByteLength();
       int stride = packedLength + CORRECTIONS_BYTES;
       if (segment.byteSize() < (long) stride * values.size()) {
-        throw new IllegalArgumentException("input length is less than expected vector data");
+        throw new CorruptIndexException("input length is less than expected vector data", slice);
       }
       return new QuantizedVectorField(
           segment,
@@ -263,13 +264,13 @@ final class Lucene104MemorySegmentScalarQuantizedVectorScorer
         long o3 = quantizedVectorField.offset(nodes[i + 2]);
         long o4 = quantizedVectorField.offset(nodes[i + 3]);
         dotProducts(o1, o2, o3, o4, dotProducts);
-        scores[i] = score(dotProducts[0], o1);
+        scores[i] = convertToScore(dotProducts[0], o1);
         max = Math.max(max, scores[i]);
-        scores[i + 1] = score(dotProducts[1], o2);
+        scores[i + 1] = convertToScore(dotProducts[1], o2);
         max = Math.max(max, scores[i + 1]);
-        scores[i + 2] = score(dotProducts[2], o3);
+        scores[i + 2] = convertToScore(dotProducts[2], o3);
         max = Math.max(max, scores[i + 2]);
-        scores[i + 3] = score(dotProducts[3], o4);
+        scores[i + 3] = convertToScore(dotProducts[3], o4);
         max = Math.max(max, scores[i + 3]);
       }
       // the remaining nodes, one at a time
@@ -281,7 +282,7 @@ final class Lucene104MemorySegmentScalarQuantizedVectorScorer
     }
 
     /** Scores the dot product with the vector at {@code offset}, with its corrective terms. */
-    private float score(int dotProduct, long offset) {
+    private float convertToScore(int dotProduct, long offset) {
       long at = offset + packedLength;
       return convertToQuantizedScore(
           dotProduct,
