@@ -111,6 +111,14 @@ class PendingDeletes {
     return liveDocs;
   }
 
+  /**
+   * Returns the current live docs without sharing them: unlike {@link #getLiveDocs()}, the next
+   * delete doesn't copy them. The caller must not keep them.
+   */
+  final Bits peekLiveDocs() {
+    return liveDocs;
+  }
+
   /** Returns a snapshot of the hard live docs. */
   Bits getHardLiveDocs() {
     return getLiveDocs();
