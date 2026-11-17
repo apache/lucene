@@ -76,7 +76,6 @@ public class TestScorerUtil extends LuceneTestCase {
     }
   }
 
-  @AwaitsFix(bugUrl = "https://github.com/apache/lucene/issues/14303")
   public void testLikelyImpactsEnum() throws IOException {
     DocIdSetIterator iterator = DocIdSetIterator.all(10);
     assertTrue(ScorerUtil.likelyImpactsEnum(iterator) instanceof FilterDocIdSetIterator);
