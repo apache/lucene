@@ -33,6 +33,7 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
@@ -157,7 +158,7 @@ public class MultiFieldDocValuesRangeBenchmark {
     // fires and returns DocIdSetIterator.range() — adding MatchAllDocsQuery here would force it
     // through DenseConjunctionBulkScorer and bypass that fast path, causing a regression.
     if (params.fieldCount == 1 && !params.dataPattern.equals(SORTED)) {
-      bqBuilder.add(new org.apache.lucene.search.MatchAllDocsQuery(), Occur.FILTER);
+      bqBuilder.add(MatchAllDocsQuery.INSTANCE, Occur.FILTER);
     }
     query = bqBuilder.build();
 

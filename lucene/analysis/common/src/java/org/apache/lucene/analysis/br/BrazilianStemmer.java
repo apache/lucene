@@ -398,7 +398,7 @@ class BrazilianStemmer {
         return true;
       }
       if (suffix(CT, "logias") && suffix(R2, "logias")) {
-        replaceSuffix(CT, "logias", "log");
+        CT = replaceSuffix(CT, "logias", "log");
         return true;
       }
       if (suffix(CT, "encias") && suffix(R2, "encias")) {

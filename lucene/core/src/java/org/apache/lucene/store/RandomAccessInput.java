@@ -16,13 +16,26 @@
  */
 package org.apache.lucene.store;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.util.Optional;
 import org.apache.lucene.util.BitUtil; // javadocs
 
 /**
  * Random Access Index API. Unlike {@link IndexInput}, this has no concept of file position, all
- * reads are absolute. However, like IndexInput, it is only intended for use by a single thread.
+ * reads are absolute. However, like {@link IndexInput}, it is only intended for use by a single
+ * thread.
+ *
+ * <p><b>Warning:</b> Casting an {@link IndexInput} directly to {@code RandomAccessInput} is not
+ * supported, although implementations may implement this interface. The only supported way to
+ * obtain a {@code RandomAccessInput} from an {@link IndexInput} is by calling {@link
+ * IndexInput#randomAccessSlice(long, long)}, which always returns a <b>new</b> slice, independent
+ * from the original input. Casting the original input may modify the state of the {@link
+ * IndexInput} when doing random accesses and needs to be avoided.
+ *
+ * <p>If any read goes beyond the end of the input, it will throw {@link EOFException}. If any read
+ * throws an {@link IOException} (including {@link EOFException}), then the input may be left in an
+ * undetermined state.
  */
 public interface RandomAccessInput {
 
