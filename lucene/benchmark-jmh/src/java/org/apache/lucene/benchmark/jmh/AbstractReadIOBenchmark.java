@@ -232,10 +232,9 @@ public abstract class AbstractReadIOBenchmark {
     final MemorySegment symbol =
         lookup
             .find(name)
-            .orElseThrow(
-                () ->
-                    new UnsupportedOperationException(
-                        "Platform has no symbol for '" + name + "' in libc."));
+            .orElseThrow(() ->
+                new UnsupportedOperationException(
+                    "Platform has no symbol for '" + name + "' in libc."));
     return linker.downcallHandle(symbol, desc);
   }
 
@@ -318,23 +317,21 @@ public abstract class AbstractReadIOBenchmark {
     mmapInput = mmapDir.openInput(fileName, IOContext.DEFAULT);
 
     mmapSequentialDir = new MMapDirectory(dirPath);
-    mmapSequentialDir.setReadAdvice(
-        (name, _) -> {
-          if (name.equals(fileName)) {
-            return Optional.of(ReadAdvice.SEQUENTIAL);
-          }
-          return Optional.empty();
-        });
+    mmapSequentialDir.setReadAdvice((name, _) -> {
+      if (name.equals(fileName)) {
+        return Optional.of(ReadAdvice.SEQUENTIAL);
+      }
+      return Optional.empty();
+    });
     mmapSequentialInput = mmapSequentialDir.openInput(fileName, IOContext.DEFAULT);
 
     mmapRandomDir = new MMapDirectory(dirPath);
-    mmapRandomDir.setReadAdvice(
-        (name, _) -> {
-          if (name.equals(fileName)) {
-            return Optional.of(ReadAdvice.RANDOM);
-          }
-          return Optional.empty();
-        });
+    mmapRandomDir.setReadAdvice((name, _) -> {
+      if (name.equals(fileName)) {
+        return Optional.of(ReadAdvice.RANDOM);
+      }
+      return Optional.empty();
+    });
     mmapRandomInput = mmapRandomDir.openInput(fileName, IOContext.DEFAULT);
 
     niofsDir = new NIOFSDirectory(dirPath);

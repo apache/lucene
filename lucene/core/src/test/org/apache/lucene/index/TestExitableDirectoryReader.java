@@ -364,11 +364,11 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
 
       for (IOFunction<LeafReader, DocValuesIterator> dvFactory :
           Arrays.<IOFunction<LeafReader, DocValuesIterator>>asList(
-              (r) -> r.getSortedDocValues("sorted"),
-              (r) -> r.getSortedSetDocValues("sortedset"),
-              (r) -> r.getSortedNumericDocValues("sortednumeric"),
-              (r) -> r.getNumericDocValues("numeric"),
-              (r) -> r.getBinaryDocValues("binary"))) {
+              r -> r.getSortedDocValues("sorted"),
+              r -> r.getSortedSetDocValues("sortedset"),
+              r -> r.getSortedNumericDocValues("sortednumeric"),
+              r -> r.getNumericDocValues("numeric"),
+              r -> r.getBinaryDocValues("binary"))) {
         directoryReader = DirectoryReader.open(directory);
         exitableDirectoryReader =
             new ExitableDirectoryReader(directoryReader, immediateQueryTimeout());

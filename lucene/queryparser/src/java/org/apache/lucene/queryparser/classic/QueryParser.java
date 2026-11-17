@@ -172,7 +172,6 @@ public class QueryParser extends QueryParserBase implements QueryParserConstants
         }
       default:
         jj_la1[1] = jj_gen;
-        ;
     }
     {
       if ("" != null) return ret;
@@ -215,7 +214,6 @@ public class QueryParser extends QueryParserBase implements QueryParserConstants
         }
       default:
         jj_la1[3] = jj_gen;
-        ;
     }
     {
       if ("" != null) return ret;
@@ -292,7 +290,6 @@ public class QueryParser extends QueryParserBase implements QueryParserConstants
         case RANGEEX_START:
         case NUMBER:
           {
-            ;
             break;
           }
         default:
@@ -370,7 +367,6 @@ public class QueryParser extends QueryParserBase implements QueryParserConstants
           throw new ParseException();
       }
     } else {
-      ;
     }
     switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
       case BAREOPER:
@@ -401,7 +397,6 @@ public class QueryParser extends QueryParserBase implements QueryParserConstants
               }
             default:
               jj_la1[8] = jj_gen;
-              ;
           }
           break;
         }
@@ -498,7 +493,6 @@ public class QueryParser extends QueryParserBase implements QueryParserConstants
                           }
                         default:
                           jj_la1[11] = jj_gen;
-                          ;
                       }
                       break;
                     }
@@ -515,7 +509,6 @@ public class QueryParser extends QueryParserBase implements QueryParserConstants
                           }
                         default:
                           jj_la1[12] = jj_gen;
-                          ;
                       }
                       break;
                     }
@@ -528,7 +521,6 @@ public class QueryParser extends QueryParserBase implements QueryParserConstants
               }
             default:
               jj_la1[14] = jj_gen;
-              ;
           }
           q = handleBareTokenQuery(field, term, fuzzySlop, prefix, wildcard, fuzzy, regexp);
           break;
@@ -622,7 +614,6 @@ public class QueryParser extends QueryParserBase implements QueryParserConstants
               }
             default:
               jj_la1[19] = jj_gen;
-              ;
           }
           boolean startOpen = false;
           boolean endOpen = false;
@@ -666,7 +657,6 @@ public class QueryParser extends QueryParserBase implements QueryParserConstants
                           }
                         default:
                           jj_la1[20] = jj_gen;
-                          ;
                       }
                       break;
                     }
@@ -683,7 +673,6 @@ public class QueryParser extends QueryParserBase implements QueryParserConstants
                           }
                         default:
                           jj_la1[21] = jj_gen;
-                          ;
                       }
                       break;
                     }
@@ -696,7 +685,6 @@ public class QueryParser extends QueryParserBase implements QueryParserConstants
               }
             default:
               jj_la1[23] = jj_gen;
-              ;
           }
           q = handleQuotedTerm(field, term, fuzzySlop);
           break;
@@ -737,7 +725,6 @@ public class QueryParser extends QueryParserBase implements QueryParserConstants
         text.image += " " + followingText.image;
       }
       if (getToken(1).kind == TERM && allowedPostMultiTerm(getToken(2).kind)) {
-        ;
       } else {
         break label_2;
       }

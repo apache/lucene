@@ -79,46 +79,45 @@ public final class AnalysisSPILoader<S extends AbstractAnalysisFactory> {
     final LinkedHashSet<String> originalNames = new LinkedHashSet<>(this.originalNames);
     ServiceLoader.load(clazz, classloader).stream()
         .map(ServiceLoader.Provider::type)
-        .forEachOrdered(
-            service -> {
-              String name = null;
-              String originalName = null;
-              Throwable cause = null;
-              try {
-                originalName = lookupSPIName(service);
-                name = originalName.toLowerCase(Locale.ROOT);
-                if (!isValidName(originalName)) {
-                  throw new ServiceConfigurationError(
-                      "The name "
-                          + originalName
-                          + " for "
-                          + service.getName()
-                          + " is invalid: Allowed characters are (English) alphabet, digits, and underscore. It should be started with an alphabet.");
-                }
-              } catch (NoSuchFieldException | IllegalAccessException | IllegalStateException e) {
-                cause = e;
-              }
-              if (name == null) {
-                throw new ServiceConfigurationError(
-                    "The class name "
-                        + service.getName()
-                        + " has no service name field: [public static final String NAME]",
-                    cause);
-              }
-              // only add the first one for each name, later services will be ignored
-              // this allows to place services before others in classpath to make
-              // them used instead of others
-              //
-              // TODO: Should we disallow duplicate names here?
-              // Allowing it may get confusing on collisions, as different packages
-              // could contain same factory class, which is a naming bug!
-              // When changing this be careful to allow reload()!
-              if (!services.containsKey(name)) {
-                services.put(name, service);
-                // preserve (case-sensitive) original name for reference
-                originalNames.add(originalName);
-              }
-            });
+        .forEachOrdered(service -> {
+          String name = null;
+          String originalName = null;
+          Throwable cause = null;
+          try {
+            originalName = lookupSPIName(service);
+            name = originalName.toLowerCase(Locale.ROOT);
+            if (!isValidName(originalName)) {
+              throw new ServiceConfigurationError(
+                  "The name "
+                      + originalName
+                      + " for "
+                      + service.getName()
+                      + " is invalid: Allowed characters are (English) alphabet, digits, and underscore. It should be started with an alphabet.");
+            }
+          } catch (NoSuchFieldException | IllegalAccessException | IllegalStateException e) {
+            cause = e;
+          }
+          if (name == null) {
+            throw new ServiceConfigurationError(
+                "The class name "
+                    + service.getName()
+                    + " has no service name field: [public static final String NAME]",
+                cause);
+          }
+          // only add the first one for each name, later services will be ignored
+          // this allows to place services before others in classpath to make
+          // them used instead of others
+          //
+          // TODO: Should we disallow duplicate names here?
+          // Allowing it may get confusing on collisions, as different packages
+          // could contain same factory class, which is a naming bug!
+          // When changing this be careful to allow reload()!
+          if (!services.containsKey(name)) {
+            services.put(name, service);
+            // preserve (case-sensitive) original name for reference
+            originalNames.add(originalName);
+          }
+        });
 
     // make sure that the number of lookup keys is same to the number of original names.
     // in fact this constraint should be met in existence checks of the lookup map key,

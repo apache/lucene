@@ -95,10 +95,9 @@ class QueryAnalyzer {
       if (parent instanceof BooleanQuery bq) {
         long requiredCount =
             bq.clauses().stream()
-                .filter(
-                    c ->
-                        c.occur() == BooleanClause.Occur.MUST
-                            || c.occur() == BooleanClause.Occur.FILTER)
+                .filter(c ->
+                    c.occur() == BooleanClause.Occur.MUST
+                        || c.occur() == BooleanClause.Occur.FILTER)
                 .count();
         if (requiredCount > 0) {
           return QueryVisitor.EMPTY_VISITOR;
@@ -118,14 +117,13 @@ class QueryAnalyzer {
 
     @Override
     public void visitLeaf(Query query) {
-      children.add(
-          w -> {
-            QueryTree q = unknownQueryMapper.apply(query, w);
-            if (q == null) {
-              return QueryTree.anyTerm(query.toString());
-            }
-            return q;
-          });
+      children.add(w -> {
+        QueryTree q = unknownQueryMapper.apply(query, w);
+        if (q == null) {
+          return QueryTree.anyTerm(query.toString());
+        }
+        return q;
+      });
     }
 
     @Override

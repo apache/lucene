@@ -302,14 +302,13 @@ public class IncrementalDocValuesUpdatesBenchmark {
     for (int i = 0; i < threads; i++) {
       final int shard = i;
       workers[i] =
-          new Thread(
-              () -> {
-                try {
-                  task.run(shard);
-                } catch (Throwable t) {
-                  error.compareAndSet(null, t);
-                }
-              });
+          new Thread(() -> {
+            try {
+              task.run(shard);
+            } catch (Throwable t) {
+              error.compareAndSet(null, t);
+            }
+          });
       workers[i].start();
     }
     for (Thread t : workers) {
@@ -485,18 +484,17 @@ public class IncrementalDocValuesUpdatesBenchmark {
     // generations), the way a search application refreshes rather than committing on a fixed update
     // count.
     Thread refresher =
-        new Thread(
-            () -> {
-              try {
-                while (stop.get() == false) {
-                  LockSupport.parkNanos(REFRESH_MS * 1_000_000L);
-                  readers.maybeRefresh();
-                  peakDvd.accumulateAndGet(countDvd(dir), Math::max);
-                }
-              } catch (Throwable t) {
-                error.compareAndSet(null, t);
-              }
-            });
+        new Thread(() -> {
+          try {
+            while (stop.get() == false) {
+              LockSupport.parkNanos(REFRESH_MS * 1_000_000L);
+              readers.maybeRefresh();
+              peakDvd.accumulateAndGet(countDvd(dir), Math::max);
+            }
+          } catch (Throwable t) {
+            error.compareAndSet(null, t);
+          }
+        });
     refresher.start();
 
     Querier[] queriers = new Querier[QUERY_THREADS];

@@ -411,7 +411,6 @@ public class TestLongHashSet extends LuceneTestCase {
 
   public void testEqualsSubClass() {
     class Sub extends LongHashSet {}
-    ;
 
     LongHashSet l1 = LongHashSet.from(key1, key2, key3);
     LongHashSet l2 = new Sub();

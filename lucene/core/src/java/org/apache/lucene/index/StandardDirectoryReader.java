@@ -200,10 +200,9 @@ public final class StandardDirectoryReader extends DirectoryReader {
             getOldSegmentReader(
                 oldReaders, previousSegmentReaders.get(commitInfo.info.name), commitInfo);
         futures.add(
-            executor.submit(
-                () ->
-                    createOrReuseSegmentReader(
-                        commitInfo, oldReader, sis.getIndexCreatedVersionMajor())));
+            executor.submit(() ->
+                createOrReuseSegmentReader(
+                    commitInfo, oldReader, sis.getIndexCreatedVersionMajor())));
       }
       RuntimeException firstException = null;
       for (int i = 0; i < futures.size(); i++) {

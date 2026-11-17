@@ -203,13 +203,13 @@ public final class JoinUtil {
     LongFloatFunction joinScorer;
     if (scoreMode == ScoreMode.Avg) {
       joinScorer =
-          (joinValue) -> {
+          joinValue -> {
             double aggregatedScore = aggregatedScores.get(joinValue).value;
             int occurrence = occurrences.get(joinValue);
             return (float) (aggregatedScore / occurrence);
           };
     } else {
-      joinScorer = (joinValue) -> (float) aggregatedScores.get(joinValue).value;
+      joinScorer = joinValue -> (float) aggregatedScores.get(joinValue).value;
     }
 
     CollectorManager<NumericValuesCollector, LongHashSet> collectorManager =

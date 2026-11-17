@@ -169,13 +169,12 @@ public class SortedSetDocValuesRangeQueryBenchmark {
     if (Files.exists(path)) {
       try (Stream<Path> walk = Files.walk(path)) {
         walk.sorted(Comparator.reverseOrder())
-            .forEach(
-                p -> {
-                  try {
-                    Files.delete(p);
-                  } catch (IOException _) {
-                  }
-                });
+            .forEach(p -> {
+              try {
+                Files.delete(p);
+              } catch (IOException _) {
+              }
+            });
       }
     }
   }

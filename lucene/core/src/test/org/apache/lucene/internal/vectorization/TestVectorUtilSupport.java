@@ -350,12 +350,11 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
     }
 
     List<byte[]> outputs = new ArrayList<>();
-    assertFloatReturningProviders(
-        p -> {
-          byte[] output = new byte[size];
-          outputs.add(output);
-          return p.minMaxScalarQuantize(vector, output, scale, alpha, min, max);
-        });
+    assertFloatReturningProviders(p -> {
+      byte[] output = new byte[size];
+      outputs.add(output);
+      return p.minMaxScalarQuantize(vector, output, scale, alpha, min, max);
+    });
 
     // check the outputs are identical
     for (int o = 1; o < outputs.size(); o++) {
@@ -368,10 +367,9 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
     float newScale = divisor / (newMax - newMin);
     float newAlpha = (newMax - newMin) / divisor;
 
-    assertFloatReturningProviders(
-        p ->
-            p.recalculateScalarQuantizationOffset(
-                outputs.getFirst(), alpha, min, newScale, newAlpha, newMin, newMax));
+    assertFloatReturningProviders(p ->
+        p.recalculateScalarQuantizationOffset(
+            outputs.getFirst(), alpha, min, newScale, newAlpha, newMin, newMax));
   }
 
   private void assertFloatReturningProviders(ToDoubleFunction<VectorUtilSupport> func) {

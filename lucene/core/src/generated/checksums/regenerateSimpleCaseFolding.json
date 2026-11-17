@@ -1,4 +1,4 @@
 {
-    "lucene/core/src/java/org/apache/lucene/util/SimpleCaseFolding.java": "9c589fe1f829550b829aeab5ba36850fb1b684bd",
-    "property:icuConfig": "78.3"
+    "lucene/core/src/java/org/apache/lucene/util/SimpleCaseFolding.java": "47a5befc17ce6ce66773e7d5eb272ad659be03b5",
+    "property:icuConfig": "79.1"
 }

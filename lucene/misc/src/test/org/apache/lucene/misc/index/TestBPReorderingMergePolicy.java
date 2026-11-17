@@ -183,14 +183,13 @@ public class TestBPReorderingMergePolicy extends LuceneTestCase {
     CodecReader[] codecReaders =
         reader1.leaves().stream()
             .map(LeafReaderContext::reader)
-            .map(
-                t -> {
-                  try {
-                    return SlowCodecReaderWrapper.wrap(t);
-                  } catch (IOException e) {
-                    throw new UncheckedIOException(e);
-                  }
-                })
+            .map(t -> {
+              try {
+                return SlowCodecReaderWrapper.wrap(t);
+              } catch (IOException e) {
+                throw new UncheckedIOException(e);
+              }
+            })
             .toArray(CodecReader[]::new);
     w2.addIndexes(codecReaders);
     w1.forceMerge(1);

@@ -107,64 +107,62 @@ public class ShowSlowestTestsAtEndPlugin extends LuceneGradlePlugin {
     project
         .getTasks()
         .withType(Test.class)
-        .configureEach(
-            task -> {
-              @SuppressWarnings("unchecked")
-              Provider<TestStatsService> service =
-                  (Provider<TestStatsService>)
-                      project
-                          .getGradle()
-                          .getSharedServices()
-                          .getRegistrations()
-                          .getByName(SERVICE_NAME)
-                          .getService();
-              task.usesService(service);
+        .configureEach(task -> {
+          @SuppressWarnings("unchecked")
+          Provider<TestStatsService> service =
+              (Provider<TestStatsService>)
+                  project
+                      .getGradle()
+                      .getSharedServices()
+                      .getRegistrations()
+                      .getByName(SERVICE_NAME)
+                      .getService();
+          task.usesService(service);
 
-              var projectPath = project.getPath();
+          var projectPath = project.getPath();
 
-              task.addTestListener(
-                  new TestListener() {
-                    @Override
-                    public void beforeSuite(TestDescriptor suite) {}
+          task.addTestListener(
+              new TestListener() {
+                @Override
+                public void beforeSuite(TestDescriptor suite) {}
 
-                    @Override
-                    public void afterSuite(TestDescriptor suite, TestResult result) {
-                      // Gradle reports runner times as well, omit anything that isn't attached to a
-                      // concrete class.
-                      if (collectSlowestSuites && suite.getClassName() != null) {
-                        long duration = (result.getEndTime() - result.getStartTime());
-                        if (duration >= slowestSuitesMinTime) {
-                          service
-                              .get()
-                              .addSuiteEntry(
-                                  new Entry(
-                                      lastNameComponent(suite) + (" (" + projectPath + ")"),
-                                      duration));
-                        }
-                      }
+                @Override
+                public void afterSuite(TestDescriptor suite, TestResult result) {
+                  // Gradle reports runner times as well, omit anything that isn't attached to a
+                  // concrete class.
+                  if (collectSlowestSuites && suite.getClassName() != null) {
+                    long duration = (result.getEndTime() - result.getStartTime());
+                    if (duration >= slowestSuitesMinTime) {
+                      service
+                          .get()
+                          .addSuiteEntry(
+                              new Entry(
+                                  lastNameComponent(suite) + (" (" + projectPath + ")"), duration));
                     }
+                  }
+                }
 
-                    @Override
-                    public void beforeTest(TestDescriptor testDescriptor) {}
+                @Override
+                public void beforeTest(TestDescriptor testDescriptor) {}
 
-                    @Override
-                    public void afterTest(TestDescriptor testDescriptor, TestResult result) {
-                      if (collectSlowestTests) {
-                        long duration = (result.getEndTime() - result.getStartTime());
-                        if (duration >= slowestTestsMinTime) {
-                          service
-                              .get()
-                              .addTestEntry(
-                                  new Entry(
-                                      lastNameComponent(testDescriptor)
-                                          + ("." + testDescriptor.getName())
-                                          + (" (" + projectPath + ")"),
-                                      duration));
-                        }
-                      }
+                @Override
+                public void afterTest(TestDescriptor testDescriptor, TestResult result) {
+                  if (collectSlowestTests) {
+                    long duration = (result.getEndTime() - result.getStartTime());
+                    if (duration >= slowestTestsMinTime) {
+                      service
+                          .get()
+                          .addTestEntry(
+                              new Entry(
+                                  lastNameComponent(testDescriptor)
+                                      + ("." + testDescriptor.getName())
+                                      + (" (" + projectPath + ")"),
+                                  duration));
                     }
-                  });
-            });
+                  }
+                }
+              });
+        });
   }
 
   private static String lastNameComponent(TestDescriptor suite) {

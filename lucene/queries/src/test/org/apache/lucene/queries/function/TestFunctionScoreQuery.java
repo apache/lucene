@@ -468,7 +468,7 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
         // Monotonically decreasing function: f(x) = 10000.0 / x (Monotonicity.DECREASING)
         DoubleValuesSource valSource =
             DoubleValuesSource.fromField(
-                "val", (v) -> 10000.0 / v, DoubleValuesSource.Monotonicity.DECREASING);
+                "val", v -> 10000.0 / v, DoubleValuesSource.Monotonicity.DECREASING);
         Query scriptQuery = new FunctionScoreQuery(baseQuery, valSource);
 
         LeafReaderContext ctx = reader.leaves().get(0);
@@ -610,7 +610,7 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
         // specifying Monotonicity.NONE
         DoubleValuesSource valSource =
             DoubleValuesSource.fromField(
-                "val", (v) -> Math.sin((double) v), DoubleValuesSource.Monotonicity.NONE);
+                "val", v -> Math.sin((double) v), DoubleValuesSource.Monotonicity.NONE);
         Query scriptQuery = new FunctionScoreQuery(baseQuery, valSource);
 
         LeafReaderContext ctx = reader.leaves().get(0);
@@ -653,12 +653,12 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
         // all using the same constant lambda function: f(v) = 5.0
         DoubleValuesSource sourceIncreasing =
             DoubleValuesSource.fromField(
-                "val", (_) -> 5.0, DoubleValuesSource.Monotonicity.INCREASING);
+                "val", _ -> 5.0, DoubleValuesSource.Monotonicity.INCREASING);
         DoubleValuesSource sourceDecreasing =
             DoubleValuesSource.fromField(
-                "val", (_) -> 5.0, DoubleValuesSource.Monotonicity.DECREASING);
+                "val", _ -> 5.0, DoubleValuesSource.Monotonicity.DECREASING);
         DoubleValuesSource sourceNone =
-            DoubleValuesSource.fromField("val", (_) -> 5.0, DoubleValuesSource.Monotonicity.NONE);
+            DoubleValuesSource.fromField("val", _ -> 5.0, DoubleValuesSource.Monotonicity.NONE);
 
         Query qIncreasing = new FunctionScoreQuery(baseQuery, sourceIncreasing);
         Query qDecreasing = new FunctionScoreQuery(baseQuery, sourceDecreasing);

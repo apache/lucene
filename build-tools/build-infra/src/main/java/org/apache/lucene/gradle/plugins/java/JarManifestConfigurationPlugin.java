@@ -55,58 +55,56 @@ public class JarManifestConfigurationPlugin extends LuceneGradlePlugin {
     project
         .getTasks()
         .withType(Jar.class)
-        .configureEach(
-            task -> {
-              task.getInputs().property("gitRev", gitRevProvider);
+        .configureEach(task -> {
+          task.getInputs().property("gitRev", gitRevProvider);
 
-              var attributes = new LinkedHashMap<String, Object>();
+          var attributes = new LinkedHashMap<String, Object>();
 
-              attributes.put("Extension-Name", implementationTitle);
-              attributes.put("Implementation-Vendor", "The Apache Software Foundation");
-              attributes.put("Implementation-Title", implementationTitle);
-              attributes.put(
-                  "Implementation-Version",
-                  getImplementationVersion(project, gitRevProvider.get(), globals));
+          attributes.put("Extension-Name", implementationTitle);
+          attributes.put("Implementation-Vendor", "The Apache Software Foundation");
+          attributes.put("Implementation-Title", implementationTitle);
+          attributes.put(
+              "Implementation-Version",
+              getImplementationVersion(project, gitRevProvider.get(), globals));
 
-              // For snapshot builds just include the project version and gitRev so that
-              // JARs don't need to be recompiled just because the manifest has changed.
-              attributes.put("Specification-Vendor", "The Apache Software Foundation");
-              attributes.put("Specification-Version", globals.baseVersion);
-              attributes.put("Specification-Title", title);
+          // For snapshot builds just include the project version and gitRev so that
+          // JARs don't need to be recompiled just because the manifest has changed.
+          attributes.put("Specification-Vendor", "The Apache Software Foundation");
+          attributes.put("Specification-Version", globals.baseVersion);
+          attributes.put("Specification-Title", title);
 
-              var javaPluginExtension =
-                  project.getExtensions().getByType(JavaPluginExtension.class);
-              attributes.put(
-                  "X-Compile-Source-JDK", javaPluginExtension.getSourceCompatibility().toString());
-              attributes.put(
-                  "X-Compile-Target-JDK", javaPluginExtension.getTargetCompatibility().toString());
+          var javaPluginExtension = project.getExtensions().getByType(JavaPluginExtension.class);
+          attributes.put(
+              "X-Compile-Source-JDK", javaPluginExtension.getSourceCompatibility().toString());
+          attributes.put(
+              "X-Compile-Target-JDK", javaPluginExtension.getTargetCompatibility().toString());
 
-              attributes.put(
-                  "X-Build-JDK",
-                  System.getProperty("java.version")
-                      + " ("
-                      + System.getProperty("java.vendor")
-                      + " "
-                      + System.getProperty("java.vm.version")
-                      + ")");
-              attributes.put(
-                  "X-Build-OS",
-                  System.getProperty("os.name")
-                      + " "
-                      + System.getProperty("os.arch")
-                      + " "
-                      + System.getProperty("os.version"));
+          attributes.put(
+              "X-Build-JDK",
+              System.getProperty("java.version")
+                  + " ("
+                  + System.getProperty("java.vendor")
+                  + " "
+                  + System.getProperty("java.vm.version")
+                  + ")");
+          attributes.put(
+              "X-Build-OS",
+              System.getProperty("os.name")
+                  + " "
+                  + System.getProperty("os.arch")
+                  + " "
+                  + System.getProperty("os.version"));
 
-              task.getManifest().attributes(attributes);
+          task.getManifest().attributes(attributes);
 
-              // Copy legalese into META-INF.
-              task.getMetaInf()
-                  .from(
-                      legaleseDir.toFile(),
-                      spec -> {
-                        spec.include("LICENSE.txt", "NOTICE.txt");
-                      });
-            });
+          // Copy legalese into META-INF.
+          task.getMetaInf()
+              .from(
+                  legaleseDir.toFile(),
+                  spec -> {
+                    spec.include("LICENSE.txt", "NOTICE.txt");
+                  });
+        });
   }
 
   private static String getImplementationVersion(

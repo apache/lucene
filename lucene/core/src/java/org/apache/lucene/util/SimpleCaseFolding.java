@@ -20,8 +20,8 @@
 package org.apache.lucene.util;
 
 /**
- * Switch-based Unicode simple case folding for the 226 codepoints where folding differs from {@link
- * Character#toLowerCase(int)}. Generated using ICU4J v78.3.0.0, unicode version: 17.0.0.0.
+ * Switch-based Unicode simple case folding for the 247 codepoints where folding differs from {@link
+ * Character#toLowerCase(int)}. Generated using ICU4J v79.1.0.0, unicode version: 18.0.0.0.
  *
  * @see <a href="https://www.unicode.org/Public/latest/ucd/CaseFolding.txt">Unicode Case Folding
  *     mappings</a>
@@ -292,6 +292,14 @@ final class SimpleCaseFolding {
         return 0xA7D3; // ꟒ → ꟓ
       case 0xA7D4:
         return 0xA7D5; // ꟔ → ꟕ
+      case 0xA7DD:
+        return 0x0277; // ꟝ → ɷ
+      case 0xA7E2:
+        return 0x027C; // ꟢ → ɼ
+      case 0xAB6C:
+        return 0xAB4B; // ꭬ → ꭋ
+      case 0xAB6D:
+        return 0xAB4C; // ꭭ → ꭌ
 
       // Cherokee
       case 0xAB70:
@@ -510,6 +518,42 @@ final class SimpleCaseFolding {
         return 0x16ED2; // 𖺷 → 𖻒
       case 0x16EB8:
         return 0x16ED3; // 𖺸 → 𖻓
+
+      // Latin
+      case 0x1DF40:
+        return 0x1DF41; // 𝽀 → 𝽁
+      case 0x1DF48:
+        return 0x1DF49; // 𝽈 → 𝽉
+      case 0x1DF4A:
+        return 0x1DF4B; // 𝽊 → 𝽋
+      case 0x1DF4D:
+        return 0x1DF4E; // 𝽍 → 𝽎
+      case 0x1DF51:
+        return 0x1DF52; // 𝽑 → 𝽒
+      case 0x1DF68:
+        return 0x1DF69; // 𝽨 → 𝽩
+      case 0x1DF6A:
+        return 0x1DF6B; // 𝽪 → 𝽫
+      case 0x1DF6C:
+        return 0x1DF6D; // 𝽬 → 𝽭
+      case 0x1DF6E:
+        return 0x1DF6F; // 𝽮 → 𝽯
+      case 0x1DF72:
+        return 0x1DF73; // 𝽲 → 𝽳
+      case 0x1DF74:
+        return 0x1DF75; // 𝽴 → 𝽵
+      case 0x1DF76:
+        return 0x1DF77; // 𝽶 → 𝽷
+      case 0x1DF78:
+        return 0x1DF79; // 𝽸 → 𝽹
+      case 0x1DF7A:
+        return 0x1DF7B; // 𝽺 → 𝽻
+      case 0x1DF7C:
+        return 0x1DF7D; // 𝽼 → 𝽽
+      case 0x1DF7E:
+        return 0x1DF7F; // 𝽾 → 𝽿
+      case 0x1DF95:
+        return 0x00DF; // 𝾕 → ß
       default:
         return Character.toLowerCase(c);
     }
