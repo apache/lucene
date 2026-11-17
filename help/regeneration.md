@@ -151,15 +151,9 @@ else to gradle's up-to-date checks, use the `lucene.regenerate.force` build opti
 gradlew -p lucene/analysis/common regenerateUnicodeProps -Plucene.regenerate.force=true
 ```
 
-Finally, if you do feel like force-regenerating everything, remember to exclude this monster (it takes quite a long
-time and requires significant heap memory)...
+Finally, if you do feel like force-regenerating everything on Windows, exclude snowball regeneration
+(requires bash):
 
 ```bash
-gradlew regenerate -x regenerateUAX29URLEmailTokenizer --rerun-tasks
-```
-
-and on Windows, exclude snowball regeneration (requires bash):
-
-```bash
-gradlew regenerate -x regenerateUAX29URLEmailTokenizer -x snowball --rerun-tasks
+gradlew regenerate -x snowball --rerun-tasks
 ```

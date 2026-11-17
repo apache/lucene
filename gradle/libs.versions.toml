@@ -25,7 +25,7 @@ icu4j = "79.1"
 # queryparsers/ grammars
 javacc = "7.0.13"
 # analysis/ tokenizer grammars
-jflex = "1.9.1"
+jflex = "1.10.0.2611171317"
 # build infra only (diff of changes from google java format tasks)
 jgit = "7.8.0.202609011348-r"
 # benchmark-jmh/ microbenchmarks
@@ -81,7 +81,7 @@ groovy = { module = "org.apache.groovy:groovy-all", version.ref = "groovy" }
 hamcrest = { module = "org.hamcrest:hamcrest", version.ref = "hamcrest" }
 icu4j = { module = "com.ibm.icu:icu4j", version.ref = "icu4j" }
 javacc = { module = "net.java.dev.javacc:javacc", version.ref = "javacc" }
-jflex = { module = "de.jflex:jflex", version.ref = "jflex" }
+jflex = { module = "com.carrotsearch.thirdparty.jflex:jflex", version.ref = "jflex" }
 jgit = { module = "org.eclipse.jgit:org.eclipse.jgit", version.ref = "jgit" }
 jmh-annprocess = { module = "org.openjdk.jmh:jmh-generator-annprocess", version.ref = "jmh" }
 jmh-core = { module = "org.openjdk.jmh:jmh-core", version.ref = "jmh" }
