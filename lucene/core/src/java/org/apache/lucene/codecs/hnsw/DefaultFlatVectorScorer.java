@@ -23,7 +23,6 @@ import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
@@ -174,11 +173,6 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
         public void setScoringOrdinal(int node) throws IOException {
           System.arraycopy(targetVectors.vectorValue(node), 0, vector, 0, vector.length);
         }
-
-        @Override
-        public float bulkScore(int[] nodes, float[] scores, int numNodes) throws IOException {
-          return bulkScoreFloat(vector, targetVectors, similarityFunction, nodes, scores, numNodes);
-        }
       };
     }
 
@@ -251,85 +245,6 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
     public float score(int node) throws IOException {
       return similarityFunction.compare(query, values.vectorValue(node));
     }
-
-    @Override
-    public float bulkScore(int[] nodes, float[] scores, int numNodes) throws IOException {
-      return bulkScoreFloat(query, values, similarityFunction, nodes, scores, numNodes);
-    }
-  }
-
-  private static float bulkScoreFloat(
-      float[] query,
-      FloatVectorValues values,
-      VectorSimilarityFunction similarityFunction,
-      int[] nodes,
-      float[] scores,
-      int numNodes)
-      throws IOException {
-    if (numNodes == 0) {
-      return Float.NEGATIVE_INFINITY;
-    }
-    if (numNodes == 1) {
-      scores[0] = similarityFunction.compare(query, values.vectorValue(nodes[0]));
-      return scores[0];
-    }
-    float[][] docs = new float[numNodes][];
-    for (int i = 0; i < numNodes; i++) {
-      docs[i] = values.vectorValue(nodes[i]);
-      if (i > 0 && docs[i] == docs[0]) {
-        float max = Float.NEGATIVE_INFINITY;
-        for (int j = 0; j < numNodes; j++) {
-          scores[j] = similarityFunction.compare(query, values.vectorValue(nodes[j]));
-          max = Math.max(max, scores[j]);
-        }
-        return max;
-      }
-    }
-    float[] rawScores = new float[numNodes];
-    switch (similarityFunction) {
-      case DOT_PRODUCT -> {
-        VectorUtil.dotProductBulk(query, docs, rawScores);
-        float max = Float.NEGATIVE_INFINITY;
-        for (int i = 0; i < numNodes; i++) {
-          scores[i] = VectorUtil.normalizeToUnitInterval(rawScores[i]);
-          max = Math.max(max, scores[i]);
-        }
-        return max;
-      }
-      case COSINE -> {
-        VectorUtil.cosineBulk(query, docs, rawScores);
-        float max = Float.NEGATIVE_INFINITY;
-        for (int i = 0; i < numNodes; i++) {
-          scores[i] = VectorUtil.normalizeToUnitInterval(rawScores[i]);
-          max = Math.max(max, scores[i]);
-        }
-        return max;
-      }
-      case EUCLIDEAN -> {
-        VectorUtil.squareDistanceBulk(query, docs, rawScores);
-        float max = Float.NEGATIVE_INFINITY;
-        for (int i = 0; i < numNodes; i++) {
-          scores[i] = VectorUtil.normalizeDistanceToUnitInterval(rawScores[i]);
-          max = Math.max(max, scores[i]);
-        }
-        return max;
-      }
-      case MAXIMUM_INNER_PRODUCT -> {
-        VectorUtil.dotProductBulk(query, docs, rawScores);
-        float max = Float.NEGATIVE_INFINITY;
-        for (int i = 0; i < numNodes; i++) {
-          scores[i] = VectorUtil.scaleMaxInnerProductScore(rawScores[i]);
-          max = Math.max(max, scores[i]);
-        }
-        return max;
-      }
-    }
-    float max = Float.NEGATIVE_INFINITY;
-    for (int i = 0; i < numNodes; i++) {
-      scores[i] = similarityFunction.compare(query, values.vectorValue(nodes[i]));
-      max = Math.max(max, scores[i]);
-    }
-    return max;
   }
 
   private static class Float16VectorScorer extends RandomVectorScorer.AbstractRandomVectorScorer {
