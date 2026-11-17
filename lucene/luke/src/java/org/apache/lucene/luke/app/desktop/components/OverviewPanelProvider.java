@@ -432,11 +432,10 @@ public final class OverviewPanelProvider {
     String term = getSelectedTerm();
     operatorRegistry
         .get(DocumentsTabOperator.class)
-        .ifPresent(
-            operator -> {
-              operator.browseTerm(field, term);
-              tabSwitcher.switchTab(TabbedPaneProvider.Tab.DOCUMENTS);
-            });
+        .ifPresent(operator -> {
+          operator.browseTerm(field, term);
+          tabSwitcher.switchTab(TabbedPaneProvider.Tab.DOCUMENTS);
+        });
   }
 
   private void searchByTerm() {
@@ -444,11 +443,10 @@ public final class OverviewPanelProvider {
     String term = getSelectedTerm();
     operatorRegistry
         .get(SearchTabOperator.class)
-        .ifPresent(
-            operator -> {
-              operator.searchByTerm(field, term);
-              tabSwitcher.switchTab(TabbedPaneProvider.Tab.SEARCH);
-            });
+        .ifPresent(operator -> {
+          operator.searchByTerm(field, term);
+          tabSwitcher.switchTab(TabbedPaneProvider.Tab.SEARCH);
+        });
   }
 
   private String getSelectedField() {

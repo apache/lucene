@@ -193,10 +193,9 @@ public class SimpleAnalyzeResultPanelProvider implements SimpleAnalyzeResultPane
         data[i][Column.TERM.getIndex()] = token.getTerm();
         List<String> attValues =
             token.getAttributes().stream()
-                .flatMap(
-                    att ->
-                        att.getAttValues().entrySet().stream()
-                            .map(e -> e.getKey() + "=" + e.getValue()))
+                .flatMap(att ->
+                    att.getAttValues().entrySet().stream()
+                        .map(e -> e.getKey() + "=" + e.getValue()))
                 .toList();
         data[i][Column.ATTR.getIndex()] = String.join(",", attValues);
       }

@@ -57,16 +57,15 @@ public abstract class AttributeImpl implements Cloneable, Attribute {
    */
   public final String reflectAsString(final boolean prependAttClass) {
     final StringBuilder buffer = new StringBuilder();
-    reflectWith(
-        (attClass, key, value) -> {
-          if (buffer.length() > 0) {
-            buffer.append(',');
-          }
-          if (prependAttClass) {
-            buffer.append(attClass.getName()).append('#');
-          }
-          buffer.append(key).append('=').append((value == null) ? "null" : value);
-        });
+    reflectWith((attClass, key, value) -> {
+      if (buffer.length() > 0) {
+        buffer.append(',');
+      }
+      if (prependAttClass) {
+        buffer.append(attClass.getName()).append('#');
+      }
+      buffer.append(key).append('=').append((value == null) ? "null" : value);
+    });
     return buffer.toString();
   }
 
