@@ -555,6 +555,9 @@ final class IntersectTermsEnum extends BaseTermsEnum {
             currentFrame = pushFrame(currentFrame.state);
             currentFrame.matchAllSuffix = true;
             isSubBlock = popPushNext();
+            // popPushNext() should never pop back a parent frame(loaded) from sub block.
+            // So it is a new frame, and its matchAllSuffix is already set to true early.
+            assert currentFrame.matchAllSuffix;
           } else {
             copyTerm();
             return term;
