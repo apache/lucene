@@ -51,7 +51,7 @@ import org.apache.lucene.util.automaton.Operations;
 /** TestWildcardQuery tests the '*' and '?' wildcard characters. */
 public class TestWildcardQuery extends LuceneTestCase {
 
-  // TODO: remove. Match-all-suffix optimization does not support WildcardQuery yet; debug only.
+  // Match-all-suffix optimization does not support WildcardQuery yet; only check the correctness.
   public void testSubBlock() throws Exception {
     Directory dir = newDirectory();
     // Set minTermBlockSize to 2, maxTermBlockSize to 3, to generate subBlock.
@@ -84,7 +84,7 @@ public class TestWildcardQuery extends LuceneTestCase {
     dir.close();
   }
 
-  // TODO: remove. Match-all-suffix optimization does not support WildcardQuery yet; debug only.
+  // Match-all-suffix optimization does not support WildcardQuery yet; only check the correctness.
   public void testDeepSubBlock() throws Exception {
     Directory dir = newDirectory();
     // Set minTermBlockSize to 2, maxTermBlockSize to 3, to generate deep subBlock.
