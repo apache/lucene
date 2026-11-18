@@ -40,6 +40,7 @@ import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter.MergeScorerData;
+import org.apache.lucene.document.column.VectorValuesCursor;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
@@ -48,9 +49,11 @@ import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
-import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.TaskExecutor;
+import org.apache.lucene.store.DataAccessHint;
+import org.apache.lucene.store.FileDataHint;
+import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.IOUtils;
@@ -176,7 +179,9 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
 
     try {
       meta = state.directory.createOutput(metaFileName, state.context);
-      vectorIndex = state.directory.createOutput(indexDataFileName, state.context);
+      vectorIndex =
+          state.directory.createOutput(
+              indexDataFileName, state.context.union(FileTypeHint.DATA, FileDataHint.KNN_VECTORS));
 
       CodecUtil.writeIndexHeader(
           meta,
@@ -483,9 +488,11 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       }
     }
     if (flatVectorsReader instanceof QuantizedVectorsReader quantizedVectorsReader
-        && fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
+        && fieldInfo.getVectorEncoding().isFloatingPoint()) {
       return quantizedVectorsReader.getRandomVectorScorerSupplierForMerge(
-          fieldInfo, segmentWriteState);
+          fieldInfo,
+          segmentWriteState.withHints(
+              FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM));
     }
     return null;
   }
@@ -537,7 +544,8 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
               segmentWriteState.directory,
               segmentWriteState.segmentInfo,
               segmentWriteState.fieldInfos,
-              segmentWriteState.context,
+              segmentWriteState.context.union(
+                  FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM),
               segmentWriteState.segmentSuffix);
       flatVectorsReader = flatVectorsFormat.fieldsReader(readState);
     }
@@ -832,6 +840,32 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       }
       node++;
       lastDocID = docID;
+    }
+
+    /**
+     * Adds the batch to the flat writer, then to the graph. If the batch takes the field past the
+     * tiny-segment threshold, the graph is created and every buffered vector is replayed, in the
+     * same order as {@link #addValue} would insert them.
+     */
+    @Override
+    public void addDenseValues(int firstDocID, VectorValuesCursor<T> values) throws IOException {
+      assert firstDocID > lastDocID;
+      final int count = values.size();
+      if (count == 0) {
+        return;
+      }
+      flatFieldVectorsWriter.addDenseValues(firstDocID, values);
+      final int firstNode = node;
+      node += count;
+      lastDocID = firstDocID + count - 1;
+      if (hnswGraphBuilder != null) {
+        for (int ord = firstNode; ord < node; ord++) {
+          hnswGraphBuilder.addGraphNode(ord);
+        }
+      } else if (shouldCreateGraph(graphThreshold, node)) {
+        initializeGraphBuilder();
+        replayBufferedVectors();
+      }
     }
 
     public DocsWithFieldSet getDocsWithFieldSet() {

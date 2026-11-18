@@ -54,12 +54,11 @@ public abstract class JFlexTask extends DefaultTask {
     getGeneratedFile()
         .convention(
             getJflexFile()
-                .map(
-                    f ->
-                        getProject()
-                            .getLayout()
-                            .getProjectDirectory()
-                            .file(f.getAsFile().getAbsolutePath().replace(".jflex", ".java"))));
+                .map(f ->
+                    getProject()
+                        .getLayout()
+                        .getProjectDirectory()
+                        .file(f.getAsFile().getAbsolutePath().replace(".jflex", ".java"))));
   }
 
   @TaskAction
@@ -81,26 +80,24 @@ public abstract class JFlexTask extends DefaultTask {
 
     buildGlobals
         .getExecOps()
-        .javaexec(
-            spec -> {
-              spec.setIgnoreExitValue(false);
+        .javaexec(spec -> {
+          spec.setIgnoreExitValue(false);
 
-              spec.setClasspath(getClasspath());
-              spec.getMainClass().set("jflex.Main");
+          spec.setClasspath(getClasspath());
+          spec.getMainClass().set("jflex.Main");
 
-              spec.args("-nobak", "--quiet", "--encoding", "UTF-8");
+          spec.args("-nobak", "--quiet", "--encoding", "UTF-8");
 
-              if (getHeapSize().isPresent()) {
-                spec.setMaxHeapSize(getHeapSize().get());
-              }
+          if (getHeapSize().isPresent()) {
+            spec.setMaxHeapSize(getHeapSize().get());
+          }
 
-              if (getSkeleton().isPresent()) {
-                spec.args("--skel", getSkeleton().get().getAsFile().getAbsolutePath());
-              }
+          if (getSkeleton().isPresent()) {
+            spec.args("--skel", getSkeleton().get().getAsFile().getAbsolutePath());
+          }
 
-              spec.args(
-                  "-d", target.getParentFile().getAbsolutePath(), jflexFile.getAbsolutePath());
-            });
+          spec.args("-d", target.getParentFile().getAbsolutePath(), jflexFile.getAbsolutePath());
+        });
 
     try {
       var text = Files.readString(target.toPath());

@@ -176,5 +176,21 @@
  *   int maxDoc = indexSearcher.getIndexReader().maxDoc();
  *   Bits groupHeadsBitSet = result.retrieveGroupHeads(maxDoc);
  * </code></pre>
+ *
+ * <p>Grouped faceting is handled by {@link
+ * org.apache.lucene.search.grouping.TermGroupFacetCollectorManager}. For each facet value it counts
+ * how many distinct groups have at least one matching document with that value. The manager
+ * supports concurrent collection; groups that span multiple search slices are counted once.
+ *
+ * <pre><code class="language-java">
+ *   TermGroupFacetCollectorManager manager =
+ *       new TermGroupFacetCollectorManager(
+ *           "author", "category", false, null, offset + limit, minCount, orderByCount);
+ *   GroupedFacetResult facetResult =
+ *       indexSearcher.search(new TermQuery(new Term("content", searchTerm)), manager);
+ *   int totalCount = facetResult.getTotalCount();
+ *   int missingCount = facetResult.getTotalMissingCount();
+ *   List&lt;GroupedFacetResult.FacetEntry&gt; entries = facetResult.getFacetEntries(offset, limit);
+ * </code></pre>
  */
 package org.apache.lucene.search.grouping;

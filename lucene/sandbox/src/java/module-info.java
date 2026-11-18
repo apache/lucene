@@ -22,6 +22,7 @@ module org.apache.lucene.sandbox {
   requires static jdk.incubator.vector;
   requires org.apache.lucene.queries;
   requires org.apache.lucene.facet;
+  requires java.logging;
 
   exports org.apache.lucene.payloads;
   exports org.apache.lucene.sandbox.codecs.segmentivf;

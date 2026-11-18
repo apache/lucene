@@ -41,6 +41,18 @@ public abstract class DoubleValues {
   }
 
   /**
+   * Optionally start loading whatever is needed to compute the value of the given document, without
+   * waiting for it to become available. This lets a caller that knows several upcoming documents
+   * keep more than one load in flight, which matters when the values live on slow storage. Callers
+   * must still call {@link #advanceExact} before {@link #doubleValue()}; documents must be
+   * prefetched in the same order in which they are later advanced to. The default is a no-op.
+   *
+   * @param doc the document whose value will be needed later
+   * @lucene.experimental
+   */
+  public void prefetch(int doc) throws IOException {}
+
+  /**
    * Return the maximum score that documents between the current position and {@code upTo} can
    * produce. Default implementation returns {@link Float#POSITIVE_INFINITY}.
    */

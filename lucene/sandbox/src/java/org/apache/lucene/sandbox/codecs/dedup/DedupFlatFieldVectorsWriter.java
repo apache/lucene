@@ -39,6 +39,7 @@ final class DedupFlatFieldVectorsWriter<T> extends FlatFieldVectorsWriter<T> {
   private final DocsWithFieldSet docsWithFieldSet;
   private final List<T> vectors;
   private final IntArrayList fieldOrdToGroupOrd;
+  private int maxGroupOrd;
   private int lastDocID;
   private boolean finished;
 
@@ -47,6 +48,7 @@ final class DedupFlatFieldVectorsWriter<T> extends FlatFieldVectorsWriter<T> {
     this.docsWithFieldSet = new DocsWithFieldSet();
     this.vectors = new ArrayList<>();
     this.fieldOrdToGroupOrd = new IntArrayList();
+    this.maxGroupOrd = 0;
     this.lastDocID = -1;
     this.finished = false;
   }
@@ -63,6 +65,11 @@ final class DedupFlatFieldVectorsWriter<T> extends FlatFieldVectorsWriter<T> {
 
   IntArrayList getFieldOrdToGroupOrd() {
     return fieldOrdToGroupOrd;
+  }
+
+  /** The largest group ordinal referenced by this field, tracked as values are added. */
+  int getMaxGroupOrd() {
+    return maxGroupOrd;
   }
 
   @Override
@@ -98,6 +105,7 @@ final class DedupFlatFieldVectorsWriter<T> extends FlatFieldVectorsWriter<T> {
     ObjectCursor<T> cursor = group.addUnique(vectorValue);
     vectors.add(cursor.value); // owned vector value
     fieldOrdToGroupOrd.add(cursor.index); // index in group
+    maxGroupOrd = Math.max(maxGroupOrd, cursor.index);
   }
 
   @Override

@@ -33,6 +33,12 @@ dependencies {
   moduleApi(deps.randomizedtesting.jupiter)
   moduleApi(deps.junitplatform.jupiter)
 
+  constraints {
+    // junit5 pulls in jspecify 1.0.0, errorprone's transitive dependencies pull in 1.0.1.
+    // Align on a single version so that versions.lock is consistent across test classpaths.
+    moduleApi(deps.jspecify)
+  }
+
   moduleImplementation project(':lucene:codecs')
 
   moduleTestImplementation deps.junitplatform.testkit

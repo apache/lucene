@@ -296,8 +296,8 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
   }
 
   /**
-   * Read a particular segmentFileName, as long as the commit's {@link
-   * SegmentInfos#getIndexCreatedVersionMajor()} is strictly greater than the provided minimum
+   * Read a particular segmentFileName, as long as each segment's {@link
+   * SegmentInfo#getMinVersion()} within the commit is strictly greater than the provided minimum
    * supported major version. If the commit's version is older, an {@link
    * IndexFormatTooOldException} will be thrown. Note that this may throw an IOException if a commit
    * is in process.
@@ -405,8 +405,21 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
       byte[] segmentID = new byte[StringHelper.ID_LENGTH];
       input.readBytes(segmentID, 0, segmentID.length);
       Codec codec = readCodec(input);
-      SegmentInfo info =
-          codec.segmentInfoFormat().read(directory, segName, segmentID, IOContext.READONCE);
+      final SegmentInfo info;
+      try {
+        info = codec.segmentInfoFormat().read(directory, segName, segmentID, IOContext.READONCE);
+      } catch (CorruptIndexException
+          | EOFException
+          | NoSuchFileException
+          | FileNotFoundException e) {
+        // The .si is missing, truncated or failed its checksum. Anything else, e.g. a transient I/O
+        // failure, is no evidence of corruption and must propagate as-is.
+        throw new CorruptSegmentInfoException(
+            segName,
+            "segment info file: " + segName + ".si cannot be read - it may be missing or corrupt",
+            input,
+            e);
+      }
       info.setCodec(codec);
       totalDocs += info.maxDoc();
       long delGen = CodecUtil.readBELong(input);
@@ -1112,9 +1125,21 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
 
   /** applies all changes caused by committing a merge to this SegmentInfos */
   void applyMergeChanges(MergePolicy.OneMerge merge, boolean dropSegment) {
-    if (indexCreatedVersionMajor >= 7 && merge.info.info.minVersion == null) {
-      throw new IllegalArgumentException(
-          "All segments must record the minVersion for indices created on or after Lucene 7");
+    applyMergeChanges(merge, dropSegment ? List.of() : List.of(merge.info));
+  }
+
+  /**
+   * Swap this merge's input segments for {@code toInsert}, which holds every surviving output. A
+   * normal merge passes a singleton (or an empty list when the result is fully deleted); a
+   * partitioned merge passes one entry per non-dropped output. All outputs are inserted at the
+   * position of the first input, preserving segment order.
+   */
+  void applyMergeChanges(MergePolicy.OneMerge merge, List<SegmentCommitInfo> toInsert) {
+    for (SegmentCommitInfo info : toInsert) {
+      if (indexCreatedVersionMajor >= 7 && info.info.minVersion == null) {
+        throw new IllegalArgumentException(
+            "All segments must record the minVersion for indices created on or after Lucene 7");
+      }
     }
 
     final Set<SegmentCommitInfo> mergedAway = new HashSet<>(merge.segments);
@@ -1124,10 +1149,15 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
       assert segIdx >= newSegIdx;
       final SegmentCommitInfo info = segments.get(segIdx);
       if (mergedAway.contains(info)) {
-        if (!inserted && !dropSegment) {
-          segments.set(segIdx, merge.info);
-          inserted = true;
+        if (!inserted && toInsert.isEmpty() == false) {
+          segments.set(segIdx, toInsert.get(0));
           newSegIdx++;
+          for (int k = 1; k < toInsert.size(); k++) {
+            segments.add(newSegIdx++, toInsert.get(k));
+            cnt++;
+            segIdx++;
+          }
+          inserted = true;
         }
       } else {
         segments.set(newSegIdx, info);
@@ -1143,8 +1173,8 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
     // deleted while we are merging, in which case it should
     // be the case that the new segment is also all deleted,
     // we insert it at the beginning if it should not be dropped:
-    if (!inserted && !dropSegment) {
-      segments.add(0, merge.info);
+    if (!inserted && toInsert.isEmpty() == false) {
+      segments.addAll(0, toInsert);
     }
   }
 

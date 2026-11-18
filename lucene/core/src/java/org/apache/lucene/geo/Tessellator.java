@@ -307,20 +307,19 @@ public final class Tessellator {
   private static Node eliminateHoles(
       List<Node> holeList, final Map<Node, ?> holeListPolygons, Node outerNode) {
     // Sort the hole vertices by x coordinate
-    holeList.sort(
-        (Node pNodeA, Node pNodeB) -> {
-          double diff = pNodeA.getX() - pNodeB.getX();
-          if (diff == 0) {
-            diff = pNodeA.getY() - pNodeB.getY();
-            if (diff == 0) {
-              // same hole node
-              double a = Math.min(pNodeA.previous.getY(), pNodeA.next.getY());
-              double b = Math.min(pNodeB.previous.getY(), pNodeB.next.getY());
-              diff = a - b;
-            }
-          }
-          return diff < 0 ? -1 : diff > 0 ? 1 : 0;
-        });
+    holeList.sort((Node pNodeA, Node pNodeB) -> {
+      double diff = pNodeA.getX() - pNodeB.getX();
+      if (diff == 0) {
+        diff = pNodeA.getY() - pNodeB.getY();
+        if (diff == 0) {
+          // same hole node
+          double a = Math.min(pNodeA.previous.getY(), pNodeA.next.getY());
+          double b = Math.min(pNodeB.previous.getY(), pNodeB.next.getY());
+          diff = a - b;
+        }
+      }
+      return diff < 0 ? -1 : diff > 0 ? 1 : 0;
+    });
 
     // Process holes from left to right.
     for (int i = 0; i < holeList.size(); ++i) {

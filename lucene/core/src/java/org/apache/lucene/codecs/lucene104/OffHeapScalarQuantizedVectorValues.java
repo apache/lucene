@@ -192,7 +192,8 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
     VectorUtil.int4Unpack(packed, unpacked);
   }
 
-  static OffHeapScalarQuantizedVectorValues load(
+  /** Load off-heap scalar quantized vectors. */
+  public static OffHeapScalarQuantizedVectorValues load(
       OrdToDocDISIReaderConfiguration configuration,
       int dimension,
       int size,

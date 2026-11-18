@@ -150,7 +150,8 @@ module org.apache.lucene.analysis.common {
       org.apache.lucene.analysis.charfilter.MappingCharFilterFactory,
       org.apache.lucene.analysis.cjk.CJKWidthCharFilterFactory,
       org.apache.lucene.analysis.fa.PersianCharFilterFactory,
-      org.apache.lucene.analysis.pattern.PatternReplaceCharFilterFactory;
+      org.apache.lucene.analysis.pattern.PatternReplaceCharFilterFactory,
+      org.apache.lucene.analysis.th.ThaiCharFilterFactory;
   provides org.apache.lucene.analysis.TokenFilterFactory with
       org.apache.lucene.analysis.tr.ApostropheFilterFactory,
       org.apache.lucene.analysis.ar.ArabicNormalizationFilterFactory,
@@ -187,7 +188,6 @@ module org.apache.lucene.analysis.common {
       org.apache.lucene.analysis.en.KStemFilterFactory,
       org.apache.lucene.analysis.en.PorterStemFilterFactory,
       org.apache.lucene.analysis.es.SpanishLightStemFilterFactory,
-      org.apache.lucene.analysis.es.SpanishMinimalStemFilterFactory,
       org.apache.lucene.analysis.es.SpanishPluralStemFilterFactory,
       org.apache.lucene.analysis.fa.PersianNormalizationFilterFactory,
       org.apache.lucene.analysis.fa.PersianStemFilterFactory,
@@ -214,7 +214,6 @@ module org.apache.lucene.analysis.common {
       org.apache.lucene.analysis.miscellaneous.DelimitedTermFrequencyTokenFilterFactory,
       org.apache.lucene.analysis.miscellaneous.DropIfFlaggedFilterFactory,
       org.apache.lucene.analysis.miscellaneous.FingerprintFilterFactory,
-      org.apache.lucene.analysis.miscellaneous.FixBrokenOffsetsFilterFactory,
       org.apache.lucene.analysis.miscellaneous.HyphenatedWordsFilterFactory,
       org.apache.lucene.analysis.miscellaneous.KeepWordFilterFactory,
       org.apache.lucene.analysis.miscellaneous.KeywordMarkerFilterFactory,
@@ -263,6 +262,8 @@ module org.apache.lucene.analysis.common {
       org.apache.lucene.analysis.core.FlattenGraphFilterFactory,
       org.apache.lucene.analysis.te.TeluguNormalizationFilterFactory,
       org.apache.lucene.analysis.te.TeluguStemFilterFactory,
+      org.apache.lucene.analysis.th.ThaiNormalizationFilterFactory,
+      org.apache.lucene.analysis.th.ThaiRepeatFilterFactory,
       org.apache.lucene.analysis.tr.TurkishLowerCaseFilterFactory,
       org.apache.lucene.analysis.util.ElisionFilterFactory;
   provides org.apache.lucene.analysis.TokenizerFactory with

@@ -42,16 +42,15 @@ public class TestMergePolicy extends LuceneTestCase {
         assertFalse(m.hasCompletedSuccessfully().isPresent());
       }
       Thread t =
-          new Thread(
-              () -> {
-                try {
-                  for (MergePolicy.OneMerge m : ms.merges) {
-                    m.close(true, false, _ -> {});
-                  }
-                } catch (IOException e) {
-                  throw new AssertionError(e);
-                }
-              });
+          new Thread(() -> {
+            try {
+              for (MergePolicy.OneMerge m : ms.merges) {
+                m.close(true, false, _ -> {});
+              }
+            } catch (IOException e) {
+              throw new AssertionError(e);
+            }
+          });
       t.start();
       assertTrue(ms.await(100, TimeUnit.HOURS));
       for (MergePolicy.OneMerge m : ms.merges) {
@@ -68,14 +67,13 @@ public class TestMergePolicy extends LuceneTestCase {
         assertFalse(m.hasCompletedSuccessfully().isPresent());
       }
       Thread t =
-          new Thread(
-              () -> {
-                try {
-                  ms.merges.get(0).close(true, false, _ -> {});
-                } catch (IOException e) {
-                  throw new AssertionError(e);
-                }
-              });
+          new Thread(() -> {
+            try {
+              ms.merges.get(0).close(true, false, _ -> {});
+            } catch (IOException e) {
+              throw new AssertionError(e);
+            }
+          });
       t.start();
       assertFalse(ms.await(10, TimeUnit.MILLISECONDS));
       assertFalse(ms.merges.get(1).hasCompletedSuccessfully().isPresent());
@@ -93,17 +91,16 @@ public class TestMergePolicy extends LuceneTestCase {
       AtomicInteger i = new AtomicInteger(0);
       AtomicBoolean stop = new AtomicBoolean(false);
       Thread t =
-          new Thread(
-              () -> {
-                while (stop.get() == false) {
-                  try {
-                    ms.merges.get(i.getAndIncrement()).close(true, false, _ -> {});
-                    Thread.sleep(1);
-                  } catch (IOException | InterruptedException e) {
-                    throw new AssertionError(e);
-                  }
-                }
-              });
+          new Thread(() -> {
+            while (stop.get() == false) {
+              try {
+                ms.merges.get(i.getAndIncrement()).close(true, false, _ -> {});
+                Thread.sleep(1);
+              } catch (IOException | InterruptedException e) {
+                throw new AssertionError(e);
+              }
+            }
+          });
       t.start();
       assertFalse(ms.await(10, TimeUnit.MILLISECONDS));
       stop.set(true);

@@ -133,9 +133,6 @@ public class SortField {
   // Used for 'sortMissingFirst/Last'
   protected final Object missingValue;
 
-  // Indicates if sort should be optimized with indexed data. Set to true by default.
-  @Deprecated private boolean optimizeSortWithIndexedData = true;
-
   /**
    * Creates a sort by terms in the given field with the type of term values explicitly given.
    *
@@ -199,6 +196,37 @@ public class SortField {
     this.comparatorSource = comparator;
     this.missingValue = null; // missingValue factored into comparator source
     validateField(field, type, null);
+  }
+
+  /** Copies the state of an existing SortField without validating it. */
+  SortField(
+      String field,
+      Type type,
+      boolean reverse,
+      Object missingValue,
+      FieldComparatorSource comparatorSource) {
+    this.field = field;
+    this.type = type;
+    this.reverse = reverse;
+    this.missingValue = missingValue;
+    this.comparatorSource = comparatorSource;
+  }
+
+  /**
+   * Returns a SortField that sorts like {@code sortField} but never uses indexed data (points,
+   * terms or doc-values skippers) to skip non-competitive documents.
+   *
+   * <p>Pruning is enabled by default. Its requirements include that the same data is indexed with
+   * points or terms and with doc values, and that the SortField type matches the way the field was
+   * indexed. Use this to disable it where those requirements can't be met. Early termination when
+   * the sort is a prefix of the index sort is not affected.
+   *
+   * @lucene.experimental
+   */
+  public static SortField withoutPruning(SortField sortField) {
+    return sortField instanceof NonPruningSortField
+        ? sortField
+        : new NonPruningSortField(sortField);
   }
 
   /** A SortFieldProvider for field sorts */
@@ -450,7 +478,8 @@ public class SortField {
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
-    if (!(o instanceof SortField other)) {
+    if (!(o instanceof SortField other) || o instanceof NonPruningSortField) {
+      // NonPruningSortField is never equal to a plain SortField, which keeps equals symmetric
       return false;
     }
     return (Objects.equals(other.field, this.field)
@@ -530,9 +559,6 @@ public class SortField {
       default:
         throw new IllegalStateException("Illegal sort type: " + type);
     }
-    if (getOptimizeSortWithIndexedData() == false) {
-      fieldComparator.disableSkipping();
-    }
     return fieldComparator;
   }
 
@@ -603,69 +629,5 @@ public class SortField {
       default:
         return null;
     }
-  }
-
-  /**
-   * Enables/disables numeric sort optimization to use the indexed data.
-   *
-   * <p>Enabled by default. By default, sorting on a numeric field activates point sort optimization
-   * that can efficiently skip over non-competitive hits. Sort optimization has a number of
-   * requirements, one of which is that SortField.Type matches the Point type with which the field
-   * was indexed (e.g. sort on IntPoint field should use SortField.Type.INT). Another requirement is
-   * that the same data is indexed with points and doc values for the field.
-   *
-   * <p>By default, sorting on a SORTED(_SET) field activates sort optimization that can efficiently
-   * skip over non-competitive hits. Sort optimization requires that the same data is indexed with
-   * term index and doc values for the field.
-   *
-   * @param optimizeSortWithIndexedData providing {@code false} disables the optimization, in cases
-   *     where these requirements can't be met.
-   * @deprecated should only be used for compatibility with 8.x indices that got created with
-   *     inconsistent data across fields, or the wrong sort configuration in the index sort
-   */
-  @Deprecated // Remove in Lucene 10
-  public void setOptimizeSortWithIndexedData(boolean optimizeSortWithIndexedData) {
-    this.optimizeSortWithIndexedData = optimizeSortWithIndexedData;
-  }
-
-  /**
-   * Returns whether sort optimization should be optimized with indexed data
-   *
-   * @return whether sort optimization should be optimized with indexed data
-   */
-  @Deprecated // Remove in Lucene 10
-  public boolean getOptimizeSortWithIndexedData() {
-    return optimizeSortWithIndexedData;
-  }
-
-  /**
-   * Enables/disables numeric sort optimization to use the Points index.
-   *
-   * <p>Enabled by default. By default, sorting on a numeric field activates point sort optimization
-   * that can efficiently skip over non-competitive hits. Sort optimization has a number of
-   * requirements, one of which is that SortField.Type matches the Point type with which the field
-   * was indexed (e.g. sort on IntPoint field should use SortField.Type.INT). Another requirement is
-   * that the same data is indexed with points and doc values for the field.
-   *
-   * @param optimizeSortWithPoints providing {@code false} disables the optimization, in cases where
-   *     these requirements can't be met.
-   * @deprecated should only be used for compatibility with 8.x indices that got created with
-   *     inconsistent data across fields, or the wrong sort configuration in the index sort. This is
-   *     a duplicate method for {@code SortField#setOptimizeSortWithIndexedData}.
-   */
-  @Deprecated // Remove in Lucene 10
-  public void setOptimizeSortWithPoints(boolean optimizeSortWithPoints) {
-    setOptimizeSortWithIndexedData(optimizeSortWithPoints);
-  }
-
-  /**
-   * Returns whether sort optimization should be optimized with points index
-   *
-   * @return whether sort optimization should be optimized with points index
-   * @deprecated This is a duplicate method for {@code SortField#getOptimizeSortWithIndexedData}.
-   */
-  @Deprecated // Remove in Lucene 10
-  public boolean getOptimizeSortWithPoints() {
-    return getOptimizeSortWithIndexedData();
   }
 }

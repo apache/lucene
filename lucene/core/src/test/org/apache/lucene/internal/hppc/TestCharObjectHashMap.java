@@ -26,6 +26,9 @@ import java.util.HashSet;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.RamUsageTester;
+import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.RamUsageEstimator;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.After;
@@ -639,5 +642,25 @@ public class TestCharObjectHashMap extends LuceneTestCase {
     assertNotEquals(l1, l2);
     assertEquals(l3.hashCode(), l2.hashCode());
     assertEquals(l3, l2);
+  }
+
+  public void testRamBytesUsedCountsAccountableValues() {
+    CharObjectHashMap<Accountable> map = new CharObjectHashMap<>();
+    Accountable value = () -> 10_000L;
+    map.put((char) 1, value);
+    assertEquals(
+        RamUsageEstimator.shallowSizeOfInstance(CharObjectHashMap.class)
+            + RamUsageEstimator.sizeOf(map.keys)
+            + RamUsageEstimator.shallowSizeOf(map.values)
+            + 10_000L,
+        map.ramBytesUsed());
+  }
+
+  public void testRamBytesUsedMatchesRamUsageTester() {
+    CharObjectHashMap<byte[]> map = new CharObjectHashMap<>();
+    for (char i = 1; i <= 10; i++) {
+      map.put(i, new byte[1000]);
+    }
+    assertEquals(RamUsageTester.ramUsed(map), map.ramBytesUsed());
   }
 }

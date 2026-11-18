@@ -79,9 +79,9 @@ public abstract class FlatVectorsWriter extends KnnVectorsWriter {
    *
    * @param fieldInfo field to merge
    * @param mergeState merge state
-   * @param needsMergeScorer whether to prepare scorer data for a vector count. The writer tests
-   *     this predicate against the count before deletions, which can exceed the number of vectors
-   *     written.
+   * @param needsMergeScorer whether to prepare scorer data for a vector count. The writer applies
+   *     this predicate to the number of live vectors written after deletions, so it does not
+   *     prepare data for a merged field that is too small to build a graph.
    * @return prepared data that the caller must close, or {@code null} if none was prepared, which
    *     is what the default implementation returns and what any writer returns for a field it
    *     cannot prepare for. The caller then builds the scorer itself.

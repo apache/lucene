@@ -162,17 +162,15 @@ record DedupQuantizer(ScalarEncoding encoding) {
       int flavorWireNumber = meta.readVInt();
       Flavor flavor =
           Flavor.fromWireNumber(flavorWireNumber)
-              .orElseThrow(
-                  () ->
-                      new CorruptIndexException(
-                          "Invalid flavor wire number: " + flavorWireNumber, meta));
+              .orElseThrow(() ->
+                  new CorruptIndexException(
+                      "Invalid flavor wire number: " + flavorWireNumber, meta));
       int wireNumber = meta.readVInt();
       ScalarEncoding encoding =
           ScalarEncoding.fromWireNumber(wireNumber)
-              .orElseThrow(
-                  () ->
-                      new CorruptIndexException(
-                          "Invalid scalar encoding wire number: " + wireNumber, meta));
+              .orElseThrow(() ->
+                  new CorruptIndexException(
+                      "Invalid scalar encoding wire number: " + wireNumber, meta));
       long offset = meta.readLong();
       long size = meta.readLong();
       if (blocks.put(flavor, new QuantizedBlock(encoding, offset, size)) != null) {
@@ -187,7 +185,10 @@ record DedupQuantizer(ScalarEncoding encoding) {
    * ordinal within each block. Wherever a {@code preQuantized} record with a matching encoding and
    * flavor is available (i.e. the vector originates from a segment in this format), it is copied
    * as-is; otherwise the raw vector is quantized. The block locations are written to {@code meta};
-   * non-FLOAT32 groups (stored raw only) record an empty list.
+   * BYTE groups (stored raw only) record an empty list. FLOAT32 and FLOAT16 groups are both
+   * quantized; callers supply {@code vectors} as {@code float[]} (FLOAT16 inflates its {@code
+   * short[]} storage first), since the quantized record is a pure function of the {@code float[]}
+   * values and the flavor, independent of the source encoding.
    */
   void writeGroup(
       IndexOutput meta,
@@ -200,7 +201,7 @@ record DedupQuantizer(ScalarEncoding encoding) {
       PreQuantizedSupplier preQuantized)
       throws IOException {
 
-    if (groupEncoding != VectorEncoding.FLOAT32) {
+    if (groupEncoding.isFloatingPoint() == false) {
       writeEmptyGroup(meta);
       return;
     }

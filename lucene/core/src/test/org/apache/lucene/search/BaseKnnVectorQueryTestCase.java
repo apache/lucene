@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -1009,6 +1010,20 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       assertEquals(TotalHits.Relation.EQUAL_TO, noTimeoutTopDocs.totalHits.relation());
       assertEquals(1, noTimeoutTopDocs.scoreDocs.length);
 
+      // Check that nulls are passed through
+      TimeLimitingKnnCollectorManager nullTimeoutManager =
+          new TimeLimitingKnnCollectorManager(
+              new TopKnnCollectorManager(0, searcher) {
+                @Override
+                public KnnCollector newCollector(
+                    int visitedLimit, KnnSearchStrategy searchStrategy, LeafReaderContext context) {
+                  return null;
+                }
+              },
+              () -> true);
+      assertNull(
+          nullTimeoutManager.newCollector(Integer.MAX_VALUE, null, searcher.leafContexts.get(0)));
+
       // A collector manager that immediately times out
       TimeLimitingKnnCollectorManager timeoutManager =
           new TimeLimitingKnnCollectorManager(delegate, () -> true);
@@ -1304,20 +1319,17 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     }
   }
 
+  /** Must be thread-safe: per-segment kNN searches may call it concurrently. */
   private static class CountingQueryTimeout implements QueryTimeout {
-    private int remaining;
+    private final AtomicInteger remaining;
 
     public CountingQueryTimeout(int count) {
-      remaining = count;
+      remaining = new AtomicInteger(count);
     }
 
     @Override
     public boolean shouldExit() {
-      if (remaining > 0) {
-        remaining--;
-        return false;
-      }
-      return true;
+      return remaining.getAndUpdate(r -> r > 0 ? r - 1 : 0) == 0;
     }
   }
 

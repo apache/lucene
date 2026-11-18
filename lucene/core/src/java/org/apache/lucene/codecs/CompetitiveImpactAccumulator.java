@@ -38,16 +38,15 @@ public final class CompetitiveImpactAccumulator {
   public CompetitiveImpactAccumulator() {
     maxFreqs = new int[256];
     otherFreqNormPairs =
-        new TreeSet<>(
-            (o1, o2) -> {
-              // greater freqs compare greater
-              int cmp = Integer.compare(o1.freq, o2.freq);
-              if (cmp == 0) {
-                // greater norms compare lower
-                cmp = Long.compareUnsigned(o2.norm, o1.norm);
-              }
-              return cmp;
-            });
+        new TreeSet<>((o1, o2) -> {
+          // greater freqs compare greater
+          int cmp = Integer.compare(o1.freq, o2.freq);
+          if (cmp == 0) {
+            // greater norms compare lower
+            cmp = Long.compareUnsigned(o2.norm, o1.norm);
+          }
+          return cmp;
+        });
   }
 
   /** Reset to the same state it was in after creation. */

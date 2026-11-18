@@ -85,7 +85,6 @@ final class DedupFlatVectorsWriter extends FlatVectorsWriter {
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, vectorDataExtension);
 
-    boolean success = false;
     try {
       this.meta = state.directory.createOutput(metaFileName, state.context);
       CodecUtil.writeIndexHeader(
@@ -114,11 +113,9 @@ final class DedupFlatVectorsWriter extends FlatVectorsWriter {
       } else {
         this.quantizedVectorData = null;
       }
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(this);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 

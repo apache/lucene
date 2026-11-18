@@ -25,6 +25,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FilterDocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.VectorScorer;
+import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
@@ -339,6 +340,16 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     }
 
     @Override
+    public FloatVectorValues getFloatVectorValues(String field, DataAccessHint access)
+        throws IOException {
+      final FloatVectorValues vectorValues = in.getFloatVectorValues(field, access);
+      if (vectorValues == null) {
+        return null;
+      }
+      return new ExitableFloatVectorValues(vectorValues);
+    }
+
+    @Override
     public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
       final Float16VectorValues vectorValues = in.getFloat16VectorValues(field);
       if (vectorValues == null) {
@@ -503,6 +514,11 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       }
 
       @Override
+      public boolean prefetch(int ord, int count) throws IOException {
+        return vectorValues.prefetch(ord, count);
+      }
+
+      @Override
       public int ordToDoc(int ord) {
         return vectorValues.ordToDoc(ord);
       }
@@ -523,8 +539,10 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       }
 
       @Override
-      public FloatVectorValues copy() {
-        throw new UnsupportedOperationException();
+      public FloatVectorValues copy() throws IOException {
+        // A caller that needs a second view, e.g. to prefetch ahead of the scoring position, still
+        // has to get one that checks the timeout.
+        return new ExitableFloatVectorValues(vectorValues.copy());
       }
     }
 
@@ -543,6 +561,11 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       @Override
       public short[] vectorValue(int ord) throws IOException {
         return vectorValues.vectorValue(ord);
+      }
+
+      @Override
+      public boolean prefetch(int ord, int count) throws IOException {
+        return vectorValues.prefetch(ord, count);
       }
 
       @Override
@@ -566,8 +589,10 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       }
 
       @Override
-      public Float16VectorValues copy() {
-        throw new UnsupportedOperationException();
+      public Float16VectorValues copy() throws IOException {
+        // A caller that needs a second view, e.g. to prefetch ahead of the scoring position, still
+        // has to get one that checks the timeout.
+        return new ExitableFloat16VectorValues(vectorValues.copy());
       }
     }
 
@@ -594,6 +619,11 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       }
 
       @Override
+      public boolean prefetch(int ord, int count) throws IOException {
+        return vectorValues.prefetch(ord, count);
+      }
+
+      @Override
       public int ordToDoc(int ord) {
         return vectorValues.ordToDoc(ord);
       }
@@ -609,8 +639,10 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       }
 
       @Override
-      public ByteVectorValues copy() {
-        throw new UnsupportedOperationException();
+      public ByteVectorValues copy() throws IOException {
+        // A caller that needs a second view, e.g. to prefetch ahead of the scoring position, still
+        // has to get one that checks the timeout.
+        return new ExitableByteVectorValues(vectorValues.copy());
       }
     }
   }

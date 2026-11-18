@@ -293,6 +293,42 @@ public class TestBooleanRewrites extends LuceneTestCase {
             .build();
 
     assertEquals(MatchNoDocsQuery.INSTANCE, searcher.rewrite(bq2));
+
+    // Test Filter BoostQuery+ConstantScoreQuery with MustNot
+    BooleanQuery bq3 =
+        new BooleanQuery.Builder()
+            .add(
+                new BoostQuery(
+                    new BoostQuery(
+                        new ConstantScoreQuery(new TermQuery(new Term("foo", "bar"))), 2),
+                    5),
+                Occur.FILTER)
+            // other terms
+            .add(new TermQuery(new Term("foo", "baz")), Occur.MUST)
+            .add(new TermQuery(new Term("foo", "bad")), Occur.SHOULD)
+            //
+            .add(new TermQuery(new Term("foo", "bar")), Occur.MUST_NOT)
+            .build();
+
+    assertEquals(MatchNoDocsQuery.INSTANCE, searcher.rewrite(bq3));
+
+    // Test Must BoostQuery+ConstantScoreQuery with MustNot
+    BooleanQuery bq4 =
+        new BooleanQuery.Builder()
+            .add(
+                new BoostQuery(
+                    new BoostQuery(
+                        new ConstantScoreQuery(new TermQuery(new Term("foo", "bar"))), 2),
+                    5),
+                Occur.MUST)
+            // other terms
+            .add(new TermQuery(new Term("foo", "baz")), Occur.MUST)
+            .add(new TermQuery(new Term("foo", "bad")), Occur.SHOULD)
+            //
+            .add(new TermQuery(new Term("foo", "bar")), Occur.MUST_NOT)
+            .build();
+
+    assertEquals(MatchNoDocsQuery.INSTANCE, searcher.rewrite(bq4));
   }
 
   // MatchAllQuery as MUST_NOT clause cannot return anything
@@ -328,7 +364,7 @@ public class TestBooleanRewrites extends LuceneTestCase {
   public void testDeeplyNestedBooleanRewriteShouldClauses() throws IOException {
     IndexSearcher searcher = newSearcher(new MultiReader());
     Function<Integer, TermQuery> termQueryFunction =
-        (i) -> new TermQuery(new Term("layer[" + i + "]", "foo"));
+        i -> new TermQuery(new Term("layer[" + i + "]", "foo"));
     int depth = TestUtil.nextInt(random(), 10, 30);
     TestRewriteQuery rewriteQueryExpected = new TestRewriteQuery();
     TestRewriteQuery rewriteQuery = new TestRewriteQuery();
@@ -365,7 +401,7 @@ public class TestBooleanRewrites extends LuceneTestCase {
   public void testDeeplyNestedBooleanRewrite() throws IOException {
     IndexSearcher searcher = newSearcher(new MultiReader());
     Function<Integer, TermQuery> termQueryFunction =
-        (i) -> new TermQuery(new Term("layer[" + i + "]", "foo"));
+        i -> new TermQuery(new Term("layer[" + i + "]", "foo"));
     int depth = TestUtil.nextInt(random(), 10, 30);
     TestRewriteQuery rewriteQueryExpected = new TestRewriteQuery();
     TestRewriteQuery rewriteQuery = new TestRewriteQuery();

@@ -588,12 +588,17 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
     assertQueryEquals("{ a TO z }^2.0", null, "({a TO z})^2.0");
     assertQueryEquals("[ a TO z] OR bar", null, "[a TO z] bar");
     assertQueryEquals("[ a TO z] AND bar", null, "+[a TO z] +bar");
-    assertQueryEquals("( bar blar { a TO z}) ", null, "bar blar {a TO z}");
-    assertQueryEquals("gack ( bar blar { a TO z}) ", null, "gack (bar blar {a TO z})");
+    assertQueryEquals("( bar blar { a TO z}) ", null, multiTermGroup("bar blar") + " {a TO z}");
+    assertQueryEquals(
+        "gack ( bar blar { a TO z}) ", null, "gack (" + multiTermGroup("bar blar") + " {a TO z})");
 
     assertQueryEquals("[* TO Z]", null, "[* TO z]");
     assertQueryEquals("[A TO *]", null, "[a TO *]");
     assertQueryEquals("[* TO *]", null, "[* TO *]");
+  }
+
+  protected String multiTermGroup(String str) {
+    return str;
   }
 
   public void testRangeWithPhrase() throws Exception {
@@ -912,9 +917,13 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
   public void testSimpleDAO() throws Exception {
     assertQueryEqualsDOA("term term term", null, "+term +term +term");
     assertQueryEqualsDOA("term +term term", null, "+term +term +term");
-    assertQueryEqualsDOA("term term +term", null, "+term +term +term");
+    assertQueryEqualsDOA("term term +term", null, multiTermGroupDAO("+term +term") + " +term");
     assertQueryEqualsDOA("term +term +term", null, "+term +term +term");
-    assertQueryEqualsDOA("-term term term", null, "-term +term +term");
+    assertQueryEqualsDOA("-term term term", null, "-term " + multiTermGroupDAO("+term +term"));
+  }
+
+  protected String multiTermGroupDAO(String str) {
+    return str;
   }
 
   public void testBoost() throws Exception {
