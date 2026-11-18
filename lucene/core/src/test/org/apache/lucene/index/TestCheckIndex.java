@@ -345,9 +345,9 @@ public class TestCheckIndex extends BaseTestCheckIndex {
           assertTrue(corruption + ": " + cause, cause instanceof IOException);
         }
 
-        // NOTE: We can assert that the cause's message contains the filename once all relevant
-        // exception paths, including EOFException, provide it. For example: assertTrue(corruption +
-        // ": " + cause, cause.toString().contains("_1.si"));
+        // the file is named by this exception's message rather than the cause's: a truncated file
+        // may surface as a bare EOFException (e.g. SimpleText codec on a ByteBuffersDirectory)
+        assertTrue(corruption + ": " + e.getMessage(), e.getMessage().contains("_1.si"));
 
         // ... and CheckIndex reports it rather than only that something was unreadable
         ByteArrayOutputStream out = new ByteArrayOutputStream();
