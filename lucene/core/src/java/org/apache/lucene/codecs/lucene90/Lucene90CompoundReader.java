@@ -19,8 +19,10 @@ package org.apache.lucene.codecs.lucene90;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.NoSuchFileException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.codecs.CodecUtil;
@@ -54,10 +56,13 @@ final class Lucene90CompoundReader extends CompoundDirectory {
   private final String dataFileName;
   private final Map<String, FileEntry> entries;
   private final IndexInput handle;
-  // the mapping merges read through, opened by the first merge open and closed with this reader
-  private IndexInput mergeHandle;
+  // copies of the data file, starting with handle, guarded by this
+  private final List<Copy> copies = new ArrayList<>();
   private boolean closed;
   private int version;
+
+  /** A copy of the data file and the context each inner file was first opened with on it. */
+  private record Copy(IndexInput data, Map<String, IOContext> contexts) {}
 
   /** Create a new CompoundFileDirectory. */
   // TODO: we should just pre-strip "entries" and append segment name up-front like simpletext?
@@ -80,6 +85,7 @@ final class Lucene90CompoundReader extends CompoundDirectory {
             + CodecUtil.footerLength();
 
     handle = directory.openInput(dataFileName, IOContext.DEFAULT);
+    copies.add(new Copy(handle, new HashMap<>()));
     try {
       CodecUtil.checkIndexHeader(
           handle, Lucene90CompoundFormat.DATA_CODEC, version, version, si.getId(), "");
@@ -148,13 +154,15 @@ final class Lucene90CompoundReader extends CompoundDirectory {
 
   @Override
   public void close() throws IOException {
-    IndexInput merge;
+    List<IndexInput> toClose = new ArrayList<>();
     synchronized (this) {
       closed = true;
-      merge = mergeHandle == handle ? null : mergeHandle;
-      mergeHandle = null;
+      for (Copy copy : copies) {
+        toClose.add(copy.data());
+      }
+      copies.clear();
     }
-    IOUtils.close(handle, merge);
+    IOUtils.close(toClose);
   }
 
   @Override
@@ -176,28 +184,31 @@ final class Lucene90CompoundReader extends CompoundDirectory {
               + entries.keySet()
               + ")");
     }
-    IndexInput data = context.context() == IOContext.Context.MERGE ? mergeHandle() : handle;
-    return data.slice(name, entry.offset, entry.length, context);
-  }
-
-  /**
-   * A merge reads through a mapping of its own, so the access it advises does not replace the
-   * advice of searches reading the same inner files. Merges of this segment share it. Like the
-   * search mapping, it is opened without advice: each inner file is advised on its own region.
-   */
-  private synchronized IndexInput mergeHandle() throws IOException {
-    if (closed) {
-      throw new AlreadyClosedException("this Directory is closed");
-    }
-    if (mergeHandle == null) {
-      try {
-        mergeHandle = directory.openInput(dataFileName, IOContext.DEFAULT);
-      } catch (@SuppressWarnings("unused") FileNotFoundException | NoSuchFileException e) {
-        // an open reader outlives its files, so fall back to the mapping it already holds
-        mergeHandle = handle;
+    synchronized (this) {
+      if (closed) {
+        throw new AlreadyClosedException("this Directory is closed");
       }
+      for (Copy copy : copies) {
+        // an inner file keeps the advice it was first opened with on a copy
+        IOContext first = copy.contexts().putIfAbsent(id, context);
+        IndexInput slice =
+            copy.data().slice(name, entry.offset, entry.length, first == null ? context : first);
+        if (first == null || slice.isEfficientFor(context)) {
+          return slice;
+        }
+      }
+      final IndexInput data;
+      try {
+        // without advice, like handle, so inner files advise their own pages
+        data = directory.openInput(dataFileName, IOContext.DEFAULT);
+      } catch (@SuppressWarnings("unused") FileNotFoundException | NoSuchFileException e) {
+        // an open reader outlives its files, so read through the copy it already holds
+        IOContext first = copies.getFirst().contexts().get(id);
+        return handle.slice(name, entry.offset, entry.length, first);
+      }
+      copies.add(new Copy(data, new HashMap<>(Map.of(id, context))));
+      return data.slice(name, entry.offset, entry.length, context);
     }
-    return mergeHandle;
   }
 
   /** Returns an array of strings, one for each file in the directory. */

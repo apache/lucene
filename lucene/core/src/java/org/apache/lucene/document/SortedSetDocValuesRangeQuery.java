@@ -294,6 +294,12 @@ final class SortedSetDocValuesRangeQuery extends Query {
     if (docCount != reader.maxDoc()) {
       return null;
     }
+    if (reader.getMetaData().hasBlocks()) {
+      // Only the blocks are sorted, by the sort key of their parent. The values of the documents
+      // inside a block say nothing about their position, so the matching documents are not a
+      // contiguous doc-ID range.
+      return null;
+    }
     return sf;
   }
 }

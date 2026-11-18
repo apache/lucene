@@ -154,8 +154,8 @@ public final class Intervals {
   /**
    * Return an {@link IntervalsSource} over the disjunction of all terms that begin with a prefix
    *
-   * @throws IllegalStateException if the prefix expands to more than {@link
-   *     #DEFAULT_MAX_EXPANSIONS} terms
+   * @throws org.apache.lucene.search.IndexSearcher.TooManyClauses if the prefix expands to more
+   *     than {@link #DEFAULT_MAX_EXPANSIONS} terms
    */
   public static IntervalsSource prefix(BytesRef prefix) {
     return prefix(prefix, DEFAULT_MAX_EXPANSIONS);
@@ -170,7 +170,8 @@ public final class Intervals {
    *
    * @param prefix the prefix to expand
    * @param maxExpansions the maximum number of terms to expand to
-   * @throws IllegalStateException if the prefix expands to more than {@code maxExpansions} terms
+   * @throws org.apache.lucene.search.IndexSearcher.TooManyClauses if the prefix expands to more
+   *     than {@code maxExpansions} terms
    */
   public static IntervalsSource prefix(BytesRef prefix, int maxExpansions) {
     CompiledAutomaton ca =
@@ -181,8 +182,8 @@ public final class Intervals {
   /**
    * Return an {@link IntervalsSource} over the disjunction of all terms that match a wildcard glob
    *
-   * @throws IllegalStateException if the wildcard glob expands to more than {@link
-   *     #DEFAULT_MAX_EXPANSIONS} terms
+   * @throws org.apache.lucene.search.IndexSearcher.TooManyClauses if the wildcard glob expands to
+   *     more than {@link #DEFAULT_MAX_EXPANSIONS} terms
    * @see WildcardQuery for glob format
    */
   public static IntervalsSource wildcard(BytesRef wildcard) {
@@ -198,8 +199,8 @@ public final class Intervals {
    *
    * @param wildcard the glob to expand
    * @param maxExpansions the maximum number of terms to expand to
-   * @throws IllegalStateException if the wildcard glob expands to more than {@code maxExpansions}
-   *     terms
+   * @throws org.apache.lucene.search.IndexSearcher.TooManyClauses if the wildcard glob expands to
+   *     more than {@code maxExpansions} terms
    * @see WildcardQuery for glob format
    */
   public static IntervalsSource wildcard(BytesRef wildcard, int maxExpansions) {
@@ -212,8 +213,8 @@ public final class Intervals {
    * expression
    *
    * @param regexp regular expression
-   * @throws IllegalStateException if the regex expands to more than {@link #DEFAULT_MAX_EXPANSIONS}
-   *     terms
+   * @throws org.apache.lucene.search.IndexSearcher.TooManyClauses if the regex expands to more than
+   *     {@link #DEFAULT_MAX_EXPANSIONS} terms
    * @see RegexpQuery for regexp format
    */
   public static IntervalsSource regexp(BytesRef regexp) {
@@ -229,8 +230,8 @@ public final class Intervals {
    *
    * @param regexp regular expression
    * @param maxExpansions the maximum number of terms to expand to
-   * @throws IllegalStateException if the regex expands to more than {@link #DEFAULT_MAX_EXPANSIONS}
-   *     terms
+   * @throws org.apache.lucene.search.IndexSearcher.TooManyClauses if the regex expands to more than
+   *     {@link #DEFAULT_MAX_EXPANSIONS} terms
    * @see RegexpQuery for regexp format
    */
   public static IntervalsSource regexp(BytesRef regexp, int maxExpansions) {
@@ -250,8 +251,8 @@ public final class Intervals {
    *     an open-ended range at this end
    * @param includeLower If true, the <code>lowerTerm</code> is included in the range
    * @param includeUpper If true, the <code>upperTerm</code> is included in the range
-   * @throws IllegalStateException if the range expands to more than {@link #DEFAULT_MAX_EXPANSIONS}
-   *     terms
+   * @throws org.apache.lucene.search.IndexSearcher.TooManyClauses if the range expands to more than
+   *     {@link #DEFAULT_MAX_EXPANSIONS} terms
    */
   public static IntervalsSource range(
       BytesRef lowerTerm, BytesRef upperTerm, boolean includeLower, boolean includeUpper) {
@@ -272,8 +273,8 @@ public final class Intervals {
    * @param includeLower If true, the <code>lowerTerm</code> is included in the range
    * @param includeUpper If true, the <code>upperTerm</code> is included in the range
    * @param maxExpansions the maximum number of terms to expand to
-   * @throws IllegalStateException if the wildcard glob expands to more than {@code maxExpansions}
-   *     terms
+   * @throws org.apache.lucene.search.IndexSearcher.TooManyClauses if the wildcard glob expands to
+   *     more than {@code maxExpansions} terms
    */
   public static IntervalsSource range(
       BytesRef lowerTerm,
@@ -345,8 +346,8 @@ public final class Intervals {
    *
    * @param ca an automaton accepting matching terms
    * @param pattern string representation of the given automaton, mostly used in exception messages
-   * @throws IllegalStateException if the automaton accepts more than {@link
-   *     #DEFAULT_MAX_EXPANSIONS} terms
+   * @throws org.apache.lucene.search.IndexSearcher.TooManyClauses if the automaton accepts more
+   *     than {@link #DEFAULT_MAX_EXPANSIONS} terms
    */
   public static IntervalsSource multiterm(CompiledAutomaton ca, String pattern) {
     return multiterm(ca, DEFAULT_MAX_EXPANSIONS, pattern);
@@ -362,7 +363,8 @@ public final class Intervals {
    * @param ca an automaton accepting matching terms
    * @param maxExpansions the maximum number of terms to expand to
    * @param pattern string representation of the given automaton, mostly used in exception messages
-   * @throws IllegalStateException if the automaton accepts more than {@code maxExpansions} terms
+   * @throws org.apache.lucene.search.IndexSearcher.TooManyClauses if the automaton accepts more
+   *     than {@code maxExpansions} terms
    */
   public static IntervalsSource multiterm(CompiledAutomaton ca, int maxExpansions, String pattern) {
     return new MultiTermIntervalsSource(ca, maxExpansions, pattern);

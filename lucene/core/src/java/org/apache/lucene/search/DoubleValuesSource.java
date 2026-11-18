@@ -333,12 +333,12 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
 
   /** Creates a DoubleValuesSource that wraps a float-valued field */
   public static DoubleValuesSource fromFloatField(String field) {
-    return fromField(field, (v) -> (double) Float.intBitsToFloat((int) v), Monotonicity.INCREASING);
+    return fromField(field, v -> (double) Float.intBitsToFloat((int) v), Monotonicity.INCREASING);
   }
 
   /** Creates a DoubleValuesSource that wraps a long-valued field */
   public static DoubleValuesSource fromLongField(String field) {
-    return fromField(field, (v) -> (double) v, Monotonicity.INCREASING);
+    return fromField(field, v -> (double) v, Monotonicity.INCREASING);
   }
 
   /** Creates a DoubleValuesSource that wraps an int-valued field */

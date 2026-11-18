@@ -35,65 +35,54 @@ public class IdeaSupportPlugin extends LuceneGradlePlugin {
       var logger = rootProject.getLogger();
       logger.warn("IntelliJ Idea IDE detected.");
 
-      rootProject.allprojects(
-          project -> {
-            project.getPlugins().apply("idea");
+      rootProject.allprojects(project -> {
+        project.getPlugins().apply("idea");
 
-            var idea = project.getExtensions().getByType(IdeaModel.class);
-            var module = idea.getModule();
-            module.setOutputDir(project.file("build/idea/classes/main"));
-            module.setTestOutputDir(project.file("build/idea/classes/test"));
-            module.setDownloadSources(true);
-          });
+        var idea = project.getExtensions().getByType(IdeaModel.class);
+        var module = idea.getModule();
+        module.setOutputDir(project.file("build/idea/classes/main"));
+        module.setTestOutputDir(project.file("build/idea/classes/test"));
+        module.setDownloadSources(true);
+      });
     }
 
     if (intellijIdea.isIdeaSync()) {
-      rootProject.allprojects(
-          project -> {
-            // disable all MR-JAR folders by hiding them from IDE after evaluation:
-            project
-                .getPlugins()
-                .withType(JavaPlugin.class)
-                .configureEach(
-                    _ -> {
-                      var sourceSets =
-                          project
-                              .getExtensions()
-                              .getByType(JavaPluginExtension.class)
-                              .getSourceSets();
-                      sourceSets
-                          .matching(
-                              sourceSet -> {
-                                return sourceSet.getName().matches("main\\d+");
-                              })
-                          .configureEach(
-                              sourceSet -> {
-                                project
-                                    .getLogger()
-                                    .lifecycle(
-                                        "Skipping MR-JAR sourceSet on IntelliJ Idea: "
-                                            + sourceSet.getName());
-                                sourceSet.getJava().setSrcDirs(List.of());
-                                sourceSet.getResources().setSrcDirs(List.of());
-                              });
-                    });
-          });
+      rootProject.allprojects(project -> {
+        // disable all MR-JAR folders by hiding them from IDE after evaluation:
+        project
+            .getPlugins()
+            .withType(JavaPlugin.class)
+            .configureEach(_ -> {
+              var sourceSets =
+                  project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets();
+              sourceSets
+                  .matching(sourceSet -> {
+                    return sourceSet.getName().matches("main\\d+");
+                  })
+                  .configureEach(sourceSet -> {
+                    project
+                        .getLogger()
+                        .lifecycle(
+                            "Skipping MR-JAR sourceSet on IntelliJ Idea: " + sourceSet.getName());
+                    sourceSet.getJava().setSrcDirs(List.of());
+                    sourceSet.getResources().setSrcDirs(List.of());
+                  });
+            });
+      });
     }
 
     if (intellijIdea.isIdeaBuild()) {
       // Skip certain long tasks that are dependencies of 'assemble' if we're building from within
       // IntelliJ.
-      rootProject.allprojects(
-          project -> {
-            project
-                .getTasks()
-                .matching(task -> task.getName().equals("renderSiteJavadoc"))
-                .configureEach(
-                    task -> {
-                      project.getLogger().lifecycle("Skipping task on IntelliJ: " + task.getPath());
-                      task.setEnabled(false);
-                    });
-          });
+      rootProject.allprojects(project -> {
+        project
+            .getTasks()
+            .matching(task -> task.getName().equals("renderSiteJavadoc"))
+            .configureEach(task -> {
+              project.getLogger().lifecycle("Skipping task on IntelliJ: " + task.getPath());
+              task.setEnabled(false);
+            });
+      });
     }
   }
 }

@@ -77,6 +77,32 @@ public class TestRescoreTopNQuery extends LuceneTestCase {
                 new TermQuery(new Term("test")), DoubleValuesSource.constant(0), 0));
   }
 
+  public void testInnerQueryMatchesNothing() throws IOException {
+    try (IndexWriter writer = new IndexWriter(directory, config)) {
+      Document doc = new Document();
+      doc.add(
+          new KnnFloatVectorField(
+              FIELD, randomFloatVector(VECTOR_DIMENSION, random()), VECTOR_SIMILARITY_FUNCTION));
+      writer.addDocument(doc);
+    }
+
+    try (IndexReader reader = DirectoryReader.open(directory)) {
+      IndexSearcher searcher = new IndexSearcher(reader);
+      float[] targetVector = randomFloatVector(VECTOR_DIMENSION, random());
+      int k = 5;
+      // the filter matches no document, so the inner query returns no hits to rescore
+      KnnFloatVectorQuery knnQuery =
+          new KnnFloatVectorQuery(
+              FIELD, targetVector, k, new TermQuery(new Term("missing", "value")));
+
+      Query q = RescoreTopNQuery.createFullPrecisionRescorerQuery(knnQuery, targetVector, FIELD, k);
+      assertEquals(0, searcher.search(q, k).scoreDocs.length);
+
+      q = new RescoreTopNQuery(knnQuery, DoubleValuesSource.SCORES, k);
+      assertEquals(0, searcher.search(q, k).scoreDocs.length);
+    }
+  }
+
   // TODO: incredibly slow
   @Nightly
   public void testRescoreField() throws Exception {

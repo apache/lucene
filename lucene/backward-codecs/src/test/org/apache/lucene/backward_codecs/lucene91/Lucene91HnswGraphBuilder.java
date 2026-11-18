@@ -27,13 +27,13 @@ import java.util.concurrent.TimeUnit;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.NeighborQueue;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
+import org.apache.lucene.util.hnsw.VisitedSet;
 
 /**
  * Builder for HNSW graph. See {@link HnswGraph} for a gloss on the algorithm and the meaning of the
@@ -108,7 +108,10 @@ public final class Lucene91HnswGraphBuilder {
     this.hnsw = new Lucene91OnHeapHnswGraph(maxConn, levelOfFirstNode);
     this.graphSearcher =
         new HnswGraphSearcher(
-            new NeighborQueue(beamWidth, true), new FixedBitSet(vectorValues.size()));
+            new NeighborQueue(beamWidth, true),
+            VisitedSet.create(
+                HnswGraphSearcher.expectedVisitedNodes(beamWidth, vectorValues.size()),
+                vectorValues.size()));
     bound = Lucene91BoundsChecker.create(false);
     scratch = new Lucene91NeighborArray(Math.max(beamWidth, maxConn + 1));
   }

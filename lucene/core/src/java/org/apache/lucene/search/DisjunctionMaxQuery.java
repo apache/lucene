@@ -323,13 +323,12 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
   @Override
   public String toString(String field) {
     return this.orderedQueries.stream()
-        .map(
-            subquery -> {
-              if (subquery instanceof BooleanQuery) { // wrap sub-bools in parens
-                return "(" + subquery.toString(field) + ")";
-              }
-              return subquery.toString(field);
-            })
+        .map(subquery -> {
+          if (subquery instanceof BooleanQuery) { // wrap sub-bools in parens
+            return "(" + subquery.toString(field) + ")";
+          }
+          return subquery.toString(field);
+        })
         .collect(
             Collectors.joining(
                 " | ",

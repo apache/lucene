@@ -126,136 +126,137 @@ public final class MockRandomPostingsFormat extends PostingsFormat {
     final FieldsConsumer fields;
     final int t1 = random.nextInt(4);
 
-    if (t1 == 0) {
-      boolean success = false;
-      try {
-        fields = new FSTTermsWriter(state, postingsWriter);
-        success = true;
-      } finally {
-        if (!success) {
-          postingsWriter.close();
-        }
-      }
-    } else if (t1 == 1) {
-      // Use BlockTree terms dict
-
-      if (LuceneTestCase.VERBOSE) {
-        System.out.println("MockRandomCodec: writing BlockTree terms dict");
-      }
-
-      // TODO: would be nice to allow 1 but this is very
-      // slow to write
-      final int minTermsInBlock = TestUtil.nextInt(random, 2, 100);
-      final int maxTermsInBlock = Math.max(2, (minTermsInBlock - 1) * 2 + random.nextInt(100));
-
-      boolean success = false;
-      try {
-        fields =
-            new Lucene103BlockTreeTermsWriter(
-                state, postingsWriter, minTermsInBlock, maxTermsInBlock);
-        success = true;
-      } finally {
-        if (!success) {
-          postingsWriter.close();
-        }
-      }
-    } else if (t1 == 2) {
-
-      if (LuceneTestCase.VERBOSE) {
-        System.out.println("MockRandomCodec: writing Block terms dict");
-      }
-
-      boolean success = false;
-
-      final TermsIndexWriterBase indexWriter;
-      try {
-        if (random.nextBoolean()) {
-          int termIndexInterval = TestUtil.nextInt(random, 1, 100);
-          if (LuceneTestCase.VERBOSE) {
-            System.out.println(
-                "MockRandomCodec: fixed-gap terms index (tii=" + termIndexInterval + ")");
-          }
-          indexWriter = new FixedGapTermsIndexWriter(state, termIndexInterval);
-        } else {
-          final VariableGapTermsIndexWriter.IndexTermSelector selector;
-          final int n2 = random.nextInt(3);
-          if (n2 == 0) {
-            final int tii = TestUtil.nextInt(random, 1, 100);
-            selector = new VariableGapTermsIndexWriter.EveryNTermSelector(tii);
-            if (LuceneTestCase.VERBOSE) {
-              System.out.println("MockRandomCodec: variable-gap terms index (tii=" + tii + ")");
-            }
-          } else if (n2 == 1) {
-            final int docFreqThresh = TestUtil.nextInt(random, 2, 100);
-            final int tii = TestUtil.nextInt(random, 1, 100);
-            selector =
-                new VariableGapTermsIndexWriter.EveryNOrDocFreqTermSelector(docFreqThresh, tii);
-          } else {
-            final long seed2 = random.nextLong();
-            final int gap = TestUtil.nextInt(random, 2, 40);
-            if (LuceneTestCase.VERBOSE) {
-              System.out.println("MockRandomCodec: random-gap terms index (max gap=" + gap + ")");
-            }
-            selector =
-                new VariableGapTermsIndexWriter.IndexTermSelector() {
-                  final Random rand = new Random(seed2);
-
-                  @Override
-                  public boolean isIndexTerm(BytesRef term, TermStats stats) {
-                    return rand.nextInt(gap) == gap / 2;
-                  }
-
-                  @Override
-                  public void newField(FieldInfo fieldInfo) {}
-                };
-          }
-          indexWriter = new VariableGapTermsIndexWriter(state, selector);
-        }
-        success = true;
-      } finally {
-        if (!success) {
-          postingsWriter.close();
-        }
-      }
-
-      success = false;
-      try {
-        fields = new BlockTermsWriter(indexWriter, state, postingsWriter);
-        success = true;
-      } finally {
-        if (!success) {
-          try {
+    switch (t1) {
+      case 0 -> {
+        boolean success = false;
+        try {
+          fields = new FSTTermsWriter(state, postingsWriter);
+          success = true;
+        } finally {
+          if (!success) {
             postingsWriter.close();
-          } finally {
-            indexWriter.close();
           }
         }
       }
-    } else if (t1 == 3) {
-      // Use OrdsBlockTree terms dict
-      if (LuceneTestCase.VERBOSE) {
-        System.out.println("MockRandomCodec: writing OrdsBlockTree");
-      }
+      case 1 -> {
+        // Use BlockTree terms dict
 
-      // TODO: would be nice to allow 1 but this is very
-      // slow to write
-      final int minTermsInBlock = TestUtil.nextInt(random, 2, 100);
-      final int maxTermsInBlock = Math.max(2, (minTermsInBlock - 1) * 2 + random.nextInt(100));
+        if (LuceneTestCase.VERBOSE) {
+          System.out.println("MockRandomCodec: writing BlockTree terms dict");
+        }
 
-      boolean success = false;
-      try {
-        fields =
-            new OrdsBlockTreeTermsWriter(state, postingsWriter, minTermsInBlock, maxTermsInBlock);
-        success = true;
-      } finally {
-        if (!success) {
-          postingsWriter.close();
+        // TODO: would be nice to allow 1 but this is very
+        // slow to write
+        final int minTermsInBlock = TestUtil.nextInt(random, 2, 100);
+        final int maxTermsInBlock = Math.max(2, (minTermsInBlock - 1) * 2 + random.nextInt(100));
+
+        boolean success = false;
+        try {
+          fields =
+              new Lucene103BlockTreeTermsWriter(
+                  state, postingsWriter, minTermsInBlock, maxTermsInBlock);
+          success = true;
+        } finally {
+          if (!success) {
+            postingsWriter.close();
+          }
         }
       }
+      case 2 -> {
+        if (LuceneTestCase.VERBOSE) {
+          System.out.println("MockRandomCodec: writing Block terms dict");
+        }
 
-    } else {
-      // BUG!
-      throw new AssertionError();
+        boolean success = false;
+
+        final TermsIndexWriterBase indexWriter;
+        try {
+          if (random.nextBoolean()) {
+            int termIndexInterval = TestUtil.nextInt(random, 1, 100);
+            if (LuceneTestCase.VERBOSE) {
+              System.out.println(
+                  "MockRandomCodec: fixed-gap terms index (tii=" + termIndexInterval + ")");
+            }
+            indexWriter = new FixedGapTermsIndexWriter(state, termIndexInterval);
+          } else {
+            final VariableGapTermsIndexWriter.IndexTermSelector selector;
+            final int n2 = random.nextInt(3);
+            if (n2 == 0) {
+              final int tii = TestUtil.nextInt(random, 1, 100);
+              selector = new VariableGapTermsIndexWriter.EveryNTermSelector(tii);
+              if (LuceneTestCase.VERBOSE) {
+                System.out.println("MockRandomCodec: variable-gap terms index (tii=" + tii + ")");
+              }
+            } else if (n2 == 1) {
+              final int docFreqThresh = TestUtil.nextInt(random, 2, 100);
+              final int tii = TestUtil.nextInt(random, 1, 100);
+              selector =
+                  new VariableGapTermsIndexWriter.EveryNOrDocFreqTermSelector(docFreqThresh, tii);
+            } else {
+              final long seed2 = random.nextLong();
+              final int gap = TestUtil.nextInt(random, 2, 40);
+              if (LuceneTestCase.VERBOSE) {
+                System.out.println("MockRandomCodec: random-gap terms index (max gap=" + gap + ")");
+              }
+              selector =
+                  new VariableGapTermsIndexWriter.IndexTermSelector() {
+                    final Random rand = new Random(seed2);
+
+                    @Override
+                    public boolean isIndexTerm(BytesRef term, TermStats stats) {
+                      return rand.nextInt(gap) == gap / 2;
+                    }
+
+                    @Override
+                    public void newField(FieldInfo fieldInfo) {}
+                  };
+            }
+            indexWriter = new VariableGapTermsIndexWriter(state, selector);
+          }
+          success = true;
+        } finally {
+          if (!success) {
+            postingsWriter.close();
+          }
+        }
+
+        success = false;
+        try {
+          fields = new BlockTermsWriter(indexWriter, state, postingsWriter);
+          success = true;
+        } finally {
+          if (!success) {
+            try {
+              postingsWriter.close();
+            } finally {
+              indexWriter.close();
+            }
+          }
+        }
+      }
+      case 3 -> {
+        // Use OrdsBlockTree terms dict
+        if (LuceneTestCase.VERBOSE) {
+          System.out.println("MockRandomCodec: writing OrdsBlockTree");
+        }
+
+        // TODO: would be nice to allow 1 but this is very
+        // slow to write
+        final int minTermsInBlock = TestUtil.nextInt(random, 2, 100);
+        final int maxTermsInBlock = Math.max(2, (minTermsInBlock - 1) * 2 + random.nextInt(100));
+
+        boolean success = false;
+        try {
+          fields =
+              new OrdsBlockTreeTermsWriter(state, postingsWriter, minTermsInBlock, maxTermsInBlock);
+          success = true;
+        } finally {
+          if (!success) {
+            postingsWriter.close();
+          }
+        }
+      }
+      default -> throw new AssertionError(); // BUG!
     }
 
     return fields;
@@ -293,99 +294,101 @@ public final class MockRandomPostingsFormat extends PostingsFormat {
 
     final FieldsProducer fields;
     final int t1 = random.nextInt(4);
-    if (t1 == 0) {
-      boolean success = false;
-      try {
-        fields = new FSTTermsReader(state, postingsReader);
-        success = true;
-      } finally {
-        if (!success) {
-          postingsReader.close();
-        }
-      }
-    } else if (t1 == 1) {
-      // Use BlockTree terms dict
-      if (LuceneTestCase.VERBOSE) {
-        System.out.println("MockRandomCodec: reading BlockTree terms dict");
-      }
-
-      boolean success = false;
-      try {
-        fields = new Lucene103BlockTreeTermsReader(postingsReader, state);
-        success = true;
-      } finally {
-        if (!success) {
-          postingsReader.close();
-        }
-      }
-    } else if (t1 == 2) {
-
-      if (LuceneTestCase.VERBOSE) {
-        System.out.println("MockRandomCodec: reading Block terms dict");
-      }
-      final TermsIndexReaderBase indexReader;
-      boolean success = false;
-      try {
-        final boolean doFixedGap = random.nextBoolean();
-
-        // randomness diverges from writer, here:
-
-        if (doFixedGap) {
-          if (LuceneTestCase.VERBOSE) {
-            System.out.println("MockRandomCodec: fixed-gap terms index");
-          }
-          indexReader = new FixedGapTermsIndexReader(state);
-        } else {
-          final int n2 = random.nextInt(3);
-          if (n2 == 1) {
-            random.nextInt();
-          } else if (n2 == 2) {
-            random.nextLong();
-          }
-          if (LuceneTestCase.VERBOSE) {
-            System.out.println("MockRandomCodec: variable-gap terms index");
-          }
-          indexReader = new VariableGapTermsIndexReader(state);
-        }
-
-        success = true;
-      } finally {
-        if (!success) {
-          postingsReader.close();
-        }
-      }
-
-      success = false;
-      try {
-        fields = new BlockTermsReader(indexReader, postingsReader, state);
-        success = true;
-      } finally {
-        if (!success) {
-          try {
+    switch (t1) {
+      case 0 -> {
+        boolean success = false;
+        try {
+          fields = new FSTTermsReader(state, postingsReader);
+          success = true;
+        } finally {
+          if (!success) {
             postingsReader.close();
-          } finally {
-            indexReader.close();
           }
         }
       }
-    } else if (t1 == 3) {
-      // Use OrdsBlockTree terms dict
-      if (LuceneTestCase.VERBOSE) {
-        System.out.println("MockRandomCodec: reading OrdsBlockTree terms dict");
-      }
+      case 1 -> {
+        // Use BlockTree terms dict
+        if (LuceneTestCase.VERBOSE) {
+          System.out.println("MockRandomCodec: reading BlockTree terms dict");
+        }
 
-      boolean success = false;
-      try {
-        fields = new OrdsBlockTreeTermsReader(postingsReader, state);
-        success = true;
-      } finally {
-        if (!success) {
-          postingsReader.close();
+        boolean success = false;
+        try {
+          fields = new Lucene103BlockTreeTermsReader(postingsReader, state);
+          success = true;
+        } finally {
+          if (!success) {
+            postingsReader.close();
+          }
         }
       }
-    } else {
-      // BUG!
-      throw new AssertionError();
+      case 2 -> {
+        if (LuceneTestCase.VERBOSE) {
+          System.out.println("MockRandomCodec: reading Block terms dict");
+        }
+        final TermsIndexReaderBase indexReader;
+        boolean success = false;
+        try {
+          final boolean doFixedGap = random.nextBoolean();
+
+          // randomness diverges from writer, here:
+
+          if (doFixedGap) {
+            if (LuceneTestCase.VERBOSE) {
+              System.out.println("MockRandomCodec: fixed-gap terms index");
+            }
+            indexReader = new FixedGapTermsIndexReader(state);
+          } else {
+            final int n2 = random.nextInt(3);
+            if (n2 == 1) {
+              random.nextInt();
+            } else if (n2 == 2) {
+              random.nextLong();
+            }
+            if (LuceneTestCase.VERBOSE) {
+              System.out.println("MockRandomCodec: variable-gap terms index");
+            }
+            indexReader = new VariableGapTermsIndexReader(state);
+          }
+
+          success = true;
+        } finally {
+          if (!success) {
+            postingsReader.close();
+          }
+        }
+
+        success = false;
+        try {
+          fields = new BlockTermsReader(indexReader, postingsReader, state);
+          success = true;
+        } finally {
+          if (!success) {
+            try {
+              postingsReader.close();
+            } finally {
+              indexReader.close();
+            }
+          }
+        }
+      }
+      case 3 -> {
+        // Use OrdsBlockTree terms dict
+        if (LuceneTestCase.VERBOSE) {
+          System.out.println("MockRandomCodec: reading OrdsBlockTree terms dict");
+        }
+
+        boolean success = false;
+        try {
+          fields = new OrdsBlockTreeTermsReader(postingsReader, state);
+          success = true;
+        } finally {
+          if (!success) {
+            postingsReader.close();
+          }
+        }
+      }
+      default -> throw new AssertionError(); // BUG!
     }
 
     return fields;

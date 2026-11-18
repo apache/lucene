@@ -57,19 +57,6 @@ public final class TruncateTokenFilter extends TokenFilter {
     return new TruncateTokenFilter(input, nChars, false);
   }
 
-  /**
-   * Instantiates filter with a prefix of {@code nChars} Java Characters. This may split surrogate
-   * pairs.
-   *
-   * @deprecated This constructor is deprecated, use {@link #truncateAfterChars(TokenStream, int)}
-   *     for backwards compatibility, or {@link #truncateAfterCodePoints(TokenStream, int)} to be
-   *     unicode conformant.
-   */
-  @Deprecated
-  public TruncateTokenFilter(TokenStream input, int nChars) {
-    this(input, nChars, false);
-  }
-
   private TruncateTokenFilter(TokenStream input, int truncateAfter, boolean useCodePoints) {
     super(input);
     if (truncateAfter < 1) {

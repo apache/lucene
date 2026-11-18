@@ -1576,19 +1576,17 @@ public class TestAnalyzingInfixSuggester extends LuceneTestCase {
   }
 
   public void testCommitAfterBuild() throws Exception {
-    performOperationWithAllOptionCombinations(
-        suggester -> {
-          suggester.build(new InputArrayIterator(sharedInputs));
-          suggester.commit();
-        });
+    performOperationWithAllOptionCombinations(suggester -> {
+      suggester.build(new InputArrayIterator(sharedInputs));
+      suggester.commit();
+    });
   }
 
   public void testRefreshAfterBuild() throws Exception {
-    performOperationWithAllOptionCombinations(
-        suggester -> {
-          suggester.build(new InputArrayIterator(sharedInputs));
-          suggester.refresh();
-        });
+    performOperationWithAllOptionCombinations(suggester -> {
+      suggester.build(new InputArrayIterator(sharedInputs));
+      suggester.refresh();
+    });
   }
 
   public void testDisallowCommitBeforeBuild() throws Exception {

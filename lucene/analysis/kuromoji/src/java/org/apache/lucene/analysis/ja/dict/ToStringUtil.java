@@ -251,6 +251,7 @@ public class ToStringUtil {
   /** Romanize katakana with modified hepburn */
   // TODO: now that this is used by readingsfilter and not just for
   // debugging, fix this to really be a scheme that works best with IMEs
+  @SuppressWarnings("IfChainToSwitch") // keep the style consistent across all cases below
   public static void getRomanization(Appendable builder, CharSequence s) throws IOException {
     final int len = s.length();
     for (int i = 0; i < len; i++) {

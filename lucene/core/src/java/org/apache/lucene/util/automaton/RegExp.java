@@ -416,13 +416,10 @@ public class RegExp {
   // -----  Matching flags ( > 0xff <= 0xffff )  ------
 
   /**
-   * Allows case-insensitive matching of ASCII characters.
-   *
-   * <p>This flag has been deprecated in favor of {@link #CASE_INSENSITIVE} that supports the full
-   * range of Unicode characters. Usage of this flag now has the same behavior as {@link
-   * #CASE_INSENSITIVE}
+   * Bit of the removed {@code ASCII_CASE_INSENSITIVE} flag. It is not usable any more but stays
+   * reserved so that passing it as a raw value fails loudly instead of being silently ignored.
    */
-  @Deprecated public static final int ASCII_CASE_INSENSITIVE = 0x0100;
+  private static final int REMOVED_ASCII_CASE_INSENSITIVE = 0x0100;
 
   /**
    * Allows case-insensitive matching of most Unicode characters.
@@ -539,6 +536,11 @@ public class RegExp {
 
     if (match_flags > 0 && match_flags <= ALL) {
       throw new IllegalArgumentException("Illegal match flag");
+    }
+
+    if ((match_flags & REMOVED_ASCII_CASE_INSENSITIVE) != 0) {
+      throw new IllegalArgumentException(
+          "The ASCII_CASE_INSENSITIVE match flag (0x0100) has been removed, use CASE_INSENSITIVE");
     }
     flags = syntax_flags | match_flags;
     originalString = s;
@@ -680,7 +682,7 @@ public class RegExp {
         a = Operations.complement(a, Integer.MAX_VALUE);
         break;
       case REGEXP_CHAR:
-        if (check(ASCII_CASE_INSENSITIVE | CASE_INSENSITIVE)) {
+        if (check(CASE_INSENSITIVE)) {
           a = Automata.makeCaseInsensitiveChar(c);
         } else {
           a = Automata.makeChar(c);
@@ -699,7 +701,7 @@ public class RegExp {
         a = Automata.makeEmpty();
         break;
       case REGEXP_STRING:
-        if (check(ASCII_CASE_INSENSITIVE | CASE_INSENSITIVE)) {
+        if (check(CASE_INSENSITIVE)) {
           a = Automata.makeCaseInsensitiveString(s);
         } else {
           a = Automata.makeString(s);
@@ -1333,7 +1335,7 @@ public class RegExp {
             starts.add(c);
             ends.add(parseCharExp());
           }
-        } else if (check(ASCII_CASE_INSENSITIVE | CASE_INSENSITIVE)) {
+        } else if (check(CASE_INSENSITIVE)) {
           // single case-insensitive character
           for (int form : toCaseInsensitiveChar(c)) {
             starts.add(form);

@@ -43,10 +43,10 @@ abstract class DocValuesTermsCollector<DV> extends SimpleCollector {
   }
 
   static Function<SortedDocValues> sortedDocValues(String field) {
-    return (ctx) -> DocValues.getSorted(ctx, field);
+    return ctx -> DocValues.getSorted(ctx, field);
   }
 
   static Function<SortedSetDocValues> sortedSetDocValues(String field) {
-    return (ctx) -> DocValues.getSortedSet(ctx, field);
+    return ctx -> DocValues.getSortedSet(ctx, field);
   }
 }
