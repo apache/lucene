@@ -670,21 +670,20 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
       int itersPerThread = 100 + random().nextInt(2000);
       for (int i = 0; i < threads.length; i++) {
         threads[i] =
-            new Thread(
-                () -> {
-                  try {
-                    barrier.await();
-                    for (int iters = 0; iters < itersPerThread; iters++) {
-                      Document d = new Document();
-                      d.add(new StringField("id", "1", Field.Store.NO));
-                      writer.updateDocument(new Term("id", "1"), d);
-                    }
-                  } catch (Exception e) {
-                    throw new AssertionError(e);
-                  } finally {
-                    done.incrementAndGet();
-                  }
-                });
+            new Thread(() -> {
+              try {
+                barrier.await();
+                for (int iters = 0; iters < itersPerThread; iters++) {
+                  Document d = new Document();
+                  d.add(new StringField("id", "1", Field.Store.NO));
+                  writer.updateDocument(new Term("id", "1"), d);
+                }
+              } catch (Exception e) {
+                throw new AssertionError(e);
+              } finally {
+                done.incrementAndGet();
+              }
+            });
         threads[i].start();
       }
       DirectoryReader open = DirectoryReader.open(writer.w);

@@ -260,19 +260,18 @@ public class TestRegExp extends LuceneTestCase {
         StringBuilder switchedCase = new StringBuilder();
         replacementPart
             .codePoints()
-            .forEach(
-                p -> {
-                  int switchedP = p;
-                  if (Character.isLowerCase(p)) {
-                    switchedP = Character.toUpperCase(p);
-                  } else {
-                    switchedP = Character.toLowerCase(p);
-                  }
-                  switchedCase.appendCodePoint(switchedP);
-                  if (p != switchedP) {
-                    caseSensitiveQuery = false;
-                  }
-                });
+            .forEach(p -> {
+              int switchedP = p;
+              if (Character.isLowerCase(p)) {
+                switchedP = Character.toUpperCase(p);
+              } else {
+                switchedP = Character.toLowerCase(p);
+              }
+              switchedCase.appendCodePoint(switchedP);
+              if (p != switchedP) {
+                caseSensitiveQuery = false;
+              }
+            });
         result.append(switchedCase.toString());
         break;
       default:

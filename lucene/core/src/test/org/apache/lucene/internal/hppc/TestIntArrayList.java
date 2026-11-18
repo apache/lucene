@@ -359,7 +359,6 @@ public class TestIntArrayList extends LuceneTestCase {
 
   public void testEqualsSubClass() {
     class Sub extends IntArrayList {}
-    ;
 
     IntArrayList l1 = IntArrayList.from(key1, key2, key3);
     IntArrayList l2 = new Sub();

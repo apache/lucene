@@ -81,11 +81,10 @@ abstract class ModuleClassDiscovery {
             .map(entry -> entry.substring(0, entry.length() - 6).replace('/', '.'))
             .filter(clazzname -> clazzname.startsWith(prefix))
             .sorted()
-            .map(
-                clazzname ->
-                    Objects.requireNonNull(
-                        Class.forName(module, clazzname),
-                        "Class '" + clazzname + "' not found in module '" + module.getName() + "'"))
+            .map(clazzname ->
+                Objects.requireNonNull(
+                    Class.forName(module, clazzname),
+                    "Class '" + clazzname + "' not found in module '" + module.getName() + "'"))
             .forEach(classes::add);
       }
     }

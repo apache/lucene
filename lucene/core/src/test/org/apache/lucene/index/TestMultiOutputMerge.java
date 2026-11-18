@@ -436,22 +436,21 @@ public class TestMultiOutputMerge extends LuceneTestCase {
         assertFalse(doomed.isEmpty());
 
         Thread deleter =
-            new Thread(
-                () -> {
-                  try {
-                    mergeStarted.await();
-                    for (String id : doomed) {
-                      w.deleteDocuments(new Term("id", id));
-                    }
-                    // Force the deletes to resolve against the merging segments, so they are
-                    // carried over to the output that owns them.
-                    DirectoryReader.open(w).close();
-                  } catch (Throwable t) {
-                    throw new AssertionError(t);
-                  } finally {
-                    proceed.countDown();
-                  }
-                });
+            new Thread(() -> {
+              try {
+                mergeStarted.await();
+                for (String id : doomed) {
+                  w.deleteDocuments(new Term("id", id));
+                }
+                // Force the deletes to resolve against the merging segments, so they are
+                // carried over to the output that owns them.
+                DirectoryReader.open(w).close();
+              } catch (Throwable t) {
+                throw new AssertionError(t);
+              } finally {
+                proceed.countDown();
+              }
+            });
         deleter.start();
         enabled = true;
         w.commit();
@@ -491,22 +490,21 @@ public class TestMultiOutputMerge extends LuceneTestCase {
         expected.removeAll(deleted);
 
         Thread deleter =
-            new Thread(
-                () -> {
-                  try {
-                    mergeStarted.await();
-                    for (String id : deleted) {
-                      w.deleteDocuments(new Term("id", id));
-                    }
-                    // Force the buffered deletes to resolve against the merging
-                    // segments so they must be carried over.
-                    DirectoryReader.open(w).close();
-                  } catch (Throwable t) {
-                    throw new AssertionError(t);
-                  } finally {
-                    proceed.countDown();
-                  }
-                });
+            new Thread(() -> {
+              try {
+                mergeStarted.await();
+                for (String id : deleted) {
+                  w.deleteDocuments(new Term("id", id));
+                }
+                // Force the buffered deletes to resolve against the merging
+                // segments so they must be carried over.
+                DirectoryReader.open(w).close();
+              } catch (Throwable t) {
+                throw new AssertionError(t);
+              } finally {
+                proceed.countDown();
+              }
+            });
         deleter.start();
         enabled = true;
         w.maybeMerge();
@@ -544,20 +542,19 @@ public class TestMultiOutputMerge extends LuceneTestCase {
         updates.forEach(id -> expected.put(id, 42L));
 
         Thread updater =
-            new Thread(
-                () -> {
-                  try {
-                    mergeStarted.await();
-                    for (String id : updates) {
-                      w.updateNumericDocValue(new Term("id", id), "val", 42L);
-                    }
-                    DirectoryReader.open(w).close();
-                  } catch (Throwable t) {
-                    throw new AssertionError(t);
-                  } finally {
-                    proceed.countDown();
-                  }
-                });
+            new Thread(() -> {
+              try {
+                mergeStarted.await();
+                for (String id : updates) {
+                  w.updateNumericDocValue(new Term("id", id), "val", 42L);
+                }
+                DirectoryReader.open(w).close();
+              } catch (Throwable t) {
+                throw new AssertionError(t);
+              } finally {
+                proceed.countDown();
+              }
+            });
         updater.start();
         enabled = true;
         w.maybeMerge();
@@ -819,18 +816,17 @@ public class TestMultiOutputMerge extends LuceneTestCase {
       w.commit();
 
       Thread roller =
-          new Thread(
-              () -> {
-                try {
-                  mergeStarted.await();
-                  // Release the merge first: rollback() waits for in-flight
-                  // merges, so holding it parked here would deadlock.
-                  proceed.countDown();
-                  w.rollback();
-                } catch (Throwable _) {
-                  // rollback races the merge; either ordering is acceptable
-                }
-              });
+          new Thread(() -> {
+            try {
+              mergeStarted.await();
+              // Release the merge first: rollback() waits for in-flight
+              // merges, so holding it parked here would deadlock.
+              proceed.countDown();
+              w.rollback();
+            } catch (Throwable _) {
+              // rollback races the merge; either ordering is acceptable
+            }
+          });
       roller.start();
       enabled = true;
       try {

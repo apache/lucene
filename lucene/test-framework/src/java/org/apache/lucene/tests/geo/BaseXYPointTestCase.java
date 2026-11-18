@@ -859,14 +859,7 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
 
         if (hits.get(docID) != expected) {
           buildError(
-              docID,
-              expected,
-              id,
-              xs,
-              ys,
-              query,
-              liveDocs,
-              (b) -> b.append("  rect=").append(rect));
+              docID, expected, id, xs, ys, query, liveDocs, b -> b.append("  rect=").append(rect));
           fail = true;
         }
       }
@@ -958,7 +951,7 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
         if (hits.get(docID) != expected) {
           final float finalRadius = radius;
           Consumer<StringBuilder> explain =
-              (b) -> {
+              b -> {
                 if (Double.isNaN(xs[id]) == false) {
                   double distance = cartesianDistance(centerX, centerY, xs[id], ys[id]);
                   b.append("  centerX=")
@@ -1056,7 +1049,7 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
               ys,
               query,
               liveDocs,
-              (b) -> b.append("  polygon=").append(polygon));
+              b -> b.append("  polygon=").append(polygon));
           fail = true;
         }
       }
@@ -1142,7 +1135,7 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
               ys,
               query,
               liveDocs,
-              (b) -> b.append("  geometry=").append(Arrays.toString(geometries)));
+              b -> b.append("  geometry=").append(Arrays.toString(geometries)));
           fail = true;
         }
       }

@@ -65,7 +65,7 @@ public abstract class FilteredTermsEnum extends TermsEnum {
     NO_AND_SEEK,
     /** Reject the term and stop enumerating. */
     END
-  };
+  }
 
   /** Return if term is accepted, not accepted or the iteration should ended (and possibly seek). */
   protected abstract AcceptStatus accept(BytesRef term) throws IOException;

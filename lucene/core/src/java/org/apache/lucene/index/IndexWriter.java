@@ -458,14 +458,13 @@ public class IndexWriter
 
         @Override
         public void onDeletesApplied() {
-          eventQueue.add(
-              w -> {
-                try {
-                  w.publishFlushedSegments(true);
-                } finally {
-                  flushCount.incrementAndGet();
-                }
-              });
+          eventQueue.add(w -> {
+            try {
+              w.publishFlushedSegments(true);
+            } finally {
+              flushCount.incrementAndGet();
+            }
+          });
         }
 
         @Override
@@ -659,10 +658,9 @@ public class IndexWriter
                       stopCollectingMergedReaders.set(true);
                       IOUtils.close(
                           mergedReaders.values().stream()
-                              .flatMap(
-                                  sr ->
-                                      Stream.<Closeable>of(
-                                          () -> deleter.decRef(sr.getSegmentInfo().files()), sr))
+                              .flatMap(sr ->
+                                  Stream.<Closeable>of(
+                                      () -> deleter.decRef(sr.getSegmentInfo().files()), sr))
                               .toList());
                     }
                   };
@@ -2932,19 +2930,18 @@ public class IndexWriter
     long nextGen = bufferedUpdatesStream.push(packet);
     // Do this as an event so it applies higher in the stack when we are not holding
     // DocumentsWriterFlushQueue.purgeLock:
-    eventQueue.add(
-        w -> {
-          try {
-            // we call tryApply here since we don't want to block if a refresh or a flush is already
-            // applying the
-            // packet. The flush will retry this packet anyway to ensure all of them are applied
-            tryApply(packet);
-          } catch (Throwable t) {
-            w.onTragicEvent(t, "applyUpdatesPacket");
-            throw t;
-          }
-          w.flushDeletesCount.incrementAndGet();
-        });
+    eventQueue.add(w -> {
+      try {
+        // we call tryApply here since we don't want to block if a refresh or a flush is already
+        // applying the
+        // packet. The flush will retry this packet anyway to ensure all of them are applied
+        tryApply(packet);
+      } catch (Throwable t) {
+        w.onTragicEvent(t, "applyUpdatesPacket");
+        throw t;
+      }
+      w.flushDeletesCount.incrementAndGet();
+    });
     return nextGen;
   }
 
@@ -4111,12 +4108,11 @@ public class IndexWriter
       try {
         for (MergePolicy.OneMerge merge : pointInTimeMerges.merges) {
           IOContext context = IOContext.merge(merge.getStoreMergeInfo());
-          merge.initMergeReaders(
-              sci -> {
-                final ReadersAndUpdates rld = getPooledInstance(sci, true);
-                return rld.getReaderForMerge(
-                    context, mr -> deleter.incRef(mr.reader.getSegmentInfo().files()));
-              });
+          merge.initMergeReaders(sci -> {
+            final ReadersAndUpdates rld = getPooledInstance(sci, true);
+            return rld.getReaderForMerge(
+                context, mr -> deleter.incRef(mr.reader.getSegmentInfo().files()));
+          });
         }
         closeReaders = false;
       } finally {
@@ -5650,14 +5646,13 @@ public class IndexWriter
 
   /** Opens a pooled reader for each of a merge's input segments, and holds their files open. */
   private void initMergeReaders(MergePolicy.OneMerge merge, IOContext context) throws IOException {
-    merge.initMergeReaders(
-        sci -> {
-          final ReadersAndUpdates rld = getPooledInstance(sci, true);
-          synchronized (this) {
-            return rld.getReaderForMerge(
-                context, mr -> deleter.incRef(mr.reader.getSegmentInfo().files()));
-          }
-        });
+    merge.initMergeReaders(sci -> {
+      final ReadersAndUpdates rld = getPooledInstance(sci, true);
+      synchronized (this) {
+        return rld.getReaderForMerge(
+            context, mr -> deleter.incRef(mr.reader.getSegmentInfo().files()));
+      }
+    });
   }
 
   /** Fresh {@link SegmentCommitInfo} for one output of a merge. */
@@ -6142,14 +6137,13 @@ public class IndexWriter
         if (merger.shouldMerge()) {
           String pauseInfo =
               merge.getMergeProgress().getPauseTimes().entrySet().stream()
-                  .filter((e) -> e.getValue() > 0)
-                  .map(
-                      (e) ->
-                          String.format(
-                              Locale.ROOT,
-                              "%.1f sec %s",
-                              e.getValue() / (double) TimeUnit.SECONDS.toNanos(1),
-                              e.getKey().name().toLowerCase(Locale.ROOT)))
+                  .filter(e -> e.getValue() > 0)
+                  .map(e ->
+                      String.format(
+                          Locale.ROOT,
+                          "%.1f sec %s",
+                          e.getValue() / (double) TimeUnit.SECONDS.toNanos(1),
+                          e.getKey().name().toLowerCase(Locale.ROOT)))
                   .collect(Collectors.joining(", "));
           if (!pauseInfo.isEmpty()) {
             pauseInfo = " (" + pauseInfo + ")";
