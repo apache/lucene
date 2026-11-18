@@ -373,9 +373,8 @@ Optimizations
   IOContext, allowing MMapDirectory to open them with confined areas and avoiding JVM-wide
   handshakes when the files are closed. (Alan Woodward)
 
-* GITHUB#17013: Perform off-heap bulk scoring for Lucene104 scalar quantized vectors, which avoids
-  an unnecessary copy to heap, amortizes query loads across multiple documents, and enables
-  overlapped cache misses for a chunk of document vectors. (Kaival Parikh)
+* GITHUB#17013: Perform off-heap bulk scoring for Lucene104 scalar quantized vectors: avoid copy to
+  heap, amortize query loads, and overlap CPU cache misses for 4 document vectors. (Kaival Parikh)
 
 Bug Fixes
 ---------------------

@@ -19,8 +19,13 @@ package org.apache.lucene.benchmark.jmh;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
+import java.util.List;
 import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
 import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorScorer;
@@ -31,7 +36,6 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.MMapDirectory;
-import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
@@ -52,15 +56,15 @@ import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 
 /**
- * One {@link RandomVectorScorer#bulkScore} call over eight memory mapped {@link
- * org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat} records, with the
- * scorer the format uses, in a JVM without the Vector API ({@link #bulkScoreScalar}) and with it
- * ({@link #bulkScoreVector}). Each call scores the next eight nodes of a random permutation of the
- * vectors, so with many vectors every node is a cache miss and with few they are all cache hits.
- * Run it on two checkouts to compare them.
+ * Scores a random subset of memory mapped {@link
+ * org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat} records with the scorer
+ * the format uses, one {@link RandomVectorScorer#score} call per vector or one {@link
+ * RandomVectorScorer#bulkScore} call for all of them, in a JVM without the Vector API and with it.
+ * With many vectors every vector is a cache miss and with few they are all cache hits. Run it on
+ * two checkouts to compare them.
  */
 @BenchmarkMode(Mode.AverageTime)
-@OutputTimeUnit(TimeUnit.NANOSECONDS)
+@OutputTimeUnit(TimeUnit.MILLISECONDS)
 @State(Scope.Benchmark)
 @Warmup(iterations = 4, time = 1)
 @Measurement(iterations = 5, time = 1)
@@ -68,43 +72,29 @@ import org.openjdk.jmh.annotations.Warmup;
     value = 3,
     jvmArgsAppend = {"-Xmx2g", "-Xms2g", "-XX:+AlwaysPreTouch"})
 public class VectorScorerQuantizedBenchmark {
+  @Param({"1024"})
+  int dims;
 
-  /** Nodes per {@link RandomVectorScorer#bulkScore} call. */
-  private static final int BATCH = 8;
+  @Param ScalarEncoding encoding;
 
-  private static final int DIMS = 1024;
-
-  @Param({
-    "UNSIGNED_BYTE",
-    "SEVEN_BIT",
-    "PACKED_NIBBLE",
-    "SINGLE_BIT_QUERY_NIBBLE",
-    "DIBIT_QUERY_NIBBLE"
-  })
-  String encodingName;
-
-  /** 1K vectors stay in cache; 1M vectors (1 GB at 8 bits) do not. */
-  @Param({"1000", "1000000"})
-  int numVectors;
+  int numVectors = 1_000_000;
+  int numVectorsToScore = 20_000;
 
   private Path path;
   private Directory dir;
   private IndexInput in;
+  private QuantizedByteVectorValues values;
+  private float[] query;
   private RandomVectorScorer scorer;
-
-  /** A random permutation of the vectors, cut into batches; each call scores the next one. */
-  private int[][] batches;
-
-  private int cursor;
-  private final float[] scores = new float[BATCH];
+  private int[] indices;
+  private float[] scores;
 
   @Setup(Level.Trial)
   public void setup() throws IOException {
     Random random = new Random(42);
-    ScalarEncoding encoding = ScalarEncoding.valueOf(encodingName);
     path = Files.createTempDirectory("VectorScorerQuantizedBenchmark");
     dir = new MMapDirectory(path);
-    byte[] packed = new byte[encoding.getDocPackedLength(DIMS)];
+    byte[] packed = new byte[encoding.getDocPackedLength(dims)];
     try (IndexOutput out = dir.createOutput("vectors", IOContext.DEFAULT)) {
       for (int i = 0; i < numVectors; i++) {
         // random bytes with plausible corrective terms, like the format lays them out
@@ -118,16 +108,16 @@ public class VectorScorerQuantizedBenchmark {
         out.writeInt(Float.floatToIntBits(-random.nextFloat()));
         out.writeInt(Float.floatToIntBits(random.nextFloat()));
         out.writeInt(Float.floatToIntBits(random.nextFloat()));
-        out.writeInt(random.nextInt(DIMS * 4));
+        out.writeInt(random.nextInt(dims * 4));
       }
     }
     in = dir.openInput("vectors", IOContext.DEFAULT);
-    QuantizedByteVectorValues values =
+    values =
         new OffHeapScalarQuantizedVectorValues.DenseOffHeapVectorValues(
             false,
-            DIMS,
+            dims,
             numVectors,
-            new float[DIMS],
+            new float[dims],
             0f,
             new OptimizedScalarQuantizer(VectorSimilarityFunction.DOT_PRODUCT),
             encoding,
@@ -135,66 +125,72 @@ public class VectorScorerQuantizedBenchmark {
             DefaultFlatVectorScorer.INSTANCE,
             in.slice("vectors", 0, in.length()));
 
-    int[] permutation = new int[numVectors];
-    for (int i = 0; i < numVectors; i++) {
-      permutation[i] = i;
-    }
-    for (int i = numVectors - 1; i > 0; i--) {
-      int j = random.nextInt(i + 1);
-      int tmp = permutation[i];
-      permutation[i] = permutation[j];
-      permutation[j] = tmp;
-    }
-    batches = new int[numVectors / BATCH][];
-    for (int b = 0; b < batches.length; b++) {
-      batches[b] = ArrayUtil.copyOfSubArray(permutation, b * BATCH, (b + 1) * BATCH);
-    }
-
-    float[] query = new float[DIMS];
-    for (int i = 0; i < DIMS; i++) {
+    query = new float[dims];
+    for (int i = 0; i < dims; i++) {
       query[i] = random.nextFloat() - 0.5f;
     }
     scorer =
         FlatVectorScorerUtil.getLucene104ScalarQuantizedVectorsScorer()
             .getRandomVectorScorer(VectorSimilarityFunction.DOT_PRODUCT, values, query.clone());
-    // the scorer must agree with the plain on-heap one, and must be the memory segment one whenever
-    // the Vector API is available (it is not in the fork of bulkScoreScalar)
-    RandomVectorScorer reference =
-        new Lucene104ScalarQuantizedVectorScorer(DefaultFlatVectorScorer.INSTANCE)
-            .getRandomVectorScorer(
-                VectorSimilarityFunction.DOT_PRODUCT, values.copy(), query.clone());
-    for (int node : batches[random.nextInt(batches.length)]) {
-      if (reference.score(node) != scorer.score(node)) {
-        throw new AssertionError("scorers disagree on node " + node);
-      }
-    }
+    // the scorer must be the memory segment one whenever the Vector API is available (it is not in
+    // the forks of the *Scalar benchmarks)
     boolean vectorApi = ModuleLayer.boot().findModule("jdk.incubator.vector").isPresent();
     if (scorer.getClass().getName().contains("MemorySegment") != vectorApi) {
       throw new AssertionError("unexpected scorer: " + scorer.getClass());
     }
   }
 
+  @Setup(Level.Iteration)
+  public void perIterationInit() {
+    List<Integer> list = IntStream.range(0, numVectors).boxed().collect(Collectors.toList());
+    Collections.shuffle(list, ThreadLocalRandom.current());
+    indices = list.stream().limit(numVectorsToScore).mapToInt(i -> i).toArray();
+    scores = new float[indices.length];
+  }
+
+  /** Checks the scorer against the plain on-heap one on the last subset before releasing them. */
   @TearDown
-  public void teardown() throws IOException {
+  public void tearDown() throws IOException {
+    RandomVectorScorer reference =
+        new Lucene104ScalarQuantizedVectorScorer(DefaultFlatVectorScorer.INSTANCE)
+            .getRandomVectorScorer(
+                VectorSimilarityFunction.DOT_PRODUCT, values.copy(), query.clone());
+    scorer.bulkScore(indices, scores, indices.length);
+    for (int i = 0; i < indices.length; i++) {
+      float expected = reference.score(indices[i]);
+      if (expected != scores[i] || expected != scorer.score(indices[i])) {
+        throw new AssertionError("scorers disagree on node " + indices[i]);
+      }
+    }
     IOUtils.close(in, dir);
     IOUtils.rm(path);
   }
 
   @Benchmark
+  public float[] scoreScalar() throws IOException {
+    for (int i = 0; i < indices.length; i++) {
+      scores[i] = scorer.score(indices[i]);
+    }
+    return scores;
+  }
+
+  @Benchmark
+  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public float[] scoreVector() throws IOException {
+    for (int i = 0; i < indices.length; i++) {
+      scores[i] = scorer.score(indices[i]);
+    }
+    return scores;
+  }
+
+  @Benchmark
   public float bulkScoreScalar() throws IOException {
-    return scorer.bulkScore(nextBatch(), scores, BATCH);
+    return scorer.bulkScore(indices, scores, indices.length);
   }
 
   @Benchmark
   @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public float bulkScoreVector() throws IOException {
-    return scorer.bulkScore(nextBatch(), scores, BATCH);
-  }
-
-  private int[] nextBatch() {
-    if (cursor == batches.length) {
-      cursor = 0;
-    }
-    return batches[cursor++];
+    return scorer.bulkScore(indices, scores, indices.length);
   }
 }
