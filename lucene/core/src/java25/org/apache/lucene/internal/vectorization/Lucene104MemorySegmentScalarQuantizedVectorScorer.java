@@ -309,7 +309,7 @@ final class Lucene104MemorySegmentScalarQuantizedVectorScorer
 
     @Override
     void dotProducts(long o1, long o2, long o3, long o4, int[] results) {
-      MemorySegmentQuantizedVectorOps.uint8DotProductBulk(
+      Lucene104MemorySegmentQuantizedVectorOps.uint8DotProductBulk(
           query, dataSeg, o1, o2, o3, o4, packedLength, results);
     }
   }
@@ -325,7 +325,7 @@ final class Lucene104MemorySegmentScalarQuantizedVectorScorer
 
     @Override
     void dotProducts(long o1, long o2, long o3, long o4, int[] results) {
-      MemorySegmentQuantizedVectorOps.int4DotProductSinglePackedBulk(
+      Lucene104MemorySegmentQuantizedVectorOps.int4DotProductSinglePackedBulk(
           query, dataSeg, o1, o2, o3, o4, packedLength, results);
     }
   }
@@ -341,7 +341,7 @@ final class Lucene104MemorySegmentScalarQuantizedVectorScorer
 
     @Override
     void dotProducts(long o1, long o2, long o3, long o4, int[] results) {
-      MemorySegmentQuantizedVectorOps.int4BitDotProductBulk(
+      Lucene104MemorySegmentQuantizedVectorOps.int4BitDotProductBulk(
           query, dataSeg, o1, o2, o3, o4, packedLength, results);
     }
   }
@@ -358,7 +358,7 @@ final class Lucene104MemorySegmentScalarQuantizedVectorScorer
 
     @Override
     void dotProducts(long o1, long o2, long o3, long o4, int[] results) {
-      MemorySegmentQuantizedVectorOps.int4DibitDotProductBulk(
+      Lucene104MemorySegmentQuantizedVectorOps.int4DibitDotProductBulk(
           query, dataSeg, o1, o2, o3, o4, packedLength >> 1, results);
     }
   }

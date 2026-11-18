@@ -58,7 +58,7 @@ import jdk.incubator.vector.VectorSpecies;
  * <p>This class repeats code instead of factoring into helper methods to avoid {@link
  * jdk.incubator.vector.Vector} from being boxed. TODO: simplify after Vector API is finalized.
  */
-final class MemorySegmentQuantizedVectorOps {
+final class Lucene104MemorySegmentQuantizedVectorOps {
 
   // Reads query longs in the order of the segment reads, which is the native one. (The handles in
   // BitUtil use a randomized order in tests.)
@@ -67,7 +67,7 @@ final class MemorySegmentQuantizedVectorOps {
 
   private static final VectorSpecies<Long> LONG_SPECIES = BYTE_SPECIES_FULL.withLanes(long.class);
 
-  private MemorySegmentQuantizedVectorOps() {}
+  private Lucene104MemorySegmentQuantizedVectorOps() {}
 
   // -- unsigned bytes (8 bit and 7 bit values)
 
