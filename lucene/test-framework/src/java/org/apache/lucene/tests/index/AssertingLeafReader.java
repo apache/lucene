@@ -87,28 +87,20 @@ public class AssertingLeafReader extends FilterLeafReader {
 
     CacheHelper coreCacheHelper = in.getCoreCacheHelper();
     if (coreCacheHelper != null) {
-      coreCacheHelper.addClosedListener(
-          cacheKey -> {
-            final Object expectedKey = coreCacheHelper.getKey();
-            assert expectedKey == cacheKey
-                : "Core closed listener called on a different key "
-                    + expectedKey
-                    + " <> "
-                    + cacheKey;
-          });
+      coreCacheHelper.addClosedListener(cacheKey -> {
+        final Object expectedKey = coreCacheHelper.getKey();
+        assert expectedKey == cacheKey
+            : "Core closed listener called on a different key " + expectedKey + " <> " + cacheKey;
+      });
     }
 
     CacheHelper readerCacheHelper = in.getReaderCacheHelper();
     if (readerCacheHelper != null) {
-      readerCacheHelper.addClosedListener(
-          cacheKey -> {
-            final Object expectedKey = readerCacheHelper.getKey();
-            assert expectedKey == cacheKey
-                : "Core closed listener called on a different key "
-                    + expectedKey
-                    + " <> "
-                    + cacheKey;
-          });
+      readerCacheHelper.addClosedListener(cacheKey -> {
+        final Object expectedKey = readerCacheHelper.getKey();
+        assert expectedKey == cacheKey
+            : "Core closed listener called on a different key " + expectedKey + " <> " + cacheKey;
+      });
     }
   }
 
@@ -282,7 +274,7 @@ public class AssertingLeafReader extends FilterLeafReader {
       POSITIONED,
       UNPOSITIONED,
       TWO_PHASE_SEEKING;
-    };
+    }
 
     private State state = State.INITIAL;
     private final boolean delegateOverridesSeekExact;
@@ -473,7 +465,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     START,
     ITERATING,
     FINISHED
-  };
+  }
 
   /** Wraps a docsenum with additional checks */
   public static class AssertingPostingsEnum extends FilterPostingsEnum {

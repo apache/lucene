@@ -80,15 +80,14 @@ public class GitGrepPlugin extends LuceneGradlePlugin {
 
               // we could pass each pattern via '-e', but this feels more comfortable.
               Path inputFile = task.getTemporaryDir().toPath().resolve("patterns.txt");
-              task.doFirst(
-                  _ -> {
-                    try {
-                      Files.createDirectories(inputFile.getParent());
-                      Files.write(inputFile, invalidPatterns);
-                    } catch (IOException e) {
-                      throw new UncheckedIOException(e);
-                    }
-                  });
+              task.doFirst(_ -> {
+                try {
+                  Files.createDirectories(inputFile.getParent());
+                  Files.write(inputFile, invalidPatterns);
+                } catch (IOException e) {
+                  throw new UncheckedIOException(e);
+                }
+              });
               task.setWorkingDir(project.getLayout().getProjectDirectory());
               task.setIgnoreExitValue(true);
               task.setArgs(
@@ -103,23 +102,21 @@ public class GitGrepPlugin extends LuceneGradlePlugin {
                       inputFile.toString(),
                       "--", // exempt ourselves from the check
                       ":^*GitGrepPlugin.java"));
-              task.doLast(
-                  _ -> {
-                    // only exit status of 1 (no matches) is acceptable
-                    int exitStatus = task.getExecutionResult().get().getExitValue();
-                    if (exitStatus == 0) {
-                      throw new GradleException("Illegal source code patterns were matched");
-                    } else if (exitStatus != 1) {
-                      throw new GradleException("Internal error searching for patterns");
-                    }
-                  });
+              task.doLast(_ -> {
+                // only exit status of 1 (no matches) is acceptable
+                int exitStatus = task.getExecutionResult().get().getExitValue();
+                if (exitStatus == 0) {
+                  throw new GradleException("Illegal source code patterns were matched");
+                } else if (exitStatus != 1) {
+                  throw new GradleException("Internal error searching for patterns");
+                }
+              });
             });
 
     tasks
         .named("check")
-        .configure(
-            task -> {
-              task.dependsOn(applyGitGrepRulesTask);
-            });
+        .configure(task -> {
+          task.dependsOn(applyGitGrepRulesTask);
+        });
   }
 }

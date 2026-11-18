@@ -376,14 +376,13 @@ public class RandomIndexWriter implements Closeable {
     if (flushConcurrently) {
       List<Throwable> throwableList = new CopyOnWriteArrayList<>();
       Thread thread =
-          new Thread(
-              () -> {
-                try {
-                  flushAllBuffersSequentially();
-                } catch (Throwable e) {
-                  throwableList.add(e);
-                }
-              });
+          new Thread(() -> {
+            try {
+              flushAllBuffersSequentially();
+            } catch (Throwable e) {
+              throwableList.add(e);
+            }
+          });
       thread.start();
       try {
         return w.commit();

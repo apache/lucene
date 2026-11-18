@@ -200,14 +200,13 @@ class QueryAnalyzer {
       // Under negation only handleNegatedQuery is used: a handler's positive tree may select more
       // documents than the query matches, so negating it would be unsound
       clauses.add(
-          new Leaf(
-              w -> {
-                QueryTree q = handleCustomQuery(query, w, isNegated);
-                if (q == null) {
-                  return QueryTree.anyTerm(isNegated ? "NOT " + query : query.toString());
-                }
-                return q;
-              }));
+          new Leaf(w -> {
+            QueryTree q = handleCustomQuery(query, w, isNegated);
+            if (q == null) {
+              return QueryTree.anyTerm(isNegated ? "NOT " + query : query.toString());
+            }
+            return q;
+          }));
     }
 
     /**

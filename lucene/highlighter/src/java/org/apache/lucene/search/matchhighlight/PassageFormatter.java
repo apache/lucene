@@ -40,7 +40,7 @@ public class PassageFormatter {
   private final ArrayList<OffsetRange> markerStack = new ArrayList<>();
 
   public PassageFormatter(String ellipsis, String markerStart, String markerEnd) {
-    this(ellipsis, (_) -> markerStart, (_) -> markerEnd);
+    this(ellipsis, _ -> markerStart, _ -> markerEnd);
   }
 
   public PassageFormatter(
@@ -93,17 +93,13 @@ public class PassageFormatter {
   }
 
   private boolean withinRange(OffsetRange limits, List<? extends OffsetRange> contained) {
-    contained.forEach(
-        r -> {
-          if (r.from < limits.from || r.to > limits.to) {
-            throw new AssertionError(
-                String.format(
-                    Locale.ROOT,
-                    "Range outside of the permitted limit (limit = %s): %s",
-                    limits,
-                    r));
-          }
-        });
+    contained.forEach(r -> {
+      if (r.from < limits.from || r.to > limits.to) {
+        throw new AssertionError(
+            String.format(
+                Locale.ROOT, "Range outside of the permitted limit (limit = %s): %s", limits, r));
+      }
+    });
     return true;
   }
 
@@ -184,16 +180,15 @@ public class PassageFormatter {
     Comparator<SlicePoint> c =
         Comparator.<SlicePoint>comparingInt(pt -> pt.offset)
             .thenComparingInt(pt -> pt.type.ordering)
-            .thenComparing(
-                (a, b) -> {
-                  if (a.type == SlicePoint.Type.START) {
-                    // Longer start slice points come first.
-                    return Integer.compare(b.marker.to, a.marker.to);
-                  } else {
-                    // Shorter end slice points come first.
-                    return Integer.compare(b.marker.from, a.marker.from);
-                  }
-                });
+            .thenComparing((a, b) -> {
+              if (a.type == SlicePoint.Type.START) {
+                // Longer start slice points come first.
+                return Integer.compare(b.marker.to, a.marker.to);
+              } else {
+                // Shorter end slice points come first.
+                return Integer.compare(b.marker.from, a.marker.from);
+              }
+            });
 
     Arrays.sort(slicePoints, c);
 

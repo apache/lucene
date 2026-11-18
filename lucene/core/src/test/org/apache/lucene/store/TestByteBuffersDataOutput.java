@@ -41,11 +41,10 @@ public final class TestByteBuffersDataOutput extends BaseDataOutputTestCase<Byte
   public void testReuse() throws IOException {
     AtomicInteger allocations = new AtomicInteger(0);
     ByteBuffersDataOutput.ByteBufferRecycler reuser =
-        new ByteBuffersDataOutput.ByteBufferRecycler(
-            (size) -> {
-              allocations.incrementAndGet();
-              return ByteBuffer.allocate(size);
-            });
+        new ByteBuffersDataOutput.ByteBufferRecycler(size -> {
+          allocations.incrementAndGet();
+          return ByteBuffer.allocate(size);
+        });
 
     ByteBuffersDataOutput o =
         new ByteBuffersDataOutput(
