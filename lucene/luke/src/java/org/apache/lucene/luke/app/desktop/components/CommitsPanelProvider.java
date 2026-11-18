@@ -314,12 +314,11 @@ public final class CommitsPanelProvider {
     long commitGen = (long) commitGenCombo.getSelectedItem();
     commitsModel
         .getCommit(commitGen)
-        .ifPresent(
-            commit -> {
-              deletedLbl.setText(String.valueOf(commit.isDeleted()));
-              segCntLbl.setText(String.valueOf(commit.getSegCount()));
-              userDataTA.setText(commit.getUserData());
-            });
+        .ifPresent(commit -> {
+          deletedLbl.setText(String.valueOf(commit.isDeleted()));
+          segCntLbl.setText(String.valueOf(commit.getSegCount()));
+          userDataTA.setText(commit.getUserData());
+        });
 
     filesTable.setModel(new FilesTableModel(commitsModel.getFiles(commitGen)));
     filesTable.setShowGrid(true);
@@ -388,25 +387,24 @@ public final class CommitsPanelProvider {
       case CODEC:
         commitsModel
             .getSegmentCodec(commitGen, segName)
-            .ifPresent(
-                codec -> {
-                  Map<String, String> map = new HashMap<>();
-                  map.put("Codec name", codec.getName());
-                  map.put("Codec class name", codec.getClass().getName());
-                  map.put("Compound format", codec.compoundFormat().getClass().getName());
-                  map.put("DocValues format", codec.docValuesFormat().getClass().getName());
-                  map.put("FieldInfos format", codec.fieldInfosFormat().getClass().getName());
-                  map.put("LiveDocs format", codec.liveDocsFormat().getClass().getName());
-                  map.put("Norms format", codec.normsFormat().getClass().getName());
-                  map.put("Points format", codec.pointsFormat().getClass().getName());
-                  map.put("Postings format", codec.postingsFormat().getClass().getName());
-                  map.put("SegmentInfo format", codec.segmentInfoFormat().getClass().getName());
-                  map.put("StoredFields format", codec.storedFieldsFormat().getClass().getName());
-                  map.put("TermVectors format", codec.termVectorsFormat().getClass().getName());
-                  map.entrySet().stream()
-                      .map(entry -> entry.getKey() + " = " + entry.getValue())
-                      .forEach(detailsModel::addElement);
-                });
+            .ifPresent(codec -> {
+              Map<String, String> map = new HashMap<>();
+              map.put("Codec name", codec.getName());
+              map.put("Codec class name", codec.getClass().getName());
+              map.put("Compound format", codec.compoundFormat().getClass().getName());
+              map.put("DocValues format", codec.docValuesFormat().getClass().getName());
+              map.put("FieldInfos format", codec.fieldInfosFormat().getClass().getName());
+              map.put("LiveDocs format", codec.liveDocsFormat().getClass().getName());
+              map.put("Norms format", codec.normsFormat().getClass().getName());
+              map.put("Points format", codec.pointsFormat().getClass().getName());
+              map.put("Postings format", codec.postingsFormat().getClass().getName());
+              map.put("SegmentInfo format", codec.segmentInfoFormat().getClass().getName());
+              map.put("StoredFields format", codec.storedFieldsFormat().getClass().getName());
+              map.put("TermVectors format", codec.termVectorsFormat().getClass().getName());
+              map.entrySet().stream()
+                  .map(entry -> entry.getKey() + " = " + entry.getValue())
+                  .forEach(detailsModel::addElement);
+            });
         break;
     }
     segDetailList.setModel(detailsModel);

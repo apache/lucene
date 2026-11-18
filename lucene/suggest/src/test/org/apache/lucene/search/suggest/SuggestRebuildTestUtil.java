@@ -63,17 +63,16 @@ public final class SuggestRebuildTestUtil {
     final Semaphore readyToAdvance = new Semaphore(0);
     final AtomicReference<Throwable> buildError = new AtomicReference<>();
     final Thread rebuilder =
-        new Thread(
-            () -> {
-              try {
-                suggester.build(
-                    new DelayedInputIterator(
-                        readyToCheck, readyToAdvance, new InputArrayIterator(data.iterator())));
-              } catch (Throwable t) {
-                buildError.set(t);
-                readyToCheck.release(data.size() * 100); // flood the semaphore so we don't block
-              }
-            });
+        new Thread(() -> {
+          try {
+            suggester.build(
+                new DelayedInputIterator(
+                    readyToCheck, readyToAdvance, new InputArrayIterator(data.iterator())));
+          } catch (Throwable t) {
+            buildError.set(t);
+            readyToCheck.release(data.size() * 100); // flood the semaphore so we don't block
+          }
+        });
     rebuilder.start();
     // at every stage of the slow rebuild, we should still be able to get our original suggestions
     // (+1 iteration to ensure final next() call can return null)

@@ -118,10 +118,9 @@ final class PosixNativeAccess extends NativeAccess {
     final MemorySegment symbol =
         lookup
             .find(name)
-            .orElseThrow(
-                () ->
-                    new UnsupportedOperationException(
-                        "Platform has no symbol for '" + name + "' in libc."));
+            .orElseThrow(() ->
+                new UnsupportedOperationException(
+                    "Platform has no symbol for '" + name + "' in libc."));
     return linker.downcallHandle(symbol, desc);
   }
 

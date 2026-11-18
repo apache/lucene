@@ -314,10 +314,9 @@ public class DrillSideways {
     final DrillDownQuery ddl = new DrillDownQuery(config, query.getBaseQuery());
     query
         .getDims()
-        .forEach(
-            (dim, pos) -> {
-              if (!dim.equals(excludedDimension)) ddl.add(dim, queries[pos]);
-            });
+        .forEach((dim, pos) -> {
+          if (!dim.equals(excludedDimension)) ddl.add(dim, queries[pos]);
+        });
     return ddl.getDims().size() == queries.length ? null : ddl;
   }
 

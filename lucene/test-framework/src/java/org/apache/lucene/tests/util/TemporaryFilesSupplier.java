@@ -221,23 +221,22 @@ final class TemporaryFilesSupplier implements BeforeAfterCallback {
     // was successful. Otherwise, just report the path of temporary files
     // and leave them there.
     if (failureMarker.wasSuccessful()) {
-      registerToCloseAfterSuite(
-          () -> {
-            try {
-              IOUtils.rm(paths);
-            } catch (IOException e) {
-              Class<?> suiteClass = targetClassSupplier.get();
-              if (suiteClass.isAnnotationPresent(SuppressTempFileChecks.class)) {
-                System.err.println(
-                    "WARNING: Leftover undeleted temporary files (bugUrl: "
-                        + suiteClass.getAnnotation(SuppressTempFileChecks.class).bugUrl()
-                        + "): "
-                        + e.getMessage());
-                return;
-              }
-              throw e;
-            }
-          });
+      registerToCloseAfterSuite(() -> {
+        try {
+          IOUtils.rm(paths);
+        } catch (IOException e) {
+          Class<?> suiteClass = targetClassSupplier.get();
+          if (suiteClass.isAnnotationPresent(SuppressTempFileChecks.class)) {
+            System.err.println(
+                "WARNING: Leftover undeleted temporary files (bugUrl: "
+                    + suiteClass.getAnnotation(SuppressTempFileChecks.class).bugUrl()
+                    + "): "
+                    + e.getMessage());
+            return;
+          }
+          throw e;
+        }
+      });
     } else {
       if (tempDirBasePath != null) {
         System.err.println("NOTE: leaving temporary files on disk at: " + tempDirBasePath);

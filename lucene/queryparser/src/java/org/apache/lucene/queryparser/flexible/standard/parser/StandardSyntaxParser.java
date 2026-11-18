@@ -140,7 +140,6 @@ public class StandardSyntaxParser implements SyntaxParser, StandardSyntaxParserC
         case RANGEEX_START:
         case LPAREN:
           {
-            ;
             break;
           }
         default:
@@ -175,7 +174,6 @@ public class StandardSyntaxParser implements SyntaxParser, StandardSyntaxParserC
       switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
         case OR:
           {
-            ;
             break;
           }
         default:
@@ -202,7 +200,6 @@ public class StandardSyntaxParser implements SyntaxParser, StandardSyntaxParserC
       switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
         case AND:
           {
-            ;
             break;
           }
         default:
@@ -265,7 +262,6 @@ public class StandardSyntaxParser implements SyntaxParser, StandardSyntaxParserC
         }
       default:
         jj_la1[5] = jj_gen;
-        ;
     }
     q = Clause(field);
     if (modifier != ModifierQueryNode.Modifier.MOD_NONE) {
@@ -311,7 +307,6 @@ public class StandardSyntaxParser implements SyntaxParser, StandardSyntaxParserC
                   throw new ParseException();
               }
             } else {
-              ;
             }
             if (jj_2_2(2)) {
               q = Term(field);
@@ -373,7 +368,6 @@ public class StandardSyntaxParser implements SyntaxParser, StandardSyntaxParserC
         }
       default:
         jj_la1[9] = jj_gen;
-        ;
     }
     switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
       case 56:
@@ -384,7 +378,6 @@ public class StandardSyntaxParser implements SyntaxParser, StandardSyntaxParserC
         }
       default:
         jj_la1[10] = jj_gen;
-        ;
     }
     if (minShouldMatch != null) {
       q = new MinShouldMatchNode(parseInt(minShouldMatch), new GroupQueryNode(q));
@@ -543,7 +536,6 @@ public class StandardSyntaxParser implements SyntaxParser, StandardSyntaxParserC
         case NUMBER:
         case TERM:
           {
-            ;
             break;
           }
         default:
@@ -604,7 +596,6 @@ public class StandardSyntaxParser implements SyntaxParser, StandardSyntaxParserC
         case NUMBER:
         case TERM:
           {
-            ;
             break;
           }
         default:
@@ -649,7 +640,6 @@ public class StandardSyntaxParser implements SyntaxParser, StandardSyntaxParserC
         case NUMBER:
         case TERM:
           {
-            ;
             break;
           }
         default:
@@ -680,7 +670,6 @@ public class StandardSyntaxParser implements SyntaxParser, StandardSyntaxParserC
         case NUMBER:
         case TERM:
           {
-            ;
             break;
           }
         default:
@@ -711,7 +700,6 @@ public class StandardSyntaxParser implements SyntaxParser, StandardSyntaxParserC
         case NUMBER:
         case TERM:
           {
-            ;
             break;
           }
         default:
@@ -940,7 +928,6 @@ public class StandardSyntaxParser implements SyntaxParser, StandardSyntaxParserC
         }
       default:
         jj_la1[18] = jj_gen;
-        ;
     }
     jj_consume_token(RPAREN);
     {
@@ -994,12 +981,10 @@ public class StandardSyntaxParser implements SyntaxParser, StandardSyntaxParserC
     if (jj_2_26(2)) {
       maxEdits = jj_consume_token(NUMBER);
     } else {
-      ;
     }
     if (jj_2_27(2)) {
       maxExpansions = jj_consume_token(NUMBER);
     } else {
-      ;
     }
     jj_consume_token(RPAREN);
     {
@@ -1072,7 +1057,6 @@ public class StandardSyntaxParser implements SyntaxParser, StandardSyntaxParserC
     if (jj_2_28(2)) {
       similarity = jj_consume_token(NUMBER);
     } else {
-      ;
     }
     float fms = org.apache.lucene.search.FuzzyQuery.defaultMaxEdits;
     if (similarity != null) {
@@ -1241,7 +1225,6 @@ public class StandardSyntaxParser implements SyntaxParser, StandardSyntaxParserC
               }
             default:
               jj_la1[26] = jj_gen;
-              ;
           }
           break;
         }
@@ -1269,7 +1252,6 @@ public class StandardSyntaxParser implements SyntaxParser, StandardSyntaxParserC
         }
       default:
         jj_la1[28] = jj_gen;
-        ;
     }
     {
       if ("" != null) return q;
@@ -1295,7 +1277,6 @@ public class StandardSyntaxParser implements SyntaxParser, StandardSyntaxParserC
         }
       default:
         jj_la1[29] = jj_gen;
-        ;
     }
     {
       if ("" != null) return q;
