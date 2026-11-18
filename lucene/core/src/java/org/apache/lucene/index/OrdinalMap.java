@@ -18,12 +18,10 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-import java.util.stream.IntStream;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Accountables;
 import org.apache.lucene.util.InPlaceMergeSorter;
@@ -258,20 +256,11 @@ public class OrdinalMap implements Accountable {
     PriorityQueue<TermsEnumIndex> queue =
         PriorityQueue.usingComparator(subs.length, TermsEnumIndex::compareTermTo);
 
-    try {
-      queue.addAll(
-          IntStream.range(0, subs.length)
-              .mapToObj(i -> new TermsEnumIndex(subs[segmentMap.newToOld(i)], i))
-              .filter(
-                  sub -> {
-                    try {
-                      return sub.next() != null;
-                    } catch (IOException e) {
-                      throw new UncheckedIOException(e);
-                    }
-                  }));
-    } catch (UncheckedIOException e) {
-      throw e.getCause();
+    for (int i = 0; i < subs.length; i++) {
+      TermsEnumIndex sub = new TermsEnumIndex(subs[segmentMap.newToOld(i)], i);
+      if (sub.next() != null) {
+        queue.add(sub);
+      }
     }
 
     TermsEnumIndex.TermState topState = new TermsEnumIndex.TermState();

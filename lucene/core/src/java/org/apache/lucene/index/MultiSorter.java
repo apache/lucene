@@ -18,10 +18,8 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.Comparator;
 import java.util.List;
-import java.util.stream.IntStream;
 import org.apache.lucene.index.MergeState.DocMap;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
@@ -105,23 +103,12 @@ final class MultiSorter {
 
     PackedLongValues.Builder[] builders = new PackedLongValues.Builder[leafCount];
 
-    try {
-      queue.addAll(
-          IntStream.range(0, leafCount)
-              .mapToObj(
-                  i -> {
-                    CodecReader reader = readers.get(i);
-                    LeafAndDocID leaf = new LeafAndDocID(i, reader.getLiveDocs(), reader.maxDoc());
-                    try {
-                      setComparableValues(comparables, parents[i], i, leaf.docID);
-                    } catch (IOException e) {
-                      throw new UncheckedIOException(e);
-                    }
-                    builders[i] = PackedLongValues.monotonicBuilder(PackedInts.COMPACT);
-                    return leaf;
-                  }));
-    } catch (UncheckedIOException e) {
-      throw e.getCause();
+    for (int i = 0; i < leafCount; i++) {
+      CodecReader reader = readers.get(i);
+      LeafAndDocID leaf = new LeafAndDocID(i, reader.getLiveDocs(), reader.maxDoc());
+      setComparableValues(comparables, parents[i], i, leaf.docID);
+      queue.add(leaf);
+      builders[i] = PackedLongValues.monotonicBuilder(PackedInts.COMPACT);
     }
 
     // merge sort:

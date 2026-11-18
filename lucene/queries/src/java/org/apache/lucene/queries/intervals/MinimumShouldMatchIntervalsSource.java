@@ -18,7 +18,6 @@
 package org.apache.lucene.queries.intervals;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -29,7 +28,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -273,32 +271,21 @@ class MinimumShouldMatchIntervalsSource extends IntervalsSource {
       this.proximityQueue.clear();
       this.backgroundQueue.clear();
       // First we populate the background queue
-      try {
-        backgroundQueue.addAll(
-            Stream.iterate(disiQueue.topList(), Objects::nonNull, dw -> dw.next)
-                .filter(
-                    dw -> {
-                      try {
-                        return dw.intervals.nextInterval() != NO_MORE_INTERVALS;
-                      } catch (IOException e) {
-                        throw new UncheckedIOException(e);
-                      }
-                    })
-                .map(dw -> dw.intervals));
-      } catch (UncheckedIOException e) {
-        throw e.getCause();
+      for (DisiWrapper dw = disiQueue.topList(); dw != null; dw = dw.next) {
+        if (dw.intervals.nextInterval() != NO_MORE_INTERVALS) {
+          this.backgroundQueue.add(dw.intervals);
+        }
       }
       // Then we pop the first minShouldMatch entries and add them to the proximity queue
       this.queueEnd = -1;
-      this.proximityQueue.addAll(
-          Stream.generate(() -> this.backgroundQueue.pop())
-              .limit(minShouldMatch)
-              .takeWhile(Objects::nonNull)
-              .map(
-                  it -> {
-                    updateRightExtreme(it);
-                    return it;
-                  }));
+      for (int i = 0; i < minShouldMatch; i++) {
+        IntervalIterator it = this.backgroundQueue.pop();
+        if (it == null) {
+          break;
+        }
+        this.proximityQueue.add(it);
+        updateRightExtreme(it);
+      }
       start = end = -1;
     }
 

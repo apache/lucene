@@ -17,7 +17,6 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -429,15 +428,12 @@ public class MultiPhraseQuery extends Query {
     public UnionPostingsEnum(Collection<PostingsEnum> subs) {
       docsQueue =
           PriorityQueue.usingComparator(subs.size(), Comparator.comparingInt(PostingsEnum::docID));
-      long[] cost = {0};
-      docsQueue.addAll(
-          subs.stream()
-              .map(
-                  sub -> {
-                    cost[0] += sub.cost();
-                    return sub;
-                  }));
-      this.cost = cost[0];
+      long cost = 0;
+      for (PostingsEnum sub : subs) {
+        docsQueue.add(sub);
+        cost += sub.cost();
+      }
+      this.cost = cost;
       this.subs = subs.toArray(PostingsEnum[]::new);
     }
 
@@ -600,23 +596,13 @@ public class MultiPhraseQuery extends Query {
       freq = 0;
       started = false;
       posQueue.clear();
-      try {
-        posQueue.addAll(
-            subs.stream()
-                .filter(pp -> pp.pe.docID() == doc)
-                .map(
-                    pp -> {
-                      try {
-                        pp.pos = pp.pe.nextPosition();
-                        pp.upto = pp.pe.freq();
-                        freq += pp.upto;
-                        return pp;
-                      } catch (IOException e) {
-                        throw new UncheckedIOException(e);
-                      }
-                    }));
-      } catch (UncheckedIOException e) {
-        throw e.getCause();
+      for (PostingsAndPosition pp : subs) {
+        if (pp.pe.docID() == doc) {
+          pp.pos = pp.pe.nextPosition();
+          pp.upto = pp.pe.freq();
+          posQueue.add(pp);
+          freq += pp.upto;
+        }
       }
       return freq;
     }

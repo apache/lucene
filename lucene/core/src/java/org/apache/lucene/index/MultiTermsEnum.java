@@ -17,9 +17,7 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.Arrays;
-import java.util.Objects;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
@@ -91,27 +89,20 @@ public final class MultiTermsEnum extends BaseTermsEnum {
     numSubs = 0;
     numTop = 0;
     queue.clear();
-    try {
-      queue.addAll(
-          Arrays.stream(termsEnumsIndex)
-              .map(
-                  termsEnumIndex -> {
-                    assert termsEnumIndex != null;
-                    try {
-                      if (termsEnumIndex.next() == null) {
-                        return null;
-                      }
-                      final TermsEnumWithSlice entry = subs[termsEnumIndex.subIndex];
-                      entry.reset(termsEnumIndex);
-                      currentSubs[numSubs++] = entry;
-                      return entry;
-                    } catch (IOException e) {
-                      throw new UncheckedIOException(e);
-                    }
-                  })
-              .filter(Objects::nonNull));
-    } catch (UncheckedIOException e) {
-      throw e.getCause();
+    for (int i = 0; i < termsEnumsIndex.length; i++) {
+
+      final TermsEnumIndex termsEnumIndex = termsEnumsIndex[i];
+      assert termsEnumIndex != null;
+
+      final BytesRef term = termsEnumIndex.next();
+      if (term != null) {
+        final TermsEnumWithSlice entry = subs[termsEnumIndex.subIndex];
+        entry.reset(termsEnumIndex);
+        queue.add(entry);
+        currentSubs[numSubs++] = entry;
+      } else {
+        // field has no terms
+      }
     }
 
     if (queue.size() == 0) {

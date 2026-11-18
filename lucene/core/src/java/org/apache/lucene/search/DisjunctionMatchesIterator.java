@@ -18,7 +18,6 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -206,19 +205,10 @@ final class DisjunctionMatchesIterator implements MatchesIterator {
               return a.startPosition() < b.startPosition()
                   || (a.startPosition() == b.startPosition() && a.endPosition() <= b.endPosition());
             });
-    try {
-      queue.addAll(
-          matches.stream()
-              .filter(
-                  match -> {
-                    try {
-                      return match.next();
-                    } catch (IOException e) {
-                      throw new UncheckedIOException(e);
-                    }
-                  }));
-    } catch (UncheckedIOException e) {
-      throw e.getCause();
+    for (MatchesIterator mi : matches) {
+      if (mi.next()) {
+        queue.add(mi);
+      }
     }
   }
 
