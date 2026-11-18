@@ -73,6 +73,18 @@ public class TestQueryTree extends LuceneTestCase {
     assertEquals(TermWeightor.MIN_NEGATED_WEIGHT, negativeDisjunctWeight(_ -> 1000, A), 0);
   }
 
+  public void testDefaultWeightsReadSensiblyAsInformationContent() {
+    // negate() reads weights as information content, -ln p. Below ln 2 a term would claim to be in
+    // more than half of all documents, and its absence would outweigh it; above
+    // -ln(MIN_NEGATED_WEIGHT) every absence weighs the same. If you rescale DEFAULT, revisit
+    // negate().
+    double shortest = TermWeightor.DEFAULT.applyAsDouble(new Term("f", "x"));
+    double longest = TermWeightor.DEFAULT.applyAsDouble(new Term("f", "x".repeat(64)));
+    assertTrue("shortest term weighs " + shortest, shortest > Math.log(2));
+    assertTrue(
+        "longest term weighs " + longest, longest < -Math.log(TermWeightor.MIN_NEGATED_WEIGHT));
+  }
+
   public void testNegationAppliesToTheCombinedWeight() {
     // The field weightor halves the weight of A, and the negation halves it again.
     double half = 0.5;
