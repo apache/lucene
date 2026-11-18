@@ -213,7 +213,8 @@ class QueryAnalyzer {
      * Whether this combines its clauses with AND; a single clause counts as either
      *
      * <p>BooleanQuery#visit always adds a MUST group, which combines with OR under negation. For
-     * {@code (a OR b)} that group's only clause is the SHOULD group, so it doesn't stop merging:
+     * {@code (a OR b)} that group holds a single clause, the SHOULD group, however many SHOULD
+     * clauses sit inside it. The count of one tells merging it can look through the wrapper, so
      * {@code *:* -(a OR (b OR c))} gives one negative disjunct {@code {a, b, c}}.
      */
     private boolean isConjunctive() {
