@@ -68,7 +68,7 @@ class GeneratingSuggester {
     processSuggestibleWords(
         Math.max(1, word.length() - MAX_ROOT_LENGTH_DIFF),
         word.length() + MAX_ROOT_LENGTH_DIFF,
-        (entry) -> {
+        entry -> {
           if (ignoreTitleCaseRoots && entry.hasTitleCase()) {
             return;
           }

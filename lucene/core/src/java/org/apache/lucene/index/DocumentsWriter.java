@@ -119,20 +119,19 @@ final class DocumentsWriter implements Closeable, Accountable {
     this.infoStream = config.getInfoStream();
     this.deleteQueue = new DocumentsWriterDeleteQueue(infoStream);
     this.perThreadPool =
-        new DocumentsWriterPerThreadPool(
-            () -> {
-              final FieldInfos.Builder infos = new FieldInfos.Builder(globalFieldNumberMap);
-              return new DocumentsWriterPerThread(
-                  indexCreatedVersionMajor,
-                  segmentNameSupplier.get(),
-                  directoryOrig,
-                  directory,
-                  config,
-                  deleteQueue,
-                  infos,
-                  pendingNumDocs,
-                  enableTestPoints);
-            });
+        new DocumentsWriterPerThreadPool(() -> {
+          final FieldInfos.Builder infos = new FieldInfos.Builder(globalFieldNumberMap);
+          return new DocumentsWriterPerThread(
+              indexCreatedVersionMajor,
+              segmentNameSupplier.get(),
+              directoryOrig,
+              directory,
+              config,
+              deleteQueue,
+              infos,
+              pendingNumDocs,
+              enableTestPoints);
+        });
     this.pendingNumDocs = pendingNumDocs;
     flushControl = new DocumentsWriterFlushControl(this, config);
     this.flushNotifications = flushNotifications;
@@ -268,12 +267,11 @@ final class DocumentsWriter implements Closeable, Accountable {
       infoStream.message("DW", "lockAndAbortAll");
     }
     // Make sure we move all pending tickets into the flush queue:
-    ticketQueue.forcePurge(
-        ticket -> {
-          if (ticket.getFlushedSegment() != null) {
-            pendingNumDocs.addAndGet(-ticket.getFlushedSegment().segmentInfo.info.maxDoc());
-          }
-        });
+    ticketQueue.forcePurge(ticket -> {
+      if (ticket.getFlushedSegment() != null) {
+        pendingNumDocs.addAndGet(-ticket.getFlushedSegment().segmentInfo.info.maxDoc());
+      }
+    });
     List<DocumentsWriterPerThread> writers = new ArrayList<>();
     AtomicBoolean released = new AtomicBoolean(false);
     final Closeable release =

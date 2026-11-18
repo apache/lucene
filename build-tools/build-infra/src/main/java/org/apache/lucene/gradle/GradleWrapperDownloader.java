@@ -91,26 +91,25 @@ public class GradleWrapperDownloader {
     try (var lines = Files.lines(checksumPath, StandardCharsets.UTF_8)) {
       expectedChecksum =
           lines
-              .map(
-                  line -> {
-                    // "The default mode is to print a line with: checksum, a space,
-                    // a character indicating input mode  ('*' for binary, ' ' for text
-                    // or where binary is insignificant), and name for each FILE."
-                    var spaceIndex = line.indexOf(" ");
-                    if (spaceIndex != -1 && spaceIndex + 2 < line.length()) {
-                      var mode = line.charAt(spaceIndex + 1);
-                      String fileName = line.substring(spaceIndex + 2);
-                      if (mode == '*' && fileName.equals(expectedFileName)) {
-                        return line.substring(0, spaceIndex);
-                      }
-                    }
+              .map(line -> {
+                // "The default mode is to print a line with: checksum, a space,
+                // a character indicating input mode  ('*' for binary, ' ' for text
+                // or where binary is insignificant), and name for each FILE."
+                var spaceIndex = line.indexOf(" ");
+                if (spaceIndex != -1 && spaceIndex + 2 < line.length()) {
+                  var mode = line.charAt(spaceIndex + 1);
+                  String fileName = line.substring(spaceIndex + 2);
+                  if (mode == '*' && fileName.equals(expectedFileName)) {
+                    return line.substring(0, spaceIndex);
+                  }
+                }
 
-                    Logger.getLogger(GradleWrapperDownloader.class.getName())
-                        .warning(
-                            "Something is wrong with the checksum file. Regenerate with "
-                                + "'sha256sum -b gradle-wrapper.jar > gradle-wrapper.jar.sha256'");
-                    return null;
-                  })
+                Logger.getLogger(GradleWrapperDownloader.class.getName())
+                    .warning(
+                        "Something is wrong with the checksum file. Regenerate with "
+                            + "'sha256sum -b gradle-wrapper.jar > gradle-wrapper.jar.sha256'");
+                return null;
+              })
               .filter(Objects::nonNull)
               .findFirst()
               .orElse(null);
@@ -133,15 +132,14 @@ public class GradleWrapperDownloader {
     Pattern versionPattern = Pattern.compile("gradle-(?<version>.+?)-bin.zip");
     String wrapperVersion =
         Files.readAllLines(wrapperProperties, StandardCharsets.UTF_8).stream()
-            .map(
-                line -> {
-                  var matcher = versionPattern.matcher(line);
-                  if (matcher.find()) {
-                    return matcher.group("version");
-                  } else {
-                    return null;
-                  }
-                })
+            .map(line -> {
+              var matcher = versionPattern.matcher(line);
+              if (matcher.find()) {
+                return matcher.group("version");
+              } else {
+                return null;
+              }
+            })
             .filter(Objects::nonNull)
             .findAny()
             .orElseThrow();

@@ -726,10 +726,11 @@ public class BpVectorReorderer extends AbstractBPReorderer {
   private static void usage() {
     throw new IllegalArgumentException(
         """
-              usage: reorder <directory> <field>
-                [--max-iters N]
-                [--min-partition-size P]
-                [--thread-count T]""");
+        usage: reorder <directory> <field>
+          [--max-iters N]
+          [--min-partition-size P]
+          [--thread-count T]\
+        """);
   }
 
   private static Sorter.DocMap valueMapToDocMap(

@@ -610,18 +610,17 @@ public class TestTermGroupFacetCollectorManager extends AbstractGroupingTestCase
     docNoGroupNoFacet.add(content);
 
     NavigableSet<String> uniqueFacetValues =
-        new TreeSet<>(
-            (a, b) -> {
-              if (a == b) {
-                return 0;
-              } else if (a == null) {
-                return -1;
-              } else if (b == null) {
-                return 1;
-              } else {
-                return a.compareTo(b);
-              }
-            });
+        new TreeSet<>((a, b) -> {
+          if (a == b) {
+            return 0;
+          } else if (a == null) {
+            return -1;
+          } else if (b == null) {
+            return 1;
+          } else {
+            return a.compareTo(b);
+          }
+        });
     Map<String, Map<String, Set<String>>> searchTermToFacetToGroups = new HashMap<>();
     int facetWithMostGroups = 0;
     for (int i = 0; i < numDocs; i++) {
@@ -766,16 +765,15 @@ public class TestTermGroupFacetCollectorManager extends AbstractGroupingTestCase
       }
     }
 
-    entries.sort(
-        (a, b) -> {
-          if (orderByCount) {
-            int cmp = b.count() - a.count();
-            if (cmp != 0) {
-              return cmp;
-            }
-          }
-          return a.value().compareTo(b.value());
-        });
+    entries.sort((a, b) -> {
+      if (orderByCount) {
+        int cmp = b.count() - a.count();
+        if (cmp != 0) {
+          return cmp;
+        }
+      }
+      return a.value().compareTo(b.value());
+    });
 
     int endOffset = offset + limit;
     List<GroupedFacetResult.FacetEntry> entriesResult;

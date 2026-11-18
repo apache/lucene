@@ -59,20 +59,19 @@ public class FailOnNoMatchingFilteredTestsPlugin extends LuceneGradlePlugin {
               CHECK_TASK_NAME,
               task -> {
                 task.usesService(serviceProvider);
-                task.doFirst(
-                    _ -> {
-                      var service = serviceProvider.get();
-                      int tasks = service.executedTasks.get();
-                      int tests = service.executedTests.get();
-                      if (tasks > 0 && tests == 0) {
-                        throw new GradleException(
-                            String.format(
-                                Locale.ROOT,
-                                "%d test %s executed but no tests matched the provided --tests filters?",
-                                tasks,
-                                tasks == 1 ? "task" : "tasks"));
-                      }
-                    });
+                task.doFirst(_ -> {
+                  var service = serviceProvider.get();
+                  int tasks = service.executedTasks.get();
+                  int tests = service.executedTests.get();
+                  if (tasks > 0 && tests == 0) {
+                    throw new GradleException(
+                        String.format(
+                            Locale.ROOT,
+                            "%d test %s executed but no tests matched the provided --tests filters?",
+                            tasks,
+                            tasks == 1 ? "task" : "tasks"));
+                  }
+                });
               });
     }
   }
@@ -92,43 +91,42 @@ public class FailOnNoMatchingFilteredTestsPlugin extends LuceneGradlePlugin {
     project
         .getTasks()
         .withType(Test.class)
-        .configureEach(
-            task -> {
-              // Always: do not fail the Test task itself on no matching tests
-              task.getFilter().setFailOnNoMatchingTests(false);
+        .configureEach(task -> {
+          // Always: do not fail the Test task itself on no matching tests
+          task.getFilter().setFailOnNoMatchingTests(false);
 
-              if (doCount) {
-                @SuppressWarnings("unchecked")
-                Provider<TestCountService> service =
-                    (Provider<TestCountService>)
-                        project
-                            .getGradle()
-                            .getSharedServices()
-                            .getRegistrations()
-                            .getByName(SERVICE_NAME)
-                            .getService();
+          if (doCount) {
+            @SuppressWarnings("unchecked")
+            Provider<TestCountService> service =
+                (Provider<TestCountService>)
+                    project
+                        .getGradle()
+                        .getSharedServices()
+                        .getRegistrations()
+                        .getByName(SERVICE_NAME)
+                        .getService();
 
-                task.usesService(service);
-                task.finalizedBy(":" + CHECK_TASK_NAME);
-                task.doFirst(_ -> service.get().incrementExecutedTasks());
-                task.addTestListener(
-                    new TestListener() {
-                      @Override
-                      public void beforeSuite(TestDescriptor suite) {}
+            task.usesService(service);
+            task.finalizedBy(":" + CHECK_TASK_NAME);
+            task.doFirst(_ -> service.get().incrementExecutedTasks());
+            task.addTestListener(
+                new TestListener() {
+                  @Override
+                  public void beforeSuite(TestDescriptor suite) {}
 
-                      @Override
-                      public void afterSuite(TestDescriptor suite, TestResult result) {
-                        service.get().addExecutedTests((int) result.getTestCount());
-                      }
+                  @Override
+                  public void afterSuite(TestDescriptor suite, TestResult result) {
+                    service.get().addExecutedTests((int) result.getTestCount());
+                  }
 
-                      @Override
-                      public void beforeTest(TestDescriptor testDescriptor) {}
+                  @Override
+                  public void beforeTest(TestDescriptor testDescriptor) {}
 
-                      @Override
-                      public void afterTest(TestDescriptor testDescriptor, TestResult result) {}
-                    });
-              }
-            });
+                  @Override
+                  public void afterTest(TestDescriptor testDescriptor, TestResult result) {}
+                });
+          }
+        });
   }
 
   /**

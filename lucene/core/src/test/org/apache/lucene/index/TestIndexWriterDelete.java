@@ -508,17 +508,16 @@ public class TestIndexWriterDelete extends LuceneTestCase {
         int nThreads = atLeast(8);
         for (int i = 0; i < nThreads; i++) {
           Thread t =
-              new Thread(
-                  () -> {
-                    try {
-                      while (numFields.getAndAdd(fieldsPerDoc) < breakingFieldCount) {
-                        modifier.addDocument(document);
-                        modifier.deleteAll();
-                      }
-                    } catch (IOException e) {
-                      throw new UncheckedIOException(e);
-                    }
-                  });
+              new Thread(() -> {
+                try {
+                  while (numFields.getAndAdd(fieldsPerDoc) < breakingFieldCount) {
+                    modifier.addDocument(document);
+                    modifier.deleteAll();
+                  }
+                } catch (IOException e) {
+                  throw new UncheckedIOException(e);
+                }
+              });
           t.start();
           threads.add(t);
         }
@@ -1619,17 +1618,16 @@ public class TestIndexWriterDelete extends LuceneTestCase {
       assertTrue(entered.await(30, TimeUnit.SECONDS));
       AtomicInteger done = new AtomicInteger();
       Thread indexer =
-          new Thread(
-              () -> {
-                try {
-                  for (int i = 0; i < 2000; i++) {
-                    w.softUpdateDocument(term, doc, new NumericDocValuesField("soft", 1));
-                    done.incrementAndGet();
-                  }
-                } catch (IOException e) {
-                  throw new UncheckedIOException(e);
-                }
-              });
+          new Thread(() -> {
+            try {
+              for (int i = 0; i < 2000; i++) {
+                w.softUpdateDocument(term, doc, new NumericDocValuesField("soft", 1));
+                done.incrementAndGet();
+              }
+            } catch (IOException e) {
+              throw new UncheckedIOException(e);
+            }
+          });
       indexer.start();
       assertTrue("indexing never stalled", stalled.await(30, TimeUnit.SECONDS));
       assertTrue(done.get() < 2000);

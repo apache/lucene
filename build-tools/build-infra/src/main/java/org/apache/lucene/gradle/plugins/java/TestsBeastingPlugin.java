@@ -62,13 +62,12 @@ public class TestsBeastingPlugin extends LuceneGradlePlugin {
           .register(
               "warnAboutConstantSeed",
               task -> {
-                task.doFirst(
-                    t -> {
-                      t.getLogger()
-                          .warn(
-                              "Root randomization seed is externally provided ({}), all duplicated runs will use the same starting seed.",
-                              testsSeedOption.getSource().name());
-                    });
+                task.doFirst(t -> {
+                  t.getLogger()
+                      .warn(
+                          "Root randomization seed is externally provided ({}), all duplicated runs will use the same starting seed.",
+                          testsSeedOption.getSource().name());
+                });
               });
     }
   }
@@ -133,35 +132,33 @@ public class TestsBeastingPlugin extends LuceneGradlePlugin {
 
     var subtasks =
         IntStream.rangeClosed(1, dupsOption.get())
-            .mapToObj(
-                idx -> {
-                  return project
-                      .getTasks()
-                      .register(
-                          "test_" + idx,
-                          Test.class,
-                          test -> {
-                            // we need to configure these manually in gradle 9+.
-                            test.setClasspath(testSourceSet.getRuntimeClasspath());
-                            test.setTestClassesDirs(testSourceSet.getOutput().getClassesDirs());
+            .mapToObj(idx -> {
+              return project
+                  .getTasks()
+                  .register(
+                      "test_" + idx,
+                      Test.class,
+                      test -> {
+                        // we need to configure these manually in gradle 9+.
+                        test.setClasspath(testSourceSet.getRuntimeClasspath());
+                        test.setTestClassesDirs(testSourceSet.getOutput().getClassesDirs());
 
-                            test.setFailFast(true);
-                            // If there is a user-provided root seed, use it
-                            // (all
-                            // duplicated tasks will run
-                            // from the same starting seed). Otherwise, pick a
-                            // sequential derivative.
-                            if (!rootSeedUserProvided) {
-                              test.systemProperty(
-                                  "tests.seed",
-                                  String.format(
-                                      Locale.ROOT,
-                                      "%08X",
-                                      new Random(rootSeed + (idx * 6364136223846793005L))
-                                          .nextLong()));
-                            }
-                          });
-                })
+                        test.setFailFast(true);
+                        // If there is a user-provided root seed, use it
+                        // (all
+                        // duplicated tasks will run
+                        // from the same starting seed). Otherwise, pick a
+                        // sequential derivative.
+                        if (!rootSeedUserProvided) {
+                          test.systemProperty(
+                              "tests.seed",
+                              String.format(
+                                  Locale.ROOT,
+                                  "%08X",
+                                  new Random(rootSeed + (idx * 6364136223846793005L)).nextLong()));
+                        }
+                      });
+            })
             .toList();
 
     beastTask.configure(task -> task.dependsOn(subtasks));
@@ -178,13 +175,11 @@ public class TestsBeastingPlugin extends LuceneGradlePlugin {
     public void setTestNamePatterns(List<String> patterns) {
       getTaskDependencies()
           .getDependencies(this)
-          .forEach(
-              subtask -> {
-                if (subtask instanceof Test testTask) {
-                  ((DefaultTestFilter) testTask.getFilter())
-                      .setCommandLineIncludePatterns(patterns);
-                }
-              });
+          .forEach(subtask -> {
+            if (subtask instanceof Test testTask) {
+              ((DefaultTestFilter) testTask.getFilter()).setCommandLineIncludePatterns(patterns);
+            }
+          });
     }
 
     @TaskAction

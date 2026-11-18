@@ -73,121 +73,108 @@ public abstract class BaseDataOutputTestCase<T extends DataOutput> extends Lucen
     GENERATORS = new ArrayList<>();
 
     // writeByte/ readByte
-    GENERATORS.add(
-        (dst, rnd) -> {
-          byte value = (byte) rnd.nextInt();
-          dst.writeByte(value);
-          return (src) -> assertEquals("readByte()", value, src.readByte());
-        });
+    GENERATORS.add((dst, rnd) -> {
+      byte value = (byte) rnd.nextInt();
+      dst.writeByte(value);
+      return src -> assertEquals("readByte()", value, src.readByte());
+    });
 
     // writeBytes/ readBytes (array and buffer version).
-    GENERATORS.add(
-        (dst, rnd) -> {
-          byte[] bytes = RandomBytes.randomBytesOfLengthBetween(rnd, 0, 100);
-          ByteBuffersDataOutput rdo =
-              dst instanceof ByteBuffersDataOutput ? (ByteBuffersDataOutput) dst : null;
+    GENERATORS.add((dst, rnd) -> {
+      byte[] bytes = RandomBytes.randomBytesOfLengthBetween(rnd, 0, 100);
+      ByteBuffersDataOutput rdo =
+          dst instanceof ByteBuffersDataOutput ? (ByteBuffersDataOutput) dst : null;
 
-          if (rnd.nextBoolean() && rdo != null) {
-            rdo.writeBytes(ByteBuffer.wrap(bytes));
-          } else {
-            dst.writeBytes(bytes, bytes.length);
-          }
+      if (rnd.nextBoolean() && rdo != null) {
+        rdo.writeBytes(ByteBuffer.wrap(bytes));
+      } else {
+        dst.writeBytes(bytes, bytes.length);
+      }
 
-          boolean useBuffersForRead = rnd.nextBoolean();
-          return (src) -> {
-            byte[] read = new byte[bytes.length];
-            if (useBuffersForRead && src instanceof ByteBuffersDataInput) {
-              ((ByteBuffersDataInput) src).readBytes(ByteBuffer.wrap(read), read.length);
-              assertArrayEquals("readBytes(ByteBuffer)", bytes, read);
-            } else {
-              src.readBytes(read, 0, read.length);
-              assertArrayEquals("readBytes(byte[])", bytes, read);
-            }
-          };
-        });
+      boolean useBuffersForRead = rnd.nextBoolean();
+      return src -> {
+        byte[] read = new byte[bytes.length];
+        if (useBuffersForRead && src instanceof ByteBuffersDataInput) {
+          ((ByteBuffersDataInput) src).readBytes(ByteBuffer.wrap(read), read.length);
+          assertArrayEquals("readBytes(ByteBuffer)", bytes, read);
+        } else {
+          src.readBytes(read, 0, read.length);
+          assertArrayEquals("readBytes(byte[])", bytes, read);
+        }
+      };
+    });
 
     // writeBytes/ readBytes (array + offset).
-    GENERATORS.add(
-        (dst, rnd) -> {
-          byte[] bytes = RandomBytes.randomBytesOfLengthBetween(rnd, 0, 100);
-          int off = RandomNumbers.randomIntBetween(rnd, 0, bytes.length);
-          int len = RandomNumbers.randomIntBetween(rnd, 0, bytes.length - off);
-          dst.writeBytes(bytes, off, len);
+    GENERATORS.add((dst, rnd) -> {
+      byte[] bytes = RandomBytes.randomBytesOfLengthBetween(rnd, 0, 100);
+      int off = RandomNumbers.randomIntBetween(rnd, 0, bytes.length);
+      int len = RandomNumbers.randomIntBetween(rnd, 0, bytes.length - off);
+      dst.writeBytes(bytes, off, len);
 
-          return (src) -> {
-            byte[] read = new byte[bytes.length + off];
-            src.readBytes(read, off, len);
-            assertArrayEquals(
-                "readBytes(byte[], off)",
-                ArrayUtil.copyOfSubArray(bytes, off, len + off),
-                ArrayUtil.copyOfSubArray(read, off, len + off));
-          };
-        });
+      return src -> {
+        byte[] read = new byte[bytes.length + off];
+        src.readBytes(read, off, len);
+        assertArrayEquals(
+            "readBytes(byte[], off)",
+            ArrayUtil.copyOfSubArray(bytes, off, len + off),
+            ArrayUtil.copyOfSubArray(read, off, len + off));
+      };
+    });
 
-    GENERATORS.add(
-        (dst, rnd) -> {
-          int v = rnd.nextInt();
-          dst.writeInt(v);
-          return (src) -> assertEquals("readInt()", v, src.readInt());
-        });
+    GENERATORS.add((dst, rnd) -> {
+      int v = rnd.nextInt();
+      dst.writeInt(v);
+      return src -> assertEquals("readInt()", v, src.readInt());
+    });
 
-    GENERATORS.add(
-        (dst, rnd) -> {
-          long v = rnd.nextLong();
-          dst.writeLong(v);
-          return (src) -> assertEquals("readLong()", v, src.readLong());
-        });
+    GENERATORS.add((dst, rnd) -> {
+      long v = rnd.nextLong();
+      dst.writeLong(v);
+      return src -> assertEquals("readLong()", v, src.readLong());
+    });
 
-    GENERATORS.add(
-        (dst, rnd) -> {
-          short v = (short) rnd.nextInt();
-          dst.writeShort(v);
-          return (src) -> assertEquals("readShort()", v, src.readShort());
-        });
+    GENERATORS.add((dst, rnd) -> {
+      short v = (short) rnd.nextInt();
+      dst.writeShort(v);
+      return src -> assertEquals("readShort()", v, src.readShort());
+    });
 
-    GENERATORS.add(
-        (dst, rnd) -> {
-          int v = rnd.nextInt();
-          dst.writeVInt(v);
-          return (src) -> assertEquals("readVInt()", v, src.readVInt());
-        });
+    GENERATORS.add((dst, rnd) -> {
+      int v = rnd.nextInt();
+      dst.writeVInt(v);
+      return src -> assertEquals("readVInt()", v, src.readVInt());
+    });
 
-    GENERATORS.add(
-        (dst, rnd) -> {
-          int v = rnd.nextInt();
-          dst.writeZInt(v);
-          return (src) -> assertEquals("readZInt()", v, src.readZInt());
-        });
+    GENERATORS.add((dst, rnd) -> {
+      int v = rnd.nextInt();
+      dst.writeZInt(v);
+      return src -> assertEquals("readZInt()", v, src.readZInt());
+    });
 
-    GENERATORS.add(
-        (dst, rnd) -> {
-          long v = rnd.nextLong() & (-1L >>> 1);
-          dst.writeVLong(v);
-          return (src) -> assertEquals("readVLong()", v, src.readVLong());
-        });
+    GENERATORS.add((dst, rnd) -> {
+      long v = rnd.nextLong() & (-1L >>> 1);
+      dst.writeVLong(v);
+      return src -> assertEquals("readVLong()", v, src.readVLong());
+    });
 
-    GENERATORS.add(
-        (dst, rnd) -> {
-          long v = rnd.nextLong();
-          dst.writeZLong(v);
-          return (src) -> assertEquals("readZLong()", v, src.readZLong());
-        });
+    GENERATORS.add((dst, rnd) -> {
+      long v = rnd.nextLong();
+      dst.writeZLong(v);
+      return src -> assertEquals("readZLong()", v, src.readZLong());
+    });
 
-    GENERATORS.add(
-        (dst, rnd) -> {
-          String v;
-          if (rnd.nextInt(50) == 0) {
-            // Occasionally a large blob.
-            v =
-                RandomStrings.randomUnicodeOfLength(
-                    rnd, RandomNumbers.randomIntBetween(rnd, 2048, 4096));
-          } else {
-            v =
-                RandomStrings.randomUnicodeOfLength(
-                    rnd, RandomNumbers.randomIntBetween(rnd, 0, 10));
-          }
-          dst.writeString(v);
-          return (src) -> assertEquals("readString()", v, src.readString());
-        });
+    GENERATORS.add((dst, rnd) -> {
+      String v;
+      if (rnd.nextInt(50) == 0) {
+        // Occasionally a large blob.
+        v =
+            RandomStrings.randomUnicodeOfLength(
+                rnd, RandomNumbers.randomIntBetween(rnd, 2048, 4096));
+      } else {
+        v = RandomStrings.randomUnicodeOfLength(rnd, RandomNumbers.randomIntBetween(rnd, 0, 10));
+      }
+      dst.writeString(v);
+      return src -> assertEquals("readString()", v, src.readString());
+    });
   }
 }

@@ -414,7 +414,7 @@ final class ReadersAndUpdates {
               null, trackingDir, info.info, fieldInfos, null, updatesContext, segmentSuffix);
       try (final DocValuesConsumer fieldsConsumer = dvFormat.fieldsConsumer(state)) {
         Function<FieldInfo, DocValuesFieldUpdates.Iterator> updateSupplier =
-            (info) -> {
+            info -> {
               if (info != fieldInfo) {
                 throw new IllegalArgumentException(
                     "expected field info for field: " + fieldInfo.name + " but got: " + info.name);

@@ -478,28 +478,28 @@ public class TestMemoryIndex extends LuceneTestCaseJupiter {
   public void testPointValues() throws Exception {
     List<Function<Long, IndexableField>> fieldFunctions =
         Arrays.asList(
-            (t) -> new IntPoint("number", t.intValue()),
-            (t) -> new LongPoint("number", t),
-            (t) -> new FloatPoint("number", t.floatValue()),
-            (t) -> new DoublePoint("number", t.doubleValue()));
+            t -> new IntPoint("number", t.intValue()),
+            t -> new LongPoint("number", t),
+            t -> new FloatPoint("number", t.floatValue()),
+            t -> new DoublePoint("number", t.doubleValue()));
     List<Function<Long, Query>> exactQueryFunctions =
         Arrays.asList(
-            (t) -> IntPoint.newExactQuery("number", t.intValue()),
-            (t) -> LongPoint.newExactQuery("number", t),
-            (t) -> FloatPoint.newExactQuery("number", t.floatValue()),
-            (t) -> DoublePoint.newExactQuery("number", t.doubleValue()));
+            t -> IntPoint.newExactQuery("number", t.intValue()),
+            t -> LongPoint.newExactQuery("number", t),
+            t -> FloatPoint.newExactQuery("number", t.floatValue()),
+            t -> DoublePoint.newExactQuery("number", t.doubleValue()));
     List<Function<long[], Query>> setQueryFunctions =
         Arrays.asList(
-            (t) ->
+            t ->
                 IntPoint.newSetQuery(
                     "number", LongStream.of(t).mapToInt(value -> (int) value).toArray()),
-            (t) -> LongPoint.newSetQuery("number", t),
-            (t) ->
+            t -> LongPoint.newSetQuery("number", t),
+            t ->
                 FloatPoint.newSetQuery(
                     "number",
                     Arrays.asList(
                         LongStream.of(t).mapToObj(value -> (float) value).toArray(Float[]::new))),
-            (t) ->
+            t ->
                 DoublePoint.newSetQuery(
                     "number", LongStream.of(t).mapToDouble(value -> (double) value).toArray()));
     List<BiFunction<Long, Long, Query>> rangeQueryFunctions =
