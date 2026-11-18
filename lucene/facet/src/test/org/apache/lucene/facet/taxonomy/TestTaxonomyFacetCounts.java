@@ -1089,23 +1089,22 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
       Collections.sort(facetLabels);
     }
 
-    allFacetLabels.sort(
-        (o1, o2) -> {
-          int diff = o1.size() - o2.size();
-          if (diff != 0) {
-            return diff;
-          }
+    allFacetLabels.sort((o1, o2) -> {
+      int diff = o1.size() - o2.size();
+      if (diff != 0) {
+        return diff;
+      }
 
-          // the lists are equal in size and sorted
-          for (int i = 0; i < o1.size(); i++) {
-            int comp = o1.get(i).compareTo(o2.get(i));
-            if (comp != 0) {
-              return comp;
-            }
-          }
-          // all elements are equal
-          return 0;
-        });
+      // the lists are equal in size and sorted
+      for (int i = 0; i < o1.size(); i++) {
+        int comp = o1.get(i).compareTo(o2.get(i));
+        if (comp != 0) {
+          return comp;
+        }
+      }
+      // all elements are equal
+      return 0;
+    });
 
     return allFacetLabels;
   }

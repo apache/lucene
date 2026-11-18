@@ -38,7 +38,6 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues {
   protected int lastOrd = -1;
   protected final float[] value;
   protected final VectorSimilarityFunction vectorSimilarityFunction;
-  ;
 
   OffHeapFloatVectorValues(
       int dimension,

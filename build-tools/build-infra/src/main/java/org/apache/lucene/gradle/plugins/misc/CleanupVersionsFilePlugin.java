@@ -45,35 +45,31 @@ public class CleanupVersionsFilePlugin extends LuceneGradlePlugin {
     // correct crlf and the default encoding after version
     // catalog formatting finishes. It is a pity it cannot be specified as the
     // task's parameters.
-    formatDepsTask.configure(
-        task -> {
-          task.doLast(
-              _ -> {
-                var fixcrlf = (FixCRLF) task.getAnt().getAntProject().createTask("fixcrlf");
-                fixcrlf.setFile(task.getCatalogFile().getAsFile().get());
-                fixcrlf.setFixlast(true);
-                var lf = new FixCRLF.CrLf();
-                lf.setValue("lf");
-                fixcrlf.setEol(lf);
-                fixcrlf.setOutputEncoding("UTF-8");
-                fixcrlf.execute();
-              });
-        });
+    formatDepsTask.configure(task -> {
+      task.doLast(_ -> {
+        var fixcrlf = (FixCRLF) task.getAnt().getAntProject().createTask("fixcrlf");
+        fixcrlf.setFile(task.getCatalogFile().getAsFile().get());
+        fixcrlf.setFixlast(true);
+        var lf = new FixCRLF.CrLf();
+        lf.setValue("lf");
+        fixcrlf.setEol(lf);
+        fixcrlf.setOutputEncoding("UTF-8");
+        fixcrlf.execute();
+      });
+    });
 
     tasks
         .named("tidy")
-        .configure(
-            task -> {
-              task.dependsOn(formatDepsTask);
-            });
+        .configure(task -> {
+          task.dependsOn(formatDepsTask);
+        });
 
     // Configure versionCatalogUpdate task to be interactive (not automatically overwrite).
     var updateDepsTask =
         tasks.withType(VersionCatalogUpdateTask.class).named("versionCatalogUpdate");
 
-    updateDepsTask.configure(
-        task -> {
-          task.setInteractive(true);
-        });
+    updateDepsTask.configure(task -> {
+      task.setInteractive(true);
+    });
   }
 }

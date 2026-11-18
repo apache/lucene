@@ -649,7 +649,6 @@ public class TestIntLongHashMap extends LuceneTestCase {
   /* */
   public void testEqualsSubClass() {
     class Sub extends IntLongHashMap {}
-    ;
 
     IntLongHashMap l1 = newInstance();
     l1.put(k1, value0);

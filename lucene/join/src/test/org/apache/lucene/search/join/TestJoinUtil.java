@@ -69,6 +69,7 @@ import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.CollectorManager;
+import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.FieldExistsQuery;
@@ -1955,17 +1956,16 @@ public class TestJoinUtil extends LuceneTestCase {
       hitsToJoinScores = context.toHitsToJoinScore.get(queryValue);
     }
     List<Map.Entry<Integer, JoinScore>> hits = new ArrayList<>(hitsToJoinScores.entrySet());
-    hits.sort(
-        (hit1, hit2) -> {
-          float score1 = hit1.getValue().score(scoreMode);
-          float score2 = hit2.getValue().score(scoreMode);
+    hits.sort((hit1, hit2) -> {
+      float score1 = hit1.getValue().score(scoreMode);
+      float score2 = hit2.getValue().score(scoreMode);
 
-          int cmp = Float.compare(score2, score1);
-          if (cmp != 0) {
-            return cmp;
-          }
-          return hit1.getKey() - hit2.getKey();
-        });
+      int cmp = Float.compare(score2, score1);
+      if (cmp != 0) {
+        return cmp;
+      }
+      return hit1.getKey() - hit2.getKey();
+    });
     ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(10, hits.size())];
     for (int i = 0; i < scoreDocs.length; i++) {
       Map.Entry<Integer, JoinScore> hit = hits.get(i);
@@ -2288,6 +2288,64 @@ public class TestJoinUtil extends LuceneTestCase {
         }
       } finally {
         TestUtil.shutdownExecutorService(executor);
+      }
+    }
+  }
+
+  public void testTermsJoinConcurrentScorePrecision() throws Exception {
+    final float score = 0.1f;
+    // 13 equal scores show premature rounding: converting each slice's partial sum
+    // to float before averaging changes the result.
+    final int splitCount = 13;
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter w =
+          new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE))) {
+        Document from = new Document();
+        from.add(new SortedDocValuesField("from", new BytesRef("split")));
+        w.addDocument(from);
+        from = new Document();
+        from.add(new SortedDocValuesField("from", new BytesRef("expected")));
+        w.addDocument(from);
+        w.flush();
+
+        from = new Document();
+        from.add(new SortedDocValuesField("from", new BytesRef("split")));
+        for (int i = 1; i < splitCount; i++) {
+          w.addDocument(from);
+        }
+        Document to = new Document();
+        to.add(new StringField("to", "expected", Field.Store.YES));
+        w.addDocument(to);
+        to = new Document();
+        to.add(new StringField("to", "split", Field.Store.YES));
+        w.addDocument(to);
+        w.commit();
+
+        ExecutorService executor =
+            Executors.newFixedThreadPool(2, new NamedThreadFactory("TestJoinUtil"));
+        try (DirectoryReader reader = DirectoryReader.open(dir)) {
+          IndexSearcher searcher =
+              new IndexSearcher(reader, executor) {
+                @Override
+                protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
+                  return IndexSearcher.slices(leaves, Integer.MAX_VALUE, 1, false);
+                }
+              };
+          assertEquals(2, searcher.getSlices().length);
+
+          Query fromQuery =
+              new BoostQuery(new ConstantScoreQuery(new FieldExistsQuery("from")), score);
+          Query joinQuery =
+              JoinUtil.createJoinQuery("from", false, "to", fromQuery, searcher, ScoreMode.Avg);
+          TopDocs topDocs = searcher.search(joinQuery, 1);
+          assertEquals(2, topDocs.totalHits.value());
+          assertEquals(splitCount + 1, topDocs.scoreDocs[0].doc);
+          assertEquals(
+              "expected", searcher.storedFields().document(topDocs.scoreDocs[0].doc).get("to"));
+          assertEquals(score, topDocs.scoreDocs[0].score, 0f);
+        } finally {
+          TestUtil.shutdownExecutorService(executor);
+        }
       }
     }
   }

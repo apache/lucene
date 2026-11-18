@@ -453,7 +453,7 @@ public class UnifiedHighlighter {
       return fieldMatcher;
     } else {
       // requireFieldMatch = true
-      return (qf) -> field.equals(qf);
+      return qf -> field.equals(qf);
     }
   }
 

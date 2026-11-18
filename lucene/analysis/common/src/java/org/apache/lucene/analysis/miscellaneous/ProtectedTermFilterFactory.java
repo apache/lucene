@@ -116,17 +116,16 @@ public class ProtectedTermFilterFactory extends ConditionalTokenFilterFactory {
   private void handleWrappedFilterArgs(Map<String, String> args) {
     LinkedHashMap<String, Map<String, String>> wrappedFilterArgs = new LinkedHashMap<>();
     splitAt(',', wrappedFilters)
-        .forEach(
-            filterName -> { // Format: SPIname[-id]
-              filterName = filterName.trim().toLowerCase(Locale.ROOT); // Treat case-insensitively
-              if (wrappedFilterArgs.containsKey(filterName)) {
-                throw new IllegalArgumentException(
-                    "wrappedFilters contains duplicate '"
-                        + filterName
-                        + "'. Add unique '-id' suffixes (stripped prior to SPI lookup).");
-              }
-              wrappedFilterArgs.put(filterName, new HashMap<>());
-            });
+        .forEach(filterName -> { // Format: SPIname[-id]
+          filterName = filterName.trim().toLowerCase(Locale.ROOT); // Treat case-insensitively
+          if (wrappedFilterArgs.containsKey(filterName)) {
+            throw new IllegalArgumentException(
+                "wrappedFilters contains duplicate '"
+                    + filterName
+                    + "'. Add unique '-id' suffixes (stripped prior to SPI lookup).");
+          }
+          wrappedFilterArgs.put(filterName, new HashMap<>());
+        });
     for (Iterator<Map.Entry<String, String>> iterator = args.entrySet().iterator();
         iterator.hasNext(); ) {
       Map.Entry<String, String> entry = iterator.next();
@@ -153,14 +152,13 @@ public class ProtectedTermFilterFactory extends ConditionalTokenFilterFactory {
 
   private void populateInnerFilters(LinkedHashMap<String, Map<String, String>> wrappedFilterArgs) {
     List<TokenFilterFactory> innerFilters = new ArrayList<>();
-    wrappedFilterArgs.forEach(
-        (filterName, filterArgs) -> {
-          int idSuffixPos = filterName.indexOf(FILTER_NAME_ID_SEPARATOR); // Format: SPIname[-id]
-          if (idSuffixPos != -1) { // Strip '-id' suffix, if any, prior to SPI lookup
-            filterName = filterName.substring(0, idSuffixPos);
-          }
-          innerFilters.add(TokenFilterFactory.forName(filterName, filterArgs));
-        });
+    wrappedFilterArgs.forEach((filterName, filterArgs) -> {
+      int idSuffixPos = filterName.indexOf(FILTER_NAME_ID_SEPARATOR); // Format: SPIname[-id]
+      if (idSuffixPos != -1) { // Strip '-id' suffix, if any, prior to SPI lookup
+        filterName = filterName.substring(0, idSuffixPos);
+      }
+      innerFilters.add(TokenFilterFactory.forName(filterName, filterArgs));
+    });
     setInnerFilters(innerFilters);
   }
 

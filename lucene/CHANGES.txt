@@ -375,6 +375,9 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#17020: Reduce CachingTokenFilter memory use by not copying stale term bytes in
+  CharTermAttributeImpl#clone. (Eugene Rizhkov)
+
 * GITHUB#16983: UnifiedHighlighter.Builder#withFlags is no longer ignored when building the
   highlighter. (Christoph Büscher)
 
@@ -460,6 +463,8 @@ Bug Fixes
   (Alan Woodward)
 
 * GITHUB#16971: Fix double DocValuesStats extrema initialization. (Simranjeet Singh)
+
+* GITHUB#17030: Fix precision loss when reducing join scores. (Ke Wei)
 
 Changes in Runtime Behavior
 ---------------------

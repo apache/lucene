@@ -115,16 +115,15 @@ public final class HunspellStemFilter extends TokenFilter {
     }
 
     if (longestOnly && buffer.size() > 1) {
-      buffer.sort(
-          (o1, o2) -> {
-            int cmp = Integer.compare(o2.length, o1.length);
-            if (cmp == 0) {
-              // tie break on text
-              return o2.compareTo(o1);
-            } else {
-              return cmp;
-            }
-          });
+      buffer.sort((o1, o2) -> {
+        int cmp = Integer.compare(o2.length, o1.length);
+        if (cmp == 0) {
+          // tie break on text
+          return o2.compareTo(o1);
+        } else {
+          return cmp;
+        }
+      });
     }
 
     CharsRef stem = buffer.remove(0);

@@ -116,14 +116,13 @@ public class CheckJarChecksumsAndLicensesPlugin extends LuceneGradlePlugin {
     // connect tasks that aggregate jar infos with their sources.
     tasks
         .withType(CollectJarInfos.class)
-        .configureEach(
-            task -> {
-              task.getJarInfos()
-                  .from(
-                      task.getProject().getAllprojects().stream()
-                          .map(p -> p.getTasks().withType(ComputeJarInfos.class))
-                          .toList());
-            });
+        .configureEach(task -> {
+          task.getJarInfos()
+              .from(
+                  task.getProject().getAllprojects().stream()
+                      .map(p -> p.getTasks().withType(ComputeJarInfos.class))
+                      .toList());
+        });
   }
 
   /** Sanity-check the licenses folder (checksums, license type, notice file), dangling files. */

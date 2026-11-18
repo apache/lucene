@@ -113,11 +113,10 @@ public class TestLookupBenchmark extends LuceneTestCase {
     System.err.println("-- construction time");
     for (final Class<? extends Lookup> cls : benchmarkClasses) {
       BenchmarkResult result =
-          measure(
-              () -> {
-                final Lookup lookup = buildLookup(cls, dictionaryInput);
-                return lookup.hashCode();
-              });
+          measure(() -> {
+            final Lookup lookup = buildLookup(cls, dictionaryInput);
+            return lookup.hashCode();
+          });
 
       System.err.printf(
           Locale.ROOT,
@@ -220,14 +219,13 @@ public class TestLookupBenchmark extends LuceneTestCase {
       }
 
       BenchmarkResult result =
-          measure(
-              () -> {
-                int v = 0;
-                for (String term : input) {
-                  v += lookup.lookup(term, onlyMorePopular, num).size();
-                }
-                return v;
-              });
+          measure(() -> {
+            int v = 0;
+            for (String term : input) {
+              v += lookup.lookup(term, onlyMorePopular, num).size();
+            }
+            return v;
+          });
 
       System.err.printf(
           Locale.ROOT,
