@@ -373,6 +373,9 @@ Optimizations
   IOContext, allowing MMapDirectory to open them with confined areas and avoiding JVM-wide
   handshakes when the files are closed. (Alan Woodward)
 
+* GITHUB#17021: Skip computing the cardinality of a window in DenseConjunctionBulkScorer when
+  no clause is left to apply. (Asharam)
+
 * GITHUB#14397: Reuse the LZ4 preset dictionary when reading stored fields or term vectors
   from the same compressed chunk. (Ke Wei)
 
