@@ -19,6 +19,11 @@ Improvements
 
 Optimizations
 ---------------------
+* Numeric and SortedNumeric DocValues can now use blockwise linear prediction
+  (DirectMonotonic-style encoding on 512-value blocks, optionally after GCD) when it saves at least
+  10% over existing delta / per-block-min strategies. This particularly helps timestamps, counters
+  and other values correlated with document order. (Prithvi S)
+
 * GITHUB#16806: HNSW searches track the visited nodes of a large graph in a hash set instead of a
   bit set sized to the graph, which makes merges into large segments faster. (Ankur Goel)
 
