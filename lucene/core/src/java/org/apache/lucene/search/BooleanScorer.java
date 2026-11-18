@@ -80,12 +80,11 @@ final class BooleanScorer extends BulkScorer {
     LongArrayList costs = new LongArrayList(scorers.size());
     head.addAll(
         scorers.stream()
-            .map(
-                scorer -> {
-                  DisiWrapper w = new DisiWrapper(scorer, false);
-                  costs.add(w.cost);
-                  return tail.insertWithOverflow(w);
-                })
+            .map(scorer -> {
+              DisiWrapper w = new DisiWrapper(scorer, false);
+              costs.add(w.cost);
+              return tail.insertWithOverflow(w);
+            })
             .filter(Objects::nonNull));
     this.cost = ScorerUtil.costWithMinShouldMatch(costs.stream(), costs.size(), minShouldMatch);
   }

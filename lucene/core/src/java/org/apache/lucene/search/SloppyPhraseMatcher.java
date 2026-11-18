@@ -444,13 +444,12 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
     pq.clear();
     pq.addAll(
         Arrays.stream(phrasePositions)
-            .map(
-                pp -> {
-                  if (pp.position > end) {
-                    end = pp.position;
-                  }
-                  return pp;
-                }));
+            .map(pp -> {
+              if (pp.position > end) {
+                end = pp.position;
+              }
+              return pp;
+            }));
   }
 
   /**

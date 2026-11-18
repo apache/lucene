@@ -68,14 +68,13 @@ public final class MergedIterator<T extends Comparable<T>> implements Iterator<T
     queue.addAll(
         IntStream.range(0, iterators.length)
             .filter(i -> iterators[i].hasNext())
-            .mapToObj(
-                i -> {
-                  SubIterator<T> sub = new SubIterator<>();
-                  sub.current = iterators[i].next();
-                  sub.iterator = iterators[i];
-                  sub.index = i;
-                  return sub;
-                }));
+            .mapToObj(i -> {
+              SubIterator<T> sub = new SubIterator<>();
+              sub.current = iterators[i].next();
+              sub.iterator = iterators[i];
+              sub.index = i;
+              return sub;
+            }));
   }
 
   @Override
