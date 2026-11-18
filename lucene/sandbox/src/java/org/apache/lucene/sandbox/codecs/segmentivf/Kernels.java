@@ -17,6 +17,16 @@
 
 package org.apache.lucene.sandbox.codecs.segmentivf;
 
+import static jdk.incubator.vector.VectorOperators.ADD;
+import static jdk.incubator.vector.VectorOperators.B2I;
+import static jdk.incubator.vector.VectorOperators.BIT_COUNT;
+import static jdk.incubator.vector.VectorOperators.F2I;
+import static jdk.incubator.vector.VectorOperators.I2F;
+import static jdk.incubator.vector.VectorOperators.LSHL;
+import static jdk.incubator.vector.VectorOperators.LSHR;
+import static jdk.incubator.vector.VectorOperators.S2I;
+import static jdk.incubator.vector.VectorOperators.XOR;
+
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.nio.ByteOrder;
@@ -24,573 +34,633 @@ import jdk.incubator.vector.ByteVector;
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.IntVector;
 import jdk.incubator.vector.LongVector;
-import jdk.incubator.vector.VectorOperators;
+import jdk.incubator.vector.ShortVector;
 import jdk.incubator.vector.VectorSpecies;
-import org.apache.lucene.util.BitUtil;
+import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.VectorUtil;
 
 /**
- * Scalar kernels with transparent SIMD replacements for coarse scans, packing, and INT8 reranking.
+ * The inner loops of SegmentIVF: Hamming distances for centroid sign codes, table lookups for S1's
+ * 1-bit codes, coarse admission, and INT8 dot products for the fine rerank.
+ *
+ * <p>This class holds the scalar reference implementations. {@link #INSTANCE} is the {@link Panama}
+ * subclass when the {@code jdk.incubator.vector} module is available, which overrides each method
+ * with SIMD code and falls back to the scalar code for shapes it does not handle. Codes are read
+ * either from heap arrays or in place from mapped or off-heap memory.
  */
 class Kernels {
   static final Kernels INSTANCE = load();
 
+  // Core: VectorizationProvider does this detection, but internal.vectorization isn't exported.
   private static Kernels load() {
-    boolean simd = ModuleLayer.boot().findModule("jdk.incubator.vector").isPresent();
+    // As core's checks: on another VM, or without C2, the Vector API runs its boxed Java fallback,
+    // many times slower than the scalar kernels. Lucene's tests run C1 only but set
+    // tests.vectorsize, and test the SIMD kernels anyway, as core's tests do. The table kernels
+    // also need JDK 24's selectFrom, which wraps out-of-range indexes (earlier JDKs throw); this
+    // module targets 24.
+    boolean simd =
+        ModuleLayer.boot().findModule("jdk.incubator.vector").isPresent()
+            && Constants.IS_HOTSPOT_VM
+            && (Constants.IS_CLIENT_VM == false || System.getProperty("tests.vectorsize") != null);
+    if (simd == false) {
+      return new Kernels();
+    }
     try {
-      var type = Class.forName(Kernels.class.getName() + (simd ? "$Panama" : ""));
-      return (Kernels) type.getDeclaredConstructor().newInstance();
+      Class<?> panama = Class.forName(Kernels.class.getName() + "$Panama");
+      return (Kernels) panama.getDeclaredConstructor().newInstance();
     } catch (ReflectiveOperationException | LinkageError _) {
+      // Includes a Panama constructor refusing vectors narrower than 128 bits.
       return new Kernels();
     }
   }
 
-  void hamming(byte[] q, MemorySegment codes, long offset, int rows, int[] out) {
-    for (int r = 0; r < rows; r++) out[r] = hamming(q, codes, offset + (long) r * q.length);
-  }
+  // ---- Hamming distance: popcount(query XOR code), for centroid sign codes.
+  // Core: VectorUtil#xorBitCount, but scalar and whole-array only (no offset/segment/SIMD).
 
-  int hamming(byte[] q, MemorySegment codes, long offset) {
-    return tail(q, codes, offset, 0);
-  }
-
-  void hamming(byte[] q, byte[] codes, int offset, int rows, int[] out) {
-    for (int r = 0; r < rows; r++) out[r] = hamming(q, codes, offset + r * q.length);
-  }
-
-  final void hammingAt(byte[] q, byte[] codes, int[] offsets, int count, int[] out) {
-    for (int i = 0; i < count; i++) out[i] = hamming(q, codes, offsets[i]);
-  }
-
-  int hamming(byte[] q, byte[] codes, int offset) {
-    return scalarHamming(q, codes, offset);
-  }
-
-  private static int scalarHamming(byte[] q, byte[] codes, int offset) {
+  /** Hamming distance between the first {@code length} bytes of {@code query} and a code. */
+  int hamming(byte[] query, int length, byte[] codes, int offset) {
     int sum = 0;
-    for (int i = 0; i < q.length; i++) {
-      sum += Integer.bitCount((q[i] ^ codes[offset + i]) & 255);
+    for (int i = 0; i < length; i++) {
+      sum += Integer.bitCount((query[i] ^ codes[offset + i]) & 0xFF);
     }
-    return sum;
-  }
-
-  static int tail(byte[] q, MemorySegment codes, long offset, int from) {
-    int sum = 0;
-    for (int i = from; i < q.length; i++)
-      sum += Integer.bitCount((q[i] ^ codes.get(ValueLayout.JAVA_BYTE, offset + i)) & 255);
     return sum;
   }
 
   /**
-   * {@code sum_k popcount(q_k & code) << k} over the four {@code bits}-byte planes {@code q_k} of a
-   * 4-bit query, for {@code rows} codes {@code stride} bytes apart: {@link
-   * VectorUtil#int4BitDotProduct} on the packed bits of each code.
+   * Hamming distance between the first {@code length} bytes of {@code query} and the code at {@code
+   * offset}.
    */
-  void int4BitDots(
-      byte[] q, int bits, MemorySegment codes, long offset, int stride, int rows, int[] out) {
-    for (int r = 0; r < rows; r++) {
-      long at = offset + (long) r * stride;
-      long sum = 0;
-      for (int i = 0; i < bits; i++) {
-        int code = codes.get(ValueLayout.JAVA_BYTE, at + i);
-        for (int k = 0; k < 4; k++)
-          sum += (long) Integer.bitCount(q[k * bits + i] & code & 255) << k;
-      }
-      out[r] = (int) sum;
-    }
+  int hamming(byte[] query, int length, MemorySegment codes, long offset) {
+    return scalarHamming(query, length, codes, offset, 0);
   }
 
-  int int4BitDot(byte[] q, int bits, byte[] codes, int offset) {
-    long sum = 0;
-    for (int i = 0; i < bits; i++) {
-      int code = codes[offset + i];
-      for (int k = 0; k < 4; k++) sum += (long) Integer.bitCount(q[k * bits + i] & code & 255) << k;
-    }
-    return (int) sum;
-  }
-
-  int filterAtMost(int[] distances, int from, int count, int threshold, int[] out) {
-    int kept = 0;
-    for (int i = 0; i < count; i++) if (distances[from + i] <= threshold) out[kept++] = i;
-    return kept;
-  }
-
-  int dotProduct(byte[] query, byte[] records, int offset) {
+  /** Hamming distance over bytes {@code [from, length)} of the code at {@code offset}. */
+  static int scalarHamming(byte[] query, int length, MemorySegment codes, long offset, int from) {
     int sum = 0;
-    for (int i = 0; i < query.length; i++) sum += query[i] * records[offset + i];
+    for (int i = from; i < length; i++) {
+      byte code = codes.get(ValueLayout.JAVA_BYTE, offset + i);
+      sum += Integer.bitCount((query[i] ^ code) & 0xFF);
+    }
     return sum;
   }
 
-  void dotProducts(byte[] query, byte[] records, int stride, int count, int[] out) {
-    for (int i = 0; i < count; i++) out[i] = dotProduct(query, records, i * stride);
+  // ---- Table sums, for S1's 1-bit codes in blocks.
+  //
+  // A cell's codes are stored in blocks of BLOCK_ROWS documents: byte j of every document of a
+  // block, 8 dimensions, sits at j * BLOCK_ROWS + blockPosition(row), so one vector load holds the
+  // same 8 dimensions of many documents. A byte is two 4-dimension groups, its low and high nibble;
+  // the query is a 16-entry table per group, TABLE_BYTES per byte j: the low nibble's table twice,
+  // then the high nibble's twice. A document's sum is the sum over its groups of the entry its
+  // nibble selects: one table lookup (TBL) per 4 dimensions, the cheapest exact use of a multi-bit
+  // query against 1-bit codes. Entries are at most 31, so four code bytes' eight lookups add in a
+  // byte.
+  //
+  // Each table is stored twice so the whole code byte can index the low one: a lookup wraps its
+  // index to the vector's 16 or 32 lanes, and either way lands on entry (byte & 15), so the scan
+  // needs no mask for the low nibble. Doubling the high one too makes a code byte's tables a whole
+  // number of vectors, so their loads need no address arithmetic.
+  //
+  // A block is 128 rows so that one load of a code byte's tables serves four 32-lane vectors of
+  // documents, eight of 16 lanes. Within each 32 rows of a block, rows are interleaved so that,
+  // read as shorts, the low bytes are rows 0-15 and the high bytes rows 16-31: the scan widens its
+  // byte sums in pairs, and each half then comes out as consecutive rows.
+
+  /** Documents per block of table-scored codes. */
+  static final int BLOCK_ROWS = 128;
+
+  /** Rows interleaved together within a block: the widest vector of bytes the scan uses. */
+  private static final int INTERLEAVED_ROWS = 32;
+
+  /** Table bytes per code byte: the low nibble's table twice, then the high nibble's twice. */
+  static final int TABLE_BYTES = 64;
+
+  /** Where a code byte's high-nibble table starts within its {@link #TABLE_BYTES}. */
+  static final int HIGH_TABLE = 32;
+
+  /**
+   * The bins of the table sums of {@code rows} documents stored in blocks from {@code offset}, each
+   * block {@code bytes * BLOCK_ROWS} bytes, with the tables of {@code bytes} code bytes from {@code
+   * tablesOffset}: {@link #tableBin} of each sum.
+   */
+  void tableBins(
+      byte[] tables,
+      int tablesOffset,
+      int bytes,
+      MemorySegment codes,
+      long offset,
+      int rows,
+      float binBase,
+      float binSlope,
+      int maxBin,
+      int[] out) {
+    for (int r = 0; r < rows; r++) {
+      int sum = tableSum(tables, tablesOffset, bytes, codes, offset, r);
+      out[r] = tableBin(sum, binBase, binSlope, maxBin);
+    }
   }
 
-  /** Dot products of {@code query} with the records starting at {@code offsets} in place. */
+  /** The bin of a table sum: {@code binBase + binSlope * sum}, truncated and clamped. */
+  static int tableBin(int sum, float binBase, float binSlope, int maxBin) {
+    return Math.max(0, Math.min(maxBin, (int) (binBase + binSlope * sum)));
+  }
+
+  /** Where row {@code row} of a block sits within each of its {@link #BLOCK_ROWS}-byte runs. */
+  static int blockPosition(int row) {
+    int r = row % BLOCK_ROWS;
+    int half = INTERLEAVED_ROWS / 2;
+    return r - r % INTERLEAVED_ROWS + 2 * (r % half) + r % INTERLEAVED_ROWS / half;
+  }
+
+  /** The table sum of document {@code row} of the blocks from {@code offset}. */
+  final int tableSum(
+      byte[] tables, int tablesOffset, int bytes, MemorySegment codes, long offset, int row) {
+    long block = offset + (long) (row / BLOCK_ROWS) * bytes * BLOCK_ROWS + blockPosition(row);
+    int sum = 0;
+    for (int j = 0; j < bytes; j++) {
+      int code = codes.get(ValueLayout.JAVA_BYTE, block + (long) j * BLOCK_ROWS) & 0xFF;
+      int table = tablesOffset + TABLE_BYTES * j;
+      sum += tables[table + (code & 15)] + tables[table + HIGH_TABLE + (code >>> 4)];
+    }
+    return sum;
+  }
+
+  // ---- Coarse admission.
+  // Core: VectorUtil#filterByScore, but for double scores in place, not int distances to indexes.
+
+  /**
+   * Writes the indexes, relative to {@code from}, of the {@code count} distances starting at {@code
+   * from} that are at most {@code threshold} into {@code out}, and returns how many there are.
+   */
+  int filterAtMost(int[] distances, int from, int count, int threshold, int[] out) {
+    int kept = 0;
+    for (int i = 0; i < count; i++) {
+      if (distances[from + i] <= threshold) {
+        out[kept++] = i;
+      }
+    }
+    return kept;
+  }
+
+  // ---- INT8 dot products, for the fine rerank.
+  // Core: PanamaVectorUtilSupport#dotProduct(byte[], MemorySegment), internal to lucene-core.
+
+  /** Dot product of {@code query} with the code at {@code offset} of {@code records}. */
+  int dotProduct(byte[] query, byte[] records, int offset) {
+    int sum = 0;
+    for (int i = 0; i < query.length; i++) {
+      sum += query[i] * records[offset + i];
+    }
+    return sum;
+  }
+
+  /** Dot products of {@code query} with {@code count} codes {@code stride} bytes apart. */
+  void dotProducts(byte[] query, byte[] records, int stride, int count, int[] out) {
+    for (int r = 0; r < count; r++) {
+      out[r] = dotProduct(query, records, r * stride);
+    }
+  }
+
+  /** Dot products of {@code query} with the codes starting at {@code offsets}, read in place. */
   void dotProducts(byte[] query, MemorySegment records, long[] offsets, int count, int[] out) {
     for (int r = 0; r < count; r++) {
-      int sum = 0;
-      for (int i = 0; i < query.length; i++) {
-        sum += query[i] * records.get(ValueLayout.JAVA_BYTE, offsets[r] + i);
-      }
-      out[r] = sum;
+      out[r] = scalarDot(query, records, offsets[r], 0);
     }
   }
 
-  void pack2(float[] vector, int dim, byte[] dest, int offset, float low, float high) {
-    int planeBytes = (dim + 7) >>> 3;
-    java.util.Arrays.fill(dest, offset, offset + 2 * planeBytes, (byte) 0);
-    for (int d = 0; d < dim; d++) {
-      int mask = 1 << (d & 7), at = offset + (d >>> 3);
-      if (vector[d] >= low) dest[at] |= (byte) mask;
-      if (vector[d] >= high) dest[at + planeBytes] |= (byte) mask;
+  /** Dot product over bytes {@code [from, query.length)} of the code at {@code offset}. */
+  static int scalarDot(byte[] query, MemorySegment records, long offset, int from) {
+    int sum = 0;
+    for (int i = from; i < query.length; i++) {
+      sum += query[i] * records.get(ValueLayout.JAVA_BYTE, offset + i);
     }
+    return sum;
   }
 
+  /**
+   * SIMD implementations.
+   *
+   * <p>Hamming kernels process {@link #BYTES} bytes per step as longs. Table sums look up a block's
+   * 4-dimension groups in byte lanes, {@link #BYTES} documents per load. INT8 dot products widen 8
+   * bytes at a time to 256-bit integer lanes, and fall back to {@link VectorUtil#dotProduct(byte[],
+   * byte[])} where the preferred integer species is not 256 bits: narrower, as NEON's 128, or
+   * wider, as AVX-512's, whose kernels VectorUtil already has.
+   *
+   * <p>No vector value is passed to or returned from a method of this class, so there are no
+   * helpers for loads or popcounts: C2 inlines these kernels into large callers such as the
+   * centroid graph walk, and once it hits its inlining budget it stops inlining small helpers too.
+   * A vector crossing a call that is not inlined is boxed, and every operation on it then runs the
+   * Vector API's scalar fallback, several times slower.
+   *
+   * <p>C2 can also box these kernels' vectors when it compiles them from a thin profile, as when
+   * many threads run them cold at once; a single-threaded warmup avoids it ({@link
+   * SegmentIVFVectorsFormat}).
+   */
   static final class Panama extends Kernels {
     private static final VectorSpecies<Long> LONGS = LongVector.SPECIES_PREFERRED;
     private static final VectorSpecies<Byte> BYTES = LONGS.withLanes(byte.class);
+    private static final VectorSpecies<Short> SHORTS = LONGS.withLanes(short.class);
+    private static final VectorSpecies<Integer> INTS = LONGS.withLanes(int.class);
+
+    /**
+     * The order code longs are loaded in. A query's longs come from {@code reinterpretAsLongs},
+     * which the Vector API defines as little-endian on every platform, so codes must load
+     * little-endian too for their bytes to pair with the query's; native order would pair byte
+     * {@code i} with byte {@code 7 - i} on a big-endian platform.
+     */
+    private static final ByteOrder ORDER = ByteOrder.LITTLE_ENDIAN;
+
     private static final VectorSpecies<Byte> DOT_BYTES = ByteVector.SPECIES_64;
     private static final VectorSpecies<Integer> DOT_INTS = IntVector.SPECIES_256;
-    private static final VectorSpecies<Float> FLOATS = FloatVector.SPECIES_PREFERRED;
     private static final boolean DOT_IS_256 =
         IntVector.SPECIES_PREFERRED.vectorBitSize() == DOT_INTS.vectorBitSize();
 
-    @Override
-    void hamming(byte[] q, MemorySegment codes, long offset, int rows, int[] out) {
-      if (codes.isNative()) {
-        if (q.length == BYTES.length() * 8) {
-          hamming8Native(q, codes, offset, rows, out);
-          return;
-        }
-        if (q.length == BYTES.length() * 4) {
-          hamming4Native(q, codes, offset, rows, out);
-          return;
-        }
-      }
-      if (codes.isNative()) {
-        // Whole vectors in the SIMD loop; any tail is added separately so the loop stays inlined.
-        int prefix = q.length - q.length % BYTES.length();
-        hammingRows(q, codes, offset, rows, out, prefix);
-        if (prefix < q.length) {
-          for (int r = 0; r < rows; r++) {
-            out[r] += wordTail(q, codes, offset + (long) r * q.length, prefix);
-          }
-        }
-        return;
-      }
-      super.hamming(q, codes, offset, rows, out);
-    }
+    /** A code copied for the {@link VectorUtil} fallback, reused rather than one per call. */
+    private static final ThreadLocal<byte[][]> FALLBACK_CODE =
+        ThreadLocal.withInitial(() -> new byte[][] {new byte[0]});
 
-    private static void hamming4Native(
-        byte[] q, MemorySegment codes, long offset, int rows, int[] out) {
-      int step = BYTES.length(), len = 4 * step;
-      var q0 = query(q, 0);
-      var q1 = query(q, step);
-      var q2 = query(q, 2 * step);
-      var q3 = query(q, 3 * step);
-      for (int r = 0; r < rows; r++) {
-        long at = offset + (long) r * len;
-        var s0 = popcount(q0, code(codes, at));
-        var s1 = popcount(q1, code(codes, at + step));
-        var s2 = popcount(q2, code(codes, at + 2L * step));
-        var s3 = popcount(q3, code(codes, at + 3L * step));
-        out[r] = (int) s0.add(s1).add(s2.add(s3)).reduceLanes(VectorOperators.ADD);
+    Panama() {
+      if (LONGS.vectorBitSize() < 128) {
+        throw new UnsupportedOperationException("preferred vectors of " + LONGS.vectorBitSize());
       }
     }
 
-    private static void hamming8Native(
-        byte[] q, MemorySegment codes, long offset, int rows, int[] out) {
-      int step = BYTES.length(), len = 8 * step;
-      var q0 = query(q, 0);
-      var q1 = query(q, step);
-      var q2 = query(q, 2 * step);
-      var q3 = query(q, 3 * step);
-      var q4 = query(q, 4 * step);
-      var q5 = query(q, 5 * step);
-      var q6 = query(q, 6 * step);
-      var q7 = query(q, 7 * step);
-      for (int r = 0; r < rows; r++) {
-        long at = offset + (long) r * len;
-        var s0 = popcount(q0, code(codes, at));
-        var s1 = popcount(q1, code(codes, at + step));
-        var s2 = popcount(q2, code(codes, at + 2L * step));
-        var s3 = popcount(q3, code(codes, at + 3L * step));
-        var s4 = popcount(q4, code(codes, at + 4L * step));
-        var s5 = popcount(q5, code(codes, at + 5L * step));
-        var s6 = popcount(q6, code(codes, at + 6L * step));
-        var s7 = popcount(q7, code(codes, at + 7L * step));
-        out[r] =
-            (int)
-                s0.add(s1)
-                    .add(s2.add(s3))
-                    .add(s4.add(s5).add(s6.add(s7)))
-                    .reduceLanes(VectorOperators.ADD);
+    /** The thread's fallback copy buffer, of exactly {@code length} bytes as VectorUtil needs. */
+    private static byte[] fallbackCode(int length) {
+      byte[][] holder = FALLBACK_CODE.get();
+      if (holder[0].length != length) {
+        holder[0] = new byte[length];
       }
+      return holder[0];
     }
 
-    /**
-     * Scores four rows together so each query chunk is loaded once without retaining an entire
-     * dimension-specific query in registers.
-     */
-    private static void hammingRows(
-        byte[] q, MemorySegment codes, long offset, int rows, int[] out, int prefix) {
-      int r = 0;
-      for (; r + 4 <= rows; r += 4) {
-        long row0 = offset + (long) r * q.length;
-        long row1 = row0 + q.length, row2 = row1 + q.length, row3 = row2 + q.length;
-        var sum0 = LongVector.zero(LONGS);
-        var sum1 = LongVector.zero(LONGS);
-        var sum2 = LongVector.zero(LONGS);
-        var sum3 = LongVector.zero(LONGS);
-        for (int i = 0; i < prefix; i += BYTES.length()) {
-          var query = query(q, i);
-          sum0 = sum0.add(popcount(query, code(codes, row0 + i)));
-          sum1 = sum1.add(popcount(query, code(codes, row1 + i)));
-          sum2 = sum2.add(popcount(query, code(codes, row2 + i)));
-          sum3 = sum3.add(popcount(query, code(codes, row3 + i)));
-        }
-        out[r] = (int) sum0.reduceLanes(VectorOperators.ADD);
-        out[r + 1] = (int) sum1.reduceLanes(VectorOperators.ADD);
-        out[r + 2] = (int) sum2.reduceLanes(VectorOperators.ADD);
-        out[r + 3] = (int) sum3.reduceLanes(VectorOperators.ADD);
-      }
-      for (; r < rows; r++) {
-        long row = offset + (long) r * q.length;
-        var sum = LongVector.zero(LONGS);
-        for (int i = 0; i < prefix; i += BYTES.length()) {
-          sum = sum.add(popcount(query(q, i), code(codes, row + i)));
-        }
-        out[r] = (int) sum.reduceLanes(VectorOperators.ADD);
-      }
-    }
+    // ---- Hamming.
 
     @Override
-    void hamming(byte[] q, byte[] codes, int offset, int rows, int[] out) {
-      if (q.length == BYTES.length() * 4 || q.length == BYTES.length() * 8) {
-        for (int r = 0; r < rows; r++) {
-          out[r] = hamming(q, codes, offset + r * q.length);
-        }
-        return;
+    int hamming(byte[] query, int length, MemorySegment codes, long offset) {
+      if (codes.isNative() == false) {
+        return scalarHamming(query, length, codes, offset, 0);
       }
-      if ((q.length & 31) == 0) {
-        int r = 0;
-        for (; r + 4 <= rows; r += 4) {
-          int row0 = offset + r * q.length;
-          int row1 = row0 + q.length, row2 = row1 + q.length, row3 = row2 + q.length;
-          var sum0 = LongVector.zero(LONGS);
-          var sum1 = LongVector.zero(LONGS);
-          var sum2 = LongVector.zero(LONGS);
-          var sum3 = LongVector.zero(LONGS);
-          int i = 0;
-          for (; i <= q.length - BYTES.length(); i += BYTES.length()) {
-            var query = query(q, i);
-            sum0 = sum0.add(popcount(query, code(codes, row0 + i)));
-            sum1 = sum1.add(popcount(query, code(codes, row1 + i)));
-            sum2 = sum2.add(popcount(query, code(codes, row2 + i)));
-            sum3 = sum3.add(popcount(query, code(codes, row3 + i)));
-          }
-          int score0 = (int) sum0.reduceLanes(VectorOperators.ADD);
-          int score1 = (int) sum1.reduceLanes(VectorOperators.ADD);
-          int score2 = (int) sum2.reduceLanes(VectorOperators.ADD);
-          int score3 = (int) sum3.reduceLanes(VectorOperators.ADD);
-          for (; i < q.length; i++) {
-            int query = q[i];
-            score0 += Integer.bitCount((query ^ codes[row0 + i]) & 255);
-            score1 += Integer.bitCount((query ^ codes[row1 + i]) & 255);
-            score2 += Integer.bitCount((query ^ codes[row2 + i]) & 255);
-            score3 += Integer.bitCount((query ^ codes[row3 + i]) & 255);
-          }
-          out[r] = score0;
-          out[r + 1] = score1;
-          out[r + 2] = score2;
-          out[r + 3] = score3;
-        }
-        for (; r < rows; r++) out[r] = hamming(q, codes, offset + r * q.length);
-        return;
-      }
-      super.hamming(q, codes, offset, rows, out);
-    }
-
-    @Override
-    int hamming(byte[] q, MemorySegment codes, long offset) {
-      if (codes.isNative() == false) return tail(q, codes, offset, 0);
-      var sum = LongVector.zero(LONGS);
+      LongVector sum = LongVector.zero(LONGS);
       int i = 0;
-      for (; i <= q.length - BYTES.length(); i += BYTES.length()) {
-        var code = LongVector.fromMemorySegment(LONGS, codes, offset + i, ByteOrder.nativeOrder());
-        sum = sum.add(popcount(q, i, code));
+      for (; i <= length - BYTES.length(); i += BYTES.length()) {
+        sum =
+            sum.add(
+                ByteVector.fromArray(BYTES, query, i)
+                    .reinterpretAsLongs()
+                    .lanewise(XOR, LongVector.fromMemorySegment(LONGS, codes, offset + i, ORDER))
+                    .lanewise(BIT_COUNT));
       }
-      return (int) sum.reduceLanes(VectorOperators.ADD) + tail(q, codes, offset, i);
-    }
-
-    /** Hamming distance of bytes {@code [from, q.length)}: 8-byte words, then single bytes. */
-    private static int wordTail(byte[] q, MemorySegment codes, long offset, int from) {
-      MemorySegment query = MemorySegment.ofArray(q);
-      int sum = 0, i = from;
-      for (; i + Long.BYTES <= q.length; i += Long.BYTES) {
-        long word = query.get(ValueLayout.JAVA_LONG_UNALIGNED, i);
-        sum += Long.bitCount(word ^ codes.get(ValueLayout.JAVA_LONG_UNALIGNED, offset + i));
-      }
-      return sum + tail(q, codes, offset, i);
+      return (int) sum.reduceLanes(ADD) + scalarHamming(query, length, codes, offset, i);
     }
 
     @Override
-    int hamming(byte[] q, byte[] codes, int offset) {
-      var sum = LongVector.zero(LONGS);
+    int hamming(byte[] query, int length, byte[] codes, int offset) {
+      LongVector sum = LongVector.zero(LONGS);
       int i = 0;
-      for (; i <= q.length - BYTES.length(); i += BYTES.length()) {
-        var code = ByteVector.fromArray(BYTES, codes, offset + i).reinterpretAsLongs();
-        sum = sum.add(popcount(q, i, code));
+      for (; i <= length - BYTES.length(); i += BYTES.length()) {
+        sum =
+            sum.add(
+                ByteVector.fromArray(BYTES, query, i)
+                    .reinterpretAsLongs()
+                    .lanewise(
+                        XOR, ByteVector.fromArray(BYTES, codes, offset + i).reinterpretAsLongs())
+                    .lanewise(BIT_COUNT));
       }
-      int total = (int) sum.reduceLanes(VectorOperators.ADD);
-      for (; i < q.length; i++) total += Integer.bitCount((q[i] ^ codes[offset + i]) & 255);
+      int total = (int) sum.reduceLanes(ADD);
+      for (; i < length; i++) {
+        total += Integer.bitCount((query[i] ^ codes[offset + i]) & 0xFF);
+      }
       return total;
     }
 
-    private static LongVector popcount(byte[] q, int i, LongVector code) {
-      return popcount(query(q, i), code);
-    }
+    // ---- Table sums.
 
-    private static LongVector query(byte[] q, int offset) {
-      return ByteVector.fromArray(BYTES, q, offset).reinterpretAsLongs();
-    }
+    /** Code bytes whose eight lookups, at most 31 each, add in a byte before widening. */
+    private static final int BYTES_PER_WIDENING = 4;
 
-    private static LongVector code(byte[] codes, int offset) {
-      return ByteVector.fromArray(BYTES, codes, offset).reinterpretAsLongs();
-    }
+    /**
+     * The most code bytes a scan sums in shorts: each adds at most 62 to a document's sum, which
+     * must stay below 2^15 to widen to an int as a signed short.
+     */
+    private static final int MAX_TABLE_BYTES = 512;
 
-    private static LongVector code(MemorySegment codes, long offset) {
-      return LongVector.fromMemorySegment(LONGS, codes, offset, ByteOrder.nativeOrder());
-    }
-
-    private static LongVector popcount(LongVector query, LongVector code) {
-      return query.lanewise(VectorOperators.XOR, code).lanewise(VectorOperators.BIT_COUNT);
-    }
+    /** Vectors of documents scanned together, so that each table load serves this many. */
+    private static final int GROUP = 4;
 
     @Override
-    void int4BitDots(
-        byte[] q, int bits, MemorySegment codes, long offset, int stride, int rows, int[] out) {
-      if (codes.isNative() == false || bits < BYTES.length()) {
-        super.int4BitDots(q, bits, codes, offset, stride, rows, out);
+    void tableBins(
+        byte[] tables,
+        int tablesOffset,
+        int bytes,
+        MemorySegment codes,
+        long offset,
+        int rows,
+        float binBase,
+        float binSlope,
+        int maxBin,
+        int[] out) {
+      int lanes = BYTES.length();
+      if ((lanes != 16 && lanes != 32)
+          || bytes % BYTES_PER_WIDENING != 0
+          || bytes > MAX_TABLE_BYTES
+          || tables.length < tablesOffset + TABLE_BYTES * bytes) {
+        super.tableBins(
+            tables, tablesOffset, bytes, codes, offset, rows, binBase, binSlope, maxBin, out);
         return;
       }
-      int prefix = bits - bits % BYTES.length();
-      for (int r = 0; r < rows; r++) {
-        long row = offset + (long) r * stride;
-        var s0 = LongVector.zero(LONGS);
-        var s1 = LongVector.zero(LONGS);
-        var s2 = LongVector.zero(LONGS);
-        var s3 = LongVector.zero(LONGS);
-        for (int i = 0; i < prefix; i += BYTES.length()) {
-          var code = code(codes, row + i);
-          s0 = s0.add(andCount(query(q, i), code));
-          s1 = s1.add(andCount(query(q, bits + i), code));
-          s2 = s2.add(andCount(query(q, 2 * bits + i), code));
-          s3 = s3.add(andCount(query(q, 3 * bits + i), code));
-        }
-        long sum =
-            s0.reduceLanes(VectorOperators.ADD)
-                + (s1.reduceLanes(VectorOperators.ADD) << 1)
-                + (s2.reduceLanes(VectorOperators.ADD) << 2)
-                + (s3.reduceLanes(VectorOperators.ADD) << 3);
-        for (int i = prefix; i < bits; i++) {
-          int code = codes.get(ValueLayout.JAVA_BYTE, row + i);
-          for (int k = 0; k < 4; k++) {
-            sum += (long) Integer.bitCount(q[k * bits + i] & code & 255) << k;
+      long blockBytes = (long) bytes * BLOCK_ROWS;
+      int shorts = SHORTS.length();
+      short[] sums = new short[2 * GROUP * shorts];
+      for (int first = 0; first < rows; first += BLOCK_ROWS) {
+        long block = offset + (first / BLOCK_ROWS) * blockBytes;
+        for (int group = 0; group < BLOCK_ROWS; group += GROUP * lanes) {
+          long at = block + group;
+          // Each short lane holds two documents' sums in its low and high byte. Summing whole
+          // shorts carries the low sums into the high ones, so the high sums are kept apart too,
+          // and the low ones recovered at the end: all = low + 256 * high, modulo 2^16.
+          ShortVector all0 = ShortVector.zero(SHORTS);
+          ShortVector all1 = ShortVector.zero(SHORTS);
+          ShortVector all2 = ShortVector.zero(SHORTS);
+          ShortVector all3 = ShortVector.zero(SHORTS);
+          ShortVector high0 = ShortVector.zero(SHORTS);
+          ShortVector high1 = ShortVector.zero(SHORTS);
+          ShortVector high2 = ShortVector.zero(SHORTS);
+          ShortVector high3 = ShortVector.zero(SHORTS);
+          for (int j = 0; j < bytes; j += BYTES_PER_WIDENING) {
+            // Four code bytes, written out: C2 does not unroll an inner loop this large, and a
+            // loop here would also keep a safepoint and the code loads' bounds checks in the scan.
+            int table = tablesOffset + TABLE_BYTES * j;
+            long run = at + (long) j * BLOCK_ROWS;
+            ByteVector low = ByteVector.fromArray(BYTES, tables, table);
+            ByteVector high = ByteVector.fromArray(BYTES, tables, table + HIGH_TABLE);
+            ByteVector code0 = ByteVector.fromMemorySegment(BYTES, codes, run, ORDER);
+            ByteVector code1 = ByteVector.fromMemorySegment(BYTES, codes, run + lanes, ORDER);
+            ByteVector code2 = ByteVector.fromMemorySegment(BYTES, codes, run + 2 * lanes, ORDER);
+            ByteVector code3 = ByteVector.fromMemorySegment(BYTES, codes, run + 3 * lanes, ORDER);
+            ByteVector sum0 = code0.selectFrom(low).add(code0.lanewise(LSHR, 4).selectFrom(high));
+            ByteVector sum1 = code1.selectFrom(low).add(code1.lanewise(LSHR, 4).selectFrom(high));
+            ByteVector sum2 = code2.selectFrom(low).add(code2.lanewise(LSHR, 4).selectFrom(high));
+            ByteVector sum3 = code3.selectFrom(low).add(code3.lanewise(LSHR, 4).selectFrom(high));
+            table += TABLE_BYTES;
+            run += BLOCK_ROWS;
+            low = ByteVector.fromArray(BYTES, tables, table);
+            high = ByteVector.fromArray(BYTES, tables, table + HIGH_TABLE);
+            code0 = ByteVector.fromMemorySegment(BYTES, codes, run, ORDER);
+            code1 = ByteVector.fromMemorySegment(BYTES, codes, run + lanes, ORDER);
+            code2 = ByteVector.fromMemorySegment(BYTES, codes, run + 2 * lanes, ORDER);
+            code3 = ByteVector.fromMemorySegment(BYTES, codes, run + 3 * lanes, ORDER);
+            sum0 = sum0.add(code0.selectFrom(low)).add(code0.lanewise(LSHR, 4).selectFrom(high));
+            sum1 = sum1.add(code1.selectFrom(low)).add(code1.lanewise(LSHR, 4).selectFrom(high));
+            sum2 = sum2.add(code2.selectFrom(low)).add(code2.lanewise(LSHR, 4).selectFrom(high));
+            sum3 = sum3.add(code3.selectFrom(low)).add(code3.lanewise(LSHR, 4).selectFrom(high));
+            table += TABLE_BYTES;
+            run += BLOCK_ROWS;
+            low = ByteVector.fromArray(BYTES, tables, table);
+            high = ByteVector.fromArray(BYTES, tables, table + HIGH_TABLE);
+            code0 = ByteVector.fromMemorySegment(BYTES, codes, run, ORDER);
+            code1 = ByteVector.fromMemorySegment(BYTES, codes, run + lanes, ORDER);
+            code2 = ByteVector.fromMemorySegment(BYTES, codes, run + 2 * lanes, ORDER);
+            code3 = ByteVector.fromMemorySegment(BYTES, codes, run + 3 * lanes, ORDER);
+            sum0 = sum0.add(code0.selectFrom(low)).add(code0.lanewise(LSHR, 4).selectFrom(high));
+            sum1 = sum1.add(code1.selectFrom(low)).add(code1.lanewise(LSHR, 4).selectFrom(high));
+            sum2 = sum2.add(code2.selectFrom(low)).add(code2.lanewise(LSHR, 4).selectFrom(high));
+            sum3 = sum3.add(code3.selectFrom(low)).add(code3.lanewise(LSHR, 4).selectFrom(high));
+            table += TABLE_BYTES;
+            run += BLOCK_ROWS;
+            low = ByteVector.fromArray(BYTES, tables, table);
+            high = ByteVector.fromArray(BYTES, tables, table + HIGH_TABLE);
+            code0 = ByteVector.fromMemorySegment(BYTES, codes, run, ORDER);
+            code1 = ByteVector.fromMemorySegment(BYTES, codes, run + lanes, ORDER);
+            code2 = ByteVector.fromMemorySegment(BYTES, codes, run + 2 * lanes, ORDER);
+            code3 = ByteVector.fromMemorySegment(BYTES, codes, run + 3 * lanes, ORDER);
+            sum0 = sum0.add(code0.selectFrom(low)).add(code0.lanewise(LSHR, 4).selectFrom(high));
+            sum1 = sum1.add(code1.selectFrom(low)).add(code1.lanewise(LSHR, 4).selectFrom(high));
+            sum2 = sum2.add(code2.selectFrom(low)).add(code2.lanewise(LSHR, 4).selectFrom(high));
+            sum3 = sum3.add(code3.selectFrom(low)).add(code3.lanewise(LSHR, 4).selectFrom(high));
+            ShortVector pairs0 = sum0.reinterpretAsShorts();
+            ShortVector pairs1 = sum1.reinterpretAsShorts();
+            ShortVector pairs2 = sum2.reinterpretAsShorts();
+            ShortVector pairs3 = sum3.reinterpretAsShorts();
+            all0 = all0.add(pairs0);
+            all1 = all1.add(pairs1);
+            all2 = all2.add(pairs2);
+            all3 = all3.add(pairs3);
+            high0 = high0.add(pairs0.lanewise(LSHR, 8));
+            high1 = high1.add(pairs1.lanewise(LSHR, 8));
+            high2 = high2.add(pairs2.lanewise(LSHR, 8));
+            high3 = high3.add(pairs3.lanewise(LSHR, 8));
+          }
+          all0.sub(high0.lanewise(LSHL, 8)).intoArray(sums, 0);
+          all1.sub(high1.lanewise(LSHL, 8)).intoArray(sums, shorts);
+          all2.sub(high2.lanewise(LSHL, 8)).intoArray(sums, 2 * shorts);
+          all3.sub(high3.lanewise(LSHL, 8)).intoArray(sums, 3 * shorts);
+          high0.intoArray(sums, 4 * shorts);
+          high1.intoArray(sums, 5 * shorts);
+          high2.intoArray(sums, 6 * shorts);
+          high3.intoArray(sums, 7 * shorts);
+          // The vector at position p of a block's runs holds, by the interleaving, consecutive
+          // rows in its low bytes, and the rows half of INTERLEAVED_ROWS later in its high bytes.
+          for (int g = 0; g < GROUP; g++) {
+            int position = group + g * lanes;
+            int start =
+                first + position - position % INTERLEAVED_ROWS + position % INTERLEAVED_ROWS / 2;
+            for (int half = 0; half < 2; half++) {
+              ShortVector values = ShortVector.fromArray(SHORTS, sums, (half * GROUP + g) * shorts);
+              for (int part = 0; part < 2; part++) {
+                // tableBin, a lane at a time.
+                FloatVector estimates =
+                    (FloatVector) values.convertShape(S2I, INTS, part).convert(I2F, 0);
+                IntVector bins =
+                    ((IntVector) estimates.mul(binSlope).add(binBase).convert(F2I, 0))
+                        .max(0)
+                        .min(maxBin);
+                int row = start + half * (INTERLEAVED_ROWS / 2) + part * INTS.length();
+                if (row + INTS.length() <= rows) {
+                  bins.intoArray(out, row);
+                } else if (row < rows) {
+                  bins.intoArray(out, row, INTS.indexInRange(row, rows));
+                }
+              }
+            }
           }
         }
-        out[r] = (int) sum;
       }
     }
 
-    @Override
-    int int4BitDot(byte[] q, int bits, byte[] codes, int offset) {
-      if (bits < BYTES.length()) return super.int4BitDot(q, bits, codes, offset);
-      int prefix = bits - bits % BYTES.length();
-      var s0 = LongVector.zero(LONGS);
-      var s1 = LongVector.zero(LONGS);
-      var s2 = LongVector.zero(LONGS);
-      var s3 = LongVector.zero(LONGS);
-      for (int i = 0; i < prefix; i += BYTES.length()) {
-        var code = code(codes, offset + i);
-        s0 = s0.add(andCount(query(q, i), code));
-        s1 = s1.add(andCount(query(q, bits + i), code));
-        s2 = s2.add(andCount(query(q, 2 * bits + i), code));
-        s3 = s3.add(andCount(query(q, 3 * bits + i), code));
-      }
-      long sum =
-          s0.reduceLanes(VectorOperators.ADD)
-              + (s1.reduceLanes(VectorOperators.ADD) << 1)
-              + (s2.reduceLanes(VectorOperators.ADD) << 2)
-              + (s3.reduceLanes(VectorOperators.ADD) << 3);
-      for (int i = prefix; i < bits; i++) {
-        int code = codes[offset + i];
-        for (int k = 0; k < 4; k++)
-          sum += (long) Integer.bitCount(q[k * bits + i] & code & 255) << k;
-      }
-      return (int) sum;
-    }
-
-    private static LongVector andCount(LongVector query, LongVector code) {
-      return query.lanewise(VectorOperators.AND, code).lanewise(VectorOperators.BIT_COUNT);
-    }
+    // ---- INT8 dot products.
 
     @Override
     int dotProduct(byte[] query, byte[] records, int offset) {
-      var sum = IntVector.zero(DOT_INTS);
-      int i = 0, end = DOT_BYTES.loopBound(query.length);
-      for (; i < end; i += DOT_BYTES.length()) {
-        var q = ByteVector.fromArray(DOT_BYTES, query, i);
-        var d = ByteVector.fromArray(DOT_BYTES, records, offset + i);
-        var qi = q.convertShape(VectorOperators.B2I, DOT_INTS, 0);
-        var di = d.convertShape(VectorOperators.B2I, DOT_INTS, 0);
-        sum = sum.add(qi.mul(di));
+      if (DOT_IS_256 == false) {
+        byte[] code = fallbackCode(query.length);
+        System.arraycopy(records, offset, code, 0, query.length);
+        return VectorUtil.dotProduct(query, code);
       }
-      int total = sum.reduceLanes(VectorOperators.ADD);
-      for (; i < query.length; i++) total += query[i] * records[offset + i];
+      IntVector sum = IntVector.zero(DOT_INTS);
+      int end = DOT_BYTES.loopBound(query.length);
+      int i = 0;
+      for (; i < end; i += DOT_BYTES.length()) {
+        sum =
+            sum.add(
+                ((IntVector)
+                        ByteVector.fromArray(DOT_BYTES, query, i).convertShape(B2I, DOT_INTS, 0))
+                    .mul(
+                        (IntVector)
+                            ByteVector.fromArray(DOT_BYTES, records, offset + i)
+                                .convertShape(B2I, DOT_INTS, 0)));
+      }
+      int total = sum.reduceLanes(ADD);
+      for (; i < query.length; i++) {
+        total += query[i] * records[offset + i];
+      }
       return total;
     }
 
     @Override
     void dotProducts(byte[] query, byte[] records, int stride, int count, int[] out) {
       if (DOT_IS_256 == false) {
-        byte[] scratch = new byte[query.length];
+        byte[] code = fallbackCode(query.length);
         for (int r = 0; r < count; r++) {
-          System.arraycopy(records, r * stride, scratch, 0, query.length);
-          out[r] = VectorUtil.dotProduct(query, scratch);
+          System.arraycopy(records, r * stride, code, 0, query.length);
+          out[r] = VectorUtil.dotProduct(query, code);
         }
         return;
       }
+      int end = DOT_BYTES.loopBound(query.length);
       int r = 0;
       for (; r + 4 <= count; r += 4) {
-        int o0 = r * stride, o1 = o0 + stride, o2 = o1 + stride, o3 = o2 + stride;
-        var a0 = IntVector.zero(DOT_INTS);
-        var a1 = IntVector.zero(DOT_INTS);
-        var a2 = IntVector.zero(DOT_INTS);
-        var a3 = IntVector.zero(DOT_INTS);
-        int i = 0, end = DOT_BYTES.loopBound(query.length);
+        int row0 = r * stride;
+        int row1 = row0 + stride;
+        int row2 = row1 + stride;
+        int row3 = row2 + stride;
+        IntVector sum0 = IntVector.zero(DOT_INTS);
+        IntVector sum1 = IntVector.zero(DOT_INTS);
+        IntVector sum2 = IntVector.zero(DOT_INTS);
+        IntVector sum3 = IntVector.zero(DOT_INTS);
+        int i = 0;
         for (; i < end; i += DOT_BYTES.length()) {
-          var q =
-              (IntVector)
-                  ByteVector.fromArray(DOT_BYTES, query, i)
-                      .convertShape(VectorOperators.B2I, DOT_INTS, 0);
-          a0 = signedFma(q, records, o0 + i, a0);
-          a1 = signedFma(q, records, o1 + i, a1);
-          a2 = signedFma(q, records, o2 + i, a2);
-          a3 = signedFma(q, records, o3 + i, a3);
+          IntVector q =
+              ((IntVector)
+                  ByteVector.fromArray(DOT_BYTES, query, i).convertShape(B2I, DOT_INTS, 0));
+          sum0 =
+              sum0.add(
+                  q.mul(
+                      (IntVector)
+                          ByteVector.fromArray(DOT_BYTES, records, row0 + i)
+                              .convertShape(B2I, DOT_INTS, 0)));
+          sum1 =
+              sum1.add(
+                  q.mul(
+                      (IntVector)
+                          ByteVector.fromArray(DOT_BYTES, records, row1 + i)
+                              .convertShape(B2I, DOT_INTS, 0)));
+          sum2 =
+              sum2.add(
+                  q.mul(
+                      (IntVector)
+                          ByteVector.fromArray(DOT_BYTES, records, row2 + i)
+                              .convertShape(B2I, DOT_INTS, 0)));
+          sum3 =
+              sum3.add(
+                  q.mul(
+                      (IntVector)
+                          ByteVector.fromArray(DOT_BYTES, records, row3 + i)
+                              .convertShape(B2I, DOT_INTS, 0)));
         }
-        int s0 = a0.reduceLanes(VectorOperators.ADD);
-        int s1 = a1.reduceLanes(VectorOperators.ADD);
-        int s2 = a2.reduceLanes(VectorOperators.ADD);
-        int s3 = a3.reduceLanes(VectorOperators.ADD);
+        int score0 = sum0.reduceLanes(ADD);
+        int score1 = sum1.reduceLanes(ADD);
+        int score2 = sum2.reduceLanes(ADD);
+        int score3 = sum3.reduceLanes(ADD);
         for (; i < query.length; i++) {
           int q = query[i];
-          s0 += q * records[o0 + i];
-          s1 += q * records[o1 + i];
-          s2 += q * records[o2 + i];
-          s3 += q * records[o3 + i];
+          score0 += q * records[row0 + i];
+          score1 += q * records[row1 + i];
+          score2 += q * records[row2 + i];
+          score3 += q * records[row3 + i];
         }
-        out[r] = s0;
-        out[r + 1] = s1;
-        out[r + 2] = s2;
-        out[r + 3] = s3;
+        out[r] = score0;
+        out[r + 1] = score1;
+        out[r + 2] = score2;
+        out[r + 3] = score3;
       }
-      for (; r < count; r++) out[r] = dotProduct(query, records, r * stride);
+      for (; r < count; r++) {
+        out[r] = dotProduct(query, records, r * stride);
+      }
     }
 
     @Override
     void dotProducts(byte[] query, MemorySegment records, long[] offsets, int count, int[] out) {
       if (DOT_IS_256 == false) {
-        byte[] scratch = new byte[query.length];
+        byte[] code = fallbackCode(query.length);
         for (int r = 0; r < count; r++) {
-          MemorySegment.copy(records, ValueLayout.JAVA_BYTE, offsets[r], scratch, 0, query.length);
-          out[r] = VectorUtil.dotProduct(query, scratch);
+          MemorySegment.copy(records, ValueLayout.JAVA_BYTE, offsets[r], code, 0, query.length);
+          out[r] = VectorUtil.dotProduct(query, code);
         }
         return;
       }
-      int r = 0, end = DOT_BYTES.loopBound(query.length);
+      int end = DOT_BYTES.loopBound(query.length);
+      int r = 0;
       for (; r + 4 <= count; r += 4) {
-        long o0 = offsets[r], o1 = offsets[r + 1], o2 = offsets[r + 2], o3 = offsets[r + 3];
-        var a0 = IntVector.zero(DOT_INTS);
-        var a1 = IntVector.zero(DOT_INTS);
-        var a2 = IntVector.zero(DOT_INTS);
-        var a3 = IntVector.zero(DOT_INTS);
+        long row0 = offsets[r];
+        long row1 = offsets[r + 1];
+        long row2 = offsets[r + 2];
+        long row3 = offsets[r + 3];
+        IntVector sum0 = IntVector.zero(DOT_INTS);
+        IntVector sum1 = IntVector.zero(DOT_INTS);
+        IntVector sum2 = IntVector.zero(DOT_INTS);
+        IntVector sum3 = IntVector.zero(DOT_INTS);
         for (int i = 0; i < end; i += DOT_BYTES.length()) {
-          var q =
-              (IntVector)
-                  ByteVector.fromArray(DOT_BYTES, query, i)
-                      .convertShape(VectorOperators.B2I, DOT_INTS, 0);
-          a0 = signedFma(q, records, o0 + i, a0);
-          a1 = signedFma(q, records, o1 + i, a1);
-          a2 = signedFma(q, records, o2 + i, a2);
-          a3 = signedFma(q, records, o3 + i, a3);
+          IntVector q =
+              ((IntVector)
+                  ByteVector.fromArray(DOT_BYTES, query, i).convertShape(B2I, DOT_INTS, 0));
+          sum0 =
+              sum0.add(
+                  q.mul(
+                      (IntVector)
+                          ByteVector.fromMemorySegment(
+                                  DOT_BYTES, records, row0 + i, ByteOrder.LITTLE_ENDIAN)
+                              .convertShape(B2I, DOT_INTS, 0)));
+          sum1 =
+              sum1.add(
+                  q.mul(
+                      (IntVector)
+                          ByteVector.fromMemorySegment(
+                                  DOT_BYTES, records, row1 + i, ByteOrder.LITTLE_ENDIAN)
+                              .convertShape(B2I, DOT_INTS, 0)));
+          sum2 =
+              sum2.add(
+                  q.mul(
+                      (IntVector)
+                          ByteVector.fromMemorySegment(
+                                  DOT_BYTES, records, row2 + i, ByteOrder.LITTLE_ENDIAN)
+                              .convertShape(B2I, DOT_INTS, 0)));
+          sum3 =
+              sum3.add(
+                  q.mul(
+                      (IntVector)
+                          ByteVector.fromMemorySegment(
+                                  DOT_BYTES, records, row3 + i, ByteOrder.LITTLE_ENDIAN)
+                              .convertShape(B2I, DOT_INTS, 0)));
         }
-        out[r] = a0.reduceLanes(VectorOperators.ADD) + tailDot(query, records, o0, end);
-        out[r + 1] = a1.reduceLanes(VectorOperators.ADD) + tailDot(query, records, o1, end);
-        out[r + 2] = a2.reduceLanes(VectorOperators.ADD) + tailDot(query, records, o2, end);
-        out[r + 3] = a3.reduceLanes(VectorOperators.ADD) + tailDot(query, records, o3, end);
+        out[r] = sum0.reduceLanes(ADD) + scalarDot(query, records, row0, end);
+        out[r + 1] = sum1.reduceLanes(ADD) + scalarDot(query, records, row1, end);
+        out[r + 2] = sum2.reduceLanes(ADD) + scalarDot(query, records, row2, end);
+        out[r + 3] = sum3.reduceLanes(ADD) + scalarDot(query, records, row3, end);
       }
       for (; r < count; r++) {
-        var a = IntVector.zero(DOT_INTS);
+        IntVector sum = IntVector.zero(DOT_INTS);
         for (int i = 0; i < end; i += DOT_BYTES.length()) {
-          var q =
-              (IntVector)
-                  ByteVector.fromArray(DOT_BYTES, query, i)
-                      .convertShape(VectorOperators.B2I, DOT_INTS, 0);
-          a = signedFma(q, records, offsets[r] + i, a);
+          sum =
+              sum.add(
+                  ((IntVector)
+                          ByteVector.fromArray(DOT_BYTES, query, i).convertShape(B2I, DOT_INTS, 0))
+                      .mul(
+                          (IntVector)
+                              ByteVector.fromMemorySegment(
+                                      DOT_BYTES, records, offsets[r] + i, ByteOrder.LITTLE_ENDIAN)
+                                  .convertShape(B2I, DOT_INTS, 0)));
         }
-        out[r] = a.reduceLanes(VectorOperators.ADD) + tailDot(query, records, offsets[r], end);
-      }
-    }
-
-    private static int tailDot(byte[] query, MemorySegment records, long offset, int from) {
-      int sum = 0;
-      for (int i = from; i < query.length; i++) {
-        sum += query[i] * records.get(ValueLayout.JAVA_BYTE, offset + i);
-      }
-      return sum;
-    }
-
-    private static IntVector signedFma(
-        IntVector query, MemorySegment records, long offset, IntVector sum) {
-      var doc =
-          (IntVector)
-              ByteVector.fromMemorySegment(DOT_BYTES, records, offset, ByteOrder.LITTLE_ENDIAN)
-                  .convertShape(VectorOperators.B2I, DOT_INTS, 0);
-      return sum.add(query.mul(doc));
-    }
-
-    private static IntVector signedFma(IntVector query, byte[] records, int offset, IntVector sum) {
-      var doc =
-          (IntVector)
-              ByteVector.fromArray(DOT_BYTES, records, offset)
-                  .convertShape(VectorOperators.B2I, DOT_INTS, 0);
-      return sum.add(query.mul(doc));
-    }
-
-    @Override
-    void pack2(float[] vector, int dim, byte[] dest, int offset, float low, float high) {
-      int planeBytes = (dim + 7) >>> 3;
-      int vectorized = dim & -64;
-      for (int base = 0; base < vectorized; base += 64) {
-        long lowBits = 0, highBits = 0;
-        for (int i = 0; i < 64; i += FLOATS.length()) {
-          var values = FloatVector.fromArray(FLOATS, vector, base + i);
-          lowBits |= values.compare(VectorOperators.GE, low).toLong() << i;
-          highBits |= values.compare(VectorOperators.GE, high).toLong() << i;
-        }
-        int at = offset + (base >>> 3);
-        BitUtil.VH_LE_LONG.set(dest, at, lowBits);
-        BitUtil.VH_LE_LONG.set(dest, at + planeBytes, highBits);
-      }
-      if (vectorized < dim) {
-        int tail = vectorized >>> 3;
-        java.util.Arrays.fill(dest, offset + tail, offset + planeBytes, (byte) 0);
-        java.util.Arrays.fill(dest, offset + planeBytes + tail, offset + 2 * planeBytes, (byte) 0);
-        for (int d = vectorized; d < dim; d++) {
-          int mask = 1 << (d & 7), at = offset + (d >>> 3);
-          if (vector[d] >= low) dest[at] |= (byte) mask;
-          if (vector[d] >= high) dest[at + planeBytes] |= (byte) mask;
-        }
+        out[r] = sum.reduceLanes(ADD) + scalarDot(query, records, offsets[r], end);
       }
     }
   }

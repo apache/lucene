@@ -17,17 +17,24 @@
 package org.apache.lucene.sandbox.codecs.segmentivf;
 
 import com.carrotsearch.randomizedtesting.ThreadFilter;
+import org.apache.lucene.tests.util.QuickPatchThreadsFilter;
 
 /**
  * Ignores SegmentIVF's process-lifetime daemon threads when checking for leaked threads: the shared
- * build pool of {@code Clustering.Parallel} and the reader's pinning thread, which outlive
- * whichever suite first starts them.
+ * build pool of {@code Parallel}, which outlives whichever suite first starts it.
+ *
+ * <p>Also applies the filter {@code LuceneTestCase} declares, which a suite's own {@code
+ * ThreadLeakFilters} replaces.
  */
 public final class SegmentIVFBuildThreadsFilter implements ThreadFilter {
+  private final ThreadFilter quickPatch = new QuickPatchThreadsFilter();
 
   @Override
   public boolean reject(Thread t) {
     final String name = t.getName();
-    return name != null && (name.startsWith("segmentivf-build-") || name.equals("segmentivf-pin"));
+    if (name != null && name.startsWith("segmentivf-build-")) {
+      return true;
+    }
+    return quickPatch.reject(t);
   }
 }

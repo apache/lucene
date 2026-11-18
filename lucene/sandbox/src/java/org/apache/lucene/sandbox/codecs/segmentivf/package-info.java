@@ -17,27 +17,14 @@
 
 /**
  * SegmentIVF, a two-tier inverted-file (IVF) vector format for low-latency approximate
- * nearest-neighbor search.
+ * nearest-neighbor search: 1-bit coarse codes are scanned, and INT8 fine codes rerank. {@link
+ * org.apache.lucene.sandbox.codecs.segmentivf.SegmentIVFVectorsFormat} describes the design and the
+ * files; {@link org.apache.lucene.sandbox.codecs.segmentivf.SegmentIVFKnnQuery} searches a whole
+ * index with one rerank. The format indexes FLOAT32 vectors with COSINE or DOT_PRODUCT similarity.
  *
- * <p>Vectors are normalized, rotated with a randomized Hadamard transform and clustered into {@code
- * nlist} cells per segment, with up to {@code spillBits} extra copies near cell boundaries. Each
- * copy stores a coarse code, and each vector one INT8 or FP32 fine record that its copies share.
- * The coarse tier is either a 2-bit Nitrox2 code compared by XOR and popcount, or a 1-bit BBQ code
- * of the offset from its cell's centroid, scored against a 4-bit query by AND and popcount; the
- * centroid graph and clustering use the same tier. Flushes and merges warm-start clustering from
- * segments this process already wrote.
- *
- * <p>A query picks cells through a graph over the centroid codes, scans their coarse codes with
- * SIMD popcount kernels, and keeps a deduplicated shortlist per segment. {@link
- * org.apache.lucene.sandbox.codecs.segmentivf.SegmentIVFKnnQuery} merges those shortlists and
- * fine-reranks only the index-wide best, so fine reads do not grow with the segment count; a plain
- * {@code KnnFloatVectorQuery} reranks per segment. Filters apply before any scoring.
- *
- * <p>Coarse codes are copied off-heap on a background thread, within a budget derived from the
- * cgroup memory limit and the heap, so the page cache cannot evict them. Fine records are read
- * mapped while they fit in memory, and with one batched io_uring submission per rerank when they do
- * not or the cgroup reports memory pressure. The io_uring and mapped-view code uses restricted
- * foreign-function calls, so run with {@code --enable-native-access}.
+ * <p>The io_uring and mapped-view code uses restricted foreign-function calls, so run with {@code
+ * --enable-native-access}. The scan's SIMD kernels use the Vector API when {@code --add-modules
+ * jdk.incubator.vector} is given, and fall back to scalar code otherwise.
  *
  * @lucene.experimental
  */
