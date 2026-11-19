@@ -147,4 +147,30 @@ public class TestLowercaseAsciiCompression extends LuceneTestCase {
               .getBytes(StandardCharsets.UTF_8));
     }
   }
+
+  /**
+   * A corrupt exception offset must not be used to index {@code out}. The offsets are read from the
+   * data as deltas and accumulated, so corruption can push the index past the end of the array;
+   * that used to surface as ArrayIndexOutOfBoundsException from the decompression loop rather than
+   * as a checked IOException. Measured on a corrupted {@code .tim}, this was 2 of 320 sampled
+   * single-byte corruptions.
+   */
+  public void testCorruptExceptionOffset() throws IOException {
+    // A minimal well-formed stream: 8 packed bytes for len=8 (saved=2, compressedLen=6), then a
+    // single "exception" whose delta puts the index far past the end of the output.
+    ByteBuffersDataOutput compressed = new ByteBuffersDataOutput();
+    for (int i = 0; i < 6; i++) {
+      compressed.writeByte((byte) 0x21);
+    }
+    compressed.writeVInt(1); // one exception
+    compressed.writeByte((byte) 0xFF); // delta 255, far beyond out.length
+    compressed.writeByte((byte) 'x'); // the byte it would write
+
+    byte[] out = new byte[8];
+    IOException e =
+        expectThrows(
+            IOException.class,
+            () -> LowercaseAsciiCompression.decompress(compressed.toDataInput(), out, 8));
+    assertTrue(e.getMessage(), e.getMessage().contains("exception offset"));
+  }
 }
