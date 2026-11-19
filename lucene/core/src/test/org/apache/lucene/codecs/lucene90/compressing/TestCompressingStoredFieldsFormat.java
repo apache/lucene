@@ -22,7 +22,11 @@ import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.codecs.lucene104.Lucene104Codec;
+import org.apache.lucene.codecs.compressing.CompressionMode;
+import org.apache.lucene.codecs.compressing.Compressor;
+import org.apache.lucene.codecs.compressing.Decompressor;
+import org.apache.lucene.codecs.lucene90.DeflateWithPresetDictCompressionMode;
+import org.apache.lucene.codecs.lucene90.LZ4WithPresetDictCompressionMode;
 import org.apache.lucene.codecs.lucene90.Lucene90StoredFieldsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DocumentStoredFieldVisitor;
@@ -38,10 +42,12 @@ import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.ByteBuffersIndexInput;
+import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.codecs.compressing.CompressingCodec;
+import org.apache.lucene.tests.codecs.compressing.DeflateWithPresetCompressingCodec;
 import org.apache.lucene.tests.codecs.compressing.LZ4WithPresetCompressingCodec;
 import org.apache.lucene.tests.index.BaseStoredFieldsFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
@@ -363,6 +369,96 @@ public class TestCompressingStoredFieldsFormat extends BaseStoredFieldsFormatTes
     dir.close();
   }
 
+  /** Counts bytes skipped in the compressed input, not in the decompressed document. */
+  private static class SkipCountingCompressionMode extends CompressionMode {
+    private final CompressionMode delegate;
+    long skippedBytes;
+
+    SkipCountingCompressionMode(CompressionMode delegate) {
+      this.delegate = delegate;
+    }
+
+    @Override
+    public Compressor newCompressor() {
+      return delegate.newCompressor();
+    }
+
+    @Override
+    public Decompressor newDecompressor() {
+      return new SkipCountingDecompressor(delegate.newDecompressor());
+    }
+
+    @Override
+    public String toString() {
+      return delegate.toString();
+    }
+
+    private class SkipCountingDecompressor extends Decompressor
+        implements Lucene90SkippableDecompressor {
+      private final Decompressor delegate;
+
+      SkipCountingDecompressor(Decompressor delegate) {
+        this.delegate = delegate;
+      }
+
+      @Override
+      public void decompress(
+          DataInput in, int originalLength, int offset, int length, BytesRef bytes)
+          throws IOException {
+        delegate.decompress(in, originalLength, offset, length, bytes);
+      }
+
+      @Override
+      public void decompress(
+          DataInput in,
+          int originalLength,
+          int offset,
+          int length,
+          BytesRef bytes,
+          boolean reuseIfPossible)
+          throws IOException {
+        delegate.decompress(in, originalLength, offset, length, bytes, reuseIfPossible);
+      }
+
+      @Override
+      public Lucene90DecompressingDataInput decompressingDataInput(
+          DataInput in, int originalLength, int offset, int length) throws IOException {
+        return decompressingDataInput(in, originalLength, offset, length, false);
+      }
+
+      @Override
+      public Lucene90DecompressingDataInput decompressingDataInput(
+          DataInput in, int originalLength, int offset, int length, boolean reuseIfPossible)
+          throws IOException {
+        DataInput countingInput =
+            new DataInput() {
+              @Override
+              public byte readByte() throws IOException {
+                return in.readByte();
+              }
+
+              @Override
+              public void readBytes(byte[] b, int offset, int len) throws IOException {
+                in.readBytes(b, offset, len);
+              }
+
+              @Override
+              public void skipBytes(long numBytes) throws IOException {
+                in.skipBytes(numBytes);
+                skippedBytes += numBytes;
+              }
+            };
+        return ((Lucene90SkippableDecompressor) delegate)
+            .decompressingDataInput(countingInput, originalLength, offset, length, reuseIfPossible);
+      }
+
+      @Override
+      public Decompressor clone() {
+        return new SkipCountingDecompressor(delegate.clone());
+      }
+    }
+  }
+
   public void testSkipLZ4WitSlicedChunk() throws IOException {
     byte[] payload1 = new byte[atLeast(1 << 18)];
     for (int i = 0; i < payload1.length; i++) {
@@ -376,7 +472,15 @@ public class TestCompressingStoredFieldsFormat extends BaseStoredFieldsFormatTes
 
     try (Directory dir = newDirectory()) {
       IndexWriterConfig iwConf = newIndexWriterConfig(new MockAnalyzer(random()));
-      iwConf.setCodec(TestUtil.getDefaultCodec());
+      SkipCountingCompressionMode compressionMode =
+          new SkipCountingCompressionMode(new LZ4WithPresetDictCompressionMode());
+      iwConf.setCodec(
+          new CompressingCodec(
+              new LZ4WithPresetCompressingCodec().getName(),
+              compressionMode,
+              Lucene90StoredFieldsFormat.BEST_SPEED_BLOCK_LENGTH,
+              1024,
+              10) {});
       try (IndexWriter iw = new IndexWriter(dir, iwConf)) {
         Document doc = new Document();
         doc.add(new StoredField("content1", "content1"));
@@ -385,24 +489,31 @@ public class TestCompressingStoredFieldsFormat extends BaseStoredFieldsFormatTes
         doc.add(new StoredField("payload2", payload2));
         doc.add(new StoredField("content3", "content3"));
         iw.addDocument(doc);
-      }
 
-      try (DirectoryReader ir = DirectoryReader.open(dir)) {
-        CodecReader sr = (CodecReader) getOnlyLeafReader(ir);
-        Lucene90CompressingStoredFieldsReader reader =
-            (Lucene90CompressingStoredFieldsReader) sr.getFieldsReader();
-        assertTrue(payload1.length + payload2.length > 2 * reader.getChunkSize());
+        // An NRT reader retains the counting codec instead of resolving it again through SPI.
+        try (DirectoryReader ir = DirectoryReader.open(iw)) {
+          CodecReader sr = (CodecReader) getOnlyLeafReader(ir);
+          Lucene90CompressingStoredFieldsReader reader =
+              (Lucene90CompressingStoredFieldsReader) sr.getFieldsReader();
+          assertTrue(payload1.length + payload2.length > 2 * reader.getChunkSize());
 
-        Document loaded = ir.storedFields().document(0, Set.of("content1", "content2", "content3"));
-        assertEquals(3, loaded.getFields().size());
-        assertEquals("content1", loaded.get("content1"));
-        assertEquals("content2", loaded.get("content2"));
-        assertEquals("content3", loaded.get("content3"));
+          // This is the first read of doc 0: dictionary reuse and skipping preceding documents
+          // cannot contribute to the counter. Ignore any activity while opening the reader.
+          compressionMode.skippedBytes = 0;
+          Document loaded =
+              ir.storedFields().document(0, Set.of("content1", "content2", "content3"));
+          assertTrue(
+              "Expected compressed payload blocks to be skipped", compressionMode.skippedBytes > 0);
+          assertEquals(3, loaded.getFields().size());
+          assertEquals("content1", loaded.get("content1"));
+          assertEquals("content2", loaded.get("content2"));
+          assertEquals("content3", loaded.get("content3"));
 
-        loaded = ir.storedFields().document(0, Set.of("payload1", "payload2"));
-        assertEquals(2, loaded.getFields().size());
-        assertStoredBytesEquals(payload1, loaded, "payload1");
-        assertStoredBytesEquals(payload2, loaded, "payload2");
+          loaded = ir.storedFields().document(0, Set.of("payload1", "payload2"));
+          assertEquals(2, loaded.getFields().size());
+          assertStoredBytesEquals(payload1, loaded, "payload1");
+          assertStoredBytesEquals(payload2, loaded, "payload2");
+        }
       }
     }
   }
@@ -424,7 +535,15 @@ public class TestCompressingStoredFieldsFormat extends BaseStoredFieldsFormatTes
 
     try (Directory dir = newDirectory()) {
       IndexWriterConfig iwConf = newIndexWriterConfig(new MockAnalyzer(random()));
-      iwConf.setCodec(TestUtil.getDefaultCodec());
+      SkipCountingCompressionMode compressionMode =
+          new SkipCountingCompressionMode(new LZ4WithPresetDictCompressionMode());
+      iwConf.setCodec(
+          new CompressingCodec(
+              new LZ4WithPresetCompressingCodec().getName(),
+              compressionMode,
+              Lucene90StoredFieldsFormat.BEST_SPEED_BLOCK_LENGTH,
+              1024,
+              10) {});
       try (IndexWriter iw = new IndexWriter(dir, iwConf)) {
         Document doc = new Document();
         doc.add(new StoredField("content1", "content1"));
@@ -433,24 +552,31 @@ public class TestCompressingStoredFieldsFormat extends BaseStoredFieldsFormatTes
         doc.add(new StoredField("payload2", payload2));
         doc.add(new StoredField("content3", "content3"));
         iw.addDocument(doc);
-      }
 
-      try (DirectoryReader ir = DirectoryReader.open(dir)) {
-        CodecReader sr = (CodecReader) getOnlyLeafReader(ir);
-        Lucene90CompressingStoredFieldsReader reader =
-            (Lucene90CompressingStoredFieldsReader) sr.getFieldsReader();
-        assertTrue(payload1.length + payload2.length < 2 * reader.getChunkSize());
+        // An NRT reader retains the counting codec instead of resolving it again through SPI.
+        try (DirectoryReader ir = DirectoryReader.open(iw)) {
+          CodecReader sr = (CodecReader) getOnlyLeafReader(ir);
+          Lucene90CompressingStoredFieldsReader reader =
+              (Lucene90CompressingStoredFieldsReader) sr.getFieldsReader();
+          assertTrue(payload1.length + payload2.length < 2 * reader.getChunkSize());
 
-        Document loaded = ir.storedFields().document(0, Set.of("content1", "content2", "content3"));
-        assertEquals(3, loaded.getFields().size());
-        assertEquals("content1", loaded.get("content1"));
-        assertEquals("content2", loaded.get("content2"));
-        assertEquals("content3", loaded.get("content3"));
+          // This is the first read of doc 0: dictionary reuse and skipping preceding documents
+          // cannot contribute to the counter. Ignore any activity while opening the reader.
+          compressionMode.skippedBytes = 0;
+          Document loaded =
+              ir.storedFields().document(0, Set.of("content1", "content2", "content3"));
+          assertTrue(
+              "Expected compressed payload blocks to be skipped", compressionMode.skippedBytes > 0);
+          assertEquals(3, loaded.getFields().size());
+          assertEquals("content1", loaded.get("content1"));
+          assertEquals("content2", loaded.get("content2"));
+          assertEquals("content3", loaded.get("content3"));
 
-        loaded = ir.storedFields().document(0, Set.of("payload1", "payload2"));
-        assertEquals(2, loaded.getFields().size());
-        assertStoredBytesEquals(payload1, loaded, "payload1");
-        assertStoredBytesEquals(payload2, loaded, "payload2");
+          loaded = ir.storedFields().document(0, Set.of("payload1", "payload2"));
+          assertEquals(2, loaded.getFields().size());
+          assertStoredBytesEquals(payload1, loaded, "payload1");
+          assertStoredBytesEquals(payload2, loaded, "payload2");
+        }
       }
     }
   }
@@ -468,7 +594,15 @@ public class TestCompressingStoredFieldsFormat extends BaseStoredFieldsFormatTes
 
     try (Directory dir = newDirectory()) {
       IndexWriterConfig iwConf = newIndexWriterConfig(new MockAnalyzer(random()));
-      iwConf.setCodec(new Lucene104Codec(Lucene104Codec.Mode.BEST_COMPRESSION));
+      SkipCountingCompressionMode compressionMode =
+          new SkipCountingCompressionMode(new DeflateWithPresetDictCompressionMode());
+      iwConf.setCodec(
+          new CompressingCodec(
+              new DeflateWithPresetCompressingCodec().getName(),
+              compressionMode,
+              Lucene90StoredFieldsFormat.BEST_COMPRESSION_BLOCK_LENGTH,
+              1024,
+              10) {});
       try (IndexWriter iw = new IndexWriter(dir, iwConf)) {
         Document doc = new Document();
         doc.add(new StoredField("content1", "content1"));
@@ -477,24 +611,31 @@ public class TestCompressingStoredFieldsFormat extends BaseStoredFieldsFormatTes
         doc.add(new StoredField("payload2", payload2));
         doc.add(new StoredField("content3", "content3"));
         iw.addDocument(doc);
-      }
 
-      try (DirectoryReader ir = DirectoryReader.open(dir)) {
-        CodecReader sr = (CodecReader) getOnlyLeafReader(ir);
-        Lucene90CompressingStoredFieldsReader reader =
-            (Lucene90CompressingStoredFieldsReader) sr.getFieldsReader();
-        assertTrue(payload1.length + payload2.length > 2 * reader.getChunkSize());
+        // An NRT reader retains the counting codec instead of resolving it again through SPI.
+        try (DirectoryReader ir = DirectoryReader.open(iw)) {
+          CodecReader sr = (CodecReader) getOnlyLeafReader(ir);
+          Lucene90CompressingStoredFieldsReader reader =
+              (Lucene90CompressingStoredFieldsReader) sr.getFieldsReader();
+          assertTrue(payload1.length + payload2.length > 2 * reader.getChunkSize());
 
-        Document loaded = ir.storedFields().document(0, Set.of("content1", "content2", "content3"));
-        assertEquals(3, loaded.getFields().size());
-        assertEquals("content1", loaded.get("content1"));
-        assertEquals("content2", loaded.get("content2"));
-        assertEquals("content3", loaded.get("content3"));
+          // This is the first read of doc 0: dictionary reuse and skipping preceding documents
+          // cannot contribute to the counter. Ignore any activity while opening the reader.
+          compressionMode.skippedBytes = 0;
+          Document loaded =
+              ir.storedFields().document(0, Set.of("content1", "content2", "content3"));
+          assertTrue(
+              "Expected compressed payload blocks to be skipped", compressionMode.skippedBytes > 0);
+          assertEquals(3, loaded.getFields().size());
+          assertEquals("content1", loaded.get("content1"));
+          assertEquals("content2", loaded.get("content2"));
+          assertEquals("content3", loaded.get("content3"));
 
-        loaded = ir.storedFields().document(0, Set.of("payload1", "payload2"));
-        assertEquals(2, loaded.getFields().size());
-        assertStoredBytesEquals(payload1, loaded, "payload1");
-        assertStoredBytesEquals(payload2, loaded, "payload2");
+          loaded = ir.storedFields().document(0, Set.of("payload1", "payload2"));
+          assertEquals(2, loaded.getFields().size());
+          assertStoredBytesEquals(payload1, loaded, "payload1");
+          assertStoredBytesEquals(payload2, loaded, "payload2");
+        }
       }
     }
   }
@@ -516,7 +657,15 @@ public class TestCompressingStoredFieldsFormat extends BaseStoredFieldsFormatTes
 
     try (Directory dir = newDirectory()) {
       IndexWriterConfig iwConf = newIndexWriterConfig(new MockAnalyzer(random()));
-      iwConf.setCodec(new Lucene104Codec(Lucene104Codec.Mode.BEST_COMPRESSION));
+      SkipCountingCompressionMode compressionMode =
+          new SkipCountingCompressionMode(new DeflateWithPresetDictCompressionMode());
+      iwConf.setCodec(
+          new CompressingCodec(
+              new DeflateWithPresetCompressingCodec().getName(),
+              compressionMode,
+              Lucene90StoredFieldsFormat.BEST_COMPRESSION_BLOCK_LENGTH,
+              1024,
+              10) {});
       try (IndexWriter iw = new IndexWriter(dir, iwConf)) {
         Document doc = new Document();
         doc.add(new StoredField("content1", "content1"));
@@ -525,24 +674,31 @@ public class TestCompressingStoredFieldsFormat extends BaseStoredFieldsFormatTes
         doc.add(new StoredField("payload2", payload2));
         doc.add(new StoredField("content3", "content3"));
         iw.addDocument(doc);
-      }
 
-      try (DirectoryReader ir = DirectoryReader.open(dir)) {
-        CodecReader sr = (CodecReader) getOnlyLeafReader(ir);
-        Lucene90CompressingStoredFieldsReader reader =
-            (Lucene90CompressingStoredFieldsReader) sr.getFieldsReader();
-        assertTrue(payload1.length + payload2.length < 2 * reader.getChunkSize());
+        // An NRT reader retains the counting codec instead of resolving it again through SPI.
+        try (DirectoryReader ir = DirectoryReader.open(iw)) {
+          CodecReader sr = (CodecReader) getOnlyLeafReader(ir);
+          Lucene90CompressingStoredFieldsReader reader =
+              (Lucene90CompressingStoredFieldsReader) sr.getFieldsReader();
+          assertTrue(payload1.length + payload2.length < 2 * reader.getChunkSize());
 
-        Document loaded = ir.storedFields().document(0, Set.of("content1", "content2", "content3"));
-        assertEquals(3, loaded.getFields().size());
-        assertEquals("content1", loaded.get("content1"));
-        assertEquals("content2", loaded.get("content2"));
-        assertEquals("content3", loaded.get("content3"));
+          // This is the first read of doc 0: dictionary reuse and skipping preceding documents
+          // cannot contribute to the counter. Ignore any activity while opening the reader.
+          compressionMode.skippedBytes = 0;
+          Document loaded =
+              ir.storedFields().document(0, Set.of("content1", "content2", "content3"));
+          assertTrue(
+              "Expected compressed payload blocks to be skipped", compressionMode.skippedBytes > 0);
+          assertEquals(3, loaded.getFields().size());
+          assertEquals("content1", loaded.get("content1"));
+          assertEquals("content2", loaded.get("content2"));
+          assertEquals("content3", loaded.get("content3"));
 
-        loaded = ir.storedFields().document(0, Set.of("payload1", "payload2"));
-        assertEquals(2, loaded.getFields().size());
-        assertStoredBytesEquals(payload1, loaded, "payload1");
-        assertStoredBytesEquals(payload2, loaded, "payload2");
+          loaded = ir.storedFields().document(0, Set.of("payload1", "payload2"));
+          assertEquals(2, loaded.getFields().size());
+          assertStoredBytesEquals(payload1, loaded, "payload1");
+          assertStoredBytesEquals(payload2, loaded, "payload2");
+        }
       }
     }
   }
