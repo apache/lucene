@@ -11,7 +11,7 @@ API Changes
 
 New Features
 ---------------------
-(No changes)
+* GITHUB#15287: Add byte vector support to FaissKnnVectorsFormat. (Abhinav Chinnala)
 
 Improvements
 ---------------------

@@ -37,8 +37,10 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.nio.ByteOrder;
 import java.util.Map;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.KnnVectorValues;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
@@ -166,30 +168,6 @@ final class FaissLibraryNativeImpl implements FaissLibrary {
     try (Arena temp = Arena.ofConfined()) {
       int size = floatVectorValues.size();
       int dimension = floatVectorValues.dimension();
-      int metric = functionToMetric(function);
-
-      // Create an index
-      MemorySegment pointer = temp.allocate(ADDRESS);
-      handleException(
-          wrapper.faiss_index_factory(pointer, dimension, temp.allocateFrom(description), metric));
-
-      MemorySegment indexPointer = pointer.get(ADDRESS, 0);
-
-      // Set index params
-      handleException(wrapper.faiss_ParameterSpace_new(pointer));
-      MemorySegment parameterSpacePointer =
-          pointer
-              .get(ADDRESS, 0)
-              // Ensure timely cleanup
-              .reinterpret(temp, wrapper::faiss_ParameterSpace_free);
-
-      handleException(
-          wrapper.faiss_ParameterSpace_set_index_parameters(
-              parameterSpacePointer, indexPointer, temp.allocateFrom(indexParams)));
-
-      // TODO: Improve memory usage (with a tradeoff in performance) by batched indexing, see:
-      //  - https://github.com/opensearch-project/k-NN/issues/1506
-      //  - https://github.com/opensearch-project/k-NN/issues/1938
 
       // Allocate docs in native memory
       MemorySegment docs = temp.allocate(JAVA_FLOAT, (long) size * dimension);
@@ -211,6 +189,111 @@ final class FaissLibraryNativeImpl implements FaissLibrary {
         docsOffset += perDocByteSize;
       }
 
+      return buildIndex(
+          temp,
+          description,
+          indexParams,
+          function,
+          VectorEncoding.FLOAT32,
+          size,
+          dimension,
+          docs,
+          ids);
+
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+  }
+
+  @Override
+  public FaissLibrary.Index createIndex(
+      String description,
+      String indexParams,
+      VectorSimilarityFunction function,
+      ByteVectorValues byteVectorValues,
+      IntToIntFunction oldToNewDocId) {
+
+    try (Arena temp = Arena.ofConfined()) {
+      int size = byteVectorValues.size();
+      int dimension = byteVectorValues.dimension();
+
+      // Allocate docs and ids in native memory.
+      // Faiss C API accepts float* inputs; signed bytes [-128, 127] convert to float losslessly.
+      MemorySegment docs = temp.allocate(JAVA_FLOAT, (long) size * dimension);
+      long docsOffset = 0;
+      long perDocByteSize = dimension * JAVA_FLOAT.byteSize();
+
+      MemorySegment ids = temp.allocate(JAVA_LONG, size);
+      int idsIndex = 0;
+
+      float[] floatBuffer = new float[dimension];
+      KnnVectorValues.DocIndexIterator iterator = byteVectorValues.iterator();
+      for (int i = iterator.nextDoc(); i != NO_MORE_DOCS; i = iterator.nextDoc()) {
+        int id = oldToNewDocId.apply(i);
+        ids.setAtIndex(JAVA_LONG, idsIndex, id);
+        idsIndex++;
+
+        byte[] vector = byteVectorValues.vectorValue(iterator.index());
+        for (int j = 0; j < dimension; j++) {
+          floatBuffer[j] = vector[j];
+        }
+        MemorySegment.copy(floatBuffer, 0, docs, JAVA_FLOAT, docsOffset, dimension);
+        docsOffset += perDocByteSize;
+      }
+
+      return buildIndex(
+          temp,
+          description,
+          indexParams,
+          function,
+          VectorEncoding.BYTE,
+          size,
+          dimension,
+          docs,
+          ids);
+
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+  }
+
+  private FaissLibrary.Index buildIndex(
+      Arena temp,
+      String description,
+      String indexParams,
+      VectorSimilarityFunction function,
+      VectorEncoding encoding,
+      int size,
+      int dimension,
+      MemorySegment docs,
+      MemorySegment ids) {
+
+    int metric = functionToMetric(function);
+
+    // Create an index
+    MemorySegment pointer = temp.allocate(ADDRESS);
+    handleException(
+        wrapper.faiss_index_factory(pointer, dimension, temp.allocateFrom(description), metric));
+
+    MemorySegment indexPointer = pointer.get(ADDRESS, 0);
+
+    // Set index params
+    handleException(wrapper.faiss_ParameterSpace_new(pointer));
+    MemorySegment parameterSpacePointer =
+        pointer
+            .get(ADDRESS, 0)
+            // Ensure timely cleanup
+            .reinterpret(temp, wrapper::faiss_ParameterSpace_free);
+
+    handleException(
+        wrapper.faiss_ParameterSpace_set_index_parameters(
+            parameterSpacePointer, indexPointer, temp.allocateFrom(indexParams)));
+
+    // TODO: Improve memory usage (with a tradeoff in performance) by batched indexing, see:
+    //  - https://github.com/opensearch-project/k-NN/issues/1506
+    //  - https://github.com/opensearch-project/k-NN/issues/1938
+
+    if (size > 0) {
       // NOTE: Faiss does not have a native cosine metric, so we L2-normalize vectors and use
       // METRIC_INNER_PRODUCT. This adds overhead at indexing and query time. If vectors are
       // already normalized and raw vector retrieval is not needed, DOT_PRODUCT is preferred.
@@ -226,12 +309,9 @@ final class FaissLibraryNativeImpl implements FaissLibrary {
 
       // Add docs to index
       handleException(wrapper.faiss_Index_add_with_ids(indexPointer, size, docs, ids));
-
-      return new Index(indexPointer, function);
-
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
     }
+
+    return new Index(indexPointer, function, encoding);
   }
 
   // See flags defined in c_api/index_io_c.h
@@ -239,7 +319,8 @@ final class FaissLibraryNativeImpl implements FaissLibrary {
   private static final int FAISS_IO_FLAG_READ_ONLY = 2;
 
   @Override
-  public FaissLibrary.Index readIndex(IndexInput input, VectorSimilarityFunction function) {
+  public FaissLibrary.Index readIndex(
+      IndexInput input, VectorSimilarityFunction function, VectorEncoding encoding) {
     try (Arena temp = Arena.ofConfined()) {
       MethodHandle readerHandle = READ_BYTES_HANDLE.bindTo(input);
       MemorySegment readerStub =
@@ -260,7 +341,7 @@ final class FaissLibraryNativeImpl implements FaissLibrary {
               customIOReaderPointer, FAISS_IO_FLAG_MMAP | FAISS_IO_FLAG_READ_ONLY, pointer));
       MemorySegment indexPointer = pointer.get(ADDRESS, 0);
 
-      return new Index(indexPointer, function);
+      return new Index(indexPointer, function, encoding);
     }
   }
 
@@ -277,7 +358,8 @@ final class FaissLibraryNativeImpl implements FaissLibrary {
     private final int dimension;
     private boolean closed;
 
-    private Index(MemorySegment indexPointer, VectorSimilarityFunction function) {
+    private Index(
+        MemorySegment indexPointer, VectorSimilarityFunction function, VectorEncoding encoding) {
       this.arena = Arena.ofShared();
       this.indexPointer =
           indexPointer
@@ -289,9 +371,23 @@ final class FaissLibraryNativeImpl implements FaissLibrary {
       // Scale Faiss distances to Lucene scores, see VectorSimilarityFunction.java
       this.scaler =
           switch (function) {
-            case DOT_PRODUCT, COSINE ->
-                // distance in Faiss === dotProduct in Lucene
-                // For COSINE, vectors are normalized so inner product == cosine similarity
+            case DOT_PRODUCT ->
+                switch (encoding) {
+                  case FLOAT32 ->
+                      // distance in Faiss === dotProduct in Lucene
+                      distance -> Math.max((1 + distance) / 2, 0);
+                  case BYTE -> {
+                    // See VectorUtil.dotProductScore(byte[], byte[])
+                    float denom = dimension * (float) (1 << 15);
+                    yield distance -> Math.max(0.5f + distance / denom, 0);
+                  }
+                  case FLOAT16 ->
+                      throw new UnsupportedOperationException(
+                          "Vector encoding not supported: " + encoding);
+                };
+
+            case COSINE ->
+                // distance in Faiss === inner product of L2-normalized vectors === cosine in Lucene
                 distance -> Math.max((1 + distance) / 2, 0);
 
             case EUCLIDEAN ->
@@ -312,6 +408,15 @@ final class FaissLibraryNativeImpl implements FaissLibrary {
         arena.close();
         closed = true;
       }
+    }
+
+    @Override
+    public void search(byte[] query, KnnCollector knnCollector, AcceptDocs acceptDocs) {
+      float[] floatQuery = new float[query.length];
+      for (int i = 0; i < query.length; i++) {
+        floatQuery[i] = query[i];
+      }
+      search(floatQuery, knnCollector, acceptDocs);
     }
 
     @Override
