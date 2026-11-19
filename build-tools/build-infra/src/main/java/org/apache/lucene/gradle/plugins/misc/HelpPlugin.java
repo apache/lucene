@@ -74,46 +74,41 @@ public class HelpPlugin extends LuceneGradlePlugin {
             task.setGroup("Help (developer guides and hints)");
             task.setDescription(helpEntry.description);
             var helpFilePath = rootProject.file(helpEntry.path).toPath();
-            task.doFirst(
-                _ -> {
-                  try {
-                    println("\n" + MarkdownToText.render(Files.readString(helpFilePath)));
-                  } catch (IOException e) {
-                    throw new UncheckedIOException(e);
-                  }
-                });
+            task.doFirst(_ -> {
+              try {
+                println("\n" + MarkdownToText.render(Files.readString(helpFilePath)));
+              } catch (IOException e) {
+                throw new UncheckedIOException(e);
+              }
+            });
           });
     }
 
     // Add a custom section to the default 'help' task.
     tasks
         .named("help")
-        .configure(
-            task -> {
-              Object version = rootProject.getVersion();
-              String gradleVersion = rootProject.getGradle().getGradleVersion();
+        .configure(task -> {
+          Object version = rootProject.getVersion();
+          String gradleVersion = rootProject.getGradle().getGradleVersion();
 
-              task.doFirst(
-                  _ -> {
-                    printf("");
-                    printf(
-                        "This is Lucene %s build file (gradle %s). See some guidelines in files",
-                        version, gradleVersion);
-                    printf("found under the help/* folder or type any of these:");
-                    printf("");
+          task.doFirst(_ -> {
+            printf("");
+            printf(
+                "This is Lucene %s build file (gradle %s). See some guidelines in files",
+                version, gradleVersion);
+            printf("found under the help/* folder or type any of these:");
+            printf("");
 
-                    helpFiles.forEach(
-                        helpFile ->
-                            printf(
-                                "  gradlew :help%-16s # %s", helpFile.name, helpFile.description));
+            helpFiles.forEach(helpFile ->
+                printf("  gradlew :help%-16s # %s", helpFile.name, helpFile.description));
 
-                    println("");
-                    println(
-                        "For the impatient, build the project with 'gradlew assemble', run all tests with 'gradlew check', check "
-                            + "your current build options with 'gradlew allOptions'.");
-                    throw new StopExecutionException();
-                  });
-            });
+            println("");
+            println(
+                "For the impatient, build the project with 'gradlew assemble', run all tests with 'gradlew check', check "
+                    + "your current build options with 'gradlew allOptions'.");
+            throw new StopExecutionException();
+          });
+        });
 
     // Make sure all help files exist.
     var helpDir = getProjectRootPath(rootProject).resolve("help");
@@ -121,40 +116,36 @@ public class HelpPlugin extends LuceneGradlePlugin {
         tasks.register(
             "checkAllHelpFilesExist",
             task -> {
-              task.doFirst(
-                  _ -> {
-                    helpFiles.forEach(
-                        helpFile -> {
-                          if (!rootProject.file(helpFile.path).exists()) {
-                            throw new GradleException("Help file missing: " + helpFile.path);
-                          }
-                        });
+              task.doFirst(_ -> {
+                helpFiles.forEach(helpFile -> {
+                  if (!rootProject.file(helpFile.path).exists()) {
+                    throw new GradleException("Help file missing: " + helpFile.path);
+                  }
+                });
 
-                    try {
-                      var existing =
-                          Files.list(helpDir)
-                              .map(p -> "help/" + p.getFileName().toString())
-                              .collect(Collectors.toSet());
-                      var expected =
-                          helpFiles.stream().map(v -> v.path).collect(Collectors.toSet());
-                      if (!existing.equals(expected)) {
-                        throw new GradleException(
-                            "help/*.md help files are not consistent with the descriptions"
-                                + " in the "
-                                + getClass().getName());
-                      }
-                    } catch (IOException e) {
-                      throw new UncheckedIOException(e);
-                    }
-                  });
+                try {
+                  var existing =
+                      Files.list(helpDir)
+                          .map(p -> "help/" + p.getFileName().toString())
+                          .collect(Collectors.toSet());
+                  var expected = helpFiles.stream().map(v -> v.path).collect(Collectors.toSet());
+                  if (!existing.equals(expected)) {
+                    throw new GradleException(
+                        "help/*.md help files are not consistent with the descriptions"
+                            + " in the "
+                            + getClass().getName());
+                  }
+                } catch (IOException e) {
+                  throw new UncheckedIOException(e);
+                }
+              });
             });
 
     tasks
         .named("check")
-        .configure(
-            task -> {
-              task.dependsOn(allHelpFilesExist);
-            });
+        .configure(task -> {
+          task.dependsOn(allHelpFilesExist);
+        });
   }
 
   @SuppressForbidden(reason = "sysout is ok here.")

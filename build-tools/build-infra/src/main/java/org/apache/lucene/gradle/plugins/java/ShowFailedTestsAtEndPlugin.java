@@ -71,102 +71,101 @@ public class ShowFailedTestsAtEndPlugin extends LuceneGradlePlugin {
     project
         .getTasks()
         .withType(Test.class)
-        .configureEach(
-            task -> {
-              @SuppressWarnings("unchecked")
-              Provider<FailingTestsReportingService> service =
-                  (Provider<FailingTestsReportingService>)
-                      project
-                          .getGradle()
-                          .getSharedServices()
-                          .getRegistrations()
-                          .getByName(SERVICE_NAME)
-                          .getService();
-              task.usesService(service);
+        .configureEach(task -> {
+          @SuppressWarnings("unchecked")
+          Provider<FailingTestsReportingService> service =
+              (Provider<FailingTestsReportingService>)
+                  project
+                      .getGradle()
+                      .getSharedServices()
+                      .getRegistrations()
+                      .getByName(SERVICE_NAME)
+                      .getService();
+          task.usesService(service);
 
-              String projectPath = project.getPath();
-              String reproLine = ErrorReportingTestListener.getReproLineOptions(task);
-              DirectoryProperty testOutputsDir =
-                  task.getExtensions()
-                      .getByType(TestsAndRandomizationPlugin.TestOutputsExtension.class)
-                      .getTestOutputsDir();
+          String projectPath = project.getPath();
+          String reproLine = ErrorReportingTestListener.getReproLineOptions(task);
+          DirectoryProperty testOutputsDir =
+              task.getExtensions()
+                  .getByType(TestsAndRandomizationPlugin.TestOutputsExtension.class)
+                  .getTestOutputsDir();
 
-              task.addTestListener(
-                  new TestListener() {
-                    @Override
-                    public void beforeTest(TestDescriptor testDescriptor) {}
+          task.addTestListener(
+              new TestListener() {
+                @Override
+                public void beforeTest(TestDescriptor testDescriptor) {}
 
-                    @Override
-                    public void afterTest(TestDescriptor desc, TestResult result) {
-                      if (result.getResultType() == TestResult.ResultType.FAILURE) {
-                        // check if it's a constructor or a before/after class hook that failed.
-                        String qTestName;
-                        if (desc.getName().equals("classMethod")) {
-                          qTestName = desc.getClassName();
-                        } else {
-                          // For junit5/jupiter, gradle support is very limited for now.
-                          // ideally, we should report the repro line using test metadata
-                          // (from within the test). Or use uniqueid on the context that failed
-                          // to reproduce it.
-                          //
-                          // for now, just trim the trailing ().
-                          String name = desc.getName().replaceAll("\\(\\).*$", "");
-                          qTestName = desc.getClassName() + "." + name;
-                        }
-
-                        var randomizationParameters = "";
-                        var p = Pattern.compile(".+ (?<params>[{].*[}])$");
-                        var matcher = p.matcher(qTestName);
-                        if (matcher.matches()) {
-                          randomizationParameters = matcher.group("params");
-                          qTestName = qTestName.replace(randomizationParameters, "").trim();
-                        }
-
-                        service
-                            .get()
-                            .addFailedTest(
-                                new Entry(
-                                    qTestName,
-                                    randomizationParameters,
-                                    projectPath,
-                                    "gradlew "
-                                        + (projectPath + ":test")
-                                        + (" --tests \"" + qTestName + "\" ")
-                                        + reproLine,
-                                    testOutputsDir
-                                        .file(
-                                            ErrorReportingTestListener.getOutputLogName(
-                                                desc.getParent()))
-                                        .get()
-                                        .getAsFile()));
-                      }
+                @Override
+                public void afterTest(TestDescriptor desc, TestResult result) {
+                  if (result.getResultType() == TestResult.ResultType.FAILURE) {
+                    // check if it's a constructor or a before/after class hook that failed.
+                    String qTestName;
+                    if (desc.getName().equals("classMethod")) {
+                      qTestName = desc.getClassName();
+                    } else {
+                      // For junit5/jupiter, gradle support is very limited for now.
+                      // ideally, we should report the repro line using test metadata
+                      // (from within the test). Or use uniqueid on the context that failed
+                      // to reproduce it.
+                      //
+                      // for now, just trim the trailing ().
+                      String name = desc.getName().replaceAll("\\(\\).*$", "");
+                      qTestName = desc.getClassName() + "." + name;
                     }
 
-                    @Override
-                    public void beforeSuite(TestDescriptor suite) {}
-
-                    @Override
-                    public void afterSuite(TestDescriptor desc, TestResult result) {
-                      if (result.getExceptions() != null && !result.getExceptions().isEmpty()) {
-                        service
-                            .get()
-                            .addFailedTest(
-                                new Entry(
-                                    desc.getName(),
-                                    null,
-                                    projectPath,
-                                    "gradlew "
-                                        + (projectPath + ":test")
-                                        + (" --tests \"" + desc.getName() + "\" ")
-                                        + reproLine,
-                                    testOutputsDir
-                                        .file(ErrorReportingTestListener.getOutputLogName(desc))
-                                        .get()
-                                        .getAsFile()));
-                      }
+                    var randomizationParameters = "";
+                    var p = Pattern.compile(".+ (?<params>[{].*[}])$");
+                    var matcher = p.matcher(qTestName);
+                    if (matcher.matches()) {
+                      randomizationParameters = matcher.group("params");
+                      qTestName = qTestName.replace(randomizationParameters, "").trim();
                     }
-                  });
-            });
+
+                    service
+                        .get()
+                        .addFailedTest(
+                            new Entry(
+                                qTestName,
+                                randomizationParameters,
+                                projectPath,
+                                "gradlew "
+                                    + (projectPath + ":test")
+                                    + (" --tests \"" + qTestName + "\" ")
+                                    + reproLine,
+                                testOutputsDir
+                                    .file(
+                                        ErrorReportingTestListener.getOutputLogName(
+                                            desc.getParent()))
+                                    .get()
+                                    .getAsFile()));
+                  }
+                }
+
+                @Override
+                public void beforeSuite(TestDescriptor suite) {}
+
+                @Override
+                public void afterSuite(TestDescriptor desc, TestResult result) {
+                  if (result.getExceptions() != null && !result.getExceptions().isEmpty()) {
+                    service
+                        .get()
+                        .addFailedTest(
+                            new Entry(
+                                desc.getName(),
+                                null,
+                                projectPath,
+                                "gradlew "
+                                    + (projectPath + ":test")
+                                    + (" --tests \"" + desc.getName() + "\" ")
+                                    + reproLine,
+                                testOutputsDir
+                                    .file(ErrorReportingTestListener.getOutputLogName(desc))
+                                    .get()
+                                    .getAsFile()));
+                  }
+                }
+              });
+        });
   }
 
   /** Build service that keeps track of test and suite times. */
@@ -190,19 +189,17 @@ public class ShowFailedTestsAtEndPlugin extends LuceneGradlePlugin {
         var formatted =
             failedTests.stream()
                 .sorted((a, b) -> b.projectPath.compareTo(a.projectPath))
-                .map(
-                    e ->
-                        String.format(
-                            Locale.ROOT,
-                            "  - %s (%s)%s\n    Test output: %s\n    Reproduce with: %s\n",
-                            e.name,
-                            e.projectPath,
-                            e.randomizationParameters != null
-                                    && !e.randomizationParameters.isBlank()
-                                ? "\n    Context parameters: " + e.randomizationParameters
-                                : "",
-                            e.testOutput,
-                            e.reproLine))
+                .map(e ->
+                    String.format(
+                        Locale.ROOT,
+                        "  - %s (%s)%s\n    Test output: %s\n    Reproduce with: %s\n",
+                        e.name,
+                        e.projectPath,
+                        e.randomizationParameters != null && !e.randomizationParameters.isBlank()
+                            ? "\n    Context parameters: " + e.randomizationParameters
+                            : "",
+                        e.testOutput,
+                        e.reproLine))
                 .limit(limit)
                 .collect(Collectors.joining("\n"));
 

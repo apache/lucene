@@ -658,14 +658,13 @@ public final class CheckIndex implements Closeable {
     // Sort descending by generation so that we always attempt to read the last commit first.  This
     // way if an index has a broken last commit AND a broken old commit, we report the last commit
     // error first:
-    allSegmentsFiles.sort(
-        (a, b) -> {
-          long genA = SegmentInfos.generationFromSegmentsFileName(a);
-          long genB = SegmentInfos.generationFromSegmentsFileName(b);
+    allSegmentsFiles.sort((a, b) -> {
+      long genA = SegmentInfos.generationFromSegmentsFileName(a);
+      long genB = SegmentInfos.generationFromSegmentsFileName(b);
 
-          // reversed natural sort (largest generation first):
-          return -Long.compare(genA, genB);
-        });
+      // reversed natural sort (largest generation first):
+      return Long.compare(genB, genA);
+    });
 
     for (String fileName : allSegmentsFiles) {
 
@@ -855,18 +854,17 @@ public final class CheckIndex implements Closeable {
 
       // sort segmentCommitInfos by segment size, as smaller segment tends to finish faster, and
       // hence its output can be printed out faster
-      segmentCommitInfos.sort(
-          (info1, info2) -> {
-            try {
-              return Long.compare(info1.sizeInBytes(), info2.sizeInBytes());
-            } catch (IOException e) {
-              msg(
-                  infoStream,
-                  "ERROR: IOException occurred when comparing SegmentCommitInfo file sizes");
-              if (infoStream != null) e.printStackTrace(infoStream);
-              return 0;
-            }
-          });
+      segmentCommitInfos.sort((info1, info2) -> {
+        try {
+          return Long.compare(info1.sizeInBytes(), info2.sizeInBytes());
+        } catch (IOException e) {
+          msg(
+              infoStream,
+              "ERROR: IOException occurred when comparing SegmentCommitInfo file sizes");
+          if (infoStream != null) e.printStackTrace(infoStream);
+          return 0;
+        }
+      });
 
       // start larger segments earlier
       for (int i = numSegments - 1; i >= 0; i--) {

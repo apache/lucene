@@ -692,17 +692,16 @@ public class FreeTextSuggester extends Lookup {
         backoff *= ALPHA;
       }
 
-      results.sort(
-          (a, b) -> {
-            if (a.value > b.value) {
-              return -1;
-            } else if (a.value < b.value) {
-              return 1;
-            } else {
-              // Tie break by UTF16 sort order:
-              return ((String) a.key).compareTo((String) b.key);
-            }
-          });
+      results.sort((a, b) -> {
+        if (a.value > b.value) {
+          return -1;
+        } else if (a.value < b.value) {
+          return 1;
+        } else {
+          // Tie break by UTF16 sort order:
+          return ((String) a.key).compareTo((String) b.key);
+        }
+      });
 
       if (results.size() > num) {
         results.subList(num, results.size()).clear();

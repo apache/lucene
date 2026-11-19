@@ -200,17 +200,23 @@ class QueryAnalyzer {
       // Under negation only handleNegatedQuery is used: a handler's positive tree may select more
       // documents than the query matches, so negating it would be unsound
       clauses.add(
-          new Leaf(
-              w -> {
-                QueryTree q = handleCustomQuery(query, w, isNegated);
-                if (q == null) {
-                  return QueryTree.anyTerm(isNegated ? "NOT " + query : query.toString());
-                }
-                return q;
-              }));
+          new Leaf(w -> {
+            QueryTree q = handleCustomQuery(query, w, isNegated);
+            if (q == null) {
+              return QueryTree.anyTerm(isNegated ? "NOT " + query : query.toString());
+            }
+            return q;
+          }));
     }
 
-    /** Whether this combines its clauses with AND; a single clause counts as either */
+    /**
+     * Whether this combines its clauses with AND; a single clause counts as either
+     *
+     * <p>BooleanQuery#visit always adds a MUST group, which combines with OR under negation. For
+     * {@code (a OR b)} that group holds a single clause, the SHOULD group, however many SHOULD
+     * clauses sit inside it. The count of one tells merging it can look through the wrapper, so
+     * {@code *:* -(a OR (b OR c))} gives one negative disjunct {@code {a, b, c}}.
+     */
     private boolean isConjunctive() {
       return !buildsDisjunction || clauses.size() + negatedTerms.size() == 1;
     }

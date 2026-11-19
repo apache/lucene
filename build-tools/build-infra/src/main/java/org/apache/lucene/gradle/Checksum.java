@@ -115,59 +115,58 @@ public class Checksum extends DefaultTask {
 
     inputChanges
         .getFileChanges(getFiles())
-        .forEach(
-            fileChange -> {
-              if (fileChange.getFileType() == FileType.DIRECTORY) {
-                getProject()
-                    .getLogger()
-                    .warn("Checksums can't be applied to directories: " + fileChange.getFile());
-                return;
+        .forEach(fileChange -> {
+          if (fileChange.getFileType() == FileType.DIRECTORY) {
+            getProject()
+                .getLogger()
+                .warn("Checksums can't be applied to directories: " + fileChange.getFile());
+            return;
+          }
+
+          File input = fileChange.getFile();
+          switch (fileChange.getChangeType()) {
+            case REMOVED:
+              if (input.isFile()) {
+                getProject().delete(outputFileFor(input));
               }
+              break;
 
-              File input = fileChange.getFile();
-              switch (fileChange.getChangeType()) {
-                case REMOVED:
-                  if (input.isFile()) {
-                    getProject().delete(outputFileFor(input));
-                  }
-                  break;
+            case ADDED:
+            case MODIFIED:
+              input = fileChange.getFile();
+              if (input.isFile()) {
+                File checksumFile = outputFileFor(input);
 
-                case ADDED:
-                case MODIFIED:
-                  input = fileChange.getFile();
-                  if (input.isFile()) {
-                    File checksumFile = outputFileFor(input);
+                try {
+                  String checksum = algorithm.hashFunction.digestAsHex(input).trim();
 
-                    try {
-                      String checksum = algorithm.hashFunction.digestAsHex(input).trim();
+                  /*
+                   * https://man7.org/linux/man-pages/man1/sha1sum.1.html
+                   *
+                   * The default mode is to print a line with checksum, a space, a character
+                   * indicating input mode ('*' for binary, ' ' for text or where
+                   * binary is insignificant), and name for each FILE.
+                   */
+                  boolean binaryMode = true;
 
-                      /*
-                       * https://man7.org/linux/man-pages/man1/sha1sum.1.html
-                       *
-                       * The default mode is to print a line with checksum, a space, a character
-                       * indicating input mode ('*' for binary, ' ' for text or where
-                       * binary is insignificant), and name for each FILE.
-                       */
-                      boolean binaryMode = true;
-
-                      Files.writeString(
-                          checksumFile.toPath(),
-                          String.format(
-                              Locale.ROOT,
-                              "%s %s%s",
-                              checksum,
-                              binaryMode ? "*" : " ",
-                              input.getName()),
-                          StandardCharsets.UTF_8);
-                    } catch (IOException e) {
-                      throw new GradleException("Trouble creating checksum: " + e.getMessage(), e);
-                    }
-                  }
-                  break;
-                default:
-                  throw new RuntimeException();
+                  Files.writeString(
+                      checksumFile.toPath(),
+                      String.format(
+                          Locale.ROOT,
+                          "%s %s%s",
+                          checksum,
+                          binaryMode ? "*" : " ",
+                          input.getName()),
+                      StandardCharsets.UTF_8);
+                } catch (IOException e) {
+                  throw new GradleException("Trouble creating checksum: " + e.getMessage(), e);
+                }
               }
-            });
+              break;
+            default:
+              throw new RuntimeException();
+          }
+        });
   }
 
   private File outputFileFor(File inputFile) {
