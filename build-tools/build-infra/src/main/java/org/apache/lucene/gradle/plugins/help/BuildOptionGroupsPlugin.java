@@ -25,6 +25,7 @@ import org.apache.lucene.gradle.plugins.hacks.DumpGradleStateOnStalledBuildsPlug
 import org.apache.lucene.gradle.plugins.ide.EclipseSupportPlugin;
 import org.apache.lucene.gradle.plugins.java.ErrorPronePlugin;
 import org.apache.lucene.gradle.plugins.misc.MeasureTaskTimesPlugin;
+import org.apache.lucene.gradle.plugins.regenerate.RegenerateTasksSupportPlugin;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 
@@ -35,67 +36,64 @@ public class BuildOptionGroupsPlugin implements Plugin<Project> {
     project
         .getTasks()
         .withType(BuildOptionsTask.class)
-        .configureEach(
-            task -> {
-              task.optionGroups(
-                  optionGroups -> {
-                    optionGroups.group("Lucene version strings", "version\\.(.*)");
+        .configureEach(task -> {
+          task.optionGroups(optionGroups -> {
+            optionGroups.group("Lucene version strings", "version\\.(.*)");
 
-                    optionGroups.group(
-                        "IDE-tweaking options",
-                        explicitList(
-                            EclipseSupportPlugin.OPT_ECLIPSE_ERRORS,
-                            EclipseSupportPlugin.OPT_ECLIPSE_JAVA_VERSION));
+            optionGroups.group(
+                "IDE-tweaking options",
+                explicitList(
+                    EclipseSupportPlugin.OPT_ECLIPSE_ERRORS,
+                    EclipseSupportPlugin.OPT_ECLIPSE_JAVA_VERSION));
 
-                    optionGroups.group(
-                        "Optional testing and test resources",
-                        explicitList(
-                            "tests.hunspell.regressions",
-                            ErrorPronePlugin.OPT_VALIDATION_ERRORPRONE,
-                            "hunspell.corpora",
-                            "hunspell.dictionaries",
-                            "hunspell.repo.path",
-                            "tests.linedocsfile",
-                            "tests.LUCENE_VERSION",
-                            "tests.bwcdir"));
+            optionGroups.group(
+                "Optional testing and test resources",
+                explicitList(
+                    "tests.hunspell.regressions",
+                    ErrorPronePlugin.OPT_VALIDATION_ERRORPRONE,
+                    "hunspell.corpora",
+                    "hunspell.dictionaries",
+                    "hunspell.repo.path",
+                    "tests.linedocsfile",
+                    "tests.LUCENE_VERSION",
+                    "tests.bwcdir"));
 
-                    optionGroups.group("Test profiling", "tests\\.profile\\.(.*)");
+            optionGroups.group("Test profiling", "tests\\.profile\\.(.*)");
 
-                    optionGroups.group(
-                        "Test repetition control",
-                        explicitList("tests.iters", "tests.dups", "tests.failfast"));
+            optionGroups.group(
+                "Test repetition control",
+                explicitList("tests.iters", "tests.dups", "tests.failfast"));
 
-                    optionGroups.group(
-                        "Test randomization and all test-related options", "tests\\.(.*)");
+            optionGroups.group("Test randomization and all test-related options", "tests\\.(.*)");
 
-                    optionGroups.group(
-                        "Local tool paths",
-                        "(lucene\\.tool\\.(.*))|" + explicitList("runtime.java.home"));
+            optionGroups.group(
+                "Local tool paths", "(lucene\\.tool\\.(.*))|" + explicitList("runtime.java.home"));
 
-                    optionGroups.group(
-                        "Options configuring the :lucene:benchmark:run task",
-                        explicitList("maxHeapSize", "standardOutput", "taskAlg"));
+            optionGroups.group(
+                "Options configuring the :lucene:benchmark:run task",
+                explicitList("maxHeapSize", "standardOutput", "taskAlg"));
 
-                    optionGroups.group(
-                        "Options useful for release managers",
-                        explicitList(DocumentationConfigPlugin.OPT_JAVADOC_URL, "sign", "useGpg"));
+            optionGroups.group(
+                "Options useful for release managers",
+                explicitList(DocumentationConfigPlugin.OPT_JAVADOC_URL, "sign", "useGpg"));
 
-                    optionGroups.group(
-                        "Build control and information",
-                        explicitList(
-                            "lucene.spotlessGradleScripts",
-                            "lucene.gjf.batchSize",
-                            MeasureTaskTimesPlugin.OPT_TASK_TIMES,
-                            MeasureTaskTimesPlugin.OPT_TASK_TIMES_LIMIT,
-                            MeasureTaskTimesPlugin.OPT_TASK_TIMES_AGGREGATE,
-                            DumpGradleStateOnStalledBuildsPlugin.OPT_TRACK_GRADLE_STATE,
-                            "javac.failOnWarnings",
-                            "tests.slowestSuites",
-                            "tests.slowestSuites.minTime",
-                            "tests.slowestTests",
-                            "tests.slowestTests.minTime"));
-                  });
-            });
+            optionGroups.group(
+                "Build control and information",
+                explicitList(
+                    "lucene.spotlessGradleScripts",
+                    "lucene.gjf.batchSize",
+                    RegenerateTasksSupportPlugin.OPT_REGENERATE_FORCE,
+                    MeasureTaskTimesPlugin.OPT_TASK_TIMES,
+                    MeasureTaskTimesPlugin.OPT_TASK_TIMES_LIMIT,
+                    MeasureTaskTimesPlugin.OPT_TASK_TIMES_AGGREGATE,
+                    DumpGradleStateOnStalledBuildsPlugin.OPT_TRACK_GRADLE_STATE,
+                    "javac.failOnWarnings",
+                    "tests.slowestSuites",
+                    "tests.slowestSuites.minTime",
+                    "tests.slowestTests",
+                    "tests.slowestTests.minTime"));
+          });
+        });
   }
 
   private static String explicitList(String... explicitOptions) {

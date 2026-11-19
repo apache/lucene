@@ -191,6 +191,26 @@ public class TestUnifiedHighlighter extends UnifiedHighlighterTestBase {
     ir.close();
   }
 
+  public void testWithFlagsOverridesBooleanOptions() {
+    Set<HighlightFlag> flags = EnumSet.of(HighlightFlag.PHRASES);
+    UnifiedHighlighter highlighter =
+        UnifiedHighlighter.builderWithoutSearcher(indexAnalyzer)
+            .withHandleMultiTermQuery(true)
+            .withWeightMatches(true)
+            .withFlags(flags)
+            .build();
+    assertEquals(flags, highlighter.getFlags("body"));
+  }
+
+  public void testWithFlagsDropsInconsistentWeightMatches() {
+    // WEIGHT_MATCHES requires MULTI_TERM_QUERY, PHRASES and PASSAGE_RELEVANCY_OVER_SPEED
+    UnifiedHighlighter highlighter =
+        UnifiedHighlighter.builderWithoutSearcher(indexAnalyzer)
+            .withFlags(EnumSet.of(HighlightFlag.PHRASES, HighlightFlag.WEIGHT_MATCHES))
+            .build();
+    assertEquals(EnumSet.of(HighlightFlag.PHRASES), highlighter.getFlags("body"));
+  }
+
   public void testFormatWithMatchExceedingContentLength2() throws Exception {
 
     String bodyText = "123 TEST 01234 TEST";

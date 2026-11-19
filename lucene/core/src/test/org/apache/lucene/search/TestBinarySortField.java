@@ -615,7 +615,7 @@ public class TestBinarySortField extends LuceneTestCase {
         IndexSearcher searcher = newSearcher(reader);
         TopFieldDocs td =
             searcher.search(
-                new MatchAllDocsQuery(),
+                MatchAllDocsQuery.INSTANCE,
                 reader.maxDoc(),
                 new Sort(new BinarySortField("dv", reverse, missingValue)));
         BytesRef previous = null;

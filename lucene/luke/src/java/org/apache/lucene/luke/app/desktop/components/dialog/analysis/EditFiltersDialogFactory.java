@@ -141,32 +141,30 @@ public final class EditFiltersDialogFactory implements DialogOpener.DialogFactor
     JPanel footer = new JPanel(new FlowLayout(FlowLayout.TRAILING, 10, 5));
     footer.setOpaque(false);
     JButton okBtn = new JButton(MessageUtils.getLocalizedMessage("button.ok"));
-    okBtn.addActionListener(
-        _ -> {
-          List<Integer> deletedIndexes = new ArrayList<>();
-          for (int i = 0; i < filtersTable.getRowCount(); i++) {
-            boolean deleted =
-                (boolean) filtersTable.getValueAt(i, FiltersTableModel.Column.DELETE.getIndex());
-            if (deleted) {
-              deletedIndexes.add(i);
+    okBtn.addActionListener(_ -> {
+      List<Integer> deletedIndexes = new ArrayList<>();
+      for (int i = 0; i < filtersTable.getRowCount(); i++) {
+        boolean deleted =
+            (boolean) filtersTable.getValueAt(i, FiltersTableModel.Column.DELETE.getIndex());
+        if (deleted) {
+          deletedIndexes.add(i);
+        }
+      }
+      operatorRegistry
+          .get(CustomAnalyzerPanelOperator.class)
+          .ifPresent(operator -> {
+            switch (mode) {
+              case CHARFILTER:
+                operator.updateCharFilters(deletedIndexes);
+                break;
+              case TOKENFILTER:
+                operator.updateTokenFilters(deletedIndexes);
+                break;
             }
-          }
-          operatorRegistry
-              .get(CustomAnalyzerPanelOperator.class)
-              .ifPresent(
-                  operator -> {
-                    switch (mode) {
-                      case CHARFILTER:
-                        operator.updateCharFilters(deletedIndexes);
-                        break;
-                      case TOKENFILTER:
-                        operator.updateTokenFilters(deletedIndexes);
-                        break;
-                    }
-                  });
-          callback.call();
-          dialog.dispose();
-        });
+          });
+      callback.call();
+      dialog.dispose();
+    });
     footer.add(okBtn);
     JButton cancelBtn = new JButton(MessageUtils.getLocalizedMessage("button.cancel"));
     cancelBtn.addActionListener(_ -> dialog.dispose());

@@ -29,7 +29,7 @@ final class ArrayIntroSorter<T> extends IntroSorter {
   private final Comparator<? super T> comparator;
   private T pivot;
 
-  /** Create a new {@link ArrayInPlaceMergeSorter}. */
+  /** Create a new {@link ArrayIntroSorter}. */
   public ArrayIntroSorter(T[] arr, Comparator<? super T> comparator) {
     this.arr = arr;
     this.comparator = comparator;

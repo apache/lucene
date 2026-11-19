@@ -96,7 +96,7 @@ abstract class TaxonomyFacets extends Facets {
     this.config = config;
     this.fc = fc;
     parents = taxoReader.getParallelTaxonomyArrays().parents();
-    valueComparator = Comparator.comparingInt((x) -> (int) x);
+    valueComparator = Comparator.comparingInt(x -> (int) x);
   }
 
   /** Return true if a sparse hash table should be used for counting, instead of a dense int[]. */
@@ -578,16 +578,15 @@ abstract class TaxonomyFacets extends Facets {
     }
 
     // Sort by highest value, tie break by dim:
-    results.sort(
-        (a, b) -> {
-          if (a.value.doubleValue() > b.value.doubleValue()) {
-            return -1;
-          } else if (b.value.doubleValue() > a.value.doubleValue()) {
-            return 1;
-          } else {
-            return a.dim.compareTo(b.dim);
-          }
-        });
+    results.sort((a, b) -> {
+      if (a.value.doubleValue() > b.value.doubleValue()) {
+        return -1;
+      } else if (b.value.doubleValue() > a.value.doubleValue()) {
+        return 1;
+      } else {
+        return a.dim.compareTo(b.dim);
+      }
+    });
     return results;
   }
 

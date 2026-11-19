@@ -2341,7 +2341,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
         newIndexWriterConfig(analyzer).setCommitOnClose(false).setMaxBufferedDocs(3);
     MergePolicy mp = iwc.getMergePolicy();
     iwc.setMergePolicy(
-        new SoftDeletesRetentionMergePolicy("soft_delete", MatchAllDocsQuery::new, mp));
+        new SoftDeletesRetentionMergePolicy("soft_delete", () -> MatchAllDocsQuery.INSTANCE, mp));
     IndexWriter w = RandomIndexWriter.mockIndexWriter(dir, iwc, random());
     Document newdoc = new Document();
     newdoc.add(newTextField("crash", "do it on token 4", Field.Store.NO));

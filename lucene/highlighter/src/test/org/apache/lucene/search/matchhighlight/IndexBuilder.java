@@ -66,10 +66,9 @@ class IndexBuilder {
   }
 
   public IndexBuilder doc(String field, String... values) {
-    return doc(
-        fields -> {
-          fields.add(field, values);
-        });
+    return doc(fields -> {
+      fields.add(field, values);
+    });
   }
 
   public IndexBuilder doc(Consumer<DocFields> fields) {

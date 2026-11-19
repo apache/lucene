@@ -173,6 +173,12 @@ final class FaissKnnVectorsReader extends KnnVectorsReader {
   }
 
   @Override
+  public FloatVectorValues getFloatVectorValues(String field, DataAccessHint access)
+      throws IOException {
+    return rawVectorsReader.getFloatVectorValues(field, access);
+  }
+
+  @Override
   public ByteVectorValues getByteVectorValues(String field) {
     // TODO: Support using SQ8 quantization, see:
     //  - https://github.com/opensearch-project/k-NN/pull/2425

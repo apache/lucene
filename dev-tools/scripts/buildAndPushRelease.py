@@ -15,7 +15,7 @@
 # limitations under the License.
 
 import argparse
-import datetime
+import datetime as dt
 import getpass
 import os
 import re
@@ -41,8 +41,8 @@ def log(msg: str) -> None:
 
 
 def run(command: str) -> None:
-  log("\n\n%s: RUN: %s\n" % (datetime.datetime.now(), command))
-  if os.system("%s >> %s 2>&1" % (command, LOG)):  # ty:ignore[deprecated]
+  log("\n\n%s: RUN: %s\n" % (dt.datetime.now(), command))
+  if os.system("%s >> %s 2>&1" % (command, LOG)):
     msg = "    FAILED: %s [see log %s]" % (command, LOG)
     print(msg)
     raise RuntimeError(msg)
@@ -300,7 +300,7 @@ def parse_config() -> argparse.Namespace:
   cwd = os.getcwd()
   os.chdir(config.root)
   config.root = os.getcwd()  # Absolutize root dir
-  if os.system("git rev-parse") or len([d for d in ("dev-tools", "lucene") if os.path.isdir(d)]) != 2:  # ty:ignore[deprecated]
+  if os.system("git rev-parse") or len([d for d in ("dev-tools", "lucene") if os.path.isdir(d)]) != 2:
     parser.error('Root path "%s" is not a valid lucene checkout' % config.root)
   os.chdir(cwd)
   global LOG
@@ -315,7 +315,7 @@ def parse_config() -> argparse.Namespace:
 
 
 def check_cmdline_tools() -> None:  # Fail fast if there are cmdline tool problems
-  if os.system("git --version >/dev/null 2>/dev/null"):  # ty:ignore[deprecated]
+  if os.system("git --version >/dev/null 2>/dev/null"):
     raise RuntimeError('"git --version" returned a non-zero exit code.')
 
 
