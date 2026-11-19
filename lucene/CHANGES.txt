@@ -368,6 +368,9 @@ Optimizations
   IOContext, allowing MMapDirectory to open them with confined areas and avoiding JVM-wide
   handshakes when the files are closed. (Alan Woodward)
 
+* GITHUB#17045: DocIdSetBuilder sorts doc IDs that are clustered in a small range of the doc ID
+  space with fewer radix sort passes. (Asharam)
+
 Bug Fixes
 ---------------------
 * GITHUB#16983: UnifiedHighlighter.Builder#withFlags is no longer ignored when building the
