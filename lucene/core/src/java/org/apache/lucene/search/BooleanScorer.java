@@ -18,7 +18,6 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Collection;
-import java.util.Objects;
 import org.apache.lucene.internal.hppc.LongArrayList;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
@@ -78,14 +77,14 @@ final class BooleanScorer extends BulkScorer {
     this.minShouldMatch = minShouldMatch;
     this.needsScores = needsScores;
     LongArrayList costs = new LongArrayList(scorers.size());
-    head.addAll(
-        scorers.stream()
-            .map(scorer -> {
-              DisiWrapper w = new DisiWrapper(scorer, false);
-              costs.add(w.cost);
-              return tail.insertWithOverflow(w);
-            })
-            .filter(Objects::nonNull));
+    for (Scorer scorer : scorers) {
+      DisiWrapper w = new DisiWrapper(scorer, false);
+      costs.add(w.cost);
+      final DisiWrapper evicted = tail.insertWithOverflow(w);
+      if (evicted != null) {
+        head.add(evicted);
+      }
+    }
     this.cost = ScorerUtil.costWithMinShouldMatch(costs.stream(), costs.size(), minShouldMatch);
   }
 
