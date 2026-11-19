@@ -395,9 +395,7 @@ Optimizations
 
 * GITHUB#16757: Speed up building cached bit sets in LRUQueryCache. (Ke Wei)
 
-* GITHUB#16306: UsageTrackingQueryCachingPolicy splits its usage history into small per-lock stripes
-  and reads frequencies without locking, which removes contention between concurrent searches and
-  makes onUse and shouldCache faster single-threaded too. (prudhvigodithi)
+* GITHUB#16306: Reduce lock contention in UsageTrackingQueryCachingPolicy. (prudhvigodithi)
 
 Bug Fixes
 ---------------------

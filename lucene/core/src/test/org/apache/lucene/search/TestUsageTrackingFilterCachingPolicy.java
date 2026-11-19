@@ -164,21 +164,20 @@ public class TestUsageTrackingFilterCachingPolicy extends LuceneTestCase {
     for (int t = 0; t < numThreads; ++t) {
       final int seed = random().nextInt();
       threads[t] =
-          new Thread(
-              () -> {
-                java.util.Random r = new java.util.Random(seed);
-                try {
-                  start.await();
-                } catch (InterruptedException e) {
-                  throw new RuntimeException(e);
-                }
-                for (int i = 0; i < 10_000; ++i) {
-                  DummyQuery q = new DummyQuery(r.nextInt(64));
-                  policy.onUse(q);
-                  int freq = policy.frequency(q);
-                  assertTrue(freq >= 0 && freq <= 256);
-                }
-              });
+          new Thread(() -> {
+            java.util.Random r = new java.util.Random(seed);
+            try {
+              start.await();
+            } catch (InterruptedException e) {
+              throw new RuntimeException(e);
+            }
+            for (int i = 0; i < 10_000; ++i) {
+              DummyQuery q = new DummyQuery(r.nextInt(64));
+              policy.onUse(q);
+              int freq = policy.frequency(q);
+              assertTrue(freq >= 0 && freq <= 256);
+            }
+          });
       threads[t].start();
     }
     start.countDown();
