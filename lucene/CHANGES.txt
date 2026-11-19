@@ -19,6 +19,10 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#16564: Speed up automaton intersection for PrefixQuery, TermRangeQuery and custom binary
+  automata by directly enumerating terms below accepting states with full-alphabet self-loops.
+  (Zhou Hui)
+
 * GITHUB#16806: HNSW searches track the visited nodes of a large graph in a hash set instead of a
   bit set sized to the graph, which makes merges into large segments faster. (Ankur Goel)
 
@@ -373,6 +377,12 @@ Optimizations
   IOContext, allowing MMapDirectory to open them with confined areas and avoiding JVM-wide
   handshakes when the files are closed. (Alan Woodward)
 
+* GITHUB#17021: Skip computing the cardinality of a window in DenseConjunctionBulkScorer when
+  no clause is left to apply. (Asharam)
+
+* GITHUB#14397: Reuse the LZ4 preset dictionary when reading stored fields or term vectors
+  from the same compressed chunk. (Ke Wei)
+
 Bug Fixes
 ---------------------
 * GITHUB#17020: Reduce CachingTokenFilter memory use by not copying stale term bytes in
@@ -463,6 +473,8 @@ Bug Fixes
   (Alan Woodward)
 
 * GITHUB#16971: Fix double DocValuesStats extrema initialization. (Simranjeet Singh)
+
+* GITHUB#17030: Fix precision loss when reducing join scores. (Ke Wei)
 
 Changes in Runtime Behavior
 ---------------------
@@ -815,6 +827,8 @@ Optimizations
 * GITHUB#16089: Upgrade DocIdSetBuilder to use FixedBitSet eagerly once exceeding the threshold (Ke Wei)
 
 * GITHUB#16119: Optimize byte array writes in OutputStreamIndexOutput to remove unnecessary overhead. (neoremind)
+
+* GITHUB#16757: Speed up building cached bit sets in LRUQueryCache. (Ke Wei)
 
 Bug Fixes
 ---------------------
