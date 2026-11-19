@@ -193,13 +193,12 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
       long repairStartNs = System.nanoTime();
       repairedNodes = repairDisconnectedNodes();
       repairNs = System.nanoTime() - repairStartNs;
-      tasks.add(
-          () -> {
-            long rebalanceStartNs = System.nanoTime();
-            prunedGraph.builder().rebalanceGraph();
-            rebalanceNs.set(System.nanoTime() - rebalanceStartNs);
-            return null;
-          });
+      tasks.add(() -> {
+        long rebalanceStartNs = System.nanoTime();
+        prunedGraph.builder().rebalanceGraph();
+        rebalanceNs.set(System.nanoTime() - rebalanceStartNs);
+        return null;
+      });
     }
     int firstPlan = tasks.size();
     for (int g = 0; g < graphs.size(); g++) {
@@ -245,11 +244,10 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
     List<Callable<Void>> futures = new ArrayList<>();
     for (int i = 0; i < workers.length; i++) {
       int finalI = i;
-      futures.add(
-          () -> {
-            workers[finalI].run(maxOrd);
-            return null;
-          });
+      futures.add(() -> {
+        workers[finalI].run(maxOrd);
+        return null;
+      });
     }
     taskExecutor.invokeAll(futures);
     if (infoStream.isEnabled(HNSW_COMPONENT)) {
@@ -376,17 +374,16 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
     AtomicInteger progress = new AtomicInteger(0);
     List<Callable<Void>> futures = new ArrayList<>();
     for (ConcurrentMergeWorker worker : workers) {
-      futures.add(
-          () -> {
-            long startNs = System.nanoTime();
-            for (int start = progress.getAndAdd(batchSize);
-                start < count;
-                start = progress.getAndAdd(batchSize)) {
-              task.run(worker, start, Math.min(count, start + batchSize));
-            }
-            cumulativeWorkTimeNs.addAndGet(System.nanoTime() - startNs);
-            return null;
-          });
+      futures.add(() -> {
+        long startNs = System.nanoTime();
+        for (int start = progress.getAndAdd(batchSize);
+            start < count;
+            start = progress.getAndAdd(batchSize)) {
+          task.run(worker, start, Math.min(count, start + batchSize));
+        }
+        cumulativeWorkTimeNs.addAndGet(System.nanoTime() - startNs);
+        return null;
+      });
     }
     taskExecutor.invokeAll(futures);
   }
@@ -419,18 +416,17 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
       List<Callable<Void>> tasks = new ArrayList<>(taskCount);
       for (int t = 0; t < taskCount; t++) {
         ConcurrentMergeWorker worker = workers[t];
-        tasks.add(
-            () -> {
-              int from;
-              while ((from = repairProgress.getAndAdd(REPAIR_BATCH_SIZE)) < total) {
-                int length = Math.min(REPAIR_BATCH_SIZE, total - from);
-                worker.fixDisconnectedNodes(
-                    new IntsRef(disconnectedNodes.ints, disconnectedNodes.offset + from, length),
-                    repairLevel,
-                    worker.scorer);
-              }
-              return null;
-            });
+        tasks.add(() -> {
+          int from;
+          while ((from = repairProgress.getAndAdd(REPAIR_BATCH_SIZE)) < total) {
+            int length = Math.min(REPAIR_BATCH_SIZE, total - from);
+            worker.fixDisconnectedNodes(
+                new IntsRef(disconnectedNodes.ints, disconnectedNodes.offset + from, length),
+                repairLevel,
+                worker.scorer);
+          }
+          return null;
+        });
       }
       // Finish every repair task at this level before repairing the next lower level, because
       // addConnections descends through the already-repaired upper levels.
@@ -523,7 +519,9 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
           hnsw,
           hnswLock,
           new MergeSearcher(
-              new NeighborQueue(beamWidth, true), hnswLock, new FixedBitSet(hnsw.maxNodeId() + 1)));
+              new NeighborQueue(beamWidth, true),
+              hnswLock,
+              HnswGraphSearcher.createVisitedSet(beamWidth, HnswGraphSearcher.getGraphSize(hnsw))));
       this.workProgress = workProgress;
       this.initializedNodes = initializedNodes;
     }
@@ -614,7 +612,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
     private int upto;
     private int size;
 
-    private MergeSearcher(NeighborQueue candidates, HnswLock hnswLock, BitSet visited) {
+    private MergeSearcher(NeighborQueue candidates, HnswLock hnswLock, VisitedSet visited) {
       super(candidates, visited);
       this.hnswLock = hnswLock;
     }

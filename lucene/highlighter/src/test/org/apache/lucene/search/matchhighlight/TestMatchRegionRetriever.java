@@ -450,11 +450,10 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
       String field2 = fieldPairs[1];
 
       new IndexBuilder(this::toField)
-          .doc(
-              fields -> {
-                fields.add(field1, "foo bar", "baz abc");
-                fields.add(field2, "foo baz", "loo bar");
-              })
+          .doc(fields -> {
+            fields.add(field1, "foo bar", "baz abc");
+            fields.add(field2, "foo baz", "loo bar");
+          })
           .build(
               analyzer,
               reader -> {
@@ -481,16 +480,14 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
     String field2 = FLD_TEXT_POS_OFFS2;
 
     new IndexBuilder(this::toField)
-        .doc(
-            fields -> {
-              fields.add(field1, "0100");
-              fields.add(field2, "loo bar");
-            })
-        .doc(
-            fields -> {
-              fields.add(field1, "0200");
-              fields.add(field2, "foo bar");
-            })
+        .doc(fields -> {
+          fields.add(field1, "0100");
+          fields.add(field2, "loo bar");
+        })
+        .doc(fields -> {
+          fields.add(field1, "0200");
+          fields.add(field2, "foo bar");
+        })
         .build(
             analyzer,
             reader -> {
@@ -664,7 +661,7 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
               OffsetsRetrievalStrategySupplier defaults =
                   MatchRegionRetriever.computeOffsetRetrievalStrategies(reader, analyzer);
               OffsetsRetrievalStrategySupplier customSuppliers =
-                  (fld) -> {
+                  fld -> {
                     if (fld.equals(field)) {
                       return new OffsetsFromValues(field, analyzer);
                     } else {
@@ -689,11 +686,10 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
     String field = FLD_TEXT_NOPOS;
 
     new IndexBuilder(this::toField)
-        .doc(
-            fields -> {
-              fields.add(FLD_TEXT_NOPOS, "foo bar");
-              fields.add(FLD_TEXT_POS, "bar bar");
-            })
+        .doc(fields -> {
+          fields.add(FLD_TEXT_NOPOS, "foo bar");
+          fields.add(FLD_TEXT_POS, "bar bar");
+        })
         .doc(FLD_TEXT_NOPOS, "foo bar", "baz bar")
         .build(
             analyzer,
@@ -731,12 +727,10 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
           Document document = leafReader.storedFields().document(leafDocId);
           formatter
               .apply(document, new TreeMap<>(fieldHighlights))
-              .forEach(
-                  (field, snippets) -> {
-                    sb.append(
-                        String.format(
-                            Locale.ROOT, "(%s: '%s')", field, String.join(" | ", snippets)));
-                  });
+              .forEach((field, snippets) -> {
+                sb.append(
+                    String.format(Locale.ROOT, "(%s: '%s')", field, String.join(" | ", snippets)));
+              });
 
           if (sb.length() > 0) {
             sb.insert(0, document.get(FLD_ID) + ": ");
