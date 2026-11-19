@@ -395,7 +395,8 @@ Optimizations
 
 * GITHUB#16757: Speed up building cached bit sets in LRUQueryCache. (Ke Wei)
 
-* GITHUB#16306: Reduce lock contention in UsageTrackingQueryCachingPolicy. (prudhvigodithi)
+* GITHUB#16306: Reduce lock contention in UsageTrackingQueryCachingPolicy and remove the now unused
+  internal FrequencyTrackingRingBuffer. (prudhvigodithi)
 
 Bug Fixes
 ---------------------
