@@ -7,7 +7,9 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
-(No changes)
+* GITHUB#16556, GITHUB#16640: Add single-query multi-doc bulk float scoring APIs
+  (dotProductBulk, cosineBulk, squareDistanceBulk) to VectorUtil and VectorUtilSupport,
+  accelerated with Panama Vector SIMD and native bindings. (Abhinav Chinnala)
 
 New Features
 ---------------------
