@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.sandbox.codecs.faiss;
 
+import static org.apache.lucene.index.VectorEncoding.BYTE;
 import static org.apache.lucene.index.VectorEncoding.FLOAT32;
 import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
 import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
@@ -26,11 +27,19 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.KnnByteVectorQuery;
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
@@ -45,7 +54,7 @@ import org.junit.Ignore;
 public class TestFaissKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
   private static final String FAISS_RUN_TESTS = "tests.faiss.run";
 
-  private static final VectorEncoding[] SUPPORTED_ENCODINGS = {FLOAT32};
+  private static final VectorEncoding[] SUPPORTED_ENCODINGS = {FLOAT32, BYTE};
   private static final VectorSimilarityFunction[] SUPPORTED_FUNCTIONS = {
     DOT_PRODUCT, EUCLIDEAN, COSINE
   };
@@ -96,33 +105,44 @@ public class TestFaissKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
     }
   }
 
+  public void testByteVectorSearch() throws IOException {
+    int dim = 16;
+    int numDocs = 100;
+    KnnVectorsFormat exactFormat = new FaissKnnVectorsFormat("IDMap,Flat", "");
+
+    for (VectorSimilarityFunction similarity : SUPPORTED_FUNCTIONS) {
+      byte[][] vectors = new byte[numDocs][];
+      IndexWriterConfig config =
+          newIndexWriterConfig().setCodec(TestUtil.alwaysKnnVectorsFormat(exactFormat));
+
+      try (Directory directory = newDirectory();
+          IndexWriter writer = new IndexWriter(directory, config)) {
+        for (int i = 0; i < numDocs; i++) {
+          vectors[i] = randomVector8(dim);
+          Document doc = new Document();
+          doc.add(new KnnByteVectorField("vector", vectors[i], similarity));
+          writer.addDocument(doc);
+        }
+        writer.forceMerge(1);
+
+        byte[] query = randomVector8(dim);
+        int k = 10;
+        try (IndexReader reader = DirectoryReader.open(writer)) {
+          IndexSearcher searcher = newSearcher(reader);
+          TopDocs results = searcher.search(new KnnByteVectorQuery("vector", query, k), k);
+          assertEquals(k, results.scoreDocs.length);
+          for (ScoreDoc scoreDoc : results.scoreDocs) {
+            float expectedScore = similarity.compare(vectors[scoreDoc.doc], query);
+            assertEquals(expectedScore, scoreDoc.score, 1e-5f);
+          }
+        }
+      }
+    }
+  }
+
   @Override
   @Ignore // does not honour visitedLimit
   public void testSearchWithVisitedLimit() {}
-
-  @Override
-  @Ignore // does not support byte vectors
-  public void testByteVectorScorerIteration() {}
-
-  @Override
-  @Ignore // does not support byte vectors
-  public void testMismatchedFields() {}
-
-  @Override
-  @Ignore // does not support byte vectors
-  public void testSortedIndexBytes() {}
-
-  @Override
-  @Ignore // does not support byte vectors
-  public void testRandomBytes() {}
-
-  @Override
-  @Ignore // does not support byte vectors
-  public void testEmptyByteVectorData() {}
-
-  @Override
-  @Ignore // does not support byte vectors
-  public void testMergingWithDifferentByteKnnFields() {}
 
   @Monster("Uses large amount of heap and RAM")
   public void testLargeVectorData() throws IOException {
