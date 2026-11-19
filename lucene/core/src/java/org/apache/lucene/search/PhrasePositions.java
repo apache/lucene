@@ -33,20 +33,6 @@ final class PhrasePositions {
   final Term[] terms; // for repetitions initialization
   int freq; // cached frequency for the current document
 
-  // Only tracked when offsets are being captured for match reporting (see
-  // SloppyPhraseMatcher#captureLeadMatch); left at their default elsewhere to avoid the cost of
-  // calling startOffset()/endOffset() during plain scoring, where they may not even be available.
-  //
-  // `startOffset`/`endOffset` always reflect the current `position`. `priorPosition`/
-  // `priorStartOffset`/`priorEndOffset` remember the previous values, from just before the most
-  // recent call to nextPosition(). They exist because SloppyPhraseMatcher#advanceRpts may need to
-  // forcibly advance a *different* repeating PhrasePositions than the one actively being driven,
-  // to resolve a position collision between the two. That forced advance overwrites the
-  // sibling's position/startOffset/endOffset even though its *previous* values are what was
-  // actually part of the match being reported; the prior* fields preserve those so they can
-  // still be recovered. `bumped`, maintained by the caller, marks whether this instance's
-  // current position/offsets came from such a forced advance (so the prior values, not the
-  // current ones, should be reported for the in-progress match).
   int startOffset = -1;
   int endOffset = -1;
   int priorPosition;
@@ -54,8 +40,6 @@ final class PhrasePositions {
   int priorEndOffset = -1;
   boolean bumped;
 
-  // true when SloppyPhraseMatcher will be reporting match offsets (i.e. captureLeadMatch); false
-  // during plain scoring, where startOffset()/endOffset() may not even be available on `postings`.
   private final boolean captureOffsets;
 
   PhrasePositions(PostingsEnum postings, int o, int ord, Term[] terms, boolean captureOffsets) {

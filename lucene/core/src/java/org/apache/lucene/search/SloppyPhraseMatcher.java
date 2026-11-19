@@ -208,11 +208,6 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
       return false;
     }
     if (captureLeadMatch) {
-      // Each PhrasePositions' bumped flag marks whether its current offsets were clobbered by a
-      // forced advance resolving a repeater collision (see advanceRpts) rather than reflecting a
-      // position it is actually contributing to a candidate match. That only matters for the
-      // match currently being assembled; now that any previous match has already been reported
-      // (via startOffset()/endOffset()), start the new one with a clean slate.
       for (PhrasePositions pp : phrasePositions) {
         pp.bumped = false;
       }
@@ -223,8 +218,7 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
     matchLength = end - pp.position;
     int next = pq.top().position;
     while (advancePP(pp)) {
-      pp.bumped = false; // this is a deliberate advance of the pp driving minimization, not a
-      // forced collision resolution; its new offsets are trustworthy.
+      pp.bumped = false;
       if (hasRpts && !advanceRpts(pp)) {
         break; // pps exhausted
       }
@@ -267,10 +261,6 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
     // However, the priority queue doesn't guarantee that the top postings is in fact the
     // earliest in the list, so we need to cycle through all terms to check.
     // this is slow, but Matches is slow anyway...
-    //
-    // See startOffset() for why non-lead PhrasePositions must consult `bumped`: a repeated query
-    // term's PhrasePositions can be forcibly advanced by advanceRpts() to resolve a position
-    // collision with a sibling repetition, even though it isn't the one driving minimization.
     int leadPosition = this.leadPosition;
     for (PhrasePositions pp : phrasePositions) {
       int p = pp.bumped ? pp.priorPosition : pp.position;
@@ -299,13 +289,6 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
     // However, the priority queue doesn't guarantee that the top postings is in fact the
     // earliest in the list, so we need to cycle through all terms to check
     // this is slow, but Matches is slow anyway...
-    //
-    // Non-lead PhrasePositions normally still sit at the offsets that were part of the match
-    // (they weren't advanced), so their current startOffset is reportable as-is. But a repeated
-    // query term's PhrasePositions can be forcibly advanced by advanceRpts() to resolve a
-    // position collision with a sibling repetition, even though it isn't the one driving
-    // minimization. When that happens (pp.bumped), its *prior* offset is the one actually part
-    // of this match, not its current (post-advance) one.
     int leadOffset = this.leadOffset;
     for (PhrasePositions pp : phrasePositions) {
       if (pp.ord != leadOrd) {
@@ -357,9 +340,6 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
       if (!advancePP(pp)) {
         return false; // exhausted
       }
-      // pp is being forced ahead to resolve a collision with its repeating sibling, not because
-      // it is itself contributing a new position to the match being assembled. Its *prior*
-      // offset -- not this new one -- is what's actually part of that match.
       pp.bumped = true;
       if (k != k0) { // careful: mark only those currently in the queue
         bits = FixedBitSet.ensureCapacity(bits, k);
