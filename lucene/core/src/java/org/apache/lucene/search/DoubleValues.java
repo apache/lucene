@@ -92,7 +92,13 @@ public abstract class DoubleValues {
 
       @Override
       public float getMaxScore(int upTo) throws IOException {
-        return in.getMaxScore(upTo);
+        float maxScore = in.getMaxScore(upTo);
+        // documents without a value get the missing value
+        float missingScore = (float) missingValue;
+        if (missingScore < missingValue) {
+          missingScore = Math.nextUp(missingScore);
+        }
+        return missingScore > maxScore ? missingScore : maxScore;
       }
     };
   }
