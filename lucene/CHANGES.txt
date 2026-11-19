@@ -19,6 +19,10 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#16564: Speed up automaton intersection for PrefixQuery, TermRangeQuery and custom binary
+  automata by directly enumerating terms below accepting states with full-alphabet self-loops.
+  (Zhou Hui)
+
 * GITHUB#16806: HNSW searches track the visited nodes of a large graph in a hash set instead of a
   bit set sized to the graph, which makes merges into large segments faster. (Ankur Goel)
 
