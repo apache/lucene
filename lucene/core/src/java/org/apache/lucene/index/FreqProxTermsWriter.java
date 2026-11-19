@@ -59,23 +59,22 @@ final class FreqProxTermsWriter extends TermsHash {
       FrozenBufferedUpdates.TermDocsIterator iterator =
           new FrozenBufferedUpdates.TermDocsIterator(fields, true);
 
-      segDeletes.forEachOrdered(
-          (term, docId) -> {
-            DocIdSetIterator postings = iterator.nextTerm(term.field(), term.bytes());
-            if (postings != null) {
-              assert docId < PostingsEnum.NO_MORE_DOCS;
-              int doc;
-              while ((doc = postings.nextDoc()) < docId) {
-                if (state.liveDocs == null) {
-                  state.liveDocs = new FixedBitSet(state.segmentInfo.maxDoc());
-                  state.liveDocs.set(0, state.segmentInfo.maxDoc());
-                }
-                if (state.liveDocs.getAndClear(doc)) {
-                  state.delCountOnFlush++;
-                }
-              }
+      segDeletes.forEachOrdered((term, docId) -> {
+        DocIdSetIterator postings = iterator.nextTerm(term.field(), term.bytes());
+        if (postings != null) {
+          assert docId < PostingsEnum.NO_MORE_DOCS;
+          int doc;
+          while ((doc = postings.nextDoc()) < docId) {
+            if (state.liveDocs == null) {
+              state.liveDocs = new FixedBitSet(state.segmentInfo.maxDoc());
+              state.liveDocs.set(0, state.segmentInfo.maxDoc());
             }
-          });
+            if (state.liveDocs.getAndClear(doc)) {
+              state.delCountOnFlush++;
+            }
+          }
+        }
+      });
     }
   }
 

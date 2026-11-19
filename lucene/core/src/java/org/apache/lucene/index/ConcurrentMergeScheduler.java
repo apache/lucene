@@ -979,21 +979,20 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
         }
       }
       if (isThreadAvailable) {
-        executor.execute(
-            () -> {
-              try {
-                command.run();
-              } catch (Throwable exc) {
-                if (suppressExceptions == false) {
-                  // suppressExceptions is normally only set during
-                  // testing.
-                  handleMergeException(exc);
-                }
-              } finally {
-                activeCount.decrementAndGet();
-                assert activeCount.get() >= 0 : "unexpected negative active count";
-              }
-            });
+        executor.execute(() -> {
+          try {
+            command.run();
+          } catch (Throwable exc) {
+            if (suppressExceptions == false) {
+              // suppressExceptions is normally only set during
+              // testing.
+              handleMergeException(exc);
+            }
+          } finally {
+            activeCount.decrementAndGet();
+            assert activeCount.get() >= 0 : "unexpected negative active count";
+          }
+        });
       } else {
         command.run();
       }

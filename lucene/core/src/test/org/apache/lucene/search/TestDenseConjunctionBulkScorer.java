@@ -712,10 +712,9 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
           public void collect(DocIdStream stream) throws IOException {
             assertFalse(called);
             called = true;
-            stream.forEach(
-                doc -> {
-                  assertEquals(expected++, doc);
-                });
+            stream.forEach(doc -> {
+              assertEquals(expected++, doc);
+            });
           }
 
           @Override
@@ -1112,10 +1111,9 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
 
           @Override
           public void collect(DocIdStream stream) throws IOException {
-            stream.forEach(
-                doc -> {
-                  assertEquals(expected++, doc);
-                });
+            stream.forEach(doc -> {
+              assertEquals(expected++, doc);
+            });
           }
 
           @Override
@@ -1258,10 +1256,9 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
 
           @Override
           public void collect(DocIdStream stream) throws IOException {
-            stream.forEach(
-                doc -> {
-                  assertEquals(expected++, doc);
-                });
+            stream.forEach(doc -> {
+              assertEquals(expected++, doc);
+            });
           }
 
           @Override

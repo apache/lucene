@@ -24,10 +24,9 @@ public class TestRangeDocIdStream extends LuceneTestCase {
   public void testForEach() throws IOException {
     RangeDocIdStream stream = new RangeDocIdStream(42, 100);
     int[] expected = new int[] {42};
-    stream.forEach(
-        doc -> {
-          assertEquals(expected[0]++, doc);
-        });
+    stream.forEach(doc -> {
+      assertEquals(expected[0]++, doc);
+    });
     assertEquals(100, expected[0]);
   }
 

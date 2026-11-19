@@ -126,12 +126,11 @@ public final class OpenIndexDialogFactory implements DialogOpener.DialogFactory 
     // Scanning all Directory types will take time...
     ExecutorService executorService =
         Executors.newFixedThreadPool(1, new NamedThreadFactory("load-directory-types"));
-    executorService.execute(
-        () -> {
-          for (String clazzName : IndexUtils.supportedDirectoryImpls()) {
-            dirImplCombo.addItem(clazzName);
-          }
-        });
+    executorService.execute(() -> {
+      for (String clazzName : IndexUtils.supportedDirectoryImpls()) {
+        dirImplCombo.addItem(clazzName);
+      }
+    });
     executorService.shutdown();
     dirImplCombo.setPreferredSize(new Dimension(350, 30));
     dirImplCombo.setSelectedItem(prefs.getDirImpl());

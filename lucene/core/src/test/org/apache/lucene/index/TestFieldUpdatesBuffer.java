@@ -237,11 +237,10 @@ public class TestFieldUpdatesBuffer extends LuceneTestCase {
     boolean termsSorted =
         lastUpdate.hasValue
             && updates.stream()
-                .allMatch(
-                    update ->
-                        update.field.equals(lastUpdate.field)
-                            && update.hasValue
-                            && update.getValue() == lastUpdate.getValue());
+                .allMatch(update ->
+                    update.field.equals(lastUpdate.field)
+                        && update.hasValue
+                        && update.getValue() == lastUpdate.getValue());
     assertBufferUpdates(buffer, updates, termsSorted);
   }
 

@@ -212,14 +212,13 @@ public final class SortPaneProvider implements SortTabOperator {
         List<SortField> sortFields =
             searchModel.guessSortTypes((String) fieldCombo.getSelectedItem());
         sortFields.stream()
-            .map(
-                sf -> {
-                  if (sf instanceof SortedNumericSortField snsf) {
-                    return snsf.getNumericType().name();
-                  } else {
-                    return sf.getType().name();
-                  }
-                })
+            .map(sf -> {
+              if (sf instanceof SortedNumericSortField snsf) {
+                return snsf.getNumericType().name();
+              } else {
+                return sf.getType().name();
+              }
+            })
             .forEach(typeCombo::addItem);
         typeCombo.setEnabled(true);
         orderCombo.setEnabled(true);
@@ -247,17 +246,16 @@ public final class SortPaneProvider implements SortTabOperator {
     private void resetExactHitsCnt() {
       operatorRegistry
           .get(SearchTabOperator.class)
-          .ifPresent(
-              operator -> {
-                if (StringUtils.isNullOrEmpty((String) fieldCombo1.getSelectedItem())
-                    && StringUtils.isNullOrEmpty((String) fieldCombo2.getSelectedItem())) {
-                  operator.enableExactHitsCB(true);
-                  operator.setExactHits(false);
-                } else {
-                  operator.enableExactHitsCB(false);
-                  operator.setExactHits(true);
-                }
-              });
+          .ifPresent(operator -> {
+            if (StringUtils.isNullOrEmpty((String) fieldCombo1.getSelectedItem())
+                && StringUtils.isNullOrEmpty((String) fieldCombo2.getSelectedItem())) {
+              operator.enableExactHitsCB(true);
+              operator.setExactHits(false);
+            } else {
+              operator.enableExactHitsCB(false);
+              operator.setExactHits(true);
+            }
+          });
     }
   }
 

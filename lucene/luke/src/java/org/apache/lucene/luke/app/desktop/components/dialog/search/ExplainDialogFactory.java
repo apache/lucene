@@ -116,12 +116,11 @@ public final class ExplainDialogFactory implements DialogOpener.DialogFactory {
         new JButton(
             FontUtils.elegantIconHtml("&#xe0e6;", MessageUtils.getLocalizedMessage("button.copy")));
     copyBtn.setMargin(new Insets(3, 3, 3, 3));
-    copyBtn.addActionListener(
-        _ -> {
-          Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-          StringSelection selection = new StringSelection(explanationToString());
-          clipboard.setContents(selection, null);
-        });
+    copyBtn.addActionListener(_ -> {
+      Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+      StringSelection selection = new StringSelection(explanationToString());
+      clipboard.setContents(selection, null);
+    });
     footer.add(copyBtn);
 
     JButton closeBtn = new JButton(MessageUtils.getLocalizedMessage("button.close"));

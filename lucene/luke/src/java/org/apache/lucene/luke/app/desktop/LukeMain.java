@@ -94,30 +94,25 @@ public class LukeMain {
     genv.registerFont(FontUtils.createElegantIconFont());
 
     var guiThreadResult = new SynchronousQueue<Boolean>();
-    javax.swing.SwingUtilities.invokeLater(
-        () -> {
-          try {
-            long _start = System.nanoTime();
-            guiThreadResult.put(createGUI());
+    javax.swing.SwingUtilities.invokeLater(() -> {
+      try {
+        long _start = System.nanoTime();
+        guiThreadResult.put(createGUI());
 
-            // Show the initial dialog.
-            OpenIndexDialogFactory openIndexDialogFactory = OpenIndexDialogFactory.getInstance();
-            new DialogOpener<>(openIndexDialogFactory)
-                .open(
-                    MessageUtils.getLocalizedMessage("openindex.dialog.title"),
-                    600,
-                    420,
-                    (_) -> {});
+        // Show the initial dialog.
+        OpenIndexDialogFactory openIndexDialogFactory = OpenIndexDialogFactory.getInstance();
+        new DialogOpener<>(openIndexDialogFactory)
+            .open(MessageUtils.getLocalizedMessage("openindex.dialog.title"), 600, 420, _ -> {});
 
-            long _end = System.nanoTime() / 1_000_000;
-            log.info(
-                "Elapsed time for initializing GUI: "
-                    + TimeUnit.NANOSECONDS.toMillis(_end - _start)
-                    + " ms");
-          } catch (Exception e) {
-            throw new RuntimeException(e);
-          }
-        });
+        long _end = System.nanoTime() / 1_000_000;
+        log.info(
+            "Elapsed time for initializing GUI: "
+                + TimeUnit.NANOSECONDS.toMillis(_end - _start)
+                + " ms");
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
+    });
 
     if (Boolean.FALSE.equals(guiThreadResult.take())) {
       Logger.getGlobal().log(Level.SEVERE, "Luke could not start.");

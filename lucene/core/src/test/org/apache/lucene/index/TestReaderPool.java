@@ -262,22 +262,21 @@ public class TestReaderPool extends LuceneTestCase {
     AtomicBoolean isDone = new AtomicBoolean();
     CountDownLatch latch = new CountDownLatch(1);
     Thread refresher =
-        new Thread(
-            () -> {
-              try {
-                latch.countDown();
-                while (isDone.get() == false) {
-                  for (SegmentCommitInfo commitInfo : segmentInfos) {
-                    ReadersAndUpdates readersAndUpdates = pool.get(commitInfo, true);
-                    SegmentReader segmentReader = readersAndUpdates.getReader(IOContext.DEFAULT);
-                    readersAndUpdates.release(segmentReader);
-                    pool.release(readersAndUpdates, random().nextBoolean());
-                  }
-                }
-              } catch (Exception ex) {
-                throw new AssertionError(ex);
+        new Thread(() -> {
+          try {
+            latch.countDown();
+            while (isDone.get() == false) {
+              for (SegmentCommitInfo commitInfo : segmentInfos) {
+                ReadersAndUpdates readersAndUpdates = pool.get(commitInfo, true);
+                SegmentReader segmentReader = readersAndUpdates.getReader(IOContext.DEFAULT);
+                readersAndUpdates.release(segmentReader);
+                pool.release(readersAndUpdates, random().nextBoolean());
               }
-            });
+            }
+          } catch (Exception ex) {
+            throw new AssertionError(ex);
+          }
+        });
     refresher.start();
     MergePolicy mergePolicy =
         new FilterMergePolicy(newMergePolicy()) {
