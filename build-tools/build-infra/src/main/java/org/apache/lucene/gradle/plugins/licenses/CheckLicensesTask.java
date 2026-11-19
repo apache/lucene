@@ -205,14 +205,13 @@ public abstract class CheckLicensesTask extends DefaultTask {
           "License type counts:\n{}",
           counts.entrySet().stream()
               .sorted((a, b) -> Long.compare(b.getValue().longValue(), a.getValue().longValue()))
-              .map(
-                  e ->
-                      String.format(
-                          Locale.ROOT,
-                          "  - %s: %,d %s",
-                          e.getKey(),
-                          e.getValue(),
-                          e.getValue() == 1 ? "file" : "files"))
+              .map(e ->
+                  String.format(
+                      Locale.ROOT,
+                      "  - %s: %,d %s",
+                      e.getKey(),
+                      e.getValue(),
+                      e.getValue() == 1 ? "file" : "files"))
               .collect(Collectors.joining("\n")));
     }
 
@@ -226,15 +225,14 @@ public abstract class CheckLicensesTask extends DefaultTask {
     }
 
     try (var lineStream = Files.lines(reportFile.toPath())) {
-      lineStream.forEach(
-          line -> {
-            int idx = line.lastIndexOf(':');
-            String path = line.substring(0, idx).trim();
-            String state = line.substring(idx + 1).trim();
-            if (!path.isEmpty() && !state.isEmpty()) {
-              report.put(path, state);
-            }
-          });
+      lineStream.forEach(line -> {
+        int idx = line.lastIndexOf(':');
+        String path = line.substring(0, idx).trim();
+        String state = line.substring(idx + 1).trim();
+        if (!path.isEmpty() && !state.isEmpty()) {
+          report.put(path, state);
+        }
+      });
     }
 
     return report;

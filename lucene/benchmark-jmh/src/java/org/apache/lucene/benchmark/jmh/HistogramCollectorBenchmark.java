@@ -100,14 +100,13 @@ public class HistogramCollectorBenchmark {
     if (Files.exists(path)) {
       try (Stream<Path> walk = Files.walk(path)) {
         walk.sorted(Comparator.reverseOrder())
-            .forEach(
-                path -> {
-                  try {
-                    Files.delete(path);
-                  } catch (IOException _) {
-                    // Do nothing
-                  }
-                });
+            .forEach(path -> {
+              try {
+                Files.delete(path);
+              } catch (IOException _) {
+                // Do nothing
+              }
+            });
       }
     }
   }

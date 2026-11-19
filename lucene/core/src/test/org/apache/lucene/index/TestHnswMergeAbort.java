@@ -194,14 +194,13 @@ public class TestHnswMergeAbort extends LuceneTestCase {
       IndexWriter w2 = new IndexWriter(dir, cfg2);
       AtomicReference<Throwable> mergeFailure = new AtomicReference<>();
       Thread merger =
-          new Thread(
-              () -> {
-                try {
-                  w2.forceMerge(1);
-                } catch (Throwable t) {
-                  mergeFailure.set(t);
-                }
-              });
+          new Thread(() -> {
+            try {
+              w2.forceMerge(1);
+            } catch (Throwable t) {
+              mergeFailure.set(t);
+            }
+          });
       merger.start();
       List<String> midMerge = List.of();
       try {

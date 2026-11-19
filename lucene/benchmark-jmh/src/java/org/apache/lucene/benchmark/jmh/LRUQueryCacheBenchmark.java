@@ -293,10 +293,9 @@ public class LRUQueryCacheBenchmark {
       Thread thread = new Thread(r, namePrefix);
       thread.setDaemon(true);
       thread.setPriority(Thread.NORM_PRIORITY);
-      thread.setUncaughtExceptionHandler(
-          (_, e) -> {
-            throw new RuntimeException(e);
-          });
+      thread.setUncaughtExceptionHandler((_, e) -> {
+        throw new RuntimeException(e);
+      });
       return thread;
     }
   }

@@ -1150,18 +1150,17 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     List<Future<KnnCollector>> futures = new ArrayList<>();
     for (T query : queries) {
       futures.add(
-          exec.submit(
-              () -> {
-                KnnCollector actual;
-                try {
-                  actual =
-                      HnswGraphSearcher.search(
-                          buildScorer(vectors, query), 100, hnsw, acceptOrds, Integer.MAX_VALUE);
-                } catch (IOException ioe) {
-                  throw new RuntimeException(ioe);
-                }
-                return actual;
-              }));
+          exec.submit(() -> {
+            KnnCollector actual;
+            try {
+              actual =
+                  HnswGraphSearcher.search(
+                      buildScorer(vectors, query), 100, hnsw, acceptOrds, Integer.MAX_VALUE);
+            } catch (IOException ioe) {
+              throw new RuntimeException(ioe);
+            }
+            return actual;
+          }));
     }
     List<KnnCollector> actuals = new ArrayList<>();
     for (Future<KnnCollector> future : futures) {

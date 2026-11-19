@@ -3138,20 +3138,19 @@ public class TestIndexWriter extends LuceneTestCase {
     // ensure we have more than on thread state
     for (int i = 0; i < threads.length; i++) {
       threads[i] =
-          new Thread(
-              () -> {
-                latch.countDown();
-                try {
-                  latch.await();
-                  for (int j = 0; j < numDocsPerThread; j++) {
-                    Document doc = new Document();
-                    doc.add(new StringField("id", "foo", Field.Store.YES));
-                    w.addDocument(doc);
-                  }
-                } catch (Exception e) {
-                  throw new AssertionError(e);
-                }
-              });
+          new Thread(() -> {
+            latch.countDown();
+            try {
+              latch.await();
+              for (int j = 0; j < numDocsPerThread; j++) {
+                Document doc = new Document();
+                doc.add(new StringField("id", "foo", Field.Store.YES));
+                w.addDocument(doc);
+              }
+            } catch (Exception e) {
+              throw new AssertionError(e);
+            }
+          });
       threads[i].start();
     }
     for (Thread t : threads) {
@@ -3279,29 +3278,27 @@ public class TestIndexWriter extends LuceneTestCase {
     CountDownLatch wait = new CountDownLatch(1);
     CountDownLatch locked = new CountDownLatch(1);
     Thread lockThread =
-        new Thread(
-            () -> {
-              try {
-                largestNonPendingWriter.lock();
-                locked.countDown();
-                wait.await();
-              } catch (InterruptedException e) {
-                throw new AssertionError(e);
-              } finally {
-                largestNonPendingWriter.unlock();
-              }
-            });
+        new Thread(() -> {
+          try {
+            largestNonPendingWriter.lock();
+            locked.countDown();
+            wait.await();
+          } catch (InterruptedException e) {
+            throw new AssertionError(e);
+          } finally {
+            largestNonPendingWriter.unlock();
+          }
+        });
     lockThread.start();
     Thread flushThread =
-        new Thread(
-            () -> {
-              try {
-                locked.await();
-                assertTrue(w.flushNextBuffer());
-              } catch (Exception e) {
-                throw new AssertionError(e);
-              }
-            });
+        new Thread(() -> {
+          try {
+            locked.await();
+            assertTrue(w.flushNextBuffer());
+          } catch (Exception e) {
+            throw new AssertionError(e);
+          }
+        });
     flushThread.start();
 
     locked.await();
@@ -3351,24 +3348,23 @@ public class TestIndexWriter extends LuceneTestCase {
     Thread[] threads = new Thread[numThreads];
     for (int i = 0; i < numThreads; i++) {
       threads[i] =
-          new Thread(
-              () -> {
-                latch.countDown();
-                int numDocs = 0;
-                while (done.get() == false) {
+          new Thread(() -> {
+            latch.countDown();
+            int numDocs = 0;
+            while (done.get() == false) {
 
-                  Document doc = new Document();
-                  doc.add(new StringField("id", "foo", Field.Store.YES));
-                  try {
-                    w.addDocument(doc);
-                  } catch (Exception e) {
-                    throw new AssertionError(e);
-                  }
-                  if (numDocs++ % 10 == 0) {
-                    Thread.yield();
-                  }
-                }
-              });
+              Document doc = new Document();
+              doc.add(new StringField("id", "foo", Field.Store.YES));
+              try {
+                w.addDocument(doc);
+              } catch (Exception e) {
+                throw new AssertionError(e);
+              }
+              if (numDocs++ % 10 == 0) {
+                Thread.yield();
+              }
+            }
+          });
       indexingThreads.add(threads[i].getName());
       threads[i].start();
     }
@@ -3576,45 +3572,44 @@ public class TestIndexWriter extends LuceneTestCase {
     Set<String> ids = Collections.synchronizedSet(new HashSet<>());
     for (int i = 0; i < threads.length; i++) {
       threads[i] =
-          new Thread(
-              () -> {
-                try {
-                  started.countDown();
-                  startLatch.await();
-                  for (int d = 0; d < 100; d++) {
-                    String id = String.valueOf(random().nextInt(10));
-                    if (updateSeveralDocs) {
-                      Document doc = new Document();
-                      doc.add(new StringField("id", id, Field.Store.YES));
-                      if (mixDeletes && random().nextBoolean()) {
-                        if (random().nextBoolean()) {
-                          writer.updateDocuments(new Term("id", id), Arrays.asList(doc, doc));
-                        } else {
-                          writer.updateDocuments(
-                              new TermQuery(new Term("id", id)), Arrays.asList(doc, doc));
-                        }
-                      } else {
-                        writer.softUpdateDocuments(
-                            new Term("id", id),
-                            Arrays.asList(doc, doc),
-                            new NumericDocValuesField("soft_delete", 1));
-                      }
+          new Thread(() -> {
+            try {
+              started.countDown();
+              startLatch.await();
+              for (int d = 0; d < 100; d++) {
+                String id = String.valueOf(random().nextInt(10));
+                if (updateSeveralDocs) {
+                  Document doc = new Document();
+                  doc.add(new StringField("id", id, Field.Store.YES));
+                  if (mixDeletes && random().nextBoolean()) {
+                    if (random().nextBoolean()) {
+                      writer.updateDocuments(new Term("id", id), Arrays.asList(doc, doc));
                     } else {
-                      Document doc = new Document();
-                      doc.add(new StringField("id", id, Field.Store.YES));
-                      if (mixDeletes && random().nextBoolean()) {
-                        writer.updateDocument(new Term("id", id), doc);
-                      } else {
-                        writer.softUpdateDocument(
-                            new Term("id", id), doc, new NumericDocValuesField("soft_delete", 1));
-                      }
+                      writer.updateDocuments(
+                          new TermQuery(new Term("id", id)), Arrays.asList(doc, doc));
                     }
-                    ids.add(id);
+                  } else {
+                    writer.softUpdateDocuments(
+                        new Term("id", id),
+                        Arrays.asList(doc, doc),
+                        new NumericDocValuesField("soft_delete", 1));
                   }
-                } catch (IOException | InterruptedException e) {
-                  throw new AssertionError(e);
+                } else {
+                  Document doc = new Document();
+                  doc.add(new StringField("id", id, Field.Store.YES));
+                  if (mixDeletes && random().nextBoolean()) {
+                    writer.updateDocument(new Term("id", id), doc);
+                  } else {
+                    writer.softUpdateDocument(
+                        new Term("id", id), doc, new NumericDocValuesField("soft_delete", 1));
+                  }
                 }
-              });
+                ids.add(id);
+              }
+            } catch (IOException | InterruptedException e) {
+              throw new AssertionError(e);
+            }
+          });
       threads[i].start();
     }
     started.await();
@@ -3700,23 +3695,22 @@ public class TestIndexWriter extends LuceneTestCase {
       document.add(new StringField("id", "1", Field.Store.YES));
       writer.addDocument(document);
       Thread t =
-          new Thread(
-              () -> {
-                try {
-                  inFlush.await();
-                  writer.docWriter.flushControl.setApplyAllDeletes();
-                  if (random().nextBoolean()) {
-                    writer.updateDocument(new Term("id", "1"), document);
-                  } else {
-                    writer.deleteDocuments(new Term("id", "1"));
-                  }
+          new Thread(() -> {
+            try {
+              inFlush.await();
+              writer.docWriter.flushControl.setApplyAllDeletes();
+              if (random().nextBoolean()) {
+                writer.updateDocument(new Term("id", "1"), document);
+              } else {
+                writer.deleteDocuments(new Term("id", "1"));
+              }
 
-                } catch (Exception e) {
-                  throw new AssertionError(e);
-                } finally {
-                  latch.countDown();
-                }
-              });
+            } catch (Exception e) {
+              throw new AssertionError(e);
+            } finally {
+              latch.countDown();
+            }
+          });
       t.start();
       try (IndexReader reader = DirectoryReader.open(writer)) {
         assertEquals(1, reader.numDocs());
@@ -4102,20 +4096,19 @@ public class TestIndexWriter extends LuceneTestCase {
     assertEquals(1, w.docWriter.perThreadPool.size());
     CountDownLatch latch = new CountDownLatch(1);
     Thread thread =
-        new Thread(
-            () -> {
-              latch.countDown();
-              List<Closeable> states = new ArrayList<>();
-              try {
-                for (int i = 0; i < 100; i++) {
-                  DocumentsWriterPerThread state = w.docWriter.perThreadPool.getAndLock();
-                  states.add(state::unlock);
-                  state.deleteQueue.getNextSequenceNumber();
-                }
-              } finally {
-                IOUtils.closeWhileHandlingException(states);
-              }
-            });
+        new Thread(() -> {
+          latch.countDown();
+          List<Closeable> states = new ArrayList<>();
+          try {
+            for (int i = 0; i < 100; i++) {
+              DocumentsWriterPerThread state = w.docWriter.perThreadPool.getAndLock();
+              states.add(state::unlock);
+              state.deleteQueue.getNextSequenceNumber();
+            }
+          } finally {
+            IOUtils.closeWhileHandlingException(states);
+          }
+        });
     thread.start();
     latch.await();
     w.docWriter.flushControl.markForFullFlush();
@@ -4131,37 +4124,35 @@ public class TestIndexWriter extends LuceneTestCase {
     AtomicBoolean stopped = new AtomicBoolean();
     Semaphore indexedDocs = new Semaphore(0);
     Thread indexer =
-        new Thread(
-            () -> {
-              while (stopped.get() == false) {
-                try {
-                  String id = Integer.toString(random().nextInt(100));
-                  Document doc = new Document();
-                  doc.add(new StringField("id", id, Field.Store.YES));
-                  w.updateDocument(new Term("id", id), doc);
-                  indexedDocs.release(1);
-                } catch (IOException e) {
-                  throw new AssertionError(e);
-                } catch (AlreadyClosedException _) {
-                  return;
-                }
-              }
-            });
+        new Thread(() -> {
+          while (stopped.get() == false) {
+            try {
+              String id = Integer.toString(random().nextInt(100));
+              Document doc = new Document();
+              doc.add(new StringField("id", id, Field.Store.YES));
+              w.updateDocument(new Term("id", id), doc);
+              indexedDocs.release(1);
+            } catch (IOException e) {
+              throw new AssertionError(e);
+            } catch (AlreadyClosedException _) {
+              return;
+            }
+          }
+        });
 
     SearcherManager sm = new SearcherManager(w, new SearcherFactory());
     Thread refresher =
-        new Thread(
-            () -> {
-              while (stopped.get() == false) {
-                try {
-                  sm.maybeRefreshBlocking();
-                } catch (IOException e) {
-                  throw new AssertionError(e);
-                } catch (AlreadyClosedException _) {
-                  return;
-                }
-              }
-            });
+        new Thread(() -> {
+          while (stopped.get() == false) {
+            try {
+              sm.maybeRefreshBlocking();
+            } catch (IOException e) {
+              throw new AssertionError(e);
+            } catch (AlreadyClosedException _) {
+              return;
+            }
+          }
+        });
 
     try {
       indexer.start();
@@ -4198,43 +4189,38 @@ public class TestIndexWriter extends LuceneTestCase {
       IndexWriter.EventQueue queue = new IndexWriter.EventQueue(writer);
       AtomicInteger executed = new AtomicInteger(0);
 
-      queue.add(
-          w -> {
-            assertNotNull(w);
-            executed.incrementAndGet();
-          });
-      queue.add(
-          w -> {
-            assertNotNull(w);
-            executed.incrementAndGet();
-          });
+      queue.add(w -> {
+        assertNotNull(w);
+        executed.incrementAndGet();
+      });
+      queue.add(w -> {
+        assertNotNull(w);
+        executed.incrementAndGet();
+      });
       queue.processEvents();
       assertEquals(2, executed.get());
       queue.processEvents();
       assertEquals(2, executed.get());
 
-      queue.add(
-          w -> {
-            assertNotNull(w);
-            executed.incrementAndGet();
-          });
-      queue.add(
-          w -> {
-            assertNotNull(w);
-            executed.incrementAndGet();
-          });
+      queue.add(w -> {
+        assertNotNull(w);
+        executed.incrementAndGet();
+      });
+      queue.add(w -> {
+        assertNotNull(w);
+        executed.incrementAndGet();
+      });
 
       Thread t =
-          new Thread(
-              () -> {
-                try {
-                  queue.processEvents();
-                } catch (IOException e) {
-                  throw new AssertionError(e);
-                } catch (AlreadyClosedException _) {
-                  // possible
-                }
-              });
+          new Thread(() -> {
+            try {
+              queue.processEvents();
+            } catch (IOException e) {
+              throw new AssertionError(e);
+            } catch (AlreadyClosedException _) {
+              // possible
+            }
+          });
       t.start();
       queue.close();
       t.join();
@@ -4264,36 +4250,35 @@ public class TestIndexWriter extends LuceneTestCase {
       CountDownLatch latch = new CountDownLatch(threads.length);
       for (int i = 0; i < threads.length; i++) {
         threads[i] =
-            new Thread(
-                () -> {
-                  latch.countDown();
-                  try {
-                    latch.await();
-                    while (numOperations.tryAcquire()) {
-                      String id = singleDoc ? "1" : Integer.toString(random().nextInt(10));
-                      Document doc = new Document();
-                      doc.add(new StringField("id", id, Field.Store.YES));
-                      if (random().nextInt(10) <= 2) {
-                        writer.updateDocument(new Term("id", id), doc);
-                      } else if (random().nextInt(10) <= 2) {
-                        writer.deleteDocuments(new Term("id", id));
-                      } else {
-                        writer.addDocument(doc);
-                      }
-                      if (random().nextInt(100) < 10) {
-                        sm.maybeRefreshBlocking();
-                      }
-                      if (random().nextInt(100) < 5) {
-                        writer.commit();
-                      }
-                      if (random().nextInt(100) < 1) {
-                        writer.forceMerge(1 + random().nextInt(10), random().nextBoolean());
-                      }
-                    }
-                  } catch (Exception e) {
-                    throw new AssertionError(e);
+            new Thread(() -> {
+              latch.countDown();
+              try {
+                latch.await();
+                while (numOperations.tryAcquire()) {
+                  String id = singleDoc ? "1" : Integer.toString(random().nextInt(10));
+                  Document doc = new Document();
+                  doc.add(new StringField("id", id, Field.Store.YES));
+                  if (random().nextInt(10) <= 2) {
+                    writer.updateDocument(new Term("id", id), doc);
+                  } else if (random().nextInt(10) <= 2) {
+                    writer.deleteDocuments(new Term("id", id));
+                  } else {
+                    writer.addDocument(doc);
                   }
-                });
+                  if (random().nextInt(100) < 10) {
+                    sm.maybeRefreshBlocking();
+                  }
+                  if (random().nextInt(100) < 5) {
+                    writer.commit();
+                  }
+                  if (random().nextInt(100) < 1) {
+                    writer.forceMerge(1 + random().nextInt(10), random().nextBoolean());
+                  }
+                }
+              } catch (Exception e) {
+                throw new AssertionError(e);
+              }
+            });
         threads[i].start();
       }
       for (Thread thread : threads) {
@@ -4321,48 +4306,47 @@ public class TestIndexWriter extends LuceneTestCase {
       CountDownLatch latch = new CountDownLatch(threads.length);
       for (int i = 0; i < threads.length; i++) {
         threads[i] =
-            new Thread(
-                () -> {
-                  latch.countDown();
-                  try {
-                    latch.await();
-                    while (numOperations.tryAcquire()) {
-                      String id = singleDoc ? "1" : Integer.toString(random().nextInt(10));
-                      Document doc = new Document();
-                      doc.add(new StringField("id", id, Field.Store.YES));
-                      doc.add(new LongPoint("seq_no", seqNo.getAndIncrement()));
-                      if (random().nextInt(10) <= 2) {
-                        if (random().nextBoolean()) {
-                          doc.add(new NumericDocValuesField(iwc.softDeletesField, 1));
-                        }
-                        writer.softUpdateDocument(
-                            new Term("id", id),
-                            doc,
-                            new NumericDocValuesField(iwc.softDeletesField, 1));
-                      } else {
-                        writer.addDocument(doc);
-                      }
-                      if (random().nextInt(100) < 10) {
-                        int min = retainingSeqNo.get();
-                        int max = seqNo.get();
-                        if (min < max && random().nextBoolean()) {
-                          retainingSeqNo.compareAndSet(min, min - random().nextInt(max - min));
-                        }
-                      }
-                      if (random().nextInt(100) < 10) {
-                        sm.maybeRefreshBlocking();
-                      }
-                      if (random().nextInt(100) < 5) {
-                        writer.commit();
-                      }
-                      if (random().nextInt(100) < 1) {
-                        writer.forceMerge(1 + random().nextInt(10), random().nextBoolean());
-                      }
+            new Thread(() -> {
+              latch.countDown();
+              try {
+                latch.await();
+                while (numOperations.tryAcquire()) {
+                  String id = singleDoc ? "1" : Integer.toString(random().nextInt(10));
+                  Document doc = new Document();
+                  doc.add(new StringField("id", id, Field.Store.YES));
+                  doc.add(new LongPoint("seq_no", seqNo.getAndIncrement()));
+                  if (random().nextInt(10) <= 2) {
+                    if (random().nextBoolean()) {
+                      doc.add(new NumericDocValuesField(iwc.softDeletesField, 1));
                     }
-                  } catch (Exception e) {
-                    throw new AssertionError(e);
+                    writer.softUpdateDocument(
+                        new Term("id", id),
+                        doc,
+                        new NumericDocValuesField(iwc.softDeletesField, 1));
+                  } else {
+                    writer.addDocument(doc);
                   }
-                });
+                  if (random().nextInt(100) < 10) {
+                    int min = retainingSeqNo.get();
+                    int max = seqNo.get();
+                    if (min < max && random().nextBoolean()) {
+                      retainingSeqNo.compareAndSet(min, min - random().nextInt(max - min));
+                    }
+                  }
+                  if (random().nextInt(100) < 10) {
+                    sm.maybeRefreshBlocking();
+                  }
+                  if (random().nextInt(100) < 5) {
+                    writer.commit();
+                  }
+                  if (random().nextInt(100) < 1) {
+                    writer.forceMerge(1 + random().nextInt(10), random().nextBoolean());
+                  }
+                }
+              } catch (Exception e) {
+                throw new AssertionError(e);
+              }
+            });
         threads[i].start();
       }
       for (Thread thread : threads) {
@@ -4399,37 +4383,32 @@ public class TestIndexWriter extends LuceneTestCase {
       for (int i = 0; i < threads.length; i++) {
         int idx = i;
         threads[i] =
-            new Thread(
-                () -> {
-                  try {
-                    start.await();
-                    for (int j = 0; j < numDocs; j++) {
-                      Document doc = new Document();
-                      String id = idx + "-" + j;
-                      doc.add(new StringField("id", id, Field.Store.NO));
-                      long seqNo = writer.addDocument(doc);
-                      if (maxCompletedSeqID.get() < seqNo) {
-                        long maxCompletedSequenceNumber = writer.getMaxCompletedSequenceNumber();
-                        manager.maybeRefreshBlocking();
-                        maxCompletedSeqID.updateAndGet(
-                            oldVal -> Math.max(oldVal, maxCompletedSequenceNumber));
-                      }
-                      IndexSearcher acquire = manager.acquire();
-                      try {
-                        assertEquals(
-                            1,
-                            acquire
-                                .search(new TermQuery(new Term("id", id)), 10)
-                                .totalHits
-                                .value());
-                      } finally {
-                        manager.release(acquire);
-                      }
-                    }
-                  } catch (Exception e) {
-                    throw new AssertionError(e);
+            new Thread(() -> {
+              try {
+                start.await();
+                for (int j = 0; j < numDocs; j++) {
+                  Document doc = new Document();
+                  String id = idx + "-" + j;
+                  doc.add(new StringField("id", id, Field.Store.NO));
+                  long seqNo = writer.addDocument(doc);
+                  if (maxCompletedSeqID.get() < seqNo) {
+                    long maxCompletedSequenceNumber = writer.getMaxCompletedSequenceNumber();
+                    manager.maybeRefreshBlocking();
+                    maxCompletedSeqID.updateAndGet(
+                        oldVal -> Math.max(oldVal, maxCompletedSequenceNumber));
                   }
-                });
+                  IndexSearcher acquire = manager.acquire();
+                  try {
+                    assertEquals(
+                        1, acquire.search(new TermQuery(new Term("id", id)), 10).totalHits.value());
+                  } finally {
+                    manager.release(acquire);
+                  }
+                }
+              } catch (Exception e) {
+                throw new AssertionError(e);
+              }
+            });
         threads[i].start();
       }
       start.countDown();
@@ -4483,25 +4462,23 @@ public class TestIndexWriter extends LuceneTestCase {
       waitRef.set(new CountDownLatch(1));
       arrivedRef.set(new CountDownLatch(1));
       Thread waiterThread =
-          new Thread(
-              () -> {
-                try {
-                  writer.addDocument(new Document());
-                } catch (IOException e) {
-                  throw new AssertionError(e);
-                }
-              });
+          new Thread(() -> {
+            try {
+              writer.addDocument(new Document());
+            } catch (IOException e) {
+              throw new AssertionError(e);
+            }
+          });
       waiterThread.start();
       arrivedRef.get().await();
       Thread refreshThread =
-          new Thread(
-              () -> {
-                try {
-                  DirectoryReader.open(writer).close();
-                } catch (IOException e) {
-                  throw new AssertionError(e);
-                }
-              });
+          new Thread(() -> {
+            try {
+              DirectoryReader.open(writer).close();
+            } catch (IOException e) {
+              throw new AssertionError(e);
+            }
+          });
       DocumentsWriterDeleteQueue deleteQueue = writer.docWriter.deleteQueue;
       refreshThread.start();
       // now we wait until the refresh has swapped the deleted queue and assert that
@@ -4728,17 +4705,16 @@ public class TestIndexWriter extends LuceneTestCase {
         AtomicLong numThreadsCompleted = new AtomicLong(0);
         for (int i = 0; i < threads.length; i++) {
           threads[i] =
-              new Thread(
-                  () -> {
-                    Document d = new Document();
-                    d.add(new StringField("id", Integer.toString(0), Field.Store.YES));
-                    try {
-                      writer.addDocument(d);
-                    } catch (IOException e) {
-                      throw new AssertionError(e);
-                    }
-                    numThreadsCompleted.incrementAndGet();
-                  });
+              new Thread(() -> {
+                Document d = new Document();
+                d.add(new StringField("id", Integer.toString(0), Field.Store.YES));
+                try {
+                  writer.addDocument(d);
+                } catch (IOException e) {
+                  throw new AssertionError(e);
+                }
+                numThreadsCompleted.incrementAndGet();
+              });
           threads[i].start();
         }
         try {

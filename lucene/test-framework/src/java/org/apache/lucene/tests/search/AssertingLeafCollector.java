@@ -193,14 +193,13 @@ class AssertingLeafCollector extends FilterLeafCollector {
     @Override
     public void forEach(IOIntConsumer consumer) throws IOException {
       assert lastUpTo != DocIdSetIterator.NO_MORE_DOCS : "exhausted";
-      stream.forEach(
-          doc -> {
-            assert doc > lastCollected : "Out of order : " + lastCollected + " " + doc;
-            assert doc >= min : "Out of range: " + doc + " < " + min;
-            assert doc < max : "Out of range: " + doc + " >= " + max;
-            consumer.accept(doc);
-            lastCollected = doc;
-          });
+      stream.forEach(doc -> {
+        assert doc > lastCollected : "Out of order : " + lastCollected + " " + doc;
+        assert doc >= min : "Out of range: " + doc + " < " + min;
+        assert doc < max : "Out of range: " + doc + " >= " + max;
+        consumer.accept(doc);
+        lastCollected = doc;
+      });
       lastUpTo = DocIdSetIterator.NO_MORE_DOCS;
       assert stream.mayHaveRemaining() == false;
     }
@@ -208,14 +207,13 @@ class AssertingLeafCollector extends FilterLeafCollector {
     @Override
     public void forEach(int upTo, IOIntConsumer consumer) throws IOException {
       assert lastUpTo < upTo : "upTo=" + upTo + " but previous upTo=" + lastUpTo;
-      stream.forEach(
-          doc -> {
-            assert doc > lastCollected : "Out of order : " + lastCollected + " " + doc;
-            assert doc >= min : "Out of range: " + doc + " < " + min;
-            assert doc < max : "Out of range: " + doc + " >= " + max;
-            consumer.accept(doc);
-            lastCollected = doc;
-          });
+      stream.forEach(doc -> {
+        assert doc > lastCollected : "Out of order : " + lastCollected + " " + doc;
+        assert doc >= min : "Out of range: " + doc + " < " + min;
+        assert doc < max : "Out of range: " + doc + " >= " + max;
+        consumer.accept(doc);
+        lastCollected = doc;
+      });
       lastUpTo = upTo;
       if (upTo == DocIdSetIterator.NO_MORE_DOCS) {
         assert stream.mayHaveRemaining() == false;

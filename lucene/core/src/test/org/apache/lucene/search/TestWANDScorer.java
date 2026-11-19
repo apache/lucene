@@ -1075,23 +1075,21 @@ public class TestWANDScorer extends LuceneTestCase {
           List<Scorer> optionalScorers =
               weight.weightedClauses.stream()
                   .map(wc -> wc.weight)
-                  .map(
-                      w -> {
-                        try {
-                          return w.scorerSupplier(context);
-                        } catch (IOException e) {
-                          throw new AssertionError(e);
-                        }
-                      })
+                  .map(w -> {
+                    try {
+                      return w.scorerSupplier(context);
+                    } catch (IOException e) {
+                      throw new AssertionError(e);
+                    }
+                  })
                   .filter(Objects::nonNull)
-                  .map(
-                      ss -> {
-                        try {
-                          return ss.get(Long.MAX_VALUE);
-                        } catch (IOException e) {
-                          throw new AssertionError(e);
-                        }
-                      })
+                  .map(ss -> {
+                    try {
+                      return ss.get(Long.MAX_VALUE);
+                    } catch (IOException e) {
+                      throw new AssertionError(e);
+                    }
+                  })
                   .toList();
           final Scorer scorer;
           if (optionalScorers.size() > 0) {

@@ -165,7 +165,6 @@ public class QueryParser implements QueryParserConstants {
     label_1:
     while (true) {
       if (jj_2_1(2)) {
-        ;
       } else {
         break label_1;
       }
@@ -193,7 +192,6 @@ public class QueryParser implements QueryParserConstants {
       switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
         case OR:
           {
-            ;
             break;
           }
         default:
@@ -225,7 +223,6 @@ public class QueryParser implements QueryParserConstants {
       switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
         case AND:
           {
-            ;
             break;
           }
         default:
@@ -257,7 +254,6 @@ public class QueryParser implements QueryParserConstants {
       switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
         case NOT:
           {
-            ;
             break;
           }
         default:
@@ -289,7 +285,6 @@ public class QueryParser implements QueryParserConstants {
       switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
         case N:
           {
-            ;
             break;
           }
         default:
@@ -320,7 +315,6 @@ public class QueryParser implements QueryParserConstants {
       switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
         case W:
           {
-            ;
             break;
           }
         default:
@@ -450,7 +444,6 @@ public class QueryParser implements QueryParserConstants {
       switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
         case COMMA:
           {
-            ;
             break;
           }
         default:
@@ -547,7 +540,6 @@ public class QueryParser implements QueryParserConstants {
       switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
         case CARAT:
           {
-            ;
             break;
           }
         default:

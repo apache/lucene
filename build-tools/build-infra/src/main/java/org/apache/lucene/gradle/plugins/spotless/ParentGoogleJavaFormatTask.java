@@ -112,12 +112,11 @@ abstract class ParentGoogleJavaFormatTask extends DefaultTask {
 
   protected List<File> getIncrementalBatch(InputChanges inputChanges) {
     return StreamSupport.stream(inputChanges.getFileChanges(getSourceFiles()).spliterator(), false)
-        .filter(
-            fileChange -> {
-              return fileChange.getFileType() == FileType.FILE
-                  && (fileChange.getChangeType() == ChangeType.ADDED
-                      || fileChange.getChangeType() == ChangeType.MODIFIED);
-            })
+        .filter(fileChange -> {
+          return fileChange.getFileType() == FileType.FILE
+              && (fileChange.getChangeType() == ChangeType.ADDED
+                  || fileChange.getChangeType() == ChangeType.MODIFIED);
+        })
         .map(FileChange::getFile)
         .toList();
   }

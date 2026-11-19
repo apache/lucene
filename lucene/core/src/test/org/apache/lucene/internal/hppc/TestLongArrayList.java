@@ -359,7 +359,6 @@ public class TestLongArrayList extends LuceneTestCase {
 
   public void testEqualsSubClass() {
     class Sub extends LongArrayList {}
-    ;
 
     LongArrayList l1 = LongArrayList.from(key1, key2, key3);
     LongArrayList l2 = new Sub();

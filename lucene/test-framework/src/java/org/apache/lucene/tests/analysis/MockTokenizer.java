@@ -98,7 +98,7 @@ public class MockTokenizer extends Tokenizer {
     INCREMENT_FALSE, // consumer has called incrementToken() which returned false
     END, // consumer has called end() to perform end of stream operations
     CLOSE // consumer has called close() to release any resources
-  };
+  }
 
   private State streamState = State.CLOSE;
   private int lastOffset = 0; // only for checks
