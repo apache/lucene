@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.codecs.lucene90;
 
+import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.BLOCKWISE_LINEAR_BLOCK_SHIFT;
+import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.BLOCKWISE_LINEAR_BLOCK_SIZE;
+import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.BLOCKWISE_LINEAR_TABLE_SIZE;
 import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
 import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.NUMERIC_BLOCK_SHIFT;
 import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.NUMERIC_BLOCK_SIZE;
@@ -233,6 +236,51 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     }
   }
 
+  /** Estimates storage cost of per-block linear prediction ({@link DirectMonotonicWriter}). */
+  private static class BlockwiseLinearTracker {
+    final long[] block = new long[BLOCKWISE_LINEAR_BLOCK_SIZE];
+    int upTo;
+    long spaceInBits;
+
+    void update(long v) {
+      block[upTo++] = v;
+      if (upTo == BLOCKWISE_LINEAR_BLOCK_SIZE) {
+        flushBlock();
+      }
+    }
+
+    void finish() {
+      if (upTo > 0) {
+        flushBlock();
+      }
+    }
+
+    private void flushBlock() {
+      final int length = upTo;
+      upTo = 0;
+      // min (8) + avg (4) + data offset (8) + bpv (1)
+      spaceInBits += (8 + 4 + 8 + 1) * Byte.SIZE;
+      if (length == 1) {
+        return;
+      }
+      final float avgInc =
+          (float) ((double) (block[length - 1] - block[0]) / Math.max(1, length - 1));
+      long minResidual = Long.MAX_VALUE;
+      long maxResidualBits = 0;
+      for (int i = 0; i < length; ++i) {
+        long residual = block[i] - (long) (avgInc * (long) i);
+        minResidual = Math.min(minResidual, residual);
+      }
+      for (int i = 0; i < length; ++i) {
+        long residual = block[i] - (long) (avgInc * (long) i) - minResidual;
+        maxResidualBits |= residual;
+      }
+      if (maxResidualBits != 0) {
+        spaceInBits += (long) DirectWriter.unsignedBitsRequired(maxResidualBits) * length;
+      }
+    }
+  }
+
   private static class SkipAccumulator {
     int minDocID;
     int maxDocID;
@@ -408,6 +456,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     int numDocsWithValue = 0;
     MinMaxTracker minMax = new MinMaxTracker();
     MinMaxTracker blockMinMax = new MinMaxTracker();
+    BlockwiseLinearTracker blockwiseLinear = new BlockwiseLinearTracker();
     long gcd = 0;
     LongHashSet uniqueValues = ords ? null : new LongHashSet();
     for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
@@ -430,6 +479,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
           minMax.update(blockMinMax);
           blockMinMax.nextBlock();
         }
+        blockwiseLinear.update(v);
 
         if (uniqueValues != null && uniqueValues.add(v) && uniqueValues.size() > 256) {
           uniqueValues = null;
@@ -442,6 +492,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     minMax.update(blockMinMax);
     minMax.finish();
     blockMinMax.finish();
+    blockwiseLinear.finish();
 
     if (ords && minMax.numValues > 0) {
       if (minMax.min != 0) {
@@ -477,6 +528,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     meta.writeLong(numValues);
     final int numBitsPerValue;
     boolean doBlocks = false;
+    boolean doBlockwiseLinear = false;
     LongIntHashMap encode = null;
     if (min >= max) { // meta[-1]: All values are 0
       numBitsPerValue = 0;
@@ -501,10 +553,29 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
         gcd = 1;
       } else {
         uniqueValues = null;
-        // we do blocks if that appears to save 10+% storage
-        doBlocks =
+        long bestSpaceInBits =
+            minMax.spaceInBits > 0
+                ? (long) DirectWriter.unsignedBitsRequired((max - min) / gcd) * numValues
+                : 0;
+        final boolean blocksWin =
             minMax.spaceInBits > 0 && (double) blockMinMax.spaceInBits / minMax.spaceInBits <= 0.9;
-        if (doBlocks) {
+        if (blocksWin) {
+          bestSpaceInBits = blockMinMax.spaceInBits;
+        }
+        long linearSpaceInBits = blockwiseLinear.spaceInBits;
+        if (gcd > 1 && numValues > 0) {
+          long gcdBits = (long) (Long.SIZE - 1 - Long.numberOfLeadingZeros(gcd)) * numValues;
+          linearSpaceInBits = Math.max(0, linearSpaceInBits - gcdBits);
+        }
+        final boolean linearWins =
+            bestSpaceInBits > 0 && (double) linearSpaceInBits / bestSpaceInBits <= 0.9;
+
+        if (linearWins) {
+          doBlockwiseLinear = true;
+          numBitsPerValue = 0xFF;
+          meta.writeInt(BLOCKWISE_LINEAR_TABLE_SIZE);
+        } else if (blocksWin) {
+          doBlocks = true;
           numBitsPerValue = 0xFF;
           meta.writeInt(-2 - NUMERIC_BLOCK_SHIFT); // tablesize
         } else {
@@ -526,15 +597,38 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     long startOffset = data.getFilePointer();
     meta.writeLong(startOffset); // valueOffset
     long jumpTableOffset = -1;
-    if (doBlocks) {
-      jumpTableOffset = writeValuesMultipleBlocks(valuesProducer.getSortedNumeric(field), gcd);
-    } else if (numBitsPerValue != 0) {
-      writeValuesSingleBlock(
-          valuesProducer.getSortedNumeric(field), numValues, numBitsPerValue, min, gcd, encode);
+    if (doBlockwiseLinear) {
+      writeValuesBlockwiseLinear(
+          valuesProducer.getSortedNumeric(field), numValues, min, gcd, startOffset);
+    } else {
+      if (doBlocks) {
+        jumpTableOffset = writeValuesMultipleBlocks(valuesProducer.getSortedNumeric(field), gcd);
+      } else if (numBitsPerValue != 0) {
+        writeValuesSingleBlock(
+            valuesProducer.getSortedNumeric(field), numValues, numBitsPerValue, min, gcd, encode);
+      }
+      meta.writeLong(data.getFilePointer() - startOffset); // valuesLength
+      meta.writeLong(jumpTableOffset);
     }
-    meta.writeLong(data.getFilePointer() - startOffset); // valuesLength
-    meta.writeLong(jumpTableOffset);
     return new long[] {numDocsWithValue, numValues};
+  }
+
+  private void writeValuesBlockwiseLinear(
+      SortedNumericDocValues values, long numValues, long min, long gcd, long startOffset)
+      throws IOException {
+    meta.writeVInt(BLOCKWISE_LINEAR_BLOCK_SHIFT);
+    final DirectMonotonicWriter writer =
+        DirectMonotonicWriter.getInstance(
+            meta, data, numValues, BLOCKWISE_LINEAR_BLOCK_SHIFT, false);
+    for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
+      for (int i = 0, count = values.docValueCount(); i < count; ++i) {
+        long v = values.nextValue();
+        writer.add((v - min) / gcd);
+      }
+    }
+    writer.finish();
+    meta.writeLong(data.getFilePointer() - startOffset);
+    meta.writeLong(-1L);
   }
 
   private void writeValuesSingleBlock(

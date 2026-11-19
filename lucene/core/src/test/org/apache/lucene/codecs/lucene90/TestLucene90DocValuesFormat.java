@@ -62,6 +62,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.index.TermsEnum.SeekStatus;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.Directory;
@@ -1391,6 +1392,104 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
         assertEquals(0, skipper.minDocID(0));
         assertTrue(skipper.maxDocID(0) >= 0);
         assertTrue(skipper.minValue() <= skipper.maxValue());
+      }
+    }
+  }
+
+  public void testBlockwiseLinearNumericRoundtrip() throws Exception {
+    try (Directory dir = newDirectory()) {
+      // Plain config (no random index sort) so doc ids match insertion order.
+      IndexWriterConfig conf = new IndexWriterConfig(new MockAnalyzer(random()));
+      conf.setCodec(getCodec());
+      conf.setMergePolicy(newLogMergePolicy());
+      final int numDocs = atLeast(2000);
+      final long base = 1_700_000_000_000L;
+      final long step = 1_000L;
+      try (IndexWriter writer = new IndexWriter(dir, conf)) {
+        for (int i = 0; i < numDocs; ++i) {
+          Document doc = new Document();
+          long ts = base + i * step + (i % 7);
+          doc.add(new NumericDocValuesField("ts", ts));
+          doc.add(new SortedNumericDocValuesField("ts_sn", ts));
+          doc.add(new NumericDocValuesField("counter", (i + 1) * 1000L));
+          writer.addDocument(doc);
+        }
+        writer.forceMerge(1);
+      }
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        LeafReader leaf = getOnlyLeafReader(reader);
+        NumericDocValues ts = DocValues.getNumeric(leaf, "ts");
+        NumericDocValues counter = DocValues.getNumeric(leaf, "counter");
+        SortedNumericDocValues tsSn = DocValues.getSortedNumeric(leaf, "ts_sn");
+        for (int i = 0; i < numDocs; ++i) {
+          assertEquals(i, ts.nextDoc());
+          assertEquals(base + i * step + (i % 7), ts.longValue());
+          assertEquals(i, counter.nextDoc());
+          assertEquals((i + 1) * 1000L, counter.longValue());
+          assertEquals(i, tsSn.nextDoc());
+          assertEquals(1, tsSn.docValueCount());
+          assertEquals(base + i * step + (i % 7), tsSn.nextValue());
+        }
+        assertEquals(DocIdSetIterator.NO_MORE_DOCS, ts.nextDoc());
+      }
+    }
+  }
+
+  public void testBlockwiseLinearFallsBackForRandomValues() throws Exception {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig conf = new IndexWriterConfig(new MockAnalyzer(random()));
+      conf.setCodec(getCodec());
+      conf.setMergePolicy(newLogMergePolicy());
+      final int numDocs = atLeast(1000);
+      final long[] values = new long[numDocs];
+      for (int i = 0; i < numDocs; ++i) {
+        values[i] = random().nextLong();
+      }
+      try (IndexWriter writer = new IndexWriter(dir, conf)) {
+        for (int i = 0; i < numDocs; ++i) {
+          Document doc = new Document();
+          doc.add(new NumericDocValuesField("r", values[i]));
+          writer.addDocument(doc);
+        }
+        writer.forceMerge(1);
+      }
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        NumericDocValues ndv = DocValues.getNumeric(getOnlyLeafReader(reader), "r");
+        for (int i = 0; i < numDocs; ++i) {
+          assertEquals(i, ndv.nextDoc());
+          assertEquals(values[i], ndv.longValue());
+        }
+      }
+    }
+  }
+
+  public void testBlockwiseLinearSparseNumeric() throws Exception {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig conf = new IndexWriterConfig(new MockAnalyzer(random()));
+      conf.setCodec(getCodec());
+      conf.setMergePolicy(newLogMergePolicy());
+      final int numDocs = atLeast(1500);
+      try (IndexWriter writer = new IndexWriter(dir, conf)) {
+        for (int i = 0; i < numDocs; ++i) {
+          Document doc = new Document();
+          if (i % 3 != 0) {
+            doc.add(new NumericDocValuesField("ts", 1_000_000L + i * 10L));
+          }
+          writer.addDocument(doc);
+        }
+        writer.forceMerge(1);
+      }
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        NumericDocValues ndv = DocValues.getNumeric(getOnlyLeafReader(reader), "ts");
+        for (int i = 0; i < numDocs; ++i) {
+          if (i % 3 == 0) {
+            continue;
+          }
+          assertEquals(i, ndv.nextDoc());
+          assertEquals(1_000_000L + i * 10L, ndv.longValue());
+        }
+        assertEquals(DocIdSetIterator.NO_MORE_DOCS, ndv.nextDoc());
       }
     }
   }

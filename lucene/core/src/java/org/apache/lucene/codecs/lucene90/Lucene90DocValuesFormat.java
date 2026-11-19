@@ -82,6 +82,9 @@ import org.apache.lucene.util.packed.DirectWriter;
  *       denominator (GCD) is computed, and quotients are stored using Delta-compressed Numerics.
  *   <li>Monotonic-compressed: when all numbers are monotonically increasing offsets, they are
  *       written as blocks of bitpacked integers, encoding the deviation from the expected delta.
+ *   <li>Blockwise-linear-compressed: values are split into blocks of 512 and each block is encoded
+ *       with a linear prediction (slope + intercept) plus bitpacked residuals from that line,
+ *       optionally after GCD compression. Selected when it saves at least 10% over delta encoding.
  *   <li>Const-compressed: when there is only one possible value, no per-document data is needed and
  *       this value is encoded alone.
  * </ul>
@@ -200,7 +203,9 @@ public final class Lucene90DocValuesFormat extends DocValuesFormat {
   static final int VERSION_SKIPPER_MAX_VALUE_COUNT = 2;
   // Moves the sparse-field IndexedDISI from .dvd into a dedicated .dvp file.
   static final int VERSION_DISI_SEPARATE_FILE = 3;
-  static final int VERSION_CURRENT = VERSION_DISI_SEPARATE_FILE;
+  // Adds blockwise-linear encoding for numeric / sorted-numeric values.
+  static final int VERSION_BLOCKWISE_LINEAR = 4;
+  static final int VERSION_CURRENT = VERSION_BLOCKWISE_LINEAR;
 
   // indicates docvalues type
   static final byte NUMERIC = 0;
@@ -213,6 +218,14 @@ public final class Lucene90DocValuesFormat extends DocValuesFormat {
 
   static final int NUMERIC_BLOCK_SHIFT = 14;
   static final int NUMERIC_BLOCK_SIZE = 1 << NUMERIC_BLOCK_SHIFT;
+
+  /** Meta tablesize marker for blockwise-linear numeric encoding. */
+  static final int BLOCKWISE_LINEAR_TABLE_SIZE = -3;
+
+  /** Block shift (512 values) for blockwise-linear numeric encoding. */
+  static final int BLOCKWISE_LINEAR_BLOCK_SHIFT = 9;
+
+  static final int BLOCKWISE_LINEAR_BLOCK_SIZE = 1 << BLOCKWISE_LINEAR_BLOCK_SHIFT;
 
   static final int TERMS_DICT_BLOCK_LZ4_SHIFT = 6;
   static final int TERMS_DICT_BLOCK_LZ4_SIZE = 1 << TERMS_DICT_BLOCK_LZ4_SHIFT;

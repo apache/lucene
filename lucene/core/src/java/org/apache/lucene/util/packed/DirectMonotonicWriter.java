@@ -21,9 +21,13 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
 
 /**
- * Write monotonically-increasing sequences of integers. This writer splits data into blocks and
- * then for each block, computes the average slope, the minimum value and only encode the delta from
- * the expected value using a {@link DirectWriter}.
+ * Write sequences of integers using per-block linear prediction. This writer splits data into
+ * blocks and then for each block, computes the average slope, the minimum residual and only encodes
+ * the delta from the expected value using a {@link DirectWriter}.
+ *
+ * <p>By default, values must be monotonically non-decreasing. Pass {@code requireMonotonic=false}
+ * to {@link #getInstance(IndexOutput, IndexOutput, long, int, boolean)} to encode arbitrary
+ * sequences; the on-disk format is unchanged and remains readable by {@link DirectMonotonicReader}.
  *
  * @see DirectMonotonicReader
  * @lucene.internal
@@ -38,11 +42,17 @@ public final class DirectMonotonicWriter {
   final long numValues;
   final long baseDataPointer;
   final long[] buffer;
+  final boolean requireMonotonic;
   int bufferSize;
   long count;
   boolean finished;
 
-  DirectMonotonicWriter(IndexOutput metaOut, IndexOutput dataOut, long numValues, int blockShift) {
+  DirectMonotonicWriter(
+      IndexOutput metaOut,
+      IndexOutput dataOut,
+      long numValues,
+      int blockShift,
+      boolean requireMonotonic) {
     if (blockShift < MIN_BLOCK_SHIFT || blockShift > MAX_BLOCK_SHIFT) {
       throw new IllegalArgumentException(
           "blockShift must be in ["
@@ -68,6 +78,7 @@ public final class DirectMonotonicWriter {
     this.meta = metaOut;
     this.data = dataOut;
     this.numValues = numValues;
+    this.requireMonotonic = requireMonotonic;
     final int blockSize = 1 << blockShift;
     this.buffer = new long[(int) Math.min(numValues, blockSize)];
     this.bufferSize = 0;
@@ -119,10 +130,11 @@ public final class DirectMonotonicWriter {
    * Write a new value. Note that data might not make it to storage until {@link #finish()} is
    * called.
    *
-   * @throws IllegalArgumentException if values don't come in order
+   * @throws IllegalArgumentException if {@code requireMonotonic} was true and values don't come in
+   *     order
    */
   public void add(long v) throws IOException {
-    if (v < previous) {
+    if (requireMonotonic && v < previous) {
       throw new IllegalArgumentException("Values do not come in order: " + previous + ", " + v);
     }
     if (bufferSize == buffer.length) {
@@ -151,10 +163,27 @@ public final class DirectMonotonicWriter {
   /**
    * Returns an instance suitable for encoding {@code numValues} into monotonic blocks of
    * 2<sup>{@code blockShift}</sup> values. Metadata will be written to {@code metaOut} and actual
-   * data to {@code dataOut}.
+   * data to {@code dataOut}. Values are required to be non-decreasing.
    */
   public static DirectMonotonicWriter getInstance(
       IndexOutput metaOut, IndexOutput dataOut, long numValues, int blockShift) {
-    return new DirectMonotonicWriter(metaOut, dataOut, numValues, blockShift);
+    return getInstance(metaOut, dataOut, numValues, blockShift, true);
+  }
+
+  /**
+   * Returns an instance suitable for encoding {@code numValues} into blocks of 2<sup>{@code
+   * blockShift}</sup> values with per-block linear prediction. Metadata will be written to {@code
+   * metaOut} and actual data to {@code dataOut}.
+   *
+   * @param requireMonotonic if true, {@link #add(long)} rejects decreasing values; if false,
+   *     arbitrary long sequences are accepted (useful for numeric DocValues)
+   */
+  public static DirectMonotonicWriter getInstance(
+      IndexOutput metaOut,
+      IndexOutput dataOut,
+      long numValues,
+      int blockShift,
+      boolean requireMonotonic) {
+    return new DirectMonotonicWriter(metaOut, dataOut, numValues, blockShift, requireMonotonic);
   }
 }
