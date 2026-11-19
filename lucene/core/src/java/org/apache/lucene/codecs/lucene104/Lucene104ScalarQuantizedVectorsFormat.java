@@ -168,13 +168,9 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
 
   @Override
   public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
+    FlatVectorsWriter rawWriter = rawVectorFormat.fieldsWriter(rescoreOnly(state));
     return new Lucene104ScalarQuantizedVectorsWriter(
-        state,
-        encoding,
-        rawVectorFormat.fieldsWriter(rescoreOnly(state)),
-        scorer,
-        numMergeWorkers,
-        mergeExec);
+        state, encoding, rawWriter, scorer, numMergeWorkers, mergeExec);
   }
 
   @Override

@@ -19,15 +19,22 @@ package org.apache.lucene.codecs.lucene104;
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsWriter.ParallelMergeQuantizer;
-import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsWriter.QuantizedFloatVectorValues;
+import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
+import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsWriter.MergedRecordWriter;
+import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsWriter.RecordEncoder;
+import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsWriter.SourceIterator;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.document.KnnFloat16VectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
+import org.apache.lucene.document.StringField;
+import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FloatVectorValues;
@@ -36,8 +43,9 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LogDocMergePolicy;
-import org.apache.lucene.index.MergeState;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -77,61 +85,71 @@ public class TestParallelMergeQuantization extends LuceneTestCase {
     int blockSize = 1 + random().nextInt(300);
     List<float[]> vectors = randomVectors(1 + random().nextInt(3000), dim, sim);
     float[] centroid = randomVectors(1, dim, sim).get(0); // any centroid will do
-    // 3 segments with deletions, concatenated or interleaved as by an index sort
-    int[] segmentOf = new int[vectors.size()];
-    Arrays.setAll(segmentOf, _ -> random().nextInt(3));
+    int workers = random().nextBoolean() ? 1 : 2 + random().nextInt(7);
+    // 3 segments, concatenated or interleaved as by an index sort, with deleted docs (-1)
     boolean sorted = random().nextBoolean();
-    if (sorted == false) {
-      Arrays.sort(segmentOf);
-    }
-    List<FloatVectorValues> segments = new ArrayList<>();
-    List<MergeState.DocMap> docMaps = new ArrayList<>();
-    for (int s = 0; s < 3; s++) {
-      List<float[]> segment = new ArrayList<>();
-      List<Integer> mergedDoc = new ArrayList<>();
-      for (int i = 0; i < vectors.size(); i++) {
-        if (random().nextInt(5) == 0) {
-          segment.add(randomVectors(1, dim, sim).get(0));
-          mergedDoc.add(-1); // deleted
-        }
-        if (segmentOf[i] == s) {
-          segment.add(vectors.get(i));
-          mergedDoc.add(i);
-        }
+    List<List<Integer>> segmentDocs =
+        List.of(new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
+    for (int i = 0; i < vectors.size(); i++) {
+      // interleaved: any segment; concatenated: the first, second or last third of the vectors
+      int segment = sorted ? random().nextInt(3) : 3 * i / vectors.size();
+      List<Integer> docs = segmentDocs.get(segment);
+      if (random().nextInt(5) == 0) {
+        docs.add(-1);
       }
-      segments.add(FloatVectorValues.fromFloats(segment, dim));
-      docMaps.add(mergedDoc::get);
+      docs.add(i);
     }
+    List<FloatVectorValues> segmentValues = new ArrayList<>();
+    for (List<Integer> docs : segmentDocs) {
+      // a deleted doc's vector is never read, so any vector will do
+      List<float[]> segment = docs.stream().map(d -> vectors.get(Math.max(d, 0))).toList();
+      FloatVectorValues values = FloatVectorValues.fromFloats(segment, dim);
+      if (workers == 1) {
+        // a single task reads the source values themselves, so it must not copy them
+        values = noCopy(values);
+      }
+      segmentValues.add(values);
+    }
+    OptimizedScalarQuantizer quantizer = new OptimizedScalarQuantizer(sim);
     for (ScalarEncoding encoding : ScalarEncoding.values()) {
       boolean queries = encoding.isAsymmetric() && random().nextBoolean();
       try (Directory dir = newDirectory()) {
         try (IndexOutput index = dir.createOutput("serial.index", IOContext.DEFAULT);
-            IndexOutput query = dir.createOutput("serial.query", IOContext.DEFAULT)) {
-          FloatVectorValues values =
-              FloatVectorValues.fromFloats(vectors.stream().map(float[]::clone).toList(), dim);
-          OptimizedScalarQuantizer quantizer = new OptimizedScalarQuantizer(sim);
-          if (queries) {
-            Lucene104ScalarQuantizedVectorsWriter.writeVectorAndQueryRecords(
-                index, query, values, quantizer, encoding, centroid, new DocsWithFieldSet());
-          } else {
-            Lucene104ScalarQuantizedVectorsWriter.writeVectorData(
-                index, new QuantizedFloatVectorValues(values, quantizer, encoding, centroid));
+            IndexOutput queryFile = dir.createOutput("serial.query", IOContext.DEFAULT)) {
+          // the records of the vectors in merged order, one at a time
+          IndexOutput query = queries ? queryFile : null;
+          RecordEncoder encoder =
+              new RecordEncoder(quantizer, encoding, centroid, List.of(), false);
+          for (float[] v : vectors) {
+            encoder.encode(v.clone(), index, query);
           }
         }
-        try (IndexOutput index = dir.createOutput("parallel.index", IOContext.DEFAULT);
-            IndexOutput query = dir.createOutput("parallel.query", IOContext.DEFAULT)) {
-          ParallelMergeQuantizer.create(
-                  new TaskExecutor(executor), 2 + random().nextInt(7), segments, docMaps, sorted)
-              .writeRecords(
-                  index,
-                  queries ? query : null,
-                  new OptimizedScalarQuantizer(sim),
-                  encoding,
-                  centroid,
-                  new DocsWithFieldSet(),
-                  blockSize);
+        try (IndexOutput vectorData = dir.createOutput("parallel.index", IOContext.DEFAULT);
+            IndexOutput queryFile = dir.createOutput("parallel.query", IOContext.DEFAULT)) {
+          IndexOutput queryData = queries ? queryFile : null;
+          // a merger consumes its sources, so each writer gets its own
+          List<SourceIterator> sources = new ArrayList<>();
+          for (int s = 0; s < segmentValues.size(); s++) {
+            sources.add(new SourceIterator(segmentDocs.get(s)::get, s, segmentValues.get(s)));
+          }
+          RecordEncoder[] encoders = new RecordEncoder[workers];
+          for (int w = 0; w < workers; w++) {
+            encoders[w] = new RecordEncoder(quantizer, encoding, centroid, sources, workers > 1);
+          }
+          TaskExecutor taskExecutor = new TaskExecutor(executor);
+          MergedRecordWriter records =
+              new MergedRecordWriter(taskExecutor, sources, sorted, encoders, blockSize, queries);
+          DocsWithFieldSet docsWithField = new DocsWithFieldSet();
+          records.write(vectorData, queryData, docsWithField);
+          // every live document, in merged order
+          DocIdSetIterator written = docsWithField.iterator();
+          for (int doc = 0; doc < vectors.size(); doc++) {
+            assertEquals(doc, written.nextDoc());
+          }
+          assertEquals(DocIdSetIterator.NO_MORE_DOCS, written.nextDoc());
         }
-        String message = encoding + " queries=" + queries + " sorted=" + sorted;
+        String message =
+            encoding + " queries=" + queries + " sorted=" + sorted + " workers=" + workers;
         assertArrayEquals(message, readAll(dir, "serial.index"), readAll(dir, "parallel.index"));
         assertArrayEquals(message, readAll(dir, "serial.query"), readAll(dir, "parallel.query"));
       }
@@ -140,27 +158,35 @@ public class TestParallelMergeQuantization extends LuceneTestCase {
 
   /**
    * A force merge with merge workers, through the format's executor or the merge's own, stores the
-   * same quantized vectors as a merge without them.
+   * same quantized vectors and centroid as a merge without them, with deleted documents and a
+   * source segment that has the field but no vectors.
    */
   public void testForceMergeWithWorkersStoresSameVectors() throws Exception {
     int dim = 1 + random().nextInt(16);
-    // more than one block, so that the merge quantizes in parallel
+    // more than one block of live vectors, so that the merge quantizes in parallel
     int numDocs =
-        Lucene104ScalarQuantizedVectorsWriter.QUANTIZE_BLOCK_SIZE + 1 + random().nextInt(500);
+        2 * Lucene104ScalarQuantizedVectorsWriter.QUANTIZE_BLOCK_SIZE + random().nextInt(500);
     VectorSimilarityFunction sim = randomSimilarity();
     List<float[]> vectors = randomVectors(numDocs, dim, sim);
     ScalarEncoding encoding = RandomPicks.randomFrom(random(), ScalarEncoding.values());
     boolean formatExecutor = random().nextBoolean();
+    // fp16 is read through Float16AsFloatVectorValues and its copies on the workers
+    boolean float16 = random().nextBoolean();
     try (Directory serial = newDirectory();
         Directory parallel = newDirectory()) {
-      index(serial, encoding, 1, null, vectors, sim);
-      index(parallel, encoding, 4, formatExecutor ? executor : null, vectors, sim);
+      // the same documents and deletions in both indexes; only the number of merge workers differs
+      index(serial, encoding, 1, null, vectors, sim, float16);
+      // null: the merge's own executor
+      ExecutorService mergeExec = formatExecutor ? executor : null;
+      index(parallel, encoding, 4, mergeExec, vectors, sim, float16);
       try (IndexReader a = DirectoryReader.open(serial);
           IndexReader b = DirectoryReader.open(parallel)) {
         QuantizedByteVectorValues x = quantizedValues(getOnlyLeafReader(a));
         QuantizedByteVectorValues y = quantizedValues(getOnlyLeafReader(b));
-        assertEquals(numDocs, x.size());
+        // every 10th document was deleted, and the empty segment adds no vectors
+        assertEquals(numDocs - (numDocs + 9) / 10, x.size());
         assertEquals(x.size(), y.size());
+        // the deletions make both merges recompute the centroid, which must have the same bits
         assertArrayEquals(x.getCentroid(), y.getCentroid(), 0f);
         for (int ord = 0; ord < x.size(); ord++) {
           assertArrayEquals("ord " + ord, x.vectorValue(ord), y.vectorValue(ord));
@@ -170,34 +196,42 @@ public class TestParallelMergeQuantization extends LuceneTestCase {
     }
   }
 
-  /** The centroid sums skip deleted vectors and have the same bits for any number of workers. */
-  public void testCentroidSumsSameForAnyWorkers() throws Exception {
-    int dim = 1 + random().nextInt(50);
-    int n = 1 + random().nextInt(5 * Lucene104ScalarQuantizedVectorsWriter.CENTROID_CHUNK_SIZE);
-    List<float[]> vectors = randomVectors(n, dim, VectorSimilarityFunction.EUCLIDEAN);
-    FixedBitSet liveDocs = new FixedBitSet(n);
+  /**
+   * The centroid sums skip deleted vectors, match a plain double sum across chunk boundaries, and
+   * have the same bits for any number of workers.
+   */
+  public void testSumVectorsSkipsDeletedAcrossChunks() throws Exception {
+    int dim = 1 + random().nextInt(32);
+    int count =
+        3 * Lucene104ScalarQuantizedVectorsWriter.CENTROID_CHUNK_SIZE + random().nextInt(100);
+    List<float[]> vectors = randomVectors(count, dim, VectorSimilarityFunction.EUCLIDEAN);
+    FixedBitSet liveDocs = new FixedBitSet(count);
     double[] expected = new double[dim];
     int live = 0;
-    for (int i = 0; i < n; i++) {
+    for (int i = 0; i < count; i++) {
       if (random().nextInt(4) != 0) {
         liveDocs.set(i);
         live++;
-        for (int j = 0; j < dim; j++) {
-          expected[j] += vectors.get(i)[j];
+        for (int d = 0; d < dim; d++) {
+          expected[d] += vectors.get(i)[d];
         }
       }
     }
     FloatVectorValues values = FloatVectorValues.fromFloats(vectors, dim);
     double[] serial = new double[dim];
     double[] parallel = new double[dim];
+    TaskExecutor sameThread = new TaskExecutor(Runnable::run);
+    TaskExecutor taskExecutor = new TaskExecutor(executor);
+    int workers = 2 + random().nextInt(3);
     assertEquals(
-        live, Lucene104ScalarQuantizedVectorsWriter.sumVectors(values, liveDocs, serial, null, 1));
+        live,
+        Lucene104ScalarQuantizedVectorsWriter.sumVectors(values, liveDocs, serial, sameThread, 1));
     assertEquals(
         live,
         Lucene104ScalarQuantizedVectorsWriter.sumVectors(
-            values, liveDocs, parallel, new TaskExecutor(executor), 2 + random().nextInt(7)));
+            values, liveDocs, parallel, taskExecutor, workers));
     assertArrayEquals(serial, parallel, 0);
-    assertArrayEquals(expected, serial, 1e-6);
+    assertArrayEquals(expected, serial, 1e-9);
   }
 
   private static void index(
@@ -206,7 +240,8 @@ public class TestParallelMergeQuantization extends LuceneTestCase {
       int workers,
       ExecutorService mergeExec,
       List<float[]> vectors,
-      VectorSimilarityFunction sim)
+      VectorSimilarityFunction sim,
+      boolean float16)
       throws IOException {
     var format = new Lucene104HnswScalarQuantizedVectorsFormat(encoding, 8, 20, workers, mergeExec);
     // three segments of whole flushes and no merge until forceMerge
@@ -218,19 +253,97 @@ public class TestParallelMergeQuantization extends LuceneTestCase {
             .setMergePolicy(mergePolicy)
             .setMaxBufferedDocs(vectors.size() / 3 + 1);
     try (IndexWriter w = new IndexWriter(dir, config)) {
-      for (float[] v : vectors) {
+      for (int i = 0; i < vectors.size(); i++) {
         Document doc = new Document();
-        doc.add(new KnnFloatVectorField("f", v, sim));
+        doc.add(vectorField(vectors.get(i), sim, float16));
+        doc.add(new StringField("id", Integer.toString(i), Field.Store.NO));
         w.addDocument(doc);
+      }
+      // deleted documents: the merge must skip their vectors and recompute the centroid
+      for (int i = 0; i < vectors.size(); i += 10) {
+        w.deleteDocuments(new Term("id", Integer.toString(i)));
+      }
+      // a fourth segment that has the field but no vectors; its vector values cannot be copied
+      try (Directory empty = emptyVectorSegment(vectors.get(0).length, sim, float16)) {
+        w.addIndexes(empty);
       }
       w.forceMerge(1);
     }
   }
 
+  /**
+   * Returns an index of one segment that has the field "f" but no vectors. Its only vector is
+   * deleted, and the force merge drops it, while the document without a vector keeps the segment.
+   */
+  private static Directory emptyVectorSegment(
+      int dim, VectorSimilarityFunction sim, boolean float16) throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig config =
+        new IndexWriterConfig()
+            .setCodec(
+                TestUtil.alwaysKnnVectorsFormat(new Lucene104HnswScalarQuantizedVectorsFormat()));
+    try (IndexWriter w = new IndexWriter(dir, config)) {
+      float[] vector = new float[dim];
+      vector[0] = 1;
+      Document doc = new Document();
+      doc.add(vectorField(vector, sim, float16));
+      doc.add(new StringField("id", "gone", Field.Store.NO));
+      w.addDocument(doc);
+      w.addDocument(new Document());
+      w.deleteDocuments(new Term("id", "gone"));
+      w.forceMerge(1);
+    }
+    return dir;
+  }
+
+  /** A view of {@code values} that cannot be copied. */
+  private static FloatVectorValues noCopy(FloatVectorValues values) {
+    return new FloatVectorValues() {
+      @Override
+      public float[] vectorValue(int ord) throws IOException {
+        return values.vectorValue(ord);
+      }
+
+      @Override
+      public int dimension() {
+        return values.dimension();
+      }
+
+      @Override
+      public int size() {
+        return values.size();
+      }
+
+      @Override
+      public DocIndexIterator iterator() {
+        return values.iterator();
+      }
+
+      @Override
+      public FloatVectorValues copy() {
+        throw new UnsupportedOperationException();
+      }
+    };
+  }
+
+  /** A vector field "f", stored as fp16 or as fp32. */
+  private static Field vectorField(float[] vector, VectorSimilarityFunction sim, boolean float16) {
+    if (float16 == false) {
+      return new KnnFloatVectorField("f", vector, sim);
+    }
+    short[] halves = new short[vector.length];
+    for (int d = 0; d < vector.length; d++) {
+      halves[d] = Float.floatToFloat16(vector[d]);
+    }
+    return new KnnFloat16VectorField("f", halves, sim);
+  }
+
   private static QuantizedByteVectorValues quantizedValues(LeafReader reader) throws IOException {
-    return ((Lucene104ScalarQuantizedVectorsReader.ScalarQuantizedVectorValues)
-            reader.getFloatVectorValues("f"))
-        .getQuantizedVectorValues();
+    KnnVectorsReader vectorsReader =
+        ((CodecReader) reader).getVectorReader().unwrapReaderForField("f");
+    FlatVectorsReader flatReader =
+        ((Lucene99HnswVectorsReader) vectorsReader).getFlatVectorsReader();
+    return ((Lucene104ScalarQuantizedVectorsReader) flatReader).getQuantizedVectorValues("f");
   }
 
   private static VectorSimilarityFunction randomSimilarity() {
@@ -245,7 +358,10 @@ public class TestParallelMergeQuantization extends LuceneTestCase {
       for (int d = 0; d < dim; d++) {
         v[d] = random().nextFloat() * 2 - 1;
       }
-      vectors.add(sim == VectorSimilarityFunction.COSINE ? VectorUtil.l2normalize(v) : v);
+      if (sim == VectorSimilarityFunction.COSINE) {
+        VectorUtil.l2normalize(v);
+      }
+      vectors.add(v);
     }
     return vectors;
   }
