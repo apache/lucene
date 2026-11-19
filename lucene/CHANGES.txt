@@ -376,6 +376,9 @@ Optimizations
 * GITHUB#17021: Skip computing the cardinality of a window in DenseConjunctionBulkScorer when
   no clause is left to apply. (Asharam)
 
+* GITHUB#14397: Reuse the LZ4 preset dictionary when reading stored fields or term vectors
+  from the same compressed chunk. (Ke Wei)
+
 Bug Fixes
 ---------------------
 * GITHUB#17020: Reduce CachingTokenFilter memory use by not copying stale term bytes in
