@@ -442,14 +442,12 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
   /** Fill the queue (all pps are already placed */
   private void fillQueue() {
     pq.clear();
-    pq.addAll(
-        Arrays.stream(phrasePositions)
-            .map(pp -> {
-              if (pp.position > end) {
-                end = pp.position;
-              }
-              return pp;
-            }));
+    for (PhrasePositions pp : phrasePositions) { // iterate cyclic list: done once handled max
+      if (pp.position > end) {
+        end = pp.position;
+      }
+      pq.add(pp);
+    }
   }
 
   /**
