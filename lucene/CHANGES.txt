@@ -364,7 +364,9 @@ Optimizations
   IOContext, allowing MMapDirectory to open them with confined areas and avoiding JVM-wide
   handshakes when the files are closed. (Alan Woodward)
 
-* GITHUB#16306: Reduce lock contention in UsageTrackingQueryCachingPolicy (prudhvigodithi)
+* GITHUB#16306: UsageTrackingQueryCachingPolicy splits its usage history into small per-lock stripes
+  and reads frequencies without locking, which removes contention between concurrent searches and
+  makes onUse and shouldCache faster single-threaded too. (prudhvigodithi)
 
 Bug Fixes
 ---------------------
