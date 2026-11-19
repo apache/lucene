@@ -19,6 +19,10 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#16564: Speed up automaton intersection for PrefixQuery, TermRangeQuery and custom binary
+  automata by directly enumerating terms below accepting states with full-alphabet self-loops.
+  (Zhou Hui)
+
 * GITHUB#16806: HNSW searches track the visited nodes of a large graph in a hash set instead of a
   bit set sized to the graph, which makes merges into large segments faster. (Ankur Goel)
 
@@ -27,7 +31,7 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+* GITHUB#17030: Fix precision loss when reducing join scores. (Ke Wei)
 
 Other
 ---------------------
@@ -373,6 +377,14 @@ Optimizations
   IOContext, allowing MMapDirectory to open them with confined areas and avoiding JVM-wide
   handshakes when the files are closed. (Alan Woodward)
 
+* GITHUB#17021: Skip computing the cardinality of a window in DenseConjunctionBulkScorer when
+  no clause is left to apply. (Asharam)
+
+* GITHUB#14397: Reuse the LZ4 preset dictionary when reading stored fields or term vectors
+  from the same compressed chunk. (Ke Wei)
+
+* GITHUB#16757: Speed up building cached bit sets in LRUQueryCache. (Ke Wei)
+
 Bug Fixes
 ---------------------
 * GITHUB#17020: Reduce CachingTokenFilter memory use by not copying stale term bytes in
@@ -464,7 +476,8 @@ Bug Fixes
 
 * GITHUB#16971: Fix double DocValuesStats extrema initialization. (Simranjeet Singh)
 
-* GITHUB#17030: Fix precision loss when reducing join scores. (Ke Wei)
+* GITHUB#16892: Escape '=', '<', '>' and '@' in the flexible query parser's QueryParserUtil.escape.
+  (Soma Aishwarya)
 
 * GITHUB#16896: Fix long overflow in GCD-encoded DocValues range transform. (Ke Wei)
 
@@ -504,6 +517,9 @@ Build
   profiling.jfc by host OS. (Prithvi S)
 
 * GITHUB#16036: Upgrade gradle to 9.5.0 (Dawid Weiss)
+
+* GITHUB#17035: Upgrade to a custom fork of JFlex (1.10.0); tokenizer regeneration is an order
+  of magnitude faster and needs far less memory. (Dawid Weiss)
 
 Other
 ---------------------
