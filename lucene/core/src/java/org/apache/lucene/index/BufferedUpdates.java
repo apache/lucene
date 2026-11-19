@@ -43,7 +43,7 @@ import org.apache.lucene.util.RamUsageEstimator;
  */
 
 // NOTE: instances of this class are accessed either via a private
-// instance on DocumentWriterPerThread, or via sync'd code by
+// instance on DocumentsWriterPerThread, or via sync'd code by
 // DocumentsWriterDeleteQueue
 
 class BufferedUpdates implements Accountable {
