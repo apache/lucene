@@ -27,10 +27,15 @@ import java.nio.ShortBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.codecs.CodecUtil;
+import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatFieldVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
+import org.apache.lucene.codecs.lucene95.HasIndexSlice;
+import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
+import org.apache.lucene.codecs.lucene95.OffHeapFloat16VectorValues;
+import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.document.column.VectorValuesCursor;
 import org.apache.lucene.index.ByteVectorValues;
@@ -46,6 +51,7 @@ import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.store.FileDataHint;
 import org.apache.lucene.store.FileTypeHint;
+import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IOFunction;
@@ -306,23 +312,27 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     VectorEncoding encoding = fieldInfo.getVectorEncoding();
     long vectorDataOffset = alignOutput(vectorData);
     // No need to use temporary file as we don't have to re-open for reading
-    DocsWithFieldSet docsWithField =
-        switch (encoding) {
-          case BYTE ->
-              writeByteVectorData(
-                  vectorData,
-                  KnnVectorsWriter.MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState));
-          case FLOAT16 ->
-              writeFloat16VectorData(
-                  vectorData,
-                  KnnVectorsWriter.MergedVectorValues.mergeFloat16VectorValues(
-                      fieldInfo, mergeState));
-          case FLOAT32 ->
-              writeVectorData(
-                  vectorData,
-                  KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(
-                      fieldInfo, mergeState));
-        };
+    DocsWithFieldSet docsWithField = copyRawVectorData(fieldInfo, mergeState);
+    if (docsWithField == null) {
+      docsWithField =
+          switch (encoding) {
+            case BYTE ->
+                writeByteVectorData(
+                    vectorData,
+                    KnnVectorsWriter.MergedVectorValues.mergeByteVectorValues(
+                        fieldInfo, mergeState));
+            case FLOAT16 ->
+                writeFloat16VectorData(
+                    vectorData,
+                    KnnVectorsWriter.MergedVectorValues.mergeFloat16VectorValues(
+                        fieldInfo, mergeState));
+            case FLOAT32 ->
+                writeVectorData(
+                    vectorData,
+                    KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(
+                        fieldInfo, mergeState));
+          };
+    }
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
     writeMeta(
         fieldInfo,
@@ -330,6 +340,141 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
         vectorDataOffset,
         vectorDataLength,
         docsWithField);
+  }
+
+  /**
+   * Merges a field by copying the stored bytes of each source segment's vectors, without decoding
+   * and re-encoding them. Every source must expose the field through one of the off-heap value
+   * classes that this format's reader creates, which read vector {@code ord} as the {@code
+   * vectorByteLength} little-endian bytes at {@code ord * vectorByteLength} of their slice: exactly
+   * what the per-vector path would write.
+   *
+   * <p>Documents are visited in the same order as {@code KnnVectorsWriter.MergedVectorValues}, and
+   * runs of consecutive live ordinals are copied in one call.
+   *
+   * @return the merged documents with a vector, or {@code null}, having written nothing, if the
+   *     merge sorts documents or any source does not qualify
+   */
+  private DocsWithFieldSet copyRawVectorData(FieldInfo fieldInfo, MergeState mergeState)
+      throws IOException {
+    if (mergeState.needsIndexSort) {
+      // documents of different segments interleave, so ordinals do not form runs
+      return null;
+    }
+    final int dimension = fieldInfo.getVectorDimension();
+    final long vectorByteLength = (long) dimension * fieldInfo.getVectorEncoding().byteSize;
+    final List<KnnVectorValues> sources = new ArrayList<>();
+    final List<MergeState.DocMap> docMaps = new ArrayList<>();
+    for (int i = 0; i < mergeState.knnVectorsReaders.length; i++) {
+      if (MergedVectorValues.hasVectorValues(mergeState.fieldInfos[i], fieldInfo.name) == false) {
+        continue;
+      }
+      KnnVectorsReader reader = mergeState.knnVectorsReaders[i];
+      if (reader == null) {
+        continue;
+      }
+      KnnVectorValues values =
+          switch (fieldInfo.getVectorEncoding()) {
+            case BYTE -> reader.getByteVectorValues(fieldInfo.name);
+            case FLOAT16 -> reader.getFloat16VectorValues(fieldInfo.name);
+            case FLOAT32 -> reader.getFloatVectorValues(fieldInfo.name);
+          };
+      if (values == null || values.size() == 0) {
+        continue; // contributes no vectors; empty off-heap values have no slice
+      }
+      if (isStoredLayout(values, dimension, vectorByteLength) == false) {
+        return null;
+      }
+      sources.add(values);
+      docMaps.add(mergeState.docMaps[i]);
+    }
+
+    final DocsWithFieldSet docsWithField = new DocsWithFieldSet();
+    final StagedCopier copier = new StagedCopier(vectorData);
+    for (int i = 0; i < sources.size(); i++) {
+      final KnnVectorValues values = sources.get(i);
+      final MergeState.DocMap docMap = docMaps.get(i);
+      final IndexInput slice = ((HasIndexSlice) values).getSlice().clone();
+      final KnnVectorValues.DocIndexIterator iterator = values.iterator();
+      // the run of ordinals [runStart, runEnd) not yet copied
+      int runStart = 0;
+      int runEnd = 0;
+      for (int doc = iterator.nextDoc(); doc != NO_MORE_DOCS; doc = iterator.nextDoc()) {
+        int mappedDoc = docMap.get(doc);
+        if (mappedDoc == -1) {
+          continue; // deleted
+        }
+        int ord = iterator.index();
+        if (ord != runEnd) {
+          copier.copy(slice, runStart * vectorByteLength, (runEnd - runStart) * vectorByteLength);
+          runStart = ord;
+        }
+        runEnd = ord + 1;
+        docsWithField.add(mappedDoc);
+      }
+      copier.copy(slice, runStart * vectorByteLength, (runEnd - runStart) * vectorByteLength);
+    }
+    copier.flush();
+    return docsWithField;
+  }
+
+  /**
+   * Gathers copied byte ranges in a buffer and writes it to the output only when it is full. Runs
+   * between deleted documents can be a few kilobytes; writing each one directly would flush the
+   * output's buffer partly filled, and issue more and smaller writes to the file than the
+   * per-vector path does.
+   */
+  private static final class StagedCopier {
+    private static final int BUFFER_SIZE = 64 * 1024;
+
+    private final IndexOutput out;
+    private final byte[] buffer = new byte[BUFFER_SIZE];
+    private int buffered;
+
+    StagedCopier(IndexOutput out) {
+      this.out = out;
+    }
+
+    /** Appends {@code length} bytes of {@code in} starting at {@code offset}. */
+    void copy(IndexInput in, long offset, long length) throws IOException {
+      if (length == 0) {
+        return;
+      }
+      in.seek(offset);
+      while (length > 0) {
+        if (buffered == buffer.length) {
+          flush();
+        }
+        int chunk = (int) Math.min(length, buffer.length - buffered);
+        in.readBytes(buffer, buffered, chunk);
+        buffered += chunk;
+        length -= chunk;
+      }
+    }
+
+    void flush() throws IOException {
+      out.writeBytes(buffer, 0, buffered);
+      buffered = 0;
+    }
+  }
+
+  /**
+   * Returns whether {@code values} reads vector {@code ord} as the bytes at {@code ord *
+   * vectorByteLength} of its slice. Only the value classes declared in {@link
+   * OffHeapFloatVectorValues}, {@link OffHeapFloat16VectorValues} and {@link
+   * OffHeapByteVectorValues} qualify; a subclass defined elsewhere could read vectors differently.
+   * The slice length proves that vectors are stored back to back without padding.
+   */
+  private static boolean isStoredLayout(
+      KnnVectorValues values, int dimension, long vectorByteLength) {
+    Class<?> declaringClass = values.getClass().getEnclosingClass();
+    if (declaringClass != OffHeapFloatVectorValues.class
+        && declaringClass != OffHeapFloat16VectorValues.class
+        && declaringClass != OffHeapByteVectorValues.class) {
+      return false;
+    }
+    return values.dimension() == dimension
+        && ((HasIndexSlice) values).getSlice().length() == values.size() * vectorByteLength;
   }
 
   private void writeMeta(
