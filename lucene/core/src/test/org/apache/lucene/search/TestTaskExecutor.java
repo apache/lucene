@@ -64,10 +64,9 @@ public class TestTaskExecutor extends LuceneTestCase {
             IOException.class,
             () ->
                 taskExecutor.invokeAll(
-                    Collections.singletonList(
-                        () -> {
-                          throw new IOException("io exception");
-                        })));
+                    Collections.singletonList(() -> {
+                      throw new IOException("io exception");
+                    })));
     assertEquals("io exception", ioException.getMessage());
   }
 
@@ -78,10 +77,9 @@ public class TestTaskExecutor extends LuceneTestCase {
             RuntimeException.class,
             () ->
                 taskExecutor.invokeAll(
-                    Collections.singletonList(
-                        () -> {
-                          throw new RuntimeException("runtime");
-                        })));
+                    Collections.singletonList(() -> {
+                      throw new RuntimeException("runtime");
+                    })));
     assertEquals("runtime", runtimeException.getMessage());
     assertNull(runtimeException.getCause());
   }
@@ -93,10 +91,9 @@ public class TestTaskExecutor extends LuceneTestCase {
             OutOfMemoryError.class,
             () ->
                 taskExecutor.invokeAll(
-                    Collections.singletonList(
-                        () -> {
-                          throw new OutOfMemoryError("oom");
-                        })));
+                    Collections.singletonList(() -> {
+                      throw new OutOfMemoryError("oom");
+                    })));
     assertEquals("oom", outOfMemoryError.getMessage());
     assertNull(outOfMemoryError.getCause());
   }
@@ -108,10 +105,9 @@ public class TestTaskExecutor extends LuceneTestCase {
             RuntimeException.class,
             () ->
                 taskExecutor.invokeAll(
-                    Collections.singletonList(
-                        () -> {
-                          throw new Exception("exc");
-                        })));
+                    Collections.singletonList(() -> {
+                      throw new Exception("exc");
+                    })));
     assertEquals("exc", runtimeException.getCause().getMessage());
   }
 
@@ -119,11 +115,10 @@ public class TestTaskExecutor extends LuceneTestCase {
     doTestInvokeAllFromTaskDoesNotDeadlockSameSearcher(executorService);
     doTestInvokeAllFromTaskDoesNotDeadlockSameSearcher(Runnable::run);
     executorService
-        .submit(
-            () -> {
-              doTestInvokeAllFromTaskDoesNotDeadlockSameSearcher(executorService);
-              return null;
-            })
+        .submit(() -> {
+          doTestInvokeAllFromTaskDoesNotDeadlockSameSearcher(executorService);
+          return null;
+        })
         .get();
   }
 
@@ -157,15 +152,14 @@ public class TestTaskExecutor extends LuceneTestCase {
                         searcher
                             .getTaskExecutor()
                             .invokeAll(
-                                Collections.singletonList(
-                                    () -> {
-                                      // make sure that we don't miss disabling concurrency one
-                                      // level deeper
-                                      searcher
-                                          .getTaskExecutor()
-                                          .invokeAll(Collections.singletonList(() -> null));
-                                      return null;
-                                    }));
+                                Collections.singletonList(() -> {
+                                  // make sure that we don't miss disabling concurrency one
+                                  // level deeper
+                                  searcher
+                                      .getTaskExecutor()
+                                      .invokeAll(Collections.singletonList(() -> null));
+                                  return null;
+                                }));
                       }
 
                       @Override
@@ -193,11 +187,10 @@ public class TestTaskExecutor extends LuceneTestCase {
     doTestInvokeAllFromTaskDoesNotDeadlockMultipleSearchers(executorService);
     doTestInvokeAllFromTaskDoesNotDeadlockMultipleSearchers(Runnable::run);
     executorService
-        .submit(
-            () -> {
-              doTestInvokeAllFromTaskDoesNotDeadlockMultipleSearchers(executorService);
-              return null;
-            })
+        .submit(() -> {
+          doTestInvokeAllFromTaskDoesNotDeadlockMultipleSearchers(executorService);
+          return null;
+        })
         .get();
   }
 
@@ -262,25 +255,22 @@ public class TestTaskExecutor extends LuceneTestCase {
   public void testInvokeAllDoesNotLeaveTasksBehind() {
     AtomicInteger tasksStarted = new AtomicInteger(0);
     TaskExecutor taskExecutor =
-        new TaskExecutor(
-            command -> {
-              tasksStarted.incrementAndGet();
-              command.run();
-            });
+        new TaskExecutor(command -> {
+          tasksStarted.incrementAndGet();
+          command.run();
+        });
     AtomicInteger tasksExecuted = new AtomicInteger(0);
     List<Callable<Void>> callables = new ArrayList<>();
-    callables.add(
-        () -> {
-          tasksExecuted.incrementAndGet();
-          throw new RuntimeException();
-        });
+    callables.add(() -> {
+      tasksExecuted.incrementAndGet();
+      throw new RuntimeException();
+    });
     int tasksWithNormalExit = 99;
     for (int i = 0; i < tasksWithNormalExit; i++) {
-      callables.add(
-          () -> {
-            throw new AssertionError(
-                "must not be called since the first task failing cancels all subsequent tasks");
-          });
+      callables.add(() -> {
+        throw new AssertionError(
+            "must not be called since the first task failing cancels all subsequent tasks");
+      });
     }
     expectThrows(RuntimeException.class, () -> taskExecutor.invokeAll(callables));
     assertEquals(1, tasksExecuted.get());
@@ -305,18 +295,16 @@ public class TestTaskExecutor extends LuceneTestCase {
       // otherwise there may or may not be a suppressed exception
       CountDownLatch latchA = new CountDownLatch(1);
       CountDownLatch latchB = new CountDownLatch(1);
-      callables.add(
-          () -> {
-            latchA.countDown();
-            latchB.await();
-            throw new RuntimeException("exception A");
-          });
-      callables.add(
-          () -> {
-            latchB.countDown();
-            latchA.await();
-            throw new IllegalStateException("exception B");
-          });
+      callables.add(() -> {
+        latchA.countDown();
+        latchB.await();
+        throw new RuntimeException("exception A");
+      });
+      callables.add(() -> {
+        latchB.countDown();
+        latchA.await();
+        throw new IllegalStateException("exception B");
+      });
 
       RuntimeException exc =
           expectThrows(RuntimeException.class, () -> taskExecutor.invokeAll(callables));
@@ -343,23 +331,22 @@ public class TestTaskExecutor extends LuceneTestCase {
     AtomicInteger executedTasks = new AtomicInteger(0);
     for (int i = 0; i < numTasks; i++) {
       final int index = i;
-      tasks.add(
-          () -> {
-            if (index == throwingTask) {
-              if (error) {
-                throw new OutOfMemoryError();
-              } else {
-                throw new RuntimeException();
-              }
-            }
-            if (index > throwingTask) {
-              // with a single thread we are sure that the last task to run is the one that throws,
-              // following ones must not run
-              throw new AssertionError("task should not have started");
-            }
-            executedTasks.incrementAndGet();
-            return null;
-          });
+      tasks.add(() -> {
+        if (index == throwingTask) {
+          if (error) {
+            throw new OutOfMemoryError();
+          } else {
+            throw new RuntimeException();
+          }
+        }
+        if (index > throwingTask) {
+          // with a single thread we are sure that the last task to run is the one that throws,
+          // following ones must not run
+          throw new AssertionError("task should not have started");
+        }
+        executedTasks.incrementAndGet();
+        return null;
+      });
     }
     Throwable throwable;
     if (error) {
@@ -384,11 +371,10 @@ public class TestTaskExecutor extends LuceneTestCase {
       final ArrayList<Callable<Void>> callables = new ArrayList<>(taskCount);
       final AtomicInteger executedTasks = new AtomicInteger(0);
       for (int i = 0; i < taskCount; i++) {
-        callables.add(
-            () -> {
-              executedTasks.incrementAndGet();
-              return null;
-            });
+        callables.add(() -> {
+          executedTasks.incrementAndGet();
+          return null;
+        });
       }
       final TaskExecutor taskExecutor = new TaskExecutor(threadPoolExecutor);
       var res = taskExecutor.invokeAll(callables);

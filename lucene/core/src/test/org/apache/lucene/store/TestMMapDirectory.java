@@ -68,20 +68,19 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
         final byte[] accum = new byte[nInts * Integer.BYTES];
         final CountDownLatch shotgun = new CountDownLatch(1);
         final Thread t1 =
-            new Thread(
-                () -> {
-                  try {
-                    shotgun.await();
-                    for (int i = 0; i < 10; i++) {
-                      clone.seek(0);
-                      clone.readBytes(accum, 0, accum.length);
-                    }
-                  } catch (AlreadyClosedException _) {
-                    // OK
-                  } catch (InterruptedException | IOException e) {
-                    throw new RuntimeException(e);
-                  }
-                });
+            new Thread(() -> {
+              try {
+                shotgun.await();
+                for (int i = 0; i < 10; i++) {
+                  clone.seek(0);
+                  clone.readBytes(accum, 0, accum.length);
+                }
+              } catch (AlreadyClosedException _) {
+                // OK
+              } catch (InterruptedException | IOException e) {
+                throw new RuntimeException(e);
+              }
+            });
         t1.start();
         shotgun.countDown();
         // this triggers "bad behaviour": closing input while other threads are running
@@ -343,10 +342,9 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
       int perListSize = (names.size() + nThreads) / nThreads;
       List<List<String>> nameLists =
           IntStream.range(0, nThreads)
-              .mapToObj(
-                  i ->
-                      names.subList(
-                          perListSize * i, Math.min(perListSize * i + perListSize, names.size())))
+              .mapToObj(i ->
+                  names.subList(
+                      perListSize * i, Math.min(perListSize * i + perListSize, names.size())))
               .toList();
 
       var threadFactory = new NamedThreadFactory("testArenas");
@@ -411,6 +409,58 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
     }
   }
 
+  // When the permits of a group's arena are exhausted, a newer arena replaces it in the arenas map
+  // while the older one is still alive. Closing the older arena must not evict the newer one.
+  public void testArenasOldArenaCloseKeepsNewerArena() throws Exception {
+    final String name = "_1.dat";
+    byte[] bytes = new byte[4];
+    random().nextBytes(bytes);
+
+    try (var dir = new MMapDirectory(createTempDir("testArenasOldArenaCloseKeepsNewerArena"))) {
+      try (IndexOutput out = dir.createOutput(name, IOContext.DEFAULT)) {
+        out.writeBytes(bytes, 0, bytes.length);
+      }
+      final String key = MMapDirectory.GROUP_BY_SEGMENT.apply(name).orElseThrow();
+
+      // Open the same file until the permits of the first arena are exhausted, and the arenas map
+      // holds a newer arena for the group. The number of permits is at most MAX_PERMITS, so the
+      // loop is bounded by one more open than that.
+      List<IndexInput> oldInputs = new ArrayList<>();
+      oldInputs.add(dir.openInput(name, IOContext.DEFAULT));
+      final RefCountedSharedArena oldArena = dir.arenas.get(key);
+      assertNotNull(oldArena);
+
+      IndexInput newInput = null;
+      for (int i = 0; i <= RefCountedSharedArena.MAX_PERMITS && newInput == null; i++) {
+        IndexInput in = dir.openInput(name, IOContext.DEFAULT);
+        if (dir.arenas.get(key) == oldArena) {
+          oldInputs.add(in);
+        } else {
+          newInput = in;
+        }
+      }
+      assertNotNull("permits were never exhausted", newInput);
+      final RefCountedSharedArena newArena = dir.arenas.get(key);
+      assertNotNull(newArena);
+      assertNotSame(oldArena, newArena);
+
+      // Closing all inputs of the old arena closes it, but the newer arena is still live
+      for (IndexInput in : oldInputs) {
+        in.close();
+      }
+      assertSame("old arena's close evicted the newer arena", newArena, dir.arenas.get(key));
+
+      // Further opens of the group still share the newer arena
+      IndexInput another = dir.openInput(name, IOContext.DEFAULT);
+      assertSame(newArena, dir.arenas.get(key));
+      assertEquals(1, dir.arenas.size());
+      another.close();
+
+      newInput.close();
+      assertEquals(0, dir.arenas.size());
+    }
+  }
+
   public void testGroupBySegmentFunc() {
     var func = MMapDirectory.GROUP_BY_SEGMENT;
     assertEquals("0", func.apply("_0.doc").orElseThrow());
@@ -453,6 +503,71 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
     assertFalse(func.apply("_segment.si").isPresent());
     assertFalse(func.apply("segment.si").isPresent());
     assertFalse(func.apply("_51a.si").isPresent());
+  }
+
+  // slice(String, long, long, IOContext) must apply the same bounds checks as the overload without
+  // a context.
+  public void testSliceWithContextBoundsCheck() throws IOException {
+    try (Directory dir = new MMapDirectory(createTempDir("testSliceWithContextBoundsCheck"))) {
+      try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
+        out.writeBytes(new byte[64], 0, 64);
+      }
+      try (var in = dir.openInput("test", IOContext.DEFAULT)) {
+        expectThrows(
+            IllegalArgumentException.class, () -> in.slice("s", 1, in.length(), IOContext.DEFAULT));
+        expectThrows(IllegalArgumentException.class, () -> in.slice("s", -1, 1, IOContext.DEFAULT));
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> in.slice("s", 0, in.length() + 1, IOContext.DEFAULT));
+        in.slice("s", 0, in.length(), IOContext.DEFAULT).close();
+      }
+    }
+  }
+
+  // A new file starts at N - 1: the first call probes, a hit switches to sampling, and a
+  // miss makes the file earn N hits again.
+  public void testFirstProbeDecides() {
+    PrefetchBackoff warm = new PrefetchBackoff();
+    assertTrue(warm.shouldProbe(1));
+    warm.onHit();
+    int probes = 0;
+    for (int i = 0; i < PrefetchBackoff.SKIP * 4; i++) {
+      if (warm.shouldProbe(i + 1)) {
+        probes++;
+      }
+    }
+    assertEquals(4, probes);
+
+    PrefetchBackoff cold = new PrefetchBackoff();
+    assertTrue(cold.shouldProbe(1));
+    cold.onMiss();
+    for (int i = 0; i < PrefetchBackoff.N; i++) {
+      assertTrue("call " + i, cold.shouldProbe(i + 1));
+      cold.onHit();
+    }
+    assertFalse(cold.shouldProbe(1));
+  }
+
+  // Inputs start at well-spread phases, so among these SKIP clones of a warm input exactly one
+  // samples on its first prefetch call.
+  public void testClonesSampleAtDifferentOffsets() throws IOException {
+    try (MMapDirectory dir =
+        new MMapDirectory(createTempDir("testClonesSampleAtDifferentOffsets"))) {
+      try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
+        out.writeBytes(new byte[64], 0, 64);
+      }
+      try (var in = (MemorySegmentIndexInput) dir.openInput("test", IOContext.DEFAULT)) {
+        in.backoff.onHit(); // the first probe hit, so the file is sampling
+        int firstCallProbes = 0;
+        for (int i = 0; i < PrefetchBackoff.SKIP; i++) {
+          MemorySegmentIndexInput clone = in.clone();
+          if (clone.backoff.shouldProbe(++clone.prefetchCalls)) {
+            firstCallProbes++;
+          }
+        }
+        assertEquals(1, firstCallProbes);
+      }
+    }
   }
 
   public void testPrefetchWithSingleSegment() throws IOException {

@@ -68,6 +68,11 @@ public class TestFaissKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
     assumeTrue("Dependencies present", dependenciesPresent);
   }
 
+  public void testLoadedLibraryName() {
+    assertNotNull(FaissNativeWrapper.LOADED_LIBRARY);
+    assertFalse(FaissNativeWrapper.LOADED_LIBRARY.isBlank());
+  }
+
   @Override
   protected VectorEncoding randomVectorEncoding() {
     return SUPPORTED_ENCODINGS[random().nextInt(SUPPORTED_ENCODINGS.length)];

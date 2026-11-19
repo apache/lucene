@@ -34,4 +34,14 @@ public interface Lucene90SkippableDecompressor {
    */
   Lucene90DecompressingDataInput decompressingDataInput(
       DataInput in, int originalLength, int offset, int length) throws IOException;
+
+  /**
+   * Creates a skippable input, optionally reusing state from the same compressed block.
+   * Implementations that reuse a dictionary must initialize it before returning.
+   */
+  default Lucene90DecompressingDataInput decompressingDataInput(
+      DataInput in, int originalLength, int offset, int length, boolean reuseIfPossible)
+      throws IOException {
+    return decompressingDataInput(in, originalLength, offset, length);
+  }
 }

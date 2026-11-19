@@ -27,6 +27,7 @@ import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.store.DataAccessHint;
 
 /** LeafReader implemented by codec APIs. */
 public abstract class CodecReader extends LeafReader {
@@ -232,16 +233,22 @@ public abstract class CodecReader extends LeafReader {
 
   @Override
   public final FloatVectorValues getFloatVectorValues(String field) throws IOException {
+    return hasFloatVectors(field) ? getVectorReader().getFloatVectorValues(field) : null;
+  }
+
+  @Override
+  public final FloatVectorValues getFloatVectorValues(String field, DataAccessHint access)
+      throws IOException {
+    return hasFloatVectors(field) ? getVectorReader().getFloatVectorValues(field, access) : null;
+  }
+
+  private boolean hasFloatVectors(String field) {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
-    if (fi == null
-        || fi.getVectorDimension() == 0
-        || fi.getVectorEncoding() != VectorEncoding.FLOAT32) {
-      // Field does not exist or does not index vectors
-      return null;
-    }
-
-    return getVectorReader().getFloatVectorValues(field);
+    // false if the field does not exist or does not index float vectors
+    return fi != null
+        && fi.getVectorDimension() != 0
+        && fi.getVectorEncoding() == VectorEncoding.FLOAT32;
   }
 
   @Override
@@ -322,41 +329,50 @@ public abstract class CodecReader extends LeafReader {
 
   @Override
   public void checkIntegrity() throws IOException {
+    checkIntegrity(null);
+  }
+
+  /**
+   * {@link #checkIntegrity()} on behalf of a merge, which is told about so that a long checksum can
+   * notice it has been aborted. Covers exactly what the formats verify for themselves when their
+   * merges begin, and so nothing of the compound file that may contain them.
+   */
+  void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
     ensureOpen();
 
     // terms/postings
     if (getPostingsReader() != null) {
-      getPostingsReader().checkIntegrity(null);
+      getPostingsReader().checkIntegrity(merge);
     }
 
     // norms
     if (getNormsReader() != null) {
-      getNormsReader().checkIntegrity(null);
+      getNormsReader().checkIntegrity(merge);
     }
 
     // docvalues
     if (getDocValuesReader() != null) {
-      getDocValuesReader().checkIntegrity(null);
+      getDocValuesReader().checkIntegrity(merge);
     }
 
     // stored fields
     if (getFieldsReader() != null) {
-      getFieldsReader().checkIntegrity(null);
+      getFieldsReader().checkIntegrity(merge);
     }
 
     // term vectors
     if (getTermVectorsReader() != null) {
-      getTermVectorsReader().checkIntegrity(null);
+      getTermVectorsReader().checkIntegrity(merge);
     }
 
     // points
     if (getPointsReader() != null) {
-      getPointsReader().checkIntegrity(null);
+      getPointsReader().checkIntegrity(merge);
     }
 
     // vectors
     if (getVectorReader() != null) {
-      getVectorReader().checkIntegrity(null);
+      getVectorReader().checkIntegrity(merge);
     }
   }
 }

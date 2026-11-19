@@ -48,11 +48,8 @@ public class TestLuceneTestCaseParentSanity extends LuceneTestCase {
     ClassModel host = parse(LuceneTestCaseParent.class.getSimpleName() + ".class");
     classFiles.add(host.thisClass().asInternalName());
     host.findAttribute(Attributes.nestMembers())
-        .ifPresent(
-            attr ->
-                attr.nestMembers().stream()
-                    .map(ClassEntry::asInternalName)
-                    .forEach(classFiles::add));
+        .ifPresent(attr ->
+            attr.nestMembers().stream().map(ClassEntry::asInternalName).forEach(classFiles::add));
 
     for (String internalName : classFiles) {
       ClassModel model =

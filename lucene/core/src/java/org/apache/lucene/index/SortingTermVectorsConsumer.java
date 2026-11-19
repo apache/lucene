@@ -26,6 +26,7 @@ import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.codecs.TermVectorsWriter;
 import org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingTermVectorsFormat;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FlushInfo;
 import org.apache.lucene.store.IOContext;
@@ -61,7 +62,10 @@ final class SortingTermVectorsConsumer extends TermVectorsConsumer {
     if (tmpDirectory != null) {
       TermVectorsReader reader =
           TEMP_TERM_VECTORS_FORMAT.vectorsReader(
-              tmpDirectory, state.segmentInfo, state.fieldInfos, IOContext.DEFAULT);
+              tmpDirectory,
+              state.segmentInfo,
+              state.fieldInfos,
+              IOContext.READONCE_SINGLETHREAD.overrideHints(DataAccessHint.RANDOM));
       // Don't pull a merge instance, since merge instances optimize for
       // sequential access while term vectors will likely be accessed in random
       // order here.

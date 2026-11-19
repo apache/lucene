@@ -196,12 +196,12 @@ public final class MenuBarProvider {
 
     void showOpenIndexDialog(ActionEvent e) {
       new DialogOpener<>(openIndexDialogFactory)
-          .open(MessageUtils.getLocalizedMessage("openindex.dialog.title"), 600, 420, (_) -> {});
+          .open(MessageUtils.getLocalizedMessage("openindex.dialog.title"), 600, 420, _ -> {});
     }
 
     void showCreateIndexDialog(ActionEvent e) {
       new DialogOpener<>(createIndexDialogFactory)
-          .open(MessageUtils.getLocalizedMessage("createindex.dialog.title"), 600, 360, (_) -> {});
+          .open(MessageUtils.getLocalizedMessage("createindex.dialog.title"), 600, 360, _ -> {});
     }
 
     void reopenIndex(ActionEvent e) {

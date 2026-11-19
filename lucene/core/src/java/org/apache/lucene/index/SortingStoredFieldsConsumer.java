@@ -29,6 +29,7 @@ import org.apache.lucene.codecs.compressing.Decompressor;
 import org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingStoredFieldsFormat;
 import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.store.ByteBuffersDataInput;
+import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
@@ -110,7 +111,10 @@ final class SortingStoredFieldsConsumer extends StoredFieldsConsumer {
     super.flush(state, sortMap);
     StoredFieldsReader reader =
         TEMP_STORED_FIELDS_FORMAT.fieldsReader(
-            tmpDirectory, state.segmentInfo, state.fieldInfos, IOContext.DEFAULT);
+            tmpDirectory,
+            state.segmentInfo,
+            state.fieldInfos,
+            IOContext.READONCE_SINGLETHREAD.overrideHints(DataAccessHint.RANDOM));
     // Don't pull a merge instance, since merge instances optimize for
     // sequential access while we consume stored fields in random order here.
     StoredFieldsWriter sortWriter =

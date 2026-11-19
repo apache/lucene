@@ -85,11 +85,10 @@ public class MeasureTaskTimesPlugin extends LuceneGradlePlugin {
                 "taskTimesService",
                 TaskTimesService.class,
                 service -> {
-                  service.parameters(
-                      params -> {
-                        params.getAggregateByName().set(aggregateOption.get());
-                        params.getLimit().set(taskCountLimitOption.get());
-                      });
+                  service.parameters(params -> {
+                    params.getAggregateByName().set(aggregateOption.get());
+                    params.getLimit().set(taskCountLimitOption.get());
+                  });
                 });
 
     listenerRegistry.onTaskCompletion(taskTimesService);
@@ -153,10 +152,8 @@ public class MeasureTaskTimesPlugin extends LuceneGradlePlugin {
           localTaskTimes.entrySet().stream()
               .sorted(
                   Comparator.comparingLong((Map.Entry<String, Long> e) -> e.getValue()).reversed())
-              .map(
-                  e ->
-                      String.format(
-                          Locale.ROOT, " %6.2f sec.  %s", e.getValue() / 1000.0, e.getKey()))
+              .map(e ->
+                  String.format(Locale.ROOT, " %6.2f sec.  %s", e.getValue() / 1000.0, e.getKey()))
               .limit(params.getLimit().get())
               .collect(Collectors.joining("\n"));
 

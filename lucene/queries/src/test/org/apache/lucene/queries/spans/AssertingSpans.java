@@ -54,7 +54,7 @@ class AssertingSpans extends Spans {
 
     /** documents exhausted ({@link #docID()} = {@link #NO_MORE_DOCS}) */
     DOC_FINISHED
-  };
+  }
 
   State state = State.DOC_START;
 

@@ -691,35 +691,43 @@ public abstract sealed class LuceneTestCaseParent extends Assert
       BytesRef term;
       while ((term = leftEnum.next()) != null) {
         int code = random.nextInt(10);
-        if (code == 0) {
-          // the term
-          tests.add(BytesRef.deepCopyOf(term));
-        } else if (code == 1) {
-          // truncated subsequence of term
-          term = BytesRef.deepCopyOf(term);
-          if (term.length > 0) {
-            // truncate it
-            term.length = random.nextInt(term.length);
+        switch (code) {
+          case 0 -> {
+            // the term
+            tests.add(BytesRef.deepCopyOf(term));
           }
-        } else if (code == 2) {
-          // term, but ensure a non-zero offset
-          byte[] newbytes = new byte[term.length + 5];
-          System.arraycopy(term.bytes, term.offset, newbytes, 5, term.length);
-          tests.add(new BytesRef(newbytes, 5, term.length));
-        } else if (code == 3) {
-          switch (random().nextInt(3)) {
-            case 0:
-              tests.add(new BytesRef()); // before the first term
-              break;
-            case 1:
-              tests.add(new BytesRef(new byte[] {(byte) 0xFF, (byte) 0xFF})); // past the last term
-              break;
-            case 2:
-              tests.add(new BytesRef(TestUtil.randomSimpleString(random()))); // random term
-              break;
-            default:
-              throw new AssertionError();
+          case 1 -> {
+            // truncated subsequence of term
+            term = BytesRef.deepCopyOf(term);
+            if (term.length > 0) {
+              // truncate it
+              term.length = random.nextInt(term.length);
+            }
+            tests.add(term);
           }
+          case 2 -> {
+            // term, but ensure a non-zero offset
+            byte[] newbytes = new byte[term.length + 5];
+            System.arraycopy(term.bytes, term.offset, newbytes, 5, term.length);
+            tests.add(new BytesRef(newbytes, 5, term.length));
+          }
+          case 3 -> {
+            switch (random().nextInt(3)) {
+              case 0:
+                tests.add(new BytesRef()); // before the first term
+                break;
+              case 1:
+                tests.add(
+                    new BytesRef(new byte[] {(byte) 0xFF, (byte) 0xFF})); // past the last term
+                break;
+              case 2:
+                tests.add(new BytesRef(TestUtil.randomSimpleString(random()))); // random term
+                break;
+              default:
+                throw new AssertionError();
+            }
+          }
+          default -> {}
         }
       }
       numPasses++;
@@ -1605,13 +1613,10 @@ public abstract sealed class LuceneTestCaseParent extends Assert
   /** Inspects stack trace to figure out if a method of a specific class called us. */
   public static boolean callStackContains(Class<?> clazz, String methodName) {
     final String className = clazz.getName();
-    return SW_WITH_METHODS.walk(
-        s ->
-            s.skip(1) // exclude this utility method
-                .anyMatch(
-                    f ->
-                        className.equals(f.getClassName())
-                            && methodName.equals(f.getMethodName())));
+    return SW_WITH_METHODS.walk(s ->
+        s.skip(1) // exclude this utility method
+            .anyMatch(
+                f -> className.equals(f.getClassName()) && methodName.equals(f.getMethodName())));
   }
 
   /**
@@ -1619,20 +1624,18 @@ public abstract sealed class LuceneTestCaseParent extends Assert
    * called us.
    */
   public static boolean callStackContainsAnyOf(String... methodNames) {
-    return SW_WITH_METHODS.walk(
-        s ->
-            s.skip(1) // exclude this utility method
-                .map(StackWalker.StackFrame::getMethodName)
-                .anyMatch(Set.of(methodNames)::contains));
+    return SW_WITH_METHODS.walk(s ->
+        s.skip(1) // exclude this utility method
+            .map(StackWalker.StackFrame::getMethodName)
+            .anyMatch(Set.of(methodNames)::contains));
   }
 
   /** Inspects stack trace if the given class called us. */
   public static boolean callStackContains(Class<?> clazz) {
-    return SW_NO_METHODS.walk(
-        s ->
-            s.skip(1) // exclude this utility method
-                .map(StackWalker.StackFrame::getClassName)
-                .anyMatch(clazz.getName()::equals));
+    return SW_NO_METHODS.walk(s ->
+        s.skip(1) // exclude this utility method
+            .map(StackWalker.StackFrame::getClassName)
+            .anyMatch(clazz.getName()::equals));
   }
 
   /**

@@ -43,7 +43,7 @@ public class TestSoftDeletesDirectoryReaderWrapper extends LuceneTestCase {
     indexWriterConfig.setSoftDeletesField(softDeletesField);
     indexWriterConfig.setMergePolicy(
         new SoftDeletesRetentionMergePolicy(
-            softDeletesField, MatchAllDocsQuery::new, NoMergePolicy.INSTANCE));
+            softDeletesField, () -> MatchAllDocsQuery.INSTANCE, NoMergePolicy.INSTANCE));
     try (Directory dir = newDirectory();
         IndexWriter writer = new IndexWriter(dir, indexWriterConfig)) {
 
@@ -227,17 +227,15 @@ public class TestSoftDeletesDirectoryReaderWrapper extends LuceneTestCase {
         reader.leaves().get(0).reader().getReaderCacheHelper();
     AtomicInteger leafCalled = new AtomicInteger(0);
     AtomicInteger dirCalled = new AtomicInteger(0);
-    readerCacheHelper.addClosedListener(
-        key -> {
-          leafCalled.incrementAndGet();
-          assertSame(key, readerCacheHelper.getKey());
-        });
+    readerCacheHelper.addClosedListener(key -> {
+      leafCalled.incrementAndGet();
+      assertSame(key, readerCacheHelper.getKey());
+    });
     IndexReader.CacheHelper dirReaderCacheHelper = reader.getReaderCacheHelper();
-    dirReaderCacheHelper.addClosedListener(
-        key -> {
-          dirCalled.incrementAndGet();
-          assertSame(key, dirReaderCacheHelper.getKey());
-        });
+    dirReaderCacheHelper.addClosedListener(key -> {
+      dirCalled.incrementAndGet();
+      assertSame(key, dirReaderCacheHelper.getKey());
+    });
     assertEquals(2, reader.numDocs());
     assertEquals(2, reader.maxDoc());
     assertEquals(0, reader.numDeletedDocs());
@@ -274,7 +272,8 @@ public class TestSoftDeletesDirectoryReaderWrapper extends LuceneTestCase {
     iwc.setSoftDeletesField(softDeletesField);
     MergePolicy mergePolicy = iwc.mergePolicy;
     iwc.setMergePolicy(
-        new SoftDeletesRetentionMergePolicy(softDeletesField, MatchAllDocsQuery::new, mergePolicy));
+        new SoftDeletesRetentionMergePolicy(
+            softDeletesField, () -> MatchAllDocsQuery.INSTANCE, mergePolicy));
     try (Directory dir = newDirectory();
         IndexWriter writer = new IndexWriter(dir, iwc)) {
       int numDocs = 1 + random().nextInt(10);
@@ -307,7 +306,7 @@ public class TestSoftDeletesDirectoryReaderWrapper extends LuceneTestCase {
           .getConfig()
           .setMergePolicy(
               new SoftDeletesRetentionMergePolicy(
-                  softDeletesField, MatchNoDocsQuery::new, mergePolicy));
+                  softDeletesField, () -> MatchNoDocsQuery.INSTANCE, mergePolicy));
       writer.forceMerge(1);
       try (DirectoryReader reader = DirectoryReader.open(writer)) {
         for (LeafReaderContext leafContext : reader.leaves()) {

@@ -286,14 +286,10 @@ public class SloppyMath {
       double cosAngle = StrictMath.cos(angle);
       // For indexes corresponding to null cosine or sine, we make sure the value is zero
       // and not an epsilon. This allows for a much better accuracy for results close to zero.
-      if (i == SIN_COS_PI_INDEX) {
-        sinAngle = 0.0;
-      } else if (i == SIN_COS_PI_MUL_2_INDEX) {
-        sinAngle = 0.0;
-      } else if (i == SIN_COS_PI_MUL_0_5_INDEX) {
-        cosAngle = 0.0;
-      } else if (i == SIN_COS_PI_MUL_1_5_INDEX) {
-        cosAngle = 0.0;
+      switch (i) {
+        case SIN_COS_PI_INDEX, SIN_COS_PI_MUL_2_INDEX -> sinAngle = 0.0;
+        case SIN_COS_PI_MUL_0_5_INDEX, SIN_COS_PI_MUL_1_5_INDEX -> cosAngle = 0.0;
+        default -> {}
       }
       sinTab[i] = sinAngle;
       cosTab[i] = cosAngle;

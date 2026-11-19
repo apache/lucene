@@ -489,13 +489,12 @@ public final class CustomAnalyzerPanelProvider implements CustomAnalyzerPanelOpe
 
     operatorRegistry
         .get(AnalysisTabOperator.class)
-        .ifPresent(
-            operator -> {
-              operator.setAnalyzerByCustomConfiguration(config);
-              messageBroker.showStatusMessage(
-                  MessageUtils.getLocalizedMessage("analysis.message.build_success"));
-              buildBtn.setEnabled(false);
-            });
+        .ifPresent(operator -> {
+          operator.setAnalyzerByCustomConfiguration(config);
+          messageBroker.showStatusMessage(
+              MessageUtils.getLocalizedMessage("analysis.message.build_success"));
+          buildBtn.setEnabled(false);
+        });
   }
 
   private void addCharFilter() {
@@ -586,7 +585,7 @@ public final class CustomAnalyzerPanelProvider implements CustomAnalyzerPanelOpe
             title,
             400,
             300,
-            (factory) -> {
+            factory -> {
               factory.setMode(mode);
               factory.setTargetIndex(targetIndex);
               factory.setTarget(selectedItem);
@@ -639,7 +638,7 @@ public final class CustomAnalyzerPanelProvider implements CustomAnalyzerPanelOpe
             title,
             400,
             300,
-            (factory) -> {
+            factory -> {
               factory.setMode(mode);
               factory.setSelectedFilters(selectedFilters);
               factory.setCallback(callback);

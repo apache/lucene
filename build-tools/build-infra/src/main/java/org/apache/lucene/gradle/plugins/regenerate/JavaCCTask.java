@@ -110,19 +110,17 @@ public abstract class JavaCCTask extends DefaultTask {
     ExecResult result =
         buildGlobals
             .getExecOps()
-            .javaexec(
-                (JavaExecSpec spec) -> {
-                  spec.setClasspath(getClasspath());
+            .javaexec((JavaExecSpec spec) -> {
+              spec.setClasspath(getClasspath());
 
-                  spec.setIgnoreExitValue(true);
-                  spec.setStandardOutput(output);
-                  spec.setErrorOutput(output);
+              spec.setIgnoreExitValue(true);
+              spec.setStandardOutput(output);
+              spec.setErrorOutput(output);
 
-                  spec.getMainClass().set("org.javacc.parser.Main");
-                  spec.args(
-                      "-OUTPUT_DIRECTORY=" + tempDir.getAbsolutePath(),
-                      javaccFile.getAbsolutePath());
-                });
+              spec.getMainClass().set("org.javacc.parser.Main");
+              spec.args(
+                  "-OUTPUT_DIRECTORY=" + tempDir.getAbsolutePath(), javaccFile.getAbsolutePath());
+            });
 
     if (result.getExitValue() != 0) {
       throw new GradleException(
@@ -150,11 +148,10 @@ public abstract class JavaCCTask extends DefaultTask {
     // Copy back to mainline sources (excluding CharStream.java)
     buildGlobals
         .getFileOps()
-        .copy(
-            (CopySpec spec) -> {
-              spec.from(tempDir);
-              spec.into(targetDir);
-              spec.exclude("CharStream.java");
-            });
+        .copy((CopySpec spec) -> {
+          spec.from(tempDir);
+          spec.into(targetDir);
+          spec.exclude("CharStream.java");
+        });
   }
 }

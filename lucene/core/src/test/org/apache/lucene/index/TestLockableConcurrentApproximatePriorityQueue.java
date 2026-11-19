@@ -74,23 +74,22 @@ public class TestLockableConcurrentApproximatePriorityQueue extends LuceneTestCa
       final CountDownLatch startingGun = new CountDownLatch(1);
       for (int t = 0; t < threads.length; ++t) {
         threads[t] =
-            new Thread(
-                () -> {
-                  try {
-                    startingGun.await();
-                  } catch (InterruptedException e) {
-                    throw new ThreadInterruptedException(e);
-                  }
-                  WeightedLock lock = new WeightedLock();
-                  lock.lock();
-                  lock.weight++; // Simulate a DWPT whose RAM usage increases
-                  queue.addAndUnlock(lock, lock.weight);
-                  for (int i = 0; i < 10_000; ++i) {
-                    lock = queue.lockAndPoll();
-                    assertNotNull(lock);
-                    queue.addAndUnlock(lock, lock.hashCode());
-                  }
-                });
+            new Thread(() -> {
+              try {
+                startingGun.await();
+              } catch (InterruptedException e) {
+                throw new ThreadInterruptedException(e);
+              }
+              WeightedLock lock = new WeightedLock();
+              lock.lock();
+              lock.weight++; // Simulate a DWPT whose RAM usage increases
+              queue.addAndUnlock(lock, lock.weight);
+              for (int i = 0; i < 10_000; ++i) {
+                lock = queue.lockAndPoll();
+                assertNotNull(lock);
+                queue.addAndUnlock(lock, lock.hashCode());
+              }
+            });
       }
       for (Thread thread : threads) {
         thread.start();

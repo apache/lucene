@@ -42,6 +42,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.codecs.compressing.CompressingCodec;
+import org.apache.lucene.tests.codecs.compressing.LZ4WithPresetCompressingCodec;
 import org.apache.lucene.tests.index.BaseStoredFieldsFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
@@ -67,6 +68,48 @@ public class TestCompressingStoredFieldsFormat extends BaseStoredFieldsFormatTes
     assertEquals(expected.length, actual.length);
     for (int i = 0; i < expected.length; i++) {
       assertEquals(expected[i], actual.bytes[actual.offset + i]);
+    }
+  }
+
+  public void testDictionaryReuse() throws IOException {
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter writer =
+          new IndexWriter(
+              dir,
+              newIndexWriterConfig()
+                  .setCodec(new LZ4WithPresetCompressingCodec(4096, 2, false, 8))
+                  .setMergePolicy(NoMergePolicy.INSTANCE))) {
+        String[] values = {
+          "a".repeat(512),
+          "b".repeat(512),
+          null,
+          "c".repeat(512),
+          "d".repeat(512),
+          "e".repeat(512),
+          "f".repeat(512)
+        };
+        for (String value : values) {
+          Document doc = new Document();
+          if (value != null) {
+            doc.add(new StoredField("padding", value.repeat(2)));
+            doc.add(new StoredField("text", value));
+          }
+          writer.addDocument(doc);
+        }
+        try (DirectoryReader reader = DirectoryReader.open(writer)) {
+          assertEquals(1, reader.leaves().size());
+          var fields = reader.storedFields();
+          // Docs 0 and 1 share one chunk; docs 2 (empty) and 3 share the next; docs 4 and 5 share
+          // the next.
+          for (int doc : new int[] {0, 1, 2, 3, 4, 5, 3, 0, 2, 3}) {
+            // Skip blocks in the padding field, then reuse the dictionary for a full read.
+            assertEquals(values[doc], fields.document(doc, Set.of("text")).get("text"));
+            Document loaded = fields.document(doc);
+            assertEquals(values[doc], loaded.get("text"));
+            assertEquals(values[doc] == null ? null : values[doc].repeat(2), loaded.get("padding"));
+          }
+        }
+      }
     }
   }
 
