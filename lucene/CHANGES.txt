@@ -349,6 +349,8 @@ Optimizations
 * GITHUB#14397: Reuse the LZ4 preset dictionary when reading stored fields or term vectors
   from the same compressed chunk. (Ke Wei)
 
+* GITHUB#16757: Speed up building cached bit sets in LRUQueryCache. (Ke Wei)
+
 Bug Fixes
 ---------------------
 * GITHUB#17020: Reduce CachingTokenFilter memory use by not copying stale term bytes in
@@ -797,8 +799,6 @@ Optimizations
 * GITHUB#16089: Upgrade DocIdSetBuilder to use FixedBitSet eagerly once exceeding the threshold (Ke Wei)
 
 * GITHUB#16119: Optimize byte array writes in OutputStreamIndexOutput to remove unnecessary overhead. (neoremind)
-
-* GITHUB#16757: Speed up building cached bit sets in LRUQueryCache. (Ke Wei)
 
 Bug Fixes
 ---------------------
