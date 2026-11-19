@@ -98,21 +98,32 @@ public final class DirectWriter {
     off = 0;
   }
 
+  @FunctionalInterface
+  private interface Setter {
+    void set(byte[] b, int o, long v);
+  }
+
+  private static final Setter LONG_SETTER = BitUtil.VH_LE_LONG::set,
+      INT_SETTER = (b, o, v) -> BitUtil.VH_LE_INT.set(b, o, (int) v),
+      SHORT_SETTER = (b, o, v) -> BitUtil.VH_LE_SHORT.set(b, o, (short) v),
+      BYTE_SETTER = (b, o, v) -> b[o] = (byte) v;
+
   private static void encode(long[] nextValues, int upTo, byte[] nextBlocks, int bitsPerValue) {
     if ((bitsPerValue & 7) == 0) {
       // bitsPerValue is a multiple of 8: 8, 16, 24, 32, 30, 48, 56, 64
       final int bytesPerValue = bitsPerValue / Byte.SIZE;
+      final Setter setter;
+      if (bitsPerValue > Integer.SIZE) {
+        setter = LONG_SETTER;
+      } else if (bitsPerValue > Short.SIZE) {
+        setter = INT_SETTER;
+      } else if (bitsPerValue > Byte.SIZE) {
+        setter = SHORT_SETTER;
+      } else {
+        setter = BYTE_SETTER;
+      }
       for (int i = 0, o = 0; i < upTo; ++i, o += bytesPerValue) {
-        final long l = nextValues[i];
-        if (bitsPerValue > Integer.SIZE) {
-          BitUtil.VH_LE_LONG.set(nextBlocks, o, l);
-        } else if (bitsPerValue > Short.SIZE) {
-          BitUtil.VH_LE_INT.set(nextBlocks, o, (int) l);
-        } else if (bitsPerValue > Byte.SIZE) {
-          BitUtil.VH_LE_SHORT.set(nextBlocks, o, (short) l);
-        } else {
-          nextBlocks[o] = (byte) l;
-        }
+        setter.set(nextBlocks, o, nextValues[i]);
       }
     } else if (bitsPerValue < 8) {
       // bitsPerValue is 1, 2 or 4
@@ -128,15 +139,11 @@ public final class DirectWriter {
       // bitsPerValue is 12, 20 or 28
       // Write values 2 by 2
       final int numBytesFor2Values = bitsPerValue * 2 / Byte.SIZE;
+      final Setter setter = (bitsPerValue <= Integer.SIZE / 2) ? INT_SETTER : LONG_SETTER;
       for (int i = 0, o = 0; i < upTo; i += 2, o += numBytesFor2Values) {
         final long l1 = nextValues[i];
         final long l2 = nextValues[i + 1];
-        final long merged = l1 | (l2 << bitsPerValue);
-        if (bitsPerValue <= Integer.SIZE / 2) {
-          BitUtil.VH_LE_INT.set(nextBlocks, o, (int) merged);
-        } else {
-          BitUtil.VH_LE_LONG.set(nextBlocks, o, merged);
-        }
+        setter.set(nextBlocks, o, l1 | (l2 << bitsPerValue));
       }
     }
   }
