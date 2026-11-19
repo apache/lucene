@@ -19,6 +19,10 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#16564: Speed up automaton intersection for PrefixQuery, TermRangeQuery and custom binary
+  automata by directly enumerating terms below accepting states with full-alphabet self-loops.
+  (Zhou Hui)
+
 * GITHUB#16806: HNSW searches track the visited nodes of a large graph in a hash set instead of a
   bit set sized to the graph, which makes merges into large segments faster. (Ankur Goel)
 
@@ -372,6 +376,12 @@ Optimizations
 * GITHUB#16970: SortingStoredFieldsConsumer reads its temporary files using a single-threaded
   IOContext, allowing MMapDirectory to open them with confined areas and avoiding JVM-wide
   handshakes when the files are closed. (Alan Woodward)
+
+* GITHUB#17021: Skip computing the cardinality of a window in DenseConjunctionBulkScorer when
+  no clause is left to apply. (Asharam)
+
+* GITHUB#14397: Reuse the LZ4 preset dictionary when reading stored fields or term vectors
+  from the same compressed chunk. (Ke Wei)
 
 * GITHUB#17013: Perform off-heap bulk scoring for Lucene104 scalar quantized vectors: avoid copy to
   heap, amortize query loads, and overlap CPU cache misses for 4 document vectors. (Kaival Parikh)
