@@ -38,7 +38,7 @@ class StoredFieldsInts {
     }
     if (allEqual) {
       out.writeByte((byte) 0);
-      out.writeVInt(values[0]);
+      out.writeVInt(values[start]);
     } else {
       long max = 0;
       for (int i = 0; i < count; ++i) {
