@@ -421,6 +421,59 @@ public class TestDoubleValuesSource extends LuceneTestCase {
     assertEquals(Float.NEGATIVE_INFINITY, values.getMinScore(DocIdSetIterator.NO_MORE_DOCS), 0f);
   }
 
+  public void testMaxScoreOfValueNotRepresentableAsFloat() throws Exception {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig conf = newIndexWriterConfig();
+      conf.setCodec(TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(16)));
+      try (IndexWriter writer = new IndexWriter(dir, conf)) {
+        Document doc = new Document();
+        // the nearest float to 2^24 + 1 is 2^24, which is less than the value
+        doc.add(NumericDocValuesField.indexedField("field", (1L << 24) + 1));
+        writer.addDocument(doc);
+      }
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        DoubleValues values =
+            DoubleValuesSource.fromLongField("field").getValues(reader.leaves().get(0), null);
+        int upTo = values.advanceShallow(0);
+        assertTrue(values.advanceExact(0));
+        double value = values.doubleValue();
+        float maxScore = values.getMaxScore(upTo);
+        assertTrue("value=" + value + " maxScore=" + maxScore, value <= maxScore);
+      }
+    }
+  }
+
+  public void testMaxScoreWithDefaultValue() throws Exception {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig conf = newIndexWriterConfig();
+      conf.setCodec(TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(16)));
+      conf.setMergePolicy(newLogMergePolicy());
+      try (IndexWriter writer = new IndexWriter(dir, conf)) {
+        for (int i = 0; i < 3; i++) {
+          Document doc = new Document();
+          if (i != 1) {
+            doc.add(NumericDocValuesField.indexedField("field", 5));
+          }
+          writer.addDocument(doc);
+        }
+        writer.forceMerge(1);
+      }
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        DoubleValues values =
+            DoubleValues.withDefault(
+                DoubleValuesSource.fromLongField("field").getValues(reader.leaves().get(0), null),
+                1000);
+        values.advanceShallow(0);
+        float maxScore = values.getMaxScore(2);
+        for (int doc = 0; doc < 3; ++doc) {
+          assertTrue(values.advanceExact(doc));
+          double value = values.doubleValue();
+          assertTrue("doc=" + doc + " value=" + value + " maxScore=" + maxScore, value <= maxScore);
+        }
+      }
+    }
+  }
+
   public void testMaxScoreAfterTheSkipperIsExhausted() throws Exception {
     DoubleValues values = skipIndexValues();
     values.advanceShallow(0);

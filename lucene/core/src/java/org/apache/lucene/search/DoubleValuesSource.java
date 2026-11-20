@@ -577,7 +577,10 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
                   (monotonicity == Monotonicity.INCREASING)
                       ? skipper.maxValue(level)
                       : skipper.minValue(level);
-              return (float) decoder.applyAsDouble(rawBound);
+              double bound = decoder.applyAsDouble(rawBound);
+              // the nearest float may be less than the bound
+              float maxScore = (float) bound;
+              return maxScore < bound ? Math.nextUp(maxScore) : maxScore;
             }
           }
           return Float.POSITIVE_INFINITY;
