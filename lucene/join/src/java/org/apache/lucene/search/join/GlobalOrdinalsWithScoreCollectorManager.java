@@ -43,9 +43,10 @@ class GlobalOrdinalsWithScoreCollectorManager implements CollectorManager<Collec
   final OrdinalMap ordinalMap;
   final LongBitSet collectedOrds;
   // note: we only lock when collecting since the operation here is: do all the collection, and then
-  // become immutable when we can have any number of concurrent readers.  Locks are per-block, so
-  // access to a single lock should generally be by one or two threads since global docids are
-  // handled by per-segment threads, which each get contiguous blocks of docids.
+  // become immutable when we can have any number of concurrent readers. Locks are per-block and
+  // guard the match bits, scores and occurrence counts of that block together. Several slices can
+  // collect concurrently, including different partitions of the same segment, so this is needed
+  // with or without an ordinal map. It is null when the search runs a single slice.
   final Lock[] locks;
 
   // also written concurrently
@@ -53,7 +54,13 @@ class GlobalOrdinalsWithScoreCollectorManager implements CollectorManager<Collec
   protected final Occurrences occurrences;
 
   GlobalOrdinalsWithScoreCollectorManager(
-      String field, OrdinalMap ordinalMap, long valueCount, ScoreMode scoreMode, int min, int max) {
+      String field,
+      OrdinalMap ordinalMap,
+      long valueCount,
+      ScoreMode scoreMode,
+      int min,
+      int max,
+      boolean concurrent) {
     if (valueCount > Integer.MAX_VALUE) {
       // We simply don't support more than
       throw new IllegalStateException("Can't collect more than [" + Integer.MAX_VALUE + "] ids");
@@ -76,9 +83,13 @@ class GlobalOrdinalsWithScoreCollectorManager implements CollectorManager<Collec
     } else {
       this.occurrences = null;
     }
-    this.locks = new Lock[numBlocks(valueCount)];
-    for (int i = 0; i < locks.length; i++) {
-      locks[i] = new ReentrantLock();
+    if (concurrent) {
+      this.locks = new Lock[numBlocks(valueCount)];
+      for (int i = 0; i < locks.length; i++) {
+        locks[i] = new ReentrantLock();
+      }
+    } else {
+      this.locks = null;
     }
   }
 
@@ -97,6 +108,11 @@ class GlobalOrdinalsWithScoreCollectorManager implements CollectorManager<Collec
   public Void reduce(Collection<Collector> collectors) {
     // results are provided via side-effect
     return null;
+  }
+
+  private LongValues globalOrds(LeafReaderContext context) {
+    // With a single segment there is no ordinal map: segment ordinals are the global ordinals.
+    return ordinalMap == null ? LongValues.IDENTITY : ordinalMap.getGlobalOrds(context.ord);
   }
 
   public boolean match(int globalOrd) {
@@ -128,12 +144,7 @@ class GlobalOrdinalsWithScoreCollectorManager implements CollectorManager<Collec
     @Override
     public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
       SortedDocValues docTermOrds = DocValues.getSorted(context.reader(), field);
-      if (ordinalMap != null) {
-        LongValues segmentOrdToGlobalOrdLookup = ordinalMap.getGlobalOrds(context.ord);
-        return new OrdinalMapCollector(docTermOrds, segmentOrdToGlobalOrdLookup);
-      } else {
-        return new SegmentOrdinalCollector(docTermOrds);
-      }
+      return new OrdinalCollector(docTermOrds, globalOrds(context));
     }
 
     @Override
@@ -141,13 +152,13 @@ class GlobalOrdinalsWithScoreCollectorManager implements CollectorManager<Collec
       return org.apache.lucene.search.ScoreMode.COMPLETE;
     }
 
-    final class OrdinalMapCollector implements LeafCollector {
+    final class OrdinalCollector implements LeafCollector {
 
       private final SortedDocValues docTermOrds;
       private final LongValues segmentOrdToGlobalOrdLookup;
       private Scorable scorer;
 
-      OrdinalMapCollector(SortedDocValues docTermOrds, LongValues segmentOrdToGlobalOrdLookup) {
+      OrdinalCollector(SortedDocValues docTermOrds, LongValues segmentOrdToGlobalOrdLookup) {
         this.docTermOrds = docTermOrds;
         this.segmentOrdToGlobalOrdLookup = segmentOrdToGlobalOrdLookup;
       }
@@ -156,48 +167,28 @@ class GlobalOrdinalsWithScoreCollectorManager implements CollectorManager<Collec
       public void collect(int doc) throws IOException {
         if (docTermOrds.advanceExact(doc)) {
           final int globalOrd = (int) segmentOrdToGlobalOrdLookup.get(docTermOrds.ordValue());
-          Lock lock = locks[globalOrd / arraySize];
-          lock.lock();
-          try {
-            collectedOrds.set(globalOrd);
-            double existingScore = scores.getScore(globalOrd);
-            double newScore = scorer.score();
-            doScore(globalOrd, existingScore, newScore);
-            if (occurrences != null) {
-              occurrences.increment(globalOrd);
+          // The scorer is owned by this leaf collector, so score outside the lock.
+          final double newScore = scorer.score();
+          if (locks == null) {
+            collectOrd(globalOrd, newScore);
+          } else {
+            Lock lock = locks[globalOrd / arraySize];
+            lock.lock();
+            try {
+              collectOrd(globalOrd, newScore);
+            } finally {
+              lock.unlock();
             }
-          } finally {
-            lock.unlock();
           }
         }
       }
 
-      @Override
-      public void setScorer(Scorable scorer) throws IOException {
-        this.scorer = scorer;
-      }
-    }
-
-    final class SegmentOrdinalCollector implements LeafCollector {
-
-      private final SortedDocValues docTermOrds;
-      private Scorable scorer;
-
-      SegmentOrdinalCollector(SortedDocValues docTermOrds) {
-        this.docTermOrds = docTermOrds;
-      }
-
-      @Override
-      public void collect(int doc) throws IOException {
-        if (docTermOrds.advanceExact(doc)) {
-          int segmentOrd = docTermOrds.ordValue();
-          collectedOrds.set(segmentOrd);
-          double existingScore = scores.getScore(segmentOrd);
-          double newScore = scorer.score();
-          doScore(segmentOrd, existingScore, newScore);
-          if (occurrences != null) {
-            occurrences.increment(segmentOrd);
-          }
+      private void collectOrd(int globalOrd, double newScore) {
+        collectedOrds.set(globalOrd);
+        double existingScore = scores.getScore(globalOrd);
+        doScore(globalOrd, existingScore, newScore);
+        if (occurrences != null) {
+          occurrences.increment(globalOrd);
         }
       }
 
@@ -240,43 +231,35 @@ class GlobalOrdinalsWithScoreCollectorManager implements CollectorManager<Collec
     @Override
     public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
       SortedDocValues docTermOrds = DocValues.getSorted(context.reader(), field);
-      if (ordinalMap != null) {
-        LongValues segmentOrdToGlobalOrdLookup = ordinalMap.getGlobalOrds(context.ord);
-        return new LeafCollector() {
+      LongValues segmentOrdToGlobalOrdLookup = globalOrds(context);
+      return new LeafCollector() {
 
-          @Override
-          public void setScorer(Scorable scorer) throws IOException {}
+        @Override
+        public void setScorer(Scorable scorer) throws IOException {}
 
-          @Override
-          public void collect(int doc) throws IOException {
-            if (docTermOrds.advanceExact(doc)) {
-              final int globalOrd = (int) segmentOrdToGlobalOrdLookup.get(docTermOrds.ordValue());
+        @Override
+        public void collect(int doc) throws IOException {
+          if (docTermOrds.advanceExact(doc)) {
+            final int globalOrd = (int) segmentOrdToGlobalOrdLookup.get(docTermOrds.ordValue());
+            if (locks == null) {
+              collectOrd(globalOrd);
+            } else {
               Lock lock = locks[globalOrd / arraySize];
               lock.lock();
               try {
-                collectedOrds.set(globalOrd);
-                occurrences.increment(globalOrd);
+                collectOrd(globalOrd);
               } finally {
                 lock.unlock();
               }
             }
           }
-        };
-      } else {
-        return new LeafCollector() {
-          @Override
-          public void setScorer(Scorable scorer) throws IOException {}
+        }
 
-          @Override
-          public void collect(int doc) throws IOException {
-            if (docTermOrds.advanceExact(doc)) {
-              int segmentOrd = docTermOrds.ordValue();
-              collectedOrds.set(segmentOrd);
-              occurrences.increment(segmentOrd);
-            }
-          }
-        };
-      }
+        private void collectOrd(int globalOrd) {
+          collectedOrds.set(globalOrd);
+          occurrences.increment(globalOrd);
+        }
+      };
     }
 
     @Override

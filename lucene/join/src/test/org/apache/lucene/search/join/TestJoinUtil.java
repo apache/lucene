@@ -72,6 +72,7 @@ import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Explanation;
+import org.apache.lucene.search.FieldDoc;
 import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.FilterScorer;
 import org.apache.lucene.search.IndexSearcher;
@@ -85,6 +86,7 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.SimpleCollector;
+import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopScoreDocCollectorManager;
@@ -508,6 +510,76 @@ public class TestJoinUtil extends LuceneTestCase {
       assertTopDocs(expectedTopDocs, actualTopDocs, scoreMode, indexSearcher, joinQuery);
     }
     context.close();
+  }
+
+  public void testGlobalOrdinalsJoinWithSegmentPartitions() throws Exception {
+    // Sometimes use more keys than one block of the collector's per-block locks.
+    final int numKeys;
+    final int docsPerKey;
+    if (random().nextInt(4) == 0) {
+      numKeys = TestUtil.nextInt(random(), 4097, 9000);
+      docsPerKey = TestUtil.nextInt(random(), 2, 3);
+    } else {
+      numKeys = TestUtil.nextInt(random(), 1, 64);
+      docsPerKey = TestUtil.nextInt(random(), 16, 128);
+    }
+    final int numDocs = numKeys * docsPerKey;
+    final int numPartitions = TestUtil.nextInt(random(), 2, 6);
+    try (Directory dir = newDirectory();
+        IndexWriter w =
+            new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()))) {
+      for (int i = 0; i < numDocs; i++) {
+        w.addDocument(
+            List.of(
+                new SortedDocValuesField("key", new BytesRef(Integer.toString(i % numKeys))),
+                new NumericDocValuesField("score", TestUtil.nextInt(random(), 1, 1000))));
+      }
+      w.forceMerge(1);
+      ExecutorService executor =
+          Executors.newFixedThreadPool(4, new NamedThreadFactory("TestJoinUtil"));
+      try (DirectoryReader reader = DirectoryReader.open(w)) {
+        assertEquals(1, reader.leaves().size());
+        // Partitions of the single segment, searched concurrently.
+        IndexSearcher concurrent =
+            new IndexSearcher(reader, executor) {
+              @Override
+              protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
+                return IndexSearcher.slices(
+                    leaves, (numDocs + numPartitions - 1) / numPartitions, 1, true);
+              }
+            };
+        assertTrue(concurrent.getSlices().length > 1);
+        IndexSearcher sequential = new IndexSearcher(reader);
+        Query from = numericDocValuesScoreQuery("score");
+        Query to = MatchAllDocsQuery.INSTANCE;
+        for (ScoreMode mode : ScoreMode.values()) {
+          // Exact occurrence bounds: every key must be counted exactly docsPerKey times.
+          for (int min : new int[] {0, docsPerKey}) {
+            int max = min == 0 ? Integer.MAX_VALUE : docsPerKey;
+            Query expectedJoin =
+                JoinUtil.createJoinQuery("key", from, to, sequential, mode, null, min, max);
+            Query actualJoin =
+                JoinUtil.createJoinQuery("key", from, to, concurrent, mode, null, min, max);
+            TopDocs expected = sequential.search(expectedJoin, numDocs, Sort.INDEXORDER, true);
+            TopDocs actual = concurrent.search(actualJoin, numDocs, Sort.INDEXORDER, true);
+            assertEquals(numDocs, expected.scoreDocs.length);
+            assertEquals(mode + " min=" + min, numDocs, actual.scoreDocs.length);
+            for (int i = 0; i < numDocs; i++) {
+              assertEquals(expected.scoreDocs[i].doc, actual.scoreDocs[i].doc);
+              if (mode != ScoreMode.None) {
+                assertEquals(
+                    mode + " min=" + min,
+                    ((FieldDoc) expected.scoreDocs[i]).score,
+                    ((FieldDoc) actual.scoreDocs[i]).score,
+                    0f);
+              }
+            }
+          }
+        }
+      } finally {
+        TestUtil.shutdownExecutorService(executor);
+      }
+    }
   }
 
   public void testMinMaxScore() throws Exception {
