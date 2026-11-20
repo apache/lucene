@@ -393,8 +393,7 @@ public class TermFilteredPresearcher extends Presearcher {
     List<Set<Term>> negativeDisjuncts = collected.negativeDisjuncts();
     if (negativeDisjuncts.size() > maxNegativeDisjuncts) {
       // More negative disjuncts than the document side checks: the marker alone satisfies the path
-      // for
-      // every document, so its terms are not needed either
+      // for every document, so its terms are not needed either
       addField(doc, negativeDisjunctMarkerField(fields, 0), NEGATIVE_DISJUNCT_MARKER);
       return doc;
     }
