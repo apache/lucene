@@ -45,6 +45,8 @@ import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.Fields;
+import org.apache.lucene.index.FreqAndNormBuffer;
+import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
@@ -1799,5 +1801,32 @@ public abstract class BasePostingsFormatTestCase extends BaseIndexFileFormatTest
       iw.close();
     }
     dir.close();
+  }
+
+  protected boolean indexFakeImpacts() {
+    return false;
+  }
+
+  public void testImpactsNoFreqs() throws Exception {
+    assumeFalse("We index fake impacts between 9.0 in 9.12", indexFakeImpacts());
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = newIndexWriterConfig(new MockAnalyzer(random()));
+      iwc.setCodec(getCodec());
+      try (RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc)) {
+        Document doc = new Document();
+        doc.add(newStringField("field", "value", Field.Store.NO));
+        iw.addDocument(doc);
+        try (DirectoryReader ir = iw.getReader()) {
+          LeafReader ar = getOnlyLeafReader(ir);
+          TermsEnum termsEnum = ar.terms("field").iterator();
+          termsEnum.seekExact(new BytesRef("value"));
+          ImpactsEnum impactsEnum = termsEnum.impacts(FREQS);
+          FreqAndNormBuffer freqAndNormBuffer = impactsEnum.getImpacts().getImpacts(0);
+          assertEquals(1, freqAndNormBuffer.size);
+          assertEquals(1, freqAndNormBuffer.freqs[0]);
+          assertEquals(1L, freqAndNormBuffer.norms[0]);
+        }
+      }
+    }
   }
 }
