@@ -26,11 +26,13 @@ import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.sandbox.facet.cutters.LeafFacetCutter;
+import org.apache.lucene.sandbox.facet.iterators.OrdinalIterator;
 import org.apache.lucene.search.LongValues;
 import org.apache.lucene.search.LongValuesSource;
 
 /** {@link LongRangeFacetCutter} for ranges of long value that don't overlap. * */
 class NonOverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
+
   NonOverlappingLongRangeFacetCutter(
       MultiLongValuesSource longValuesSource,
       LongValuesSource singleLongValuesSource,
@@ -67,6 +69,20 @@ class NonOverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
     }
 
     return elementaryIntervals;
+  }
+
+  @Override
+  public boolean needsRemapping() {
+    return true;
+  }
+
+  @Override
+  public OrdinalIterator remapOrd(int mergedOrd) {
+    // pos[] maps elementary interval ordinal to user range position, or SKIP_INTERVAL_POSITION
+    // for gap intervals that don't correspond to any requested range.
+    return pos[mergedOrd] == SKIP_INTERVAL_POSITION
+        ? OrdinalIterator.EMPTY
+        : OrdinalIterator.fromSingleOrd(pos[mergedOrd]);
   }
 
   @Override
@@ -113,21 +129,15 @@ class NonOverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
 
     @Override
     public int nextOrd() throws IOException {
-      while (true) {
-        int ordinal = elementaryIntervalTracker.nextOrd();
-        if (ordinal == NO_MORE_ORDS) {
-          return NO_MORE_ORDS;
-        }
-        int result = pos[ordinal];
-        if (result != SKIP_INTERVAL_POSITION) {
-          return result;
-        }
-      }
+      // Leaf cutter now yields raw elementary-interval ordinals; pos[] remapping happens
+      // in FacetCutter#remapOrd at reduce time.
+      return elementaryIntervalTracker.nextOrd();
     }
   }
 
   static class NonOverlappingLongRangeSingleValueLeafFacetCutter
       extends LongRangeSingleValuedLeafFacetCutter {
+
     NonOverlappingLongRangeSingleValueLeafFacetCutter(
         LongValues longValues, long[] boundaries, int[] pos) {
       super(longValues, boundaries, pos);
@@ -140,12 +150,11 @@ class NonOverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
 
     @Override
     public int nextOrd() throws IOException {
-      if (elementaryIntervalOrd == NO_MORE_ORDS) {
-        return NO_MORE_ORDS;
-      }
-      int result = pos[elementaryIntervalOrd];
+      // Leaf cutter now yields the raw elementary-interval ordinal; pos[] remapping happens
+      // in FacetCutter#remapOrd at reduce time.
+      int ord = elementaryIntervalOrd;
       elementaryIntervalOrd = NO_MORE_ORDS;
-      return result != SKIP_INTERVAL_POSITION ? result : NO_MORE_ORDS;
+      return ord;
     }
   }
 }

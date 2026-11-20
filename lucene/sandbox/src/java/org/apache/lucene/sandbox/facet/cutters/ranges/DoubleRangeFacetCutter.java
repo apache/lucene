@@ -25,6 +25,7 @@ import org.apache.lucene.facet.range.LongRange;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.sandbox.facet.cutters.FacetCutter;
 import org.apache.lucene.sandbox.facet.cutters.LeafFacetCutter;
+import org.apache.lucene.sandbox.facet.iterators.OrdinalIterator;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.LongValuesSource;
 import org.apache.lucene.util.NumericUtils;
@@ -45,7 +46,6 @@ public final class DoubleRangeFacetCutter implements FacetCutter {
   /** Constructor. */
   public DoubleRangeFacetCutter(
       MultiDoubleValuesSource multiDoubleValuesSource, DoubleRange[] doubleRanges) {
-    super();
     DoubleValuesSource singleDoubleValuesSource =
         MultiDoubleValuesSource.unwrapSingleton(multiDoubleValuesSource);
     LongValuesSource singleLongValuesSource;
@@ -71,9 +71,19 @@ public final class DoubleRangeFacetCutter implements FacetCutter {
     return longRangeFacetCutter.createLeafCutter(context);
   }
 
+  @Override
+  public boolean needsRemapping() throws IOException {
+    return longRangeFacetCutter.needsRemapping();
+  }
+
+  @Override
+  public OrdinalIterator remapOrd(int mergedOrd) throws IOException {
+    return longRangeFacetCutter.remapOrd(mergedOrd);
+  }
+
   // TODO: it is exactly the same as DoubleRangeFacetCounts#getLongRanges (protected), we should
   // dedup
-  private LongRange[] mapDoubleRangesToSortableLong(DoubleRange[] doubleRanges) {
+  private static LongRange[] mapDoubleRangesToSortableLong(DoubleRange[] doubleRanges) {
     LongRange[] longRanges = new LongRange[doubleRanges.length];
     for (int i = 0; i < longRanges.length; i++) {
       DoubleRange dr = doubleRanges[i];
