@@ -68,3 +68,13 @@ tasks.withType(de.thetaphi.forbiddenapis.gradle.CheckForbiddenApis).configureEac
   // The incubator's own trap list, so this module is held to the same bar as core's vector code.
   signaturesFiles = signaturesFiles.plus(files(incubatorVectorSignatures))
 }
+
+// Javadoc parses Kernels too, so it needs the same incubator module and read edge as compileJava.
+tasks.withType(org.apache.lucene.gradle.plugins.java.RenderJavadocTaskBase).configureEach {
+  extraOpts.addAll([
+    '--add-modules',
+    'jdk.incubator.vector',
+    '--add-reads',
+    'org.apache.lucene.sandbox=jdk.incubator.vector'
+  ])
+}
