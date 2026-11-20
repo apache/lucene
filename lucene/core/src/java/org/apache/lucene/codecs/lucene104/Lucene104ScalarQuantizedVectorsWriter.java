@@ -708,22 +708,24 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       if (queryData != null) {
         queryLength = queryPackedLength + CORRECTIONS_LENGTH;
       }
-      Block encoding = new Block(blockSize, indexLength, queryLength);
-      Block written = new Block(blockSize, indexLength, queryLength); // empty at first
+      Block encodingBlock = new Block(blockSize, indexLength, queryLength);
+      Block writtenBlock = new Block(blockSize, indexLength, queryLength); // empty at first
       boolean more;
       do {
-        fillNextBlock(encoding);
+        collectNextDocs(encodingBlock);
         // a short block means the merger is exhausted; it must not be called again
-        more = encoding.count == blockSize;
-        Block toEncode = encoding;
-        Block toWrite = written;
-        IORangeConsumer encode = (task, from, to) -> encodeRange(toEncode, readers[task], from, to);
+        more = encodingBlock.count == blockSize;
+        // effectively final copies for the lambdas
+        Block toEncode = encodingBlock;
+        Block toWrite = writtenBlock;
+        IORangeConsumer encode =
+            (task, from, to) -> encodeVectorAndQueryData(toEncode, readers[task], from, to);
         IORunnable writePrevious = () -> writeBlock(toWrite, vectorData, queryData, docsWithField);
         parallelFor(executor, readers.length, toEncode.count, CHUNK_SIZE, encode, writePrevious);
-        encoding = toWrite;
-        written = toEncode;
+        encodingBlock = toWrite;
+        writtenBlock = toEncode;
       } while (more);
-      writeBlock(written, vectorData, queryData, docsWithField);
+      writeBlock(writtenBlock, vectorData, queryData, docsWithField);
     }
 
     /**
@@ -732,8 +734,8 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
      * work of the serial merge ({@code QuantizedFloatVectorValues} and the old loop of {@link
      * #writeVectorAndQueryData}).
      */
-    private void encodeRange(Block block, FloatVectorValues[] segments, int from, int to)
-        throws IOException {
+    private void encodeVectorAndQueryData(
+        Block block, FloatVectorValues[] segments, int from, int to) throws IOException {
       // scratch for this range: a few KB, small next to reading and quantizing its vectors
       float[] vector = new float[centroid.length];
       byte[] indexQuantized = new byte[discreteDims];
@@ -774,7 +776,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       }
     }
 
-    private void fillNextBlock(Block block) throws IOException {
+    private void collectNextDocs(Block block) throws IOException {
       int count = 0;
       for (SourceIterator sub; count < blockSize && (sub = merger.next()) != null; count++) {
         block.docs[count] = sub.mappedDocID;
