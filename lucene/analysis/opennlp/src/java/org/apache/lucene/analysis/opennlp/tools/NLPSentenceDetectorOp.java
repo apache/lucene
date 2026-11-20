@@ -36,7 +36,7 @@ public class NLPSentenceDetectorOp {
     sentenceSplitter = null;
   }
 
-  public synchronized Span[] splitSentences(String line) {
+  public Span[] splitSentences(String line) {
     if (sentenceSplitter != null) {
       return sentenceSplitter.sentPosDetect(line);
     } else {
