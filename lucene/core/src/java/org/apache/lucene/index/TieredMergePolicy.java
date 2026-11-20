@@ -672,7 +672,7 @@ public class TieredMergePolicy extends MergePolicy {
   }
 
   /** Expert: scores one merge */
-  MergeScore score(
+  protected MergeScore score(
       List<SegmentCommitInfo> candidate,
       boolean hitTooLarge,
       Map<SegmentCommitInfo, SegmentSizeAndDocs> segmentsSizes)
