@@ -446,7 +446,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
                     HnswGraphBuilder.create(
                         scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
                 hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
-                yield hnswGraphBuilder.build(vectorValues.size());
+                yield (OnHeapHnswGraph) hnswGraphBuilder.build(vectorValues.size());
               }
               case FLOAT32 -> {
                 OffHeapFloatVectorValues.DenseOffHeapVectorValues vectorValues =
@@ -462,7 +462,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
                 HnswGraphBuilder hnswGraphBuilder =
                     HnswGraphBuilder.create(
                         scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
-                yield hnswGraphBuilder.build(vectorValues.size());
+                yield (OnHeapHnswGraph) hnswGraphBuilder.build(vectorValues.size());
               }
               case FLOAT16 -> throw new UnsupportedOperationException("FLOAT16 is not supported");
             };
@@ -715,7 +715,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
 
     OnHeapHnswGraph getGraph() throws IOException {
       if (vectors.size() > 0) {
-        return hnswGraphBuilder.getCompletedGraph();
+        return (OnHeapHnswGraph) hnswGraphBuilder.getCompletedGraph();
       } else {
         return null;
       }

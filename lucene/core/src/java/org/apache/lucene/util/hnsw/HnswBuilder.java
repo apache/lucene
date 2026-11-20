@@ -23,7 +23,7 @@ import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.InfoStream;
 
 /**
- * Interface for builder building the {@link OnHeapHnswGraph}
+ * Interface for builder building a {@link BuildableHnswGraph}
  *
  * @lucene.experimental
  */
@@ -34,7 +34,7 @@ public interface HnswBuilder {
    *
    * @param maxOrd The maximum ordinal (excluded) of the nodes to be added.
    */
-  OnHeapHnswGraph build(int maxOrd) throws IOException;
+  BuildableHnswGraph build(int maxOrd) throws IOException;
 
   /** Inserts a doc with a vector value to the graph */
   void addGraphNode(int node) throws IOException;
@@ -59,7 +59,7 @@ public interface HnswBuilder {
    */
   void setAbortCheck(IORunnable abortCheck);
 
-  OnHeapHnswGraph getGraph();
+  BuildableHnswGraph getGraph();
 
   /**
    * Once this method is called, no further updates to the graph are accepted (addGraphNode will
@@ -67,5 +67,5 @@ public interface HnswBuilder {
    * components, re-ordering node ids for better delta compression) may be triggered, so callers
    * should expect this call to take some time.
    */
-  OnHeapHnswGraph getCompletedGraph() throws IOException;
+  BuildableHnswGraph getCompletedGraph() throws IOException;
 }
