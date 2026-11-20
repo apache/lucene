@@ -753,4 +753,44 @@ public class TestVectorUtil extends LuceneTestCase {
     expectThrows(
         IllegalArgumentException.class, () -> VectorUtil.int4Unpack(new byte[4], new byte[7]));
   }
+
+  public void testOsqRejectsBadArguments() {
+    float[] vector = new float[8];
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> VectorUtil.osqCenter(vector, new float[7], new float[6]));
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> VectorUtil.osqCenter(vector, new float[8], new float[5]));
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> VectorUtil.osqCenter(vector, new float[8], new float[7]));
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> VectorUtil.osqGridStats(vector, -1, 1, 1, new double[5]));
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> VectorUtil.osqGridStats(vector, -1, 1, 257, new double[5]));
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> VectorUtil.osqGridStats(vector, -1, 1, 16, new double[4]));
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> VectorUtil.osqGridStats(vector, -1, 1, 16, new double[6]));
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> VectorUtil.osqAssign(vector, -1, 1, 0.1f, new byte[7]));
+  }
+
+  public void testOsqGridStatsLargeDims() {
+    // Every value lands on the top level, so the sums of k and k * k are as large as they get.
+    for (int dims : new int[] {(1 << 15) - 1, (1 << 16) - 1}) {
+      float[] vector = new float[dims];
+      Arrays.fill(vector, 1f);
+      double[] stats = new double[5];
+      defOrPanamaProvider.getVectorUtilSupport().osqGridStats(vector, 0, 1, 256, stats);
+      assertEquals(dims * 255.0, stats[0], 0);
+      assertEquals(dims * 255.0 * 255, stats[1], 0);
+    }
+  }
 }
