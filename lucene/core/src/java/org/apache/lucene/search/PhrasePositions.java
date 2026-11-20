@@ -33,11 +33,21 @@ final class PhrasePositions {
   final Term[] terms; // for repetitions initialization
   int freq; // cached frequency for the current document
 
-  PhrasePositions(PostingsEnum postings, int o, int ord, Term[] terms) {
+  int startOffset = -1;
+  int endOffset = -1;
+  int priorPosition;
+  int priorStartOffset = -1;
+  int priorEndOffset = -1;
+  boolean bumped;
+
+  private final boolean captureOffsets;
+
+  PhrasePositions(PostingsEnum postings, int o, int ord, Term[] terms, boolean captureOffsets) {
     this.postings = postings;
     offset = o;
     this.ord = ord;
     this.terms = terms;
+    this.captureOffsets = captureOffsets;
   }
 
   void firstPosition() throws IOException {
@@ -52,7 +62,15 @@ final class PhrasePositions {
    */
   boolean nextPosition() throws IOException {
     if (count-- > 0) { // read subsequent pos's
-      position = postings.nextPosition() - offset;
+      int newPosition = postings.nextPosition() - offset;
+      if (captureOffsets) {
+        priorPosition = position;
+        priorStartOffset = startOffset;
+        priorEndOffset = endOffset;
+        startOffset = postings.startOffset();
+        endOffset = postings.endOffset();
+      }
+      position = newPosition;
       return true;
     } else {
       return false;

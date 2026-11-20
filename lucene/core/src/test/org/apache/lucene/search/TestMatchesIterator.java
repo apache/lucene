@@ -363,7 +363,7 @@ public class TestMatchesIterator extends MatchesTestBase {
         pq,
         FIELD_WITH_OFFSETS,
         new int[][] {
-          {0}, {1}, {2}, {3}, {4, 1, 6, 2, 43, 2, 11, 9, 75, 5, 11, 28, 75, 6, 11, 35, 75}
+          {0}, {1}, {2}, {3}, {4, 1, 6, 2, 43, 2, 6, 9, 43, 5, 11, 28, 75, 6, 11, 35, 75}
         });
     checkLabelCount(pq, FIELD_WITH_OFFSETS, new int[] {0, 0, 0, 0, 1});
     assertIsLeafMatch(pq, FIELD_WITH_OFFSETS);
