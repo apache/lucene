@@ -364,7 +364,7 @@ public class TestBooleanRewrites extends LuceneTestCase {
   public void testDeeplyNestedBooleanRewriteShouldClauses() throws IOException {
     IndexSearcher searcher = newSearcher(new MultiReader());
     Function<Integer, TermQuery> termQueryFunction =
-        (i) -> new TermQuery(new Term("layer[" + i + "]", "foo"));
+        i -> new TermQuery(new Term("layer[" + i + "]", "foo"));
     int depth = TestUtil.nextInt(random(), 10, 30);
     TestRewriteQuery rewriteQueryExpected = new TestRewriteQuery();
     TestRewriteQuery rewriteQuery = new TestRewriteQuery();
@@ -401,7 +401,7 @@ public class TestBooleanRewrites extends LuceneTestCase {
   public void testDeeplyNestedBooleanRewrite() throws IOException {
     IndexSearcher searcher = newSearcher(new MultiReader());
     Function<Integer, TermQuery> termQueryFunction =
-        (i) -> new TermQuery(new Term("layer[" + i + "]", "foo"));
+        i -> new TermQuery(new Term("layer[" + i + "]", "foo"));
     int depth = TestUtil.nextInt(random(), 10, 30);
     TestRewriteQuery rewriteQueryExpected = new TestRewriteQuery();
     TestRewriteQuery rewriteQuery = new TestRewriteQuery();

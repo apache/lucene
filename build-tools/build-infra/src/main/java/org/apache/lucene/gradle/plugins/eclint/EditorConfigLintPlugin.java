@@ -53,38 +53,34 @@ public class EditorConfigLintPlugin extends LuceneGradlePlugin {
 
     // Common configuration.
     List.of(verifyEcLintTask, applyEcLintTask)
-        .forEach(
-            taskProv -> {
-              taskProv.configure(
-                  task -> {
-                    if (!eclintToolOption.isPresent()) {
-                      task.getLogger()
-                          .warn(
-                              "The eclint tool location is not set ('{}' option), will not apply eclint checks.",
-                              optionName);
-                      task.setEnabled(false);
-                    }
+        .forEach(taskProv -> {
+          taskProv.configure(task -> {
+            if (!eclintToolOption.isPresent()) {
+              task.getLogger()
+                  .warn(
+                      "The eclint tool location is not set ('{}' option), will not apply eclint checks.",
+                      optionName);
+              task.setEnabled(false);
+            }
 
-                    task.setIgnoreExitValue(false);
-                    if (eclintToolOption.isPresent()) {
-                      task.setExecutable(eclintToolOption.get());
-                    }
-                    task.setWorkingDir(project.getLayout().getProjectDirectory());
-                  });
-            });
+            task.setIgnoreExitValue(false);
+            if (eclintToolOption.isPresent()) {
+              task.setExecutable(eclintToolOption.get());
+            }
+            task.setWorkingDir(project.getLayout().getProjectDirectory());
+          });
+        });
 
     tasks
         .matching(task -> task.getName().equals("check"))
-        .configureEach(
-            task -> {
-              task.dependsOn(verifyEcLintTask);
-            });
+        .configureEach(task -> {
+          task.dependsOn(verifyEcLintTask);
+        });
 
     tasks
         .matching(task -> task.getName().equals("tidy"))
-        .configureEach(
-            task -> {
-              task.dependsOn(applyEcLintTask);
-            });
+        .configureEach(task -> {
+          task.dependsOn(applyEcLintTask);
+        });
   }
 }

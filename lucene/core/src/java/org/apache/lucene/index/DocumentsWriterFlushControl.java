@@ -42,7 +42,15 @@ import org.apache.lucene.util.ThreadInterruptedException;
  * {@link IndexWriterConfig#getRAMPerThreadHardLimitMB()} to prevent address space exhaustion.
  */
 final class DocumentsWriterFlushControl implements Accountable, Closeable {
+  /**
+   * Hard limit on bytes of buffered deletes/updates held by the global delete queue. The underlying
+   * byte pools are addressed with 32-bit offsets, so they can never exceed 2048 MB.
+   */
+  static final long DEFAULT_MAX_DELETE_BYTES = 1945L * 1024 * 1024;
+
   private final long hardMaxBytesPerDWPT;
+  // visible for testing
+  volatile long maxDeleteBytes = DEFAULT_MAX_DELETE_BYTES;
   private long activeBytes = 0;
   private volatile long flushBytes = 0;
   private volatile int numPending = 0;
@@ -315,7 +323,10 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
      * that we don't stall/block if an ongoing or pending flush can
      * not free up enough memory to release the stall lock.
      */
-    final boolean stall = (activeBytes + flushBytes) > limit && activeBytes < limit && !closed;
+    boolean stall = (activeBytes + flushBytes) > limit && activeBytes < limit && !closed;
+    // Deletes cannot be applied during a full flush, so if the buffer fed by the new delete queue
+    // reaches its hard limit we must block indexing until the full flush completes.
+    stall |= fullFlush && !closed && getDeleteBytesUsed() >= maxDeleteBytes;
 
     if (infoStream.isEnabled("DWFC")) {
       if (stall != stallControl.anyStalledThreads()) {
@@ -486,6 +497,7 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
   synchronized void doOnDelete() {
     // pass null this is a global delete no update
     flushPolicy.onChange(this, null);
+    updateStallState();
   }
 
   /**
@@ -675,6 +687,7 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
       abortPendingFlushes();
     } finally {
       fullFlushMarkDone = fullFlush = false;
+      updateStallState();
     }
   }
 

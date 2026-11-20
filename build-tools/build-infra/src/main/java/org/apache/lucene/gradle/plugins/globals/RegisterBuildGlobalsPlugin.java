@@ -90,60 +90,58 @@ public class RegisterBuildGlobalsPlugin extends LuceneGradlePlugin {
     // Determine the set of projects whose artifacts are published to maven central.
     LinkedHashSet<Project> publishedProjects =
         project.project(":lucene").getSubprojects().stream()
-            .filter(
-                subproject -> {
-                  // Exclude all modular-test projects.
-                  if (subproject.getPath().endsWith(".tests")) {
-                    return false;
-                  }
+            .filter(subproject -> {
+              // Exclude all modular-test projects.
+              if (subproject.getPath().endsWith(".tests")) {
+                return false;
+              }
 
-                  // Exclude build tools.
-                  if (subproject.getPath().startsWith(":build-tools:")) {
-                    return false;
-                  }
+              // Exclude build tools.
+              if (subproject.getPath().startsWith(":build-tools:")) {
+                return false;
+              }
 
-                  // Exclude these explicitly.
-                  return switch (subproject.getPath()) {
-                    // Exclude distribution assembly, tests & documentation.
-                    case ":lucene:distribution", ":lucene:documentation" -> false;
-                    // Exclude the parent container project for analysis modules (no artifacts).
-                    case ":lucene:analysis" -> false;
-                    // Exclude other misc modules: native, test and benchmarks.
-                    case ":lucene:misc:native",
-                        ":lucene:spatial-test-fixtures",
-                        ":lucene:benchmarks-jmh" ->
-                        false;
-                    default -> true;
-                  };
-                })
+              // Exclude these explicitly.
+              return switch (subproject.getPath()) {
+                // Exclude distribution assembly, tests & documentation.
+                case ":lucene:distribution", ":lucene:documentation" -> false;
+                // Exclude the parent container project for analysis modules (no artifacts).
+                case ":lucene:analysis" -> false;
+                // Exclude other misc modules: native, test and benchmarks.
+                case ":lucene:misc:native",
+                    ":lucene:spatial-test-fixtures",
+                    ":lucene:benchmarks-jmh" ->
+                    false;
+                default -> true;
+              };
+            })
             .sorted(Comparator.comparing(Project::getPath))
             .collect(Collectors.toCollection(LinkedHashSet::new));
 
-    project.allprojects(
-        p -> {
-          var globals =
-              p.getExtensions()
-                  .create(LuceneBuildGlobalsExtension.NAME, LuceneBuildGlobalsExtension.class);
-          globals.baseVersion = baseVersion;
-          globals.majorVersion = majorVersion;
-          globals.snapshotBuild = luceneVersion.contains("SNAPSHOT");
-          globals.buildDate = buildDate;
-          globals.buildTime = buildTime;
-          globals.buildYear = buildYear;
-          globals.isCIBuild = isCIBuild;
-          globals.publishedProjects = publishedProjects;
-          globals.getRootSeed().set(rootSeed);
-          globals.getRootSeedAsLong().set(rootSeedLong);
-          globals
-              .getProjectSeedAsLong()
-              .convention(rootSeedLong ^ p.getPath().hashCode())
-              .finalizeValue();
-          globals.getMinJavaVersion().convention(minJavaVersion).finalizeValue();
-          globals
-              .getIntellijIdea()
-              .convention(new IntellijIdea(isIdea, isIdeaSync, isIdeaBuild))
-              .finalizeValue();
-        });
+    project.allprojects(p -> {
+      var globals =
+          p.getExtensions()
+              .create(LuceneBuildGlobalsExtension.NAME, LuceneBuildGlobalsExtension.class);
+      globals.baseVersion = baseVersion;
+      globals.majorVersion = majorVersion;
+      globals.snapshotBuild = luceneVersion.contains("SNAPSHOT");
+      globals.buildDate = buildDate;
+      globals.buildTime = buildTime;
+      globals.buildYear = buildYear;
+      globals.isCIBuild = isCIBuild;
+      globals.publishedProjects = publishedProjects;
+      globals.getRootSeed().set(rootSeed);
+      globals.getRootSeedAsLong().set(rootSeedLong);
+      globals
+          .getProjectSeedAsLong()
+          .convention(rootSeedLong ^ p.getPath().hashCode())
+          .finalizeValue();
+      globals.getMinJavaVersion().convention(minJavaVersion).finalizeValue();
+      globals
+          .getIntellijIdea()
+          .convention(new IntellijIdea(isIdea, isIdeaSync, isIdeaBuild))
+          .finalizeValue();
+    });
   }
 
   /** The "major" version in semantic versioning scheme. */

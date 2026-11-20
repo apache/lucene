@@ -20,14 +20,11 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.SparseFixedBitSet;
 
 /**
  * Searches an HNSW graph to find nearest neighbors to a query vector. For more background on the
@@ -40,7 +37,7 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
    */
   protected final NeighborQueue candidates;
 
-  protected BitSet visited;
+  protected VisitedSet visited;
 
   protected int[] bulkNodes = null;
   protected float[] bulkScores = null;
@@ -58,26 +55,23 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
   }
 
   /**
-   * Follows similar logic to {@link FixedBitSet#of(DocIdSetIterator, int)} to determine the best
-   * bit set given the expected number of visited nodes vs total graph size.
+   * Creates a visited set for a search that finds {@code k} neighbors.
    *
    * @param k neighbors to find
    * @param graphSize size of the graph
-   * @return a bit set appropriate for the expected number of visited nodes
+   * @return a visited set appropriate for the expected number of visited nodes
    */
-  static BitSet createBitSet(int k, int graphSize) {
-    return expectedVisitedNodes(k, graphSize) < (graphSize >>> 7)
-        ? new SparseFixedBitSet(graphSize)
-        : new FixedBitSet(graphSize);
+  static VisitedSet createVisitedSet(int k, int graphSize) {
+    return VisitedSet.create(expectedVisitedNodes(k, graphSize), graphSize);
   }
 
   /**
    * Creates a new graph searcher.
    *
    * @param candidates max heap that will track the candidate nodes to explore
-   * @param visited bit set that will track nodes that have already been visited
+   * @param visited set that will track nodes that have already been visited
    */
-  public HnswGraphSearcher(NeighborQueue candidates, BitSet visited) {
+  public HnswGraphSearcher(NeighborQueue candidates, VisitedSet visited) {
     this.candidates = candidates;
     this.visited = visited;
   }
@@ -147,7 +141,7 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
       innerSearcher =
           new HnswGraphSearcher(
               new NeighborQueue(knnCollector.k(), true),
-              createBitSet(knnCollector.k(), getGraphSize(graph)));
+              createVisitedSet(knnCollector.k(), getGraphSize(graph)));
     }
     // Then, check if we the search strategy is seeded
     final AbstractHnswGraphSearcher graphSearcher;
@@ -180,7 +174,7 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
     KnnCollector knnCollector = new TopKnnCollector(topK, visitedLimit, null);
     OnHeapHnswGraphSearcher graphSearcher =
         new OnHeapHnswGraphSearcher(
-            new NeighborQueue(topK, true), new SparseFixedBitSet(getGraphSize(graph)));
+            new NeighborQueue(topK, true), createVisitedSet(topK, getGraphSize(graph)));
     graphSearcher.search(knnCollector, scorer, graph, acceptOrds);
     return knnCollector;
   }
@@ -369,7 +363,7 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
   private void prepareScratchState(int capacity, int bulkScoreSize) {
     candidates.clear();
     if (visited.length() < capacity) {
-      visited = FixedBitSet.ensureCapacityAndClear((FixedBitSet) visited, capacity);
+      visited.ensureCapacityAndClear(capacity);
     } else {
       visited.clear();
     }
@@ -418,7 +412,7 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
     private NeighborArray cur;
     private int upto;
 
-    private OnHeapHnswGraphSearcher(NeighborQueue candidates, BitSet visited) {
+    private OnHeapHnswGraphSearcher(NeighborQueue candidates, VisitedSet visited) {
       super(candidates, visited);
     }
 

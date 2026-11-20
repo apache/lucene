@@ -115,13 +115,6 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
 
     TopFieldCollector collector;
     if (after == null) {
-      // inform a comparator that sort is based on this single field
-      // to enable some optimizations for skipping over non-competitive documents
-      // We can't set single sort when the `after` parameter is non-null as it's
-      // an implicit sort over the document id.
-      if (queue.getComparators().length == 1) {
-        queue.getComparators()[0].setSingleSort();
-      }
       collector =
           new TopFieldCollector.SimpleFieldCollector(
               sort, queue, numHits, totalHitsThreshold, minScoreAcc);

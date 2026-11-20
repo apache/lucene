@@ -77,12 +77,11 @@ public abstract class ChangesToHtmlTask extends DefaultTask {
     toHtml(versionsFile);
 
     getFileOperations()
-        .copy(
-            spec -> {
-              spec.from(getSiteDir());
-              spec.into(getTargetDir());
-              spec.include("*.css");
-            });
+        .copy(spec -> {
+          spec.from(getSiteDir());
+          spec.into(getTargetDir());
+          spec.include("*.css");
+        });
   }
 
   private void toHtml(Path versionsFile) throws IOException {
@@ -92,25 +91,24 @@ public abstract class ChangesToHtmlTask extends DefaultTask {
             Files.newOutputStream(getTargetDir().get().file("Changes.html").getAsFile().toPath())) {
       ExecResult result =
           getExecOps()
-              .exec(
-                  spec -> {
-                    spec.setExecutable(
-                        getProject()
-                            .getExtensions()
-                            .getByType(LuceneBuildGlobalsExtension.class)
-                            .externalTool("perl"));
-                    spec.setStandardInput(changesFileIs);
-                    spec.setStandardOutput(output);
-                    spec.setErrorOutput(output);
-                    spec.setIgnoreExitValue(true);
+              .exec(spec -> {
+                spec.setExecutable(
+                    getProject()
+                        .getExtensions()
+                        .getByType(LuceneBuildGlobalsExtension.class)
+                        .externalTool("perl"));
+                spec.setStandardInput(changesFileIs);
+                spec.setStandardOutput(output);
+                spec.setErrorOutput(output);
+                spec.setIgnoreExitValue(true);
 
-                    spec.setArgs(
-                        List.of(
-                            "-CSD",
-                            getConversionScript().get().getAsFile().toString(),
-                            getProductName().get(),
-                            versionsFile.toString()));
-                  });
+                spec.setArgs(
+                    List.of(
+                        "-CSD",
+                        getConversionScript().get().getAsFile().toString(),
+                        getProductName().get(),
+                        versionsFile.toString()));
+              });
 
       if (result.getExitValue() != 0) {
         throw new GradleException(

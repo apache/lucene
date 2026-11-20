@@ -16,11 +16,6 @@
  */
 package org.apache.lucene.util;
 
-import com.carrotsearch.randomizedtesting.RandomizedRunner;
-import java.util.Comparator;
-import org.junit.runner.RunWith;
-
-@RunWith(RandomizedRunner.class)
 public class TestInPlaceMergeSorter extends BaseSortTestCase {
 
   public TestInPlaceMergeSorter() {
@@ -29,6 +24,16 @@ public class TestInPlaceMergeSorter extends BaseSortTestCase {
 
   @Override
   public Sorter newSorter(Entry[] arr) {
-    return new ArrayInPlaceMergeSorter<>(arr, Comparator.naturalOrder());
+    return new InPlaceMergeSorter() {
+      @Override
+      protected int compare(int i, int j) {
+        return arr[i].compareTo(arr[j]);
+      }
+
+      @Override
+      protected void swap(int i, int j) {
+        ArrayUtil.swap(arr, i, j);
+      }
+    };
   }
 }

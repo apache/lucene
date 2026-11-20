@@ -252,25 +252,24 @@ public class FSTCompletion {
     Stream<Completion> stream =
         IntStream.range(0, rootArcs.length)
             .boxed()
-            .flatMap(
-                i -> {
-                  try {
-                    final FST.Arc<Object> rootArc = rootArcs[i];
-                    final FST.Arc<Object> arc = new FST.Arc<>().copyFrom(rootArc);
-                    if (descendWithPrefix(arc, key)) {
-                      // A subgraph starting from the current node has the completions
-                      // of the key prefix. The arc we're at is the last key's byte,
-                      // so we will collect it too.
-                      final BytesRef output = BytesRef.deepCopyOf(key);
-                      output.length = key.length;
-                      return completionStream(output, rootArc.label(), arc);
-                    } else {
-                      return Stream.empty();
-                    }
-                  } catch (IOException e) {
-                    throw new UncheckedIOException(e);
-                  }
-                });
+            .flatMap(i -> {
+              try {
+                final FST.Arc<Object> rootArc = rootArcs[i];
+                final FST.Arc<Object> arc = new FST.Arc<>().copyFrom(rootArc);
+                if (descendWithPrefix(arc, key)) {
+                  // A subgraph starting from the current node has the completions
+                  // of the key prefix. The arc we're at is the last key's byte,
+                  // so we will collect it too.
+                  final BytesRef output = BytesRef.deepCopyOf(key);
+                  output.length = key.length;
+                  return completionStream(output, rootArc.label(), arc);
+                } else {
+                  return Stream.empty();
+                }
+              } catch (IOException e) {
+                throw new UncheckedIOException(e);
+              }
+            });
 
     // if requested, return the exact completion first and omit it in any further completions.
     if (exactFirst && exactCompletion != null) {

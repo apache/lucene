@@ -210,6 +210,40 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
     }
   }
 
+  public void testDoubleExtrema() throws IOException {
+    for (boolean sorted : new boolean[] {false, true}) {
+      for (double[] values :
+          new double[][] {
+            {-5, -3, -4}, {0.0}, {Double.NEGATIVE_INFINITY}, {Double.POSITIVE_INFINITY}
+          }) {
+        try (Directory dir = newDirectory();
+            RandomIndexWriter writer = new RandomIndexWriter(random(), dir)) {
+          for (double value : values) {
+            Document doc = new Document();
+            doc.add(
+                sorted
+                    ? new SortedNumericDocValuesField("double", Double.doubleToRawLongBits(value))
+                    : new DoubleDocValuesField("double", value));
+            writer.addDocument(doc);
+          }
+          try (DirectoryReader reader = writer.getReader()) {
+            DocValuesStatsCollectorManager<Double, DocValuesStats<Double>> manager =
+                new DocValuesStatsCollectorManager<>(() ->
+                    sorted
+                        ? new SortedDoubleDocValuesStats("double")
+                        : new DoubleDocValuesStats("double"));
+            DocValuesStats<Double> stats =
+                newSearcher(reader).search(MatchAllDocsQuery.INSTANCE, manager);
+            DoubleSummaryStatistics expected = Arrays.stream(values).summaryStatistics();
+            assertEquals(expected.getCount(), stats.count());
+            assertEquals(expected.getMin(), stats.min().doubleValue(), 0.0);
+            assertEquals(expected.getMax(), stats.max().doubleValue(), 0.0);
+          }
+        }
+      }
+    }
+  }
+
   public void testDocsWithMultipleLongValues() throws IOException {
     try (Directory dir = newDirectory()) {
       try (RandomIndexWriter indexWriter = new RandomIndexWriter(random(), dir)) {
@@ -254,7 +288,7 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
           assertEquals(computeExpMissing(numDocsWithoutField, numDocs, reader), stats.missing());
           if (stats.count() > 0) {
             LongSummaryStatistics sumStats =
-                filterAndFlatValues(docValues, (v) -> v != null).summaryStatistics();
+                filterAndFlatValues(docValues, v -> v != null).summaryStatistics();
             assertEquals(sumStats.getMax(), stats.max().longValue());
             assertEquals(sumStats.getMin(), stats.min().longValue());
             assertEquals(sumStats.getAverage(), stats.mean(), 0.00001);
@@ -262,7 +296,7 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
             assertEquals(sumStats.getCount(), stats.valuesCount());
             double variance =
                 computeVariance(
-                    filterAndFlatValues(docValues, (v) -> v != null), stats.mean, stats.count());
+                    filterAndFlatValues(docValues, v -> v != null), stats.mean, stats.count());
             assertEquals(variance, stats.variance(), 0.00001);
             assertEquals(Math.sqrt(variance), stats.stdev(), 0.00001);
           }
@@ -316,7 +350,7 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
           assertEquals(computeExpMissing(numDocsWithoutField, numDocs, reader), stats.missing());
           if (stats.count() > 0) {
             DoubleSummaryStatistics sumStats =
-                filterAndFlatValues(docValues, (v) -> v != null).summaryStatistics();
+                filterAndFlatValues(docValues, v -> v != null).summaryStatistics();
             assertEquals(sumStats.getMax(), stats.max(), 0.00001);
             assertEquals(sumStats.getMin(), stats.min(), 0.00001);
             assertEquals(sumStats.getAverage(), stats.mean(), 0.00001);
@@ -324,7 +358,7 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
             assertEquals(sumStats.getCount(), stats.valuesCount());
             double variance =
                 computeVariance(
-                    filterAndFlatValues(docValues, (v) -> v != null), stats.mean, stats.count());
+                    filterAndFlatValues(docValues, v -> v != null), stats.mean, stats.count());
             assertEquals(variance, stats.variance(), 0.00001);
             assertEquals(Math.sqrt(variance), stats.stdev(), 0.00001);
           }

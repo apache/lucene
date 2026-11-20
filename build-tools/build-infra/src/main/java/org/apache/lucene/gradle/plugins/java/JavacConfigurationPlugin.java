@@ -49,82 +49,81 @@ public class JavacConfigurationPlugin extends LuceneGradlePlugin {
     project
         .getTasks()
         .withType(JavaCompile.class)
-        .configureEach(
-            task -> {
-              CompileOptions options = task.getOptions();
+        .configureEach(task -> {
+          CompileOptions options = task.getOptions();
 
-              // Use 'release' flag instead of 'source' and 'target'
-              List<String> compilerArgs = options.getCompilerArgs();
+          // Use 'release' flag instead of 'source' and 'target'
+          List<String> compilerArgs = options.getCompilerArgs();
 
-              compilerArgs.addAll(List.of("--release", minJavaVersion.toString()));
+          compilerArgs.addAll(List.of("--release", minJavaVersion.toString()));
 
-              options.setEncoding("UTF-8");
+          options.setEncoding("UTF-8");
 
-              // Configure warnings. Use 'javac --help-lint' to get the supported list
-              compilerArgs.addAll(
-                  List.of(
-                      "-Xlint:auxiliaryclass",
-                      "-Xlint:cast",
-                      "-Xlint:classfile",
-                      "-Xlint:dangling-doc-comments",
-                      "-Xlint:-deprecation",
-                      "-Xlint:dep-ann",
-                      "-Xlint:divzero",
-                      "-Xlint:empty",
-                      // TODO: uh-oh we have broken APIs.
-                      "-Xlint:-exports",
-                      "-Xlint:fallthrough",
-                      "-Xlint:finally",
-                      "-Xlint:identity",
-                      "-Xlint:incubating",
-                      // TODO: there are problems
-                      "-Xlint:-lossy-conversions",
-                      // TODO: there are problems
-                      "-Xlint:-missing-explicit-ctor",
-                      "-Xlint:module",
-                      "-Xlint:opens",
-                      "-Xlint:options",
-                      "-Xlint:output-file-clash",
-                      "-Xlint:overloads",
-                      "-Xlint:overrides",
-                      "-Xlint:path",
-                      "-Xlint:processing",
-                      "-Xlint:rawtypes",
-                      "-Xlint:removal",
-                      "-Xlint:requires-automatic",
-                      "-Xlint:requires-transitive-automatic",
-                      "-Xlint:-serial",
-                      "-Xlint:static",
-                      "-Xlint:strictfp",
-                      "-Xlint:synchronization",
-                      "-Xlint:text-blocks",
-                      // TODO: there are problems
-                      "-Xlint:-this-escape",
-                      "-Xlint:try",
-                      "-Xlint:unchecked",
-                      "-Xlint:varargs",
-                      "-Xlint:preview",
-                      "-Xlint:restricted",
-                      "-Xdoclint:all/protected",
-                      "-Xdoclint:-missing",
-                      "-Xdoclint:-accessibility"));
+          // Configure warnings. Use 'javac --help-lint' to get the supported list
+          compilerArgs.addAll(
+              List.of(
+                  "-Xlint:auxiliaryclass",
+                  "-Xlint:cast",
+                  "-Xlint:classfile",
+                  "-Xlint:dangling-doc-comments",
+                  "-Xlint:-deprecation",
+                  "-Xlint:dep-ann",
+                  "-Xlint:divzero",
+                  "-Xlint:empty",
+                  // TODO: uh-oh we have broken APIs.
+                  "-Xlint:-exports",
+                  "-Xlint:fallthrough",
+                  "-Xlint:finally",
+                  "-Xlint:identity",
+                  "-Xlint:incubating",
+                  // TODO: there are problems
+                  "-Xlint:-lossy-conversions",
+                  // TODO: there are problems
+                  "-Xlint:-missing-explicit-ctor",
+                  "-Xlint:module",
+                  "-Xlint:opens",
+                  "-Xlint:options",
+                  "-Xlint:output-file-clash",
+                  "-Xlint:overloads",
+                  "-Xlint:overrides",
+                  "-Xlint:path",
+                  "-Xlint:processing",
+                  "-Xlint:rawtypes",
+                  "-Xlint:removal",
+                  "-Xlint:requires-automatic",
+                  "-Xlint:requires-transitive-automatic",
+                  "-Xlint:-serial",
+                  "-Xlint:static",
+                  "-Xlint:strictfp",
+                  "-Xlint:synchronization",
+                  "-Xlint:text-blocks",
+                  // TODO: there are problems
+                  "-Xlint:-this-escape",
+                  "-Xlint:try",
+                  "-Xlint:unchecked",
+                  "-Xlint:varargs",
+                  "-Xlint:preview",
+                  "-Xlint:restricted",
+                  "-Xdoclint:all/protected",
+                  "-Xdoclint:-missing",
+                  "-Xdoclint:-accessibility"));
 
-              // we can't use this linter option
-              // because of https://github.com/apache/lucene/issues/14941
-              if (project.getPath().equals(":build-tools:build-infra-shadow")) {
-                compilerArgs.remove("-Xlint:path");
-              }
+          // we can't use this linter option
+          // because of https://github.com/apache/lucene/issues/14941
+          if (project.getPath().equals(":build-tools:build-infra-shadow")) {
+            compilerArgs.remove("-Xlint:path");
+          }
 
-              if (project.getPath().equals(":lucene:benchmark-jmh")) {
-                // Ignore, JMH benchmarks use JMH preprocessor and incubating modules.
-              } else {
-                // proc:none was added because of LOG4J2-1925 / JDK-8186647
-                compilerArgs.add("-proc:none");
+          if (project.getPath().equals(":lucene:benchmark-jmh")) {
+            // Ignore, JMH benchmarks use JMH preprocessor and incubating modules.
+          } else {
+            // proc:none was added because of LOG4J2-1925 / JDK-8186647
+            compilerArgs.add("-proc:none");
 
-                if (failOnWarningsOption.get()) {
-                  compilerArgs.add("-Werror");
-                }
-              }
-            });
+            if (failOnWarningsOption.get()) {
+              compilerArgs.add("-Werror");
+            }
+          }
+        });
   }
 }

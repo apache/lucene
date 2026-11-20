@@ -40,10 +40,9 @@ public class TestBitSetDocIdStream extends LuceneTestCase {
     BitSetDocIdStream stream = new BitSetDocIdStream(bitSet, base);
     BitSetIterator iterator = new BitSetIterator(bitSet, bitSet.approximateCardinality());
 
-    stream.forEach(
-        doc -> {
-          assertEquals(base + iterator.nextDoc(), doc);
-        });
+    stream.forEach(doc -> {
+      assertEquals(base + iterator.nextDoc(), doc);
+    });
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, iterator.nextDoc());
   }
 
@@ -75,6 +74,18 @@ public class TestBitSetDocIdStream extends LuceneTestCase {
     }
     assertEquals(count, o);
     assertEquals(0, stream.intoArray(array));
+  }
+
+  public void testIntoBitSet() throws IOException {
+    FixedBitSet bitSet = randomBitSet();
+    int base = 42;
+    BitSetDocIdStream stream = new BitSetDocIdStream(bitSet, base);
+    FixedBitSet dest = new FixedBitSet(bitSet.length());
+
+    stream.intoBitSet(DocIdSetIterator.NO_MORE_DOCS, dest, base);
+
+    assertEquals(bitSet, dest);
+    assertFalse(stream.mayHaveRemaining());
   }
 
   public void testForEachUpTo() throws IOException {
