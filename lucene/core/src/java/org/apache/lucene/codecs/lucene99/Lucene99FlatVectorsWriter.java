@@ -349,8 +349,8 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
    * vectorByteLength} little-endian bytes at {@code ord * vectorByteLength} of their slice: exactly
    * what the per-vector path would write.
    *
-   * <p>Documents are visited in the same order as {@code KnnVectorsWriter.MergedVectorValues}, and
-   * runs of consecutive live ordinals are copied in one call.
+   * <p>Sources are copied whole, in the same order as {@code KnnVectorsWriter.MergedVectorValues},
+   * so a source must not have deletions.
    *
    * @return the merged documents with a vector, or {@code null}, having written nothing, if the
    *     merge sorts documents or any source does not qualify
@@ -358,7 +358,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
   private DocsWithFieldSet copyRawVectorData(FieldInfo fieldInfo, MergeState mergeState)
       throws IOException {
     if (mergeState.needsIndexSort) {
-      // documents of different segments interleave, so ordinals do not form runs
+      // documents of different segments interleave
       return null;
     }
     final int dimension = fieldInfo.getVectorDimension();
@@ -368,6 +368,10 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     for (int i = 0; i < mergeState.knnVectorsReaders.length; i++) {
       if (MergedVectorValues.hasVectorValues(mergeState.fieldInfos[i], fieldInfo.name) == false) {
         continue;
+      }
+      if (mergeState.liveDocs[i] != null) {
+        // deleted vectors split the copy into short runs, which are not worth it
+        return null;
       }
       KnnVectorsReader reader = mergeState.knnVectorsReaders[i];
       if (reader == null) {
@@ -390,72 +394,20 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     }
 
     final DocsWithFieldSet docsWithField = new DocsWithFieldSet();
-    final StagedCopier copier = new StagedCopier(vectorData);
     for (int i = 0; i < sources.size(); i++) {
       final KnnVectorValues values = sources.get(i);
       final MergeState.DocMap docMap = docMaps.get(i);
       final IndexInput slice = ((HasIndexSlice) values).getSlice().clone();
+      slice.seek(0);
+      vectorData.copyBytes(slice, slice.length());
       final KnnVectorValues.DocIndexIterator iterator = values.iterator();
-      // the run of ordinals [runStart, runEnd) not yet copied
-      int runStart = 0;
-      int runEnd = 0;
       for (int doc = iterator.nextDoc(); doc != NO_MORE_DOCS; doc = iterator.nextDoc()) {
         int mappedDoc = docMap.get(doc);
-        if (mappedDoc == -1) {
-          continue; // deleted
-        }
-        int ord = iterator.index();
-        if (ord != runEnd) {
-          copier.copy(slice, runStart * vectorByteLength, (runEnd - runStart) * vectorByteLength);
-          runStart = ord;
-        }
-        runEnd = ord + 1;
+        assert mappedDoc != -1 : "source without deletions maps doc " + doc + " to -1";
         docsWithField.add(mappedDoc);
       }
-      copier.copy(slice, runStart * vectorByteLength, (runEnd - runStart) * vectorByteLength);
     }
-    copier.flush();
     return docsWithField;
-  }
-
-  /**
-   * Gathers copied byte ranges in a buffer and writes it to the output only when it is full. Runs
-   * between deleted documents can be a few kilobytes; writing each one directly would flush the
-   * output's buffer partly filled, and issue more and smaller writes to the file than the
-   * per-vector path does.
-   */
-  private static final class StagedCopier {
-    private static final int BUFFER_SIZE = 64 * 1024;
-
-    private final IndexOutput out;
-    private final byte[] buffer = new byte[BUFFER_SIZE];
-    private int buffered;
-
-    StagedCopier(IndexOutput out) {
-      this.out = out;
-    }
-
-    /** Appends {@code length} bytes of {@code in} starting at {@code offset}. */
-    void copy(IndexInput in, long offset, long length) throws IOException {
-      if (length == 0) {
-        return;
-      }
-      in.seek(offset);
-      while (length > 0) {
-        if (buffered == buffer.length) {
-          flush();
-        }
-        int chunk = (int) Math.min(length, buffer.length - buffered);
-        in.readBytes(buffer, buffered, chunk);
-        buffered += chunk;
-        length -= chunk;
-      }
-    }
-
-    void flush() throws IOException {
-      out.writeBytes(buffer, 0, buffered);
-      buffered = 0;
-    }
   }
 
   /**
