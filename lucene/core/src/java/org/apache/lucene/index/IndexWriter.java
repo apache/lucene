@@ -4489,18 +4489,6 @@ public class IndexWriter
     return docWriter.getNumDocs();
   }
 
-  private synchronized void ensureValidMerge(MergePolicy.OneMerge merge) {
-    for (SegmentCommitInfo info : merge.segments) {
-      if (!segmentInfos.contains(info)) {
-        throw new MergePolicy.MergeException(
-            "MergePolicy selected a segment ("
-                + info.info.name
-                + ") that is not in the current index "
-                + segString());
-      }
-    }
-  }
-
   /**
    * Carry deletes and doc-values updates that arrived while merging into {@code target}.
    *
@@ -5256,7 +5244,11 @@ public class IndexWriter
                   + segString(info)
                   + " does not exist in live infos");
         }
-        return false;
+        throw new MergePolicy.MergeException(
+            "MergePolicy selected a segment ("
+                + info.info.name
+                + ") that is not in the current index "
+                + segString());
       }
       if (info.info.dir != directoryOrig) {
         isExternal = true;
@@ -5265,8 +5257,6 @@ public class IndexWriter
         merge.maxNumSegments = mergeMaxNumSegments;
       }
     }
-
-    ensureValidMerge(merge);
 
     pendingMerges.add(merge);
 
