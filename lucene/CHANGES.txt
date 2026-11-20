@@ -33,6 +33,8 @@ Bug Fixes
 ---------------------
 * GITHUB#17030: Fix precision loss when reducing join scores. (Ke Wei)
 
+* GITHUB#17030: Avoid flushing pending DocValues updates to disk for merging segments. (Ke Wei)
+
 Other
 ---------------------
 (No changes)

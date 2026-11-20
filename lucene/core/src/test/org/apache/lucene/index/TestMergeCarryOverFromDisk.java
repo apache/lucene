@@ -23,6 +23,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
@@ -47,6 +48,65 @@ import org.apache.lucene.util.BytesRef;
  * applies + resolves updates, then releases the merge.
  */
 public class TestMergeCarryOverFromDisk extends LuceneTestCase {
+
+  public void testReleasePendingUpdatesWithoutReaderPooling() throws Exception {
+    IndexWriterConfig conf =
+        new IndexWriterConfig()
+            .setReaderPooling(false)
+            .setMergeScheduler(new SerialMergeScheduler())
+            .setMaxDocValuesOverlays(1);
+    try (MergePausingDirectory dir = new MergePausingDirectory(newDirectory())) {
+      try (IndexWriter writer = new IndexWriter(dir, conf)) {
+        // Create two source segments with the same id so each update affects both documents.
+        for (int segment = 0; segment < 2; segment++) {
+          Document document = new Document();
+          document.add(new StringField("id", "0", StringField.Store.NO));
+          document.add(new NumericDocValuesField("ndv", 0));
+          writer.addDocument(document);
+          writer.flush();
+        }
+        Thread merger =
+            new Thread(
+                () -> {
+                  try {
+                    writer.forceMerge(1);
+                  } catch (Throwable t) {
+                    dir.failure.set(t);
+                  }
+                },
+                "forceMerge");
+        merger.start();
+        try {
+          // Pause the merge until creating the pending update DV delta.
+          assertTrue(dir.mergeStarted.await(60, TimeUnit.SECONDS));
+          // Creating the new dv delta files to the two segments with written to disk.
+          writer.updateNumericDocValue(new Term("id", "0"), "ndv", 100);
+          writer.flush();
+          // Crating another update without writing all pending DV updates to disk.
+          writer.updateNumericDocValue(new Term("id", "0"), "ndv", 200);
+          writer.addDocument(new Document());
+          // Only flush the empty document buffer, without written DV to disk, to make sure we can
+          // trigger the written DV updates to disk in merge thread.
+          assertTrue(writer.flushNextBuffer());
+        } finally {
+          dir.resumeMerge.countDown();
+          merger.join(60000);
+        }
+        writer.commit();
+        try (DirectoryReader reader = DirectoryReader.open(dir)) {
+          assertEquals(3, reader.numDocs());
+          int updatedDocs = 0;
+          NumericDocValues values = MultiDocValues.getNumericValues(reader, "ndv");
+          while (values.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+            assertEquals(200, values.longValue());
+            updatedDocs++;
+          }
+          // Both two documents must retain the latest value.
+          assertEquals(2, updatedDocs);
+        }
+      }
+    }
+  }
 
   /** Wraps a directory, pausing the first merge output write until the test releases it. */
   private static class MergePausingDirectory extends FilterDirectory {
