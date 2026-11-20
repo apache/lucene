@@ -10,6 +10,8 @@ Bug Fixes
 * GITHUB#16931: Fix MMapDirectory losing shared arena grouping when an old arena closes and removes
   the newer live arena of the same group from the arenas map. (Chris Hegarty)
 
+* GITHUB#17018: Fix NPE when a span query searches over masked fields that don't have any indexed docs in them (Simon Cooper)
+
 ======================= Lucene 10.6.0 =======================
 
 API Changes

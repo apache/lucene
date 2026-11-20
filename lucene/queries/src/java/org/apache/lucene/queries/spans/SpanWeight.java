@@ -19,8 +19,10 @@ package org.apache.lucene.queries.spans;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PostingsEnum;
@@ -111,13 +113,66 @@ public abstract class SpanWeight extends Weight {
             searcher.termStatistics(entry.getKey(), ts.docFreq(), ts.totalTermFreq());
       }
     }
-    CollectionStatistics collectionStats = searcher.collectionStatistics(query.getField());
     if (termUpTo > 0) {
-      return similarity.scorer(
-          boost, collectionStats, ArrayUtil.copyOfSubArray(termStats, 0, termUpTo));
+      termStats = ArrayUtil.copyOfSubArray(termStats, 0, termUpTo);
+      CollectionStatistics collectionStats = searcher.collectionStatistics(query.getField());
+      if (collectionStats == null) {
+        // the query field and term fields can be different (see FieldMaskingSpanQuery);
+        // if the query field has no indexed documents then the stats will be missing.
+        // Use the stats of the fields the terms come from, as the query field stands in for those.
+        collectionStats = collStatsFromTermFields(query.getField(), searcher, termStates);
+      }
+      if (collectionStats == null) {
+        // an IndexSearcher subclass can return null stats for the term fields too,
+        // so calculate some stats that are roughly right from the term stats
+        collectionStats = collStatsFromTerms(query.getField(), searcher, termStats);
+      }
+      return similarity.scorer(boost, collectionStats, termStats);
     } else {
       return null; // no terms at all exist, we won't use similarity
     }
+  }
+
+  private static CollectionStatistics collStatsFromTermFields(
+      String field, IndexSearcher searcher, Map<Term, TermStates> termStates) throws IOException {
+    long maxDoc = 0;
+    long docCount = 0;
+    long sumTotalTermFreq = 0;
+    long sumDocFreq = 0;
+    Set<String> termFields = new HashSet<>();
+    for (var entry : termStates.entrySet()) {
+      // process each field once, if it actually has docs
+      CollectionStatistics collectionStatistics;
+      if (entry.getValue().docFreq() > 0
+          && termFields.add(entry.getKey().field())
+          && (collectionStatistics = searcher.collectionStatistics(entry.getKey().field()))
+              != null) {
+        maxDoc = Math.max(maxDoc, collectionStatistics.maxDoc());
+        docCount = Math.max(docCount, collectionStatistics.docCount());
+        sumTotalTermFreq = Math.max(sumTotalTermFreq, collectionStatistics.sumTotalTermFreq());
+        sumDocFreq = Math.max(sumDocFreq, collectionStatistics.sumDocFreq());
+      }
+    }
+    if (docCount == 0) {
+      return null;
+    }
+    return new CollectionStatistics(field, maxDoc, docCount, sumTotalTermFreq, sumDocFreq);
+  }
+
+  private static CollectionStatistics collStatsFromTerms(
+      String field, IndexSearcher searcher, TermStatistics[] termStats) {
+    long docCount = 0;
+    long sumDocFreq = 0;
+    long sumTotalTermFreq = 0;
+    for (TermStatistics ts : termStats) {
+      docCount = Math.max(docCount, ts.docFreq());
+      sumDocFreq += ts.docFreq();
+      sumTotalTermFreq += ts.totalTermFreq();
+    }
+    // term stats might be overridden, so need to make sure the doc count is within the index reader
+    // docs
+    long maxDoc = Math.max(searcher.getIndexReader().maxDoc(), docCount);
+    return new CollectionStatistics(field, maxDoc, docCount, sumTotalTermFreq, sumDocFreq);
   }
 
   /**

@@ -18,6 +18,8 @@ package org.apache.lucene.queries.spans;
 
 import static org.apache.lucene.queries.spans.SpanTestUtil.assertFinished;
 import static org.apache.lucene.queries.spans.SpanTestUtil.assertNext;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThan;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -25,10 +27,16 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
+import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.similarities.BM25Similarity;
+import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.search.similarities.TFIDFSimilarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
@@ -245,6 +253,82 @@ public class TestFieldMaskingSpanQuery extends LuceneTestCase {
     check(q, new int[] {0, 2});
     q = new SpanNearQuery(new SpanQuery[] {new FieldMaskingSpanQuery(q1, "last"), q2}, -1, false);
     check(q, new int[] {0, 2});
+  }
+
+  public void testMaskingFieldNotIndexed() throws Exception {
+    assertNull(searcher.collectionStatistics("missing"));
+    SpanQuery q1 =
+        new FieldMaskingSpanQuery(new SpanTermQuery(new Term("first", "james")), "missing");
+    SpanQuery q2 =
+        new FieldMaskingSpanQuery(new SpanTermQuery(new Term("last", "jones")), "missing");
+
+    // SpanNearQuery only matches in segments that index its field
+    check(new SpanNearQuery(new SpanQuery[] {q1, q2}, -1, false), new int[0]);
+
+    SpanQuery q3 =
+        new FieldMaskingSpanQuery(new SpanTermQuery(new Term("first", "bob")), "missing");
+    SpanQuery or = new SpanOrQuery(q1, q3);
+    check(or, new int[] {0, 1, 2, 3});
+
+    TopDocs topDocs = searcher.search(or, 10);
+    assertEquals(4, topDocs.totalHits.value());
+    for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
+      assertThat(scoreDoc.score, greaterThan(0f));
+    }
+  }
+
+  public void testMaskingFieldNotIndexedUsesTermFieldStats() throws Exception {
+    RecordingSimilarity similarity = new RecordingSimilarity();
+    IndexSearcher s = new IndexSearcher(searcher.getIndexReader());
+    s.setSimilarity(similarity);
+    s.createWeight(s.rewrite(maskedJamesOrBob()), ScoreMode.COMPLETE, 1f);
+
+    CollectionStatistics first = s.collectionStatistics("first");
+    assertThat(
+        similarity.collectionStats,
+        equalTo(
+            new CollectionStatistics(
+                "missing",
+                first.maxDoc(),
+                first.docCount(),
+                first.sumTotalTermFreq(),
+                first.sumDocFreq())));
+  }
+
+  public void testMaskingFieldNotIndexedNoFieldStats() throws Exception {
+    RecordingSimilarity similarity = new RecordingSimilarity();
+    IndexSearcher s =
+        new IndexSearcher(searcher.getIndexReader()) {
+          @Override
+          public CollectionStatistics collectionStatistics(String field) {
+            return null;
+          }
+        };
+    s.setSimilarity(similarity);
+    s.createWeight(s.rewrite(maskedJamesOrBob()), ScoreMode.COMPLETE, 1f);
+
+    // james: docFreq=3, totalTermFreq=3; bob: docFreq=1, totalTermFreq=1
+    assertThat(
+        similarity.collectionStats,
+        equalTo(new CollectionStatistics("missing", s.getIndexReader().maxDoc(), 3, 4, 4)));
+  }
+
+  private static SpanQuery maskedJamesOrBob() {
+    return new SpanOrQuery(
+        new FieldMaskingSpanQuery(new SpanTermQuery(new Term("first", "james")), "missing"),
+        new FieldMaskingSpanQuery(new SpanTermQuery(new Term("first", "bob")), "missing"));
+  }
+
+  private static class RecordingSimilarity extends Similarity {
+    private final Similarity delegate = new BM25Similarity();
+    CollectionStatistics collectionStats;
+
+    @Override
+    public SimScorer scorer(
+        float boost, CollectionStatistics collectionStats, TermStatistics... termStats) {
+      this.collectionStats = collectionStats;
+      return delegate.scorer(boost, collectionStats, termStats);
+    }
   }
 
   public void testSimple2() throws Exception {
