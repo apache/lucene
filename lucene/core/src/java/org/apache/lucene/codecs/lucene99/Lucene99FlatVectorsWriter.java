@@ -386,7 +386,8 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       if (values == null || values.size() == 0) {
         continue; // contributes no vectors; empty off-heap values have no slice
       }
-      if (isStoredLayout(values, dimension, vectorByteLength) == false) {
+      KnnVectorsReader fieldReader = reader.unwrapReaderForField(fieldInfo.name);
+      if (canCopyRaw(fieldReader, values, dimension, vectorByteLength) == false) {
         return null;
       }
       sources.add(values);
@@ -411,21 +412,29 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
   }
 
   /**
-   * Returns whether {@code values} reads vector {@code ord} as the bytes at {@code ord *
-   * vectorByteLength} of its slice. Only the value classes declared in {@link
-   * OffHeapFloatVectorValues}, {@link OffHeapFloat16VectorValues} and {@link
-   * OffHeapByteVectorValues} qualify; a subclass defined elsewhere could read vectors differently.
-   * The slice length proves that vectors are stored back to back without padding.
+   * Returns whether the stored bytes of {@code values} can be copied as they are. {@code reader}
+   * must read this format, directly or through {@link Lucene99HnswVectorsReader}, from files
+   * written with the current version. {@code values} must be one of the value classes declared in
+   * {@link OffHeapFloatVectorValues}, {@link OffHeapFloat16VectorValues} and {@link
+   * OffHeapByteVectorValues}, which read vector {@code ord} as the bytes at {@code ord *
+   * vectorByteLength} of their slice; the slice length proves that vectors are stored back to back
+   * without padding.
    */
-  private static boolean isStoredLayout(
-      KnnVectorValues values, int dimension, long vectorByteLength) {
-    Class<?> declaringClass = values.getClass().getEnclosingClass();
-    if (declaringClass != OffHeapFloatVectorValues.class
-        && declaringClass != OffHeapFloat16VectorValues.class
-        && declaringClass != OffHeapByteVectorValues.class) {
+  private static boolean canCopyRaw(
+      KnnVectorsReader reader, KnnVectorValues values, int dimension, long vectorByteLength) {
+    if (reader instanceof Lucene99HnswVectorsReader hnswReader) {
+      reader = hnswReader.getFlatVectorsReader();
+    }
+    if ((reader instanceof Lucene99FlatVectorsReader flatReader
+            && flatReader.getVersion() == Lucene99FlatVectorsFormat.VERSION_CURRENT)
+        == false) {
       return false;
     }
-    return values.dimension() == dimension
+    Class<?> declaringClass = values.getClass().getEnclosingClass();
+    return (declaringClass == OffHeapFloatVectorValues.class
+            || declaringClass == OffHeapFloat16VectorValues.class
+            || declaringClass == OffHeapByteVectorValues.class)
+        && values.dimension() == dimension
         && ((HasIndexSlice) values).getSlice().length() == values.size() * vectorByteLength;
   }
 
