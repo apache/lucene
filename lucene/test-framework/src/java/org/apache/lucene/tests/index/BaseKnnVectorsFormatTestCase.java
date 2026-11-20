@@ -1508,15 +1508,17 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
   }
 
   /**
-   * Index random vectors, sometimes skipping documents, sometimes deleting a document, sometimes
-   * merging, sometimes sorting the index, and verify that the expected values can be read back
-   * consistently.
+   * Index random float32 or float16 vectors, sometimes skipping documents, sometimes deleting a
+   * document, sometimes merging, sometimes sorting the index, and verify that the expected values
+   * can be read back consistently.
    */
   public void testRandom() throws Exception {
     IndexWriterConfig iwc = newIndexWriterConfig();
     if (random().nextBoolean()) {
       iwc.setIndexSort(new Sort(new SortField("sortkey", SortField.Type.INT)));
     }
+    // float32, or float16 when the format supports it
+    boolean float16 = randomVectorEncoding() == VectorEncoding.FLOAT16;
     String fieldName = "field";
     try (Directory dir = newDirectory();
         IndexWriter iw = new IndexWriter(dir, iwc)) {
@@ -1526,20 +1528,35 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         dimension++;
       }
       float[] scratch = new float[dimension];
+      short[] scratch16 = new short[dimension];
       int numValues = 0;
-      float[][] values = new float[numDoc][];
+      // a float[] or a short[] per doc, depending on float16
+      Object[] values = new Object[numDoc];
       for (int i = 0; i < numDoc; i++) {
         if (random().nextInt(7) != 3) {
           // usually index a vector value for a doc
-          values[i] = randomNormalizedVector(dimension);
+          values[i] =
+              float16
+                  ? randomNormalizedFloat16Vector(dimension)
+                  : randomNormalizedVector(dimension);
           ++numValues;
         }
-        if (random().nextBoolean() && values[i] != null) {
-          // sometimes use a shared scratch array
-          System.arraycopy(values[i], 0, scratch, 0, scratch.length);
-          add(iw, fieldName, i, scratch, similarityFunction);
+        // sometimes use a shared scratch array
+        boolean useScratch = random().nextBoolean() && values[i] != null;
+        if (float16) {
+          short[] value = (short[]) values[i];
+          if (useScratch) {
+            System.arraycopy(value, 0, scratch16, 0, scratch16.length);
+            value = scratch16;
+          }
+          add(iw, fieldName, i, value, similarityFunction);
         } else {
-          add(iw, fieldName, i, values[i], similarityFunction);
+          float[] value = (float[]) values[i];
+          if (useScratch) {
+            System.arraycopy(value, 0, scratch, 0, scratch.length);
+            value = scratch;
+          }
+          add(iw, fieldName, i, value, similarityFunction);
         }
         if (random().nextInt(10) == 2) {
           // sometimes delete a random document
@@ -1559,7 +1576,10 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       try (IndexReader reader = DirectoryReader.open(iw)) {
         int valueCount = 0, totalSize = 0;
         for (LeafReaderContext ctx : reader.leaves()) {
-          FloatVectorValues vectorValues = ctx.reader().getFloatVectorValues(fieldName);
+          KnnVectorValues vectorValues =
+              float16
+                  ? ctx.reader().getFloat16VectorValues(fieldName)
+                  : ctx.reader().getFloatVectorValues(fieldName);
           if (vectorValues == null) {
             continue;
           }
@@ -1569,12 +1589,25 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           KnnVectorValues.DocIndexIterator iterator = vectorValues.iterator();
           while (true) {
             if (!((docId = iterator.nextDoc()) != NO_MORE_DOCS)) break;
-            float[] v = vectorValues.vectorValue(iterator.index());
-            assertEquals(dimension, v.length);
             String idString = storedFields.document(docId).getField("id").stringValue();
             int id = Integer.parseInt(idString);
-            if (ctx.reader().getLiveDocs() == null || ctx.reader().getLiveDocs().get(docId)) {
-              assertArrayEquals(idString + " " + docId, values[id], v, 0);
+            String message = idString + " " + docId;
+            boolean live =
+                ctx.reader().getLiveDocs() == null || ctx.reader().getLiveDocs().get(docId);
+            if (float16) {
+              short[] v = ((Float16VectorValues) vectorValues).vectorValue(iterator.index());
+              assertEquals(dimension, v.length);
+              if (live) {
+                assertArrayEquals(message, (short[]) values[id], v);
+              }
+            } else {
+              float[] v = ((FloatVectorValues) vectorValues).vectorValue(iterator.index());
+              assertEquals(dimension, v.length);
+              if (live) {
+                assertArrayEquals(message, (float[]) values[id], v, 0);
+              }
+            }
+            if (live) {
               ++valueCount;
             } else {
               ++numDeletes;
@@ -1850,6 +1883,19 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       IndexWriter iw, String field, int id, byte[] vector, VectorSimilarityFunction similarity)
       throws IOException {
     add(iw, field, id, random().nextInt(100), vector, similarity);
+  }
+
+  private void add(
+      IndexWriter iw, String field, int id, short[] vector, VectorSimilarityFunction similarity)
+      throws IOException {
+    Document doc = new Document();
+    if (vector != null) {
+      doc.add(new KnnFloat16VectorField(field, vector, similarity));
+    }
+    doc.add(new NumericDocValuesField("sortkey", random().nextInt(100)));
+    String idString = Integer.toString(id);
+    doc.add(new StringField("id", idString, Field.Store.YES));
+    iw.updateDocument(new Term("id", idString), doc);
   }
 
   private void add(IndexWriter iw, String field, int id, int sortKey, byte[] vector)

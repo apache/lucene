@@ -82,11 +82,14 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   private IndexInput sequentialVectorData;
   // guarded by this
   private boolean closed;
+  // format version of the segment's files
+  private final int version;
 
   public Lucene99FlatVectorsReader(SegmentReadState state, FlatVectorsScorer scorer)
       throws IOException {
     this.fields = new IntObjectHashMap<>();
     int versionMeta = readMetadata(state);
+    this.version = versionMeta;
     this.vectorScorer = scorer;
     this.fieldInfos = state.fieldInfos;
     this.directory = state.directory;
@@ -115,6 +118,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   /** Reads the same fields as {@code reader}, through {@code vectorData}. */
   private Lucene99FlatVectorsReader(Lucene99FlatVectorsReader reader, IndexInput vectorData) {
     this.fields = reader.fields;
+    this.version = reader.version;
     this.vectorScorer = reader.vectorScorer;
     this.fieldInfos = reader.fieldInfos;
     this.dataContext = reader.dataContext;
@@ -122,6 +126,11 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
     this.vectorDataFN = reader.vectorDataFN;
     this.original = reader.original;
     this.vectorData = vectorData;
+  }
+
+  /** Returns the format version the segment's files were written with. */
+  int getVersion() {
+    return version;
   }
 
   private int readMetadata(SegmentReadState state) throws IOException {
