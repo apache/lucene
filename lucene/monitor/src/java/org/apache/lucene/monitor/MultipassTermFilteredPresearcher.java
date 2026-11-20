@@ -111,6 +111,25 @@ public class MultipassTermFilteredPresearcher extends TermFilteredPresearcher {
     this(passes, 0, DEFAULT_WEIGHTOR, Collections.emptyList(), Collections.emptySet());
   }
 
+  /**
+   * Construct a new MultipassTermFilteredPresearcher that also filters on negated clauses, using
+   * {@link TermFilteredPresearcher#DEFAULT_WEIGHTOR}
+   *
+   * <p>Note that this will be constructed with a minimum advance weight of zero
+   *
+   * @param passes the number of times a query should be indexed
+   * @param maxNegativeDisjuncts the maximum number of negative disjuncts a query may use per pass
+   */
+  public MultipassTermFilteredPresearcher(int passes, int maxNegativeDisjuncts) {
+    this(
+        passes,
+        0,
+        DEFAULT_WEIGHTOR,
+        Collections.emptyList(),
+        Collections.emptySet(),
+        maxNegativeDisjuncts);
+  }
+
   @Override
   protected DocumentQueryBuilder getQueryBuilder() {
     return new MultipassDocumentQueryBuilder();

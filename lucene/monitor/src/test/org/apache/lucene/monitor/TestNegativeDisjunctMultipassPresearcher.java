@@ -30,27 +30,33 @@ public class TestNegativeDisjunctMultipassPresearcher extends NegativeDisjunctPr
         4, 0, TermWeightor.DEFAULT, handlers, Set.of(), maxNegativeDisjuncts);
   }
 
-  private static Presearcher createPresearcher(int passes, int maxNegativeDisjuncts) {
-    return new MultipassTermFilteredPresearcher(
-        passes, 0, TermWeightor.DEFAULT, List.of(), Set.of(), maxNegativeDisjuncts);
-  }
-
   public void testNegativeDisjunctFillsAPassThePositivesLeaveUnused() throws IOException {
     // pass 0 takes x:abc, pass 1 the negative disjunct
     assertRunAndMatched(
-        0, 0, run(createPresearcher(2, 1), "+x:abc -f:t", doc("x", "abc", "f", "t")));
-    assertRunAndMatched(1, 1, run(createPresearcher(2, 1), "+x:abc -f:t", doc("x", "abc")));
+        0,
+        0,
+        run(new MultipassTermFilteredPresearcher(2, 1), "+x:abc -f:t", doc("x", "abc", "f", "t")));
+    assertRunAndMatched(
+        1, 1, run(new MultipassTermFilteredPresearcher(2, 1), "+x:abc -f:t", doc("x", "abc")));
     // with one pass the negative disjunct is never reached
     assertRunAndMatched(
-        1, 0, run(createPresearcher(1, 1), "+x:abc -f:t", doc("x", "abc", "f", "t")));
+        1,
+        0,
+        run(new MultipassTermFilteredPresearcher(1, 1), "+x:abc -f:t", doc("x", "abc", "f", "t")));
   }
 
   public void testOverflowingPassStillLetsOtherPassesFilter() throws IOException {
     String query = "+x:abc -(+y:b +z:c)";
     // pass 0 takes x:abc; pass 1 has two negative disjuncts for a budget of one, so it accepts
     // everything
-    assertRunAndMatched(0, 0, run(createPresearcher(2, 1), query, doc("y", "b", "z", "c")));
     assertRunAndMatched(
-        1, 0, run(createPresearcher(2, 1), query, doc("x", "abc", "y", "b", "z", "c")));
+        0, 0, run(new MultipassTermFilteredPresearcher(2, 1), query, doc("y", "b", "z", "c")));
+    assertRunAndMatched(
+        1,
+        0,
+        run(
+            new MultipassTermFilteredPresearcher(2, 1),
+            query,
+            doc("x", "abc", "y", "b", "z", "c")));
   }
 }
