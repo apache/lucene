@@ -25,6 +25,7 @@ import org.apache.lucene.gradle.plugins.hacks.DumpGradleStateOnStalledBuildsPlug
 import org.apache.lucene.gradle.plugins.ide.EclipseSupportPlugin;
 import org.apache.lucene.gradle.plugins.java.ErrorPronePlugin;
 import org.apache.lucene.gradle.plugins.misc.MeasureTaskTimesPlugin;
+import org.apache.lucene.gradle.plugins.regenerate.RegenerateTasksSupportPlugin;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 
@@ -81,6 +82,7 @@ public class BuildOptionGroupsPlugin implements Plugin<Project> {
                 explicitList(
                     "lucene.spotlessGradleScripts",
                     "lucene.gjf.batchSize",
+                    RegenerateTasksSupportPlugin.OPT_REGENERATE_FORCE,
                     MeasureTaskTimesPlugin.OPT_TASK_TIMES,
                     MeasureTaskTimesPlugin.OPT_TASK_TIMES_LIMIT,
                     MeasureTaskTimesPlugin.OPT_TASK_TIMES_AGGREGATE,

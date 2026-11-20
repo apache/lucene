@@ -28,6 +28,13 @@ with `VisitedSet.create(expectedVisitedNodes, graphSize)`.
 
 ## Migration from Lucene 10.x to Lucene 11.0
 
+### Monitor's QueryTree subclasses implement collectTerms(TermCollector) (GITHUB#16997)
+
+`QueryTree#collectTerms(TermCollector)` is now the abstract method, and
+`collectTerms(BiConsumer)` is final. Subclasses, such as trees returned by a `CustomQueryHandler`,
+must override `collectTerms(TermCollector)` instead; `TermCollector` extends
+`BiConsumer<String, BytesRef>`, so the body usually stays the same.
+
 ### Deprecated TokenSources methods have been removed (GITHUB#16985)
 
 The highlighter's `TokenSources` class now only has `getTokenStream(String field, Fields tvFields,
