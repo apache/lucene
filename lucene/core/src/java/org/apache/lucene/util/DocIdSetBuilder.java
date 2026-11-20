@@ -318,7 +318,8 @@ public final class DocIdSetBuilder {
         return new BitDocIdSet(bitSet, cost);
       } else {
         Buffer concatenated = concat(buffers);
-        sort(concatenated.array, concatenated.length);
+        LSBRadixSorter sorter = new LSBRadixSorter();
+        sorter.sort(PackedInts.bitsRequired(maxDoc - 1), concatenated.array, concatenated.length);
         final int l;
         if (multivalued) {
           l = dedup(concatenated.array, concatenated.length);
@@ -364,55 +365,6 @@ public final class DocIdSetBuilder {
       }
     }
     return new Buffer(docs, totalLength);
-  }
-
-  /** Sort {@code docs[0:length]} in ascending order. */
-  private void sort(int[] docs, int length) {
-    LSBRadixSorter sorter = new LSBRadixSorter();
-    final int numBits = PackedInts.bitsRequired(maxDoc - 1);
-    if (length < LSBRadixSorter.INSERTION_SORT_THRESHOLD) {
-      // Small inputs are sorted with insertion sort, whose cost does not depend on the number of
-      // bits of the values.
-      sorter.sort(numBits, docs, length);
-      return;
-    }
-    // The cost of the radix sort is proportional to the number of bits of the values to sort. Doc
-    // IDs are often clustered in a small range of the doc ID space, e.g. when a range query on a
-    // timestamp runs against a segment whose documents got indexed in (approximate) timestamp
-    // order, or when the index is sorted. So we sort deltas from the minimum doc ID rather than
-    // doc IDs if this saves sorting passes.
-    final int numPasses = numRadixSortPasses(numBits);
-    int min = docs[0];
-    int max = docs[0];
-    // The range of doc IDs can only grow as we look at more doc IDs, so stop looking at doc IDs
-    // as soon as we know that sorting deltas would not save passes. This way doc IDs that are
-    // scattered across the doc ID space only pay for looking at the first few of them.
-    for (int from = 1;
-        from < length && numRadixSortPasses(PackedInts.bitsRequired(max - min)) < numPasses; ) {
-      final int to = Math.min(length, from + 64);
-      for (; from < to; ++from) {
-        final int doc = docs[from];
-        min = Math.min(min, doc);
-        max = Math.max(max, doc);
-      }
-    }
-    final int numDeltaBits = PackedInts.bitsRequired(max - min);
-    if (numRadixSortPasses(numDeltaBits) < numPasses) {
-      for (int i = 0; i < length; ++i) {
-        docs[i] -= min;
-      }
-      sorter.sort(numDeltaBits, docs, length);
-      for (int i = 0; i < length; ++i) {
-        docs[i] += min;
-      }
-    } else {
-      sorter.sort(numBits, docs, length);
-    }
-  }
-
-  /** Number of passes that {@link LSBRadixSorter}, which sorts 8 bits at a time, needs. */
-  private static int numRadixSortPasses(int numBits) {
-    return (numBits + 7) >>> 3;
   }
 
   private static int dedup(int[] arr, int length) {
