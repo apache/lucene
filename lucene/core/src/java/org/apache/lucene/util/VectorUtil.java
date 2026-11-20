@@ -93,6 +93,87 @@ public final class VectorUtil {
   }
 
   /**
+   * Calculates the dot product of a query vector against a batch of document vectors.
+   *
+   * @param query The query vector
+   * @param docs Array of document vectors to score against
+   * @param results Pre-allocated array where the resulting scores will be written
+   * @throws IllegalArgumentException if the query dimensions do not match the document dimensions,
+   *     or if the results array is incorrectly sized.
+   */
+  public static void dotProductBulk(float[] query, float[][] docs, float[] results) {
+    checkBulkArguments(query, docs, results);
+    if (docs.length == 0) {
+      return;
+    }
+    IMPL.dotProductBulk(query, docs, results);
+    assert checkResultsFinite(results);
+  }
+
+  /**
+   * Calculates the cosine similarity of a query vector against a batch of document vectors.
+   *
+   * @param query The query vector
+   * @param docs Array of document vectors to score against
+   * @param results Pre-allocated array where the resulting scores will be written
+   * @throws IllegalArgumentException if the query dimensions do not match the document dimensions,
+   *     or if the results array is incorrectly sized.
+   */
+  public static void cosineBulk(float[] query, float[][] docs, float[] results) {
+    checkBulkArguments(query, docs, results);
+    if (docs.length == 0) {
+      return;
+    }
+    IMPL.cosineBulk(query, docs, results);
+    assert checkResultsFinite(results);
+  }
+
+  /**
+   * Calculates the square distance of a query vector against a batch of document vectors.
+   *
+   * @param query The query vector
+   * @param docs Array of document vectors to score against
+   * @param results Pre-allocated array where the resulting scores will be written
+   * @throws IllegalArgumentException if the query dimensions do not match the document dimensions,
+   *     or if the results array is incorrectly sized.
+   */
+  public static void squareDistanceBulk(float[] query, float[][] docs, float[] results) {
+    checkBulkArguments(query, docs, results);
+    if (docs.length == 0) {
+      return;
+    }
+    IMPL.squareDistanceBulk(query, docs, results);
+    assert checkResultsFinite(results);
+  }
+
+  private static void checkBulkArguments(float[] query, float[][] docs, float[] results) {
+    if (docs.length != results.length) {
+      throw new IllegalArgumentException(
+          "results array length ("
+              + results.length
+              + ") must match docs array length ("
+              + docs.length
+              + ")");
+    }
+    for (int i = 0; i < docs.length; i++) {
+      if (docs[i] == null) {
+        throw new IllegalArgumentException("doc[" + i + "] must not be null");
+      }
+      if (query.length != docs[i].length) {
+        throw new IllegalArgumentException(
+            "vector dimensions differ: " + query.length + "!=" + docs[i].length);
+      }
+    }
+  }
+
+  private static boolean checkResultsFinite(float[] results) {
+    for (float r : results) {
+      assert Float.isFinite(r) : "not finite: " + r;
+    }
+    return true;
+  }
+
+  /**
    * Returns the cosine similarity between the two vectors.
    *
    * @throws IllegalArgumentException if the vectors' dimensions differ.

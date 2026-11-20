@@ -59,6 +59,59 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
     assertFloatReturningProviders(p -> p.cosine(a, b));
   }
 
+  public void testFloatVectorsBulk() {
+    for (int numDocs : new int[] {1, 2, 3, 4, 5, 8, 9, 16}) {
+      var query = new float[size];
+      var docs = new float[numDocs][size];
+      for (int i = 0; i < size; ++i) {
+        query[i] = random().nextFloat();
+      }
+      for (int d = 0; d < numDocs; ++d) {
+        for (int i = 0; i < size; ++i) {
+          docs[d][i] = random().nextFloat();
+        }
+      }
+
+      float[] luceneResults = new float[numDocs];
+      float[] panamaResults = new float[numDocs];
+
+      // dotProductBulk
+      LUCENE_PROVIDER.getVectorUtilSupport().dotProductBulk(query, docs, luceneResults);
+      PANAMA_OR_NATIVE_PROVIDER.getVectorUtilSupport().dotProductBulk(query, docs, panamaResults);
+      for (int d = 0; d < numDocs; ++d) {
+        double dDelta =
+            Math.max(
+                this.delta,
+                this.delta * Math.max(Math.abs(luceneResults[d]), Math.abs(panamaResults[d])));
+        assertEquals(luceneResults[d], panamaResults[d], dDelta);
+      }
+
+      // cosineBulk
+      LUCENE_PROVIDER.getVectorUtilSupport().cosineBulk(query, docs, luceneResults);
+      PANAMA_OR_NATIVE_PROVIDER.getVectorUtilSupport().cosineBulk(query, docs, panamaResults);
+      for (int d = 0; d < numDocs; ++d) {
+        double dDelta =
+            Math.max(
+                this.delta,
+                this.delta * Math.max(Math.abs(luceneResults[d]), Math.abs(panamaResults[d])));
+        assertEquals(luceneResults[d], panamaResults[d], dDelta);
+      }
+
+      // squareDistanceBulk
+      LUCENE_PROVIDER.getVectorUtilSupport().squareDistanceBulk(query, docs, luceneResults);
+      PANAMA_OR_NATIVE_PROVIDER
+          .getVectorUtilSupport()
+          .squareDistanceBulk(query, docs, panamaResults);
+      for (int d = 0; d < numDocs; ++d) {
+        double dDelta =
+            Math.max(
+                this.delta,
+                this.delta * Math.max(Math.abs(luceneResults[d]), Math.abs(panamaResults[d])));
+        assertEquals(luceneResults[d], panamaResults[d], dDelta);
+      }
+    }
+  }
+
   public void testBinaryVectors() {
     var a = new byte[size];
     var b = new byte[size];

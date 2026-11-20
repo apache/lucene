@@ -110,6 +110,71 @@ public class TestVectorUtil extends LuceneTestCase {
     expectThrows(IllegalArgumentException.class, () -> VectorUtil.cosine(u, v));
   }
 
+  public void testBulkOperations() {
+    int dim = 16;
+    float[] query = randomVector(dim);
+    int numDocs = 7;
+    float[][] docs = new float[numDocs][];
+    for (int i = 0; i < numDocs; i++) {
+      docs[i] = randomVector(dim);
+    }
+
+    float[] dotResults = new float[numDocs];
+    VectorUtil.dotProductBulk(query, docs, dotResults);
+    for (int i = 0; i < numDocs; i++) {
+      assertEquals(VectorUtil.dotProduct(query, docs[i]), dotResults[i], DELTA);
+    }
+
+    float[] cosineResults = new float[numDocs];
+    VectorUtil.cosineBulk(query, docs, cosineResults);
+    for (int i = 0; i < numDocs; i++) {
+      assertEquals(VectorUtil.cosine(query, docs[i]), cosineResults[i], DELTA);
+    }
+
+    float[] sqrResults = new float[numDocs];
+    VectorUtil.squareDistanceBulk(query, docs, sqrResults);
+    for (int i = 0; i < numDocs; i++) {
+      assertEquals(VectorUtil.squareDistance(query, docs[i]), sqrResults[i], DELTA);
+    }
+
+    // empty batch
+    VectorUtil.dotProductBulk(query, new float[0][], new float[0]);
+    VectorUtil.cosineBulk(query, new float[0][], new float[0]);
+    VectorUtil.squareDistanceBulk(query, new float[0][], new float[0]);
+  }
+
+  public void testBulkOperationsThrows() {
+    float[] query = new float[4];
+    float[][] docs = new float[2][4];
+
+    // results array length mismatch
+    expectThrows(
+        IllegalArgumentException.class, () -> VectorUtil.dotProductBulk(query, docs, new float[1]));
+    expectThrows(
+        IllegalArgumentException.class, () -> VectorUtil.cosineBulk(query, docs, new float[3]));
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> VectorUtil.squareDistanceBulk(query, docs, new float[0]));
+
+    // dimension mismatch in docs
+    float[][] mismatchedDocs = new float[][] {new float[4], new float[3]};
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> VectorUtil.dotProductBulk(query, mismatchedDocs, new float[2]));
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> VectorUtil.cosineBulk(query, mismatchedDocs, new float[2]));
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> VectorUtil.squareDistanceBulk(query, mismatchedDocs, new float[2]));
+
+    // null doc
+    float[][] nullDocs = new float[][] {new float[4], null};
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> VectorUtil.dotProductBulk(query, nullDocs, new float[2]));
+  }
+
   public void testNormalize() {
     float[] v = randomVector();
     v[random().nextInt(v.length)] = 1; // ensure vector is not all zeroes
