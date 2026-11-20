@@ -487,8 +487,9 @@ final class IoUring implements Closeable {
     if (FAILED_BATCHES.get() >= MAX_FAILED_BATCHES) {
       throw new IOException("io_uring disabled after " + MAX_FAILED_BATCHES + " failed batches");
     }
-    // The distinct files, each locked once.
-    List<IoUring> locked = new ArrayList<>();
+    // The distinct files, each locked once. Sized for every file up front, so adding one never
+    // allocates: a file is added right after it is locked, and the finally below unlocks the list.
+    List<IoUring> locked = new ArrayList<>(file != null ? 1 : n);
     int[] fds = null;
     Batch[] batches = new Batch[(n + RING_ENTRIES - 1) / RING_ENTRIES];
     int submitted = 0;
@@ -541,14 +542,17 @@ final class IoUring implements Closeable {
     throw (Error) failure;
   }
 
-  /** Locks {@code file}'s descriptor against close, failing if it is closed already. */
+  /**
+   * Locks {@code file}'s descriptor against close and adds it to {@code locked}, failing if it is
+   * closed already. The caller unlocks every file in {@code locked}, including one that failed
+   * here; this method never unlocks, so each lock has exactly one release, in the caller's finally.
+   */
   private static void lock(IoUring file, List<IoUring> locked) throws IOException {
     file.fdLock.readLock().lock();
+    locked.add(file);
     if (file.closed) {
-      file.fdLock.readLock().unlock();
       throw new IOException("io_uring reader is closed");
     }
-    locked.add(file);
   }
 
   /**
