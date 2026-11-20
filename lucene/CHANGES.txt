@@ -201,6 +201,10 @@ API Changes
 
 New Features
 ---------------------
+* GITHUB#16957: Add Albanian analyzer (org.apache.lucene.analysis.sq): a normalizer that folds ë/ç and
+  in-word apostrophes, a light suffix-stripping stemmer covering standard and Gheg inflection,
+  and a stop word list. (Visar Uruqi)
+
 * GITHUB#16997: Monitor's QueryTree now merges each group of conjoined, negated leaf queries
   (e.g. -x:a -x:b) into one "negative disjunct", which documents satisfy by containing none of its
   terms. This will later let TermFilteredPresearcher skip a query for documents that contain at
