@@ -421,10 +421,14 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
    * model.
    *
    * <p>The expected number of nodes at each level follows the formula: <br>
-   * {@code maxNodesAtLevel = totalNodes * (1/M)^level}
+   * {@code maxNodesAtLevel = totalNodes * p^level}
+   *
+   * <p>where {@code p} is the probability for a node to also exist on the next level up, which
+   * matches the level distribution used by {@link HnswGraphBuilder} when inserting nodes: {@code
+   * 1/M}, or {@code 1/e} when {@code M == 1}.
    *
    * <p>For each level that has fewer nodes than expected, this method randomly promotes nodes from
-   * the level below with probability 1/M until the target count is reached.
+   * the level below with probability {@code p} until the target count is reached.
    *
    * <p>This rebalancing is necessary during merging graph where deletions may have disrupted the
    * proper hierarchical distribution, which could degrade semantic matches quality.
@@ -434,13 +438,17 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
   void rebalanceGraph() throws IOException {
     SplittableRandom random = new SplittableRandom(seed);
     int size = hnsw.size();
-    double invMaxConn = 1.0 / M;
+    // Probability for a node to also exist on the next level up. HnswGraphBuilder draws node levels
+    // with P(level >= L) = exp(-L / ml), where ml = 1 / ln(M), which is (1/M)^L. M == 1 is special
+    // cased there with ml = 1, i.e. (1/e)^L. Using 1/M here for M == 1 would expect every node on
+    // every level and never terminate.
+    double levelProbability = M == 1 ? Math.exp(-1) : 1.0 / M;
 
     // Process each level starting from level 1 (level 0 always contains all nodes)
     for (int level = 1; ; level++) {
 
       // Calculate expected number of nodes at this level
-      int maxNodesAtLevel = (int) (size * Math.pow(invMaxConn, level));
+      int maxNodesAtLevel = (int) (size * Math.pow(levelProbability, level));
       if (maxNodesAtLevel <= 0) break; // Stop when expected nodes drops to zero
 
       int currentNodesAtLevel = 0;
@@ -462,8 +470,8 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
       while (it.hasNext() && currentNodesAtLevel < maxNodesAtLevel) {
         int node = it.next().value;
 
-        // Promote with probability 1/M, matching HNSW's level assignment distribution
-        if (random.nextDouble() < invMaxConn && !hnsw.nodeExistAtLevel(level, node)) {
+        // Promote with probability p, matching HNSW's level assignment distribution
+        if (random.nextDouble() < levelProbability && !hnsw.nodeExistAtLevel(level, node)) {
           maybeAbort();
           scorer.setScoringOrdinal(node);
           hnsw.addNode(level, node);

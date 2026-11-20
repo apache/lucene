@@ -223,14 +223,29 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     }
   }
 
-  @SuppressWarnings("unchecked")
   public void testGraphMergeWithDeletes() throws IOException {
+    doTestGraphMergeWithDeletes(4, random().nextInt(1000) + 1, random().nextInt(100), true);
+  }
 
-    int M = 4;
+  /**
+   * With maxConn=1, a merge that reuses a graph with deletions used to never terminate, because
+   * {@link InitializedHnswGraphBuilder#rebalanceGraph()} expected (1/M)^level nodes on each level,
+   * which never drops to zero when M == 1.
+   */
+  public void testGraphMergeWithDeletesMaxConnOne() throws IOException {
+    // Enough vectors for a multi-level graph, and a deletion probability that is well below
+    // IncrementalHnswGraphMerger.DELETE_PCT_THRESHOLD, so that the merge reuses the graph and has
+    // to rebalance it. MockRandomMergePolicy is excluded because it may wrap or reorder the readers
+    // being merged, which prevents the graph from being reused.
+    doTestGraphMergeWithDeletes(1, random().nextInt(200, 600), random().nextInt(5, 25), false);
+  }
+
+  @SuppressWarnings("unchecked")
+  private void doTestGraphMergeWithDeletes(
+      int M, int numVectors, int deletionProbaility, boolean includeMockMergePolicy)
+      throws IOException {
     int beamWidth = 20;
     String vectorFieldName = "vec1";
-    int numVectors = random().nextInt(1000) + 1;
-    int deletionProbaility = random().nextInt(100);
     int dim = random().nextInt(64) + 1;
     if (dim % 2 == 1) {
       dim++;
@@ -244,7 +259,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
               .setCodec(
                   TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat(M, beamWidth, 0)))
               // set a random merge policy
-              .setMergePolicy(newMergePolicy(random()));
+              .setMergePolicy(newMergePolicy(random(), includeMockMergePolicy));
       try (IndexWriter w = new IndexWriter(dir, iwc)) {
 
         for (int i = 0; i < numVectors; i++) {
