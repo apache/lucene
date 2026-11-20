@@ -294,15 +294,14 @@ public class BlendedInfixSuggester extends AnalyzingInfixSuggester {
   private static void boundedTreeAdd(
       TreeSet<Lookup.LookupResult> results, Lookup.LookupResult result, int num) {
 
-    if (results.size() >= num) {
-      if (results.first().value < result.value) {
-        results.pollFirst();
-      } else {
-        return;
-      }
+    if (results.size() >= num && results.first().value >= result.value) {
+      return;
     }
 
     results.add(result);
+    if (results.size() > num) {
+      results.pollFirst();
+    }
   }
 
   /**
