@@ -31,7 +31,7 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+* GITHUB#17030: Fix precision loss when reducing join scores. (Ke Wei)
 
 Other
 ---------------------
@@ -41,6 +41,9 @@ Other
 
 API Changes
 ---------------------
+* GITHUB#16997: Monitor's QueryTree subclasses now implement collectTerms(TermCollector), and
+  collectTerms(BiConsumer) is final. (Luke Kot-Zaniewski)
+
 * GITHUB#16985: Remove the deprecated TokenSources methods in the highlighter module
   (getAnyTokenStream, getTokenStreamWithOffsets and the getTokenStream overloads taking a Terms,
   IndexReader, Document or plain text). Use TokenSources#getTokenStream(String, Fields, String,
@@ -232,6 +235,13 @@ API Changes
 
 New Features
 ---------------------
+* GITHUB#16997: Monitor's QueryTree now merges each group of conjoined, negated leaf queries
+  (e.g. -x:a -x:b) into one "negative disjunct", which documents satisfy by containing none of its
+  terms. This will later let TermFilteredPresearcher skip a query for documents that contain at
+  least one term of each of its negative disjuncts. TermWeightor gains negate and withNegation to
+  weigh the absence of a term, and CustomQueryHandler gains handleNegatedQuery. No presearcher uses
+  these yet. (Luke Kot-Zaniewski)
+
 * GITHUB#16571: A merge can write more than one segment. A merge policy returns document ranges
   from MergePolicy.OneMerge#getDocRangePartitions and the merge writes one output segment per
   range. (Jim Ferenczi)
@@ -270,6 +280,9 @@ New Features
 
 Improvements
 ---------------------
+* GITHUB#16851: Use PriorityQueue#addAll for bulk heap construction in SynonymQuery,
+  LargeNumHitsTopDocsCollector and TermAutomatonScorer. (Zhou Hui)
+
 * GITHUB#15704: Replace LinkedList with more efficient data structure. (Renato Haeberli)
 
 * GITHUB#15682: Use ArrayDeque instead of LinkedList in CompoundWordTokenFilterBase.java. (Renato Haeberli)
@@ -383,6 +396,8 @@ Optimizations
 * GITHUB#14397: Reuse the LZ4 preset dictionary when reading stored fields or term vectors
   from the same compressed chunk. (Ke Wei)
 
+* GITHUB#16757: Speed up building cached bit sets in LRUQueryCache. (Ke Wei)
+
 * GITHUB#17045: DocIdSetBuilder sorts doc IDs that are clustered in a small range of the doc ID
   space with fewer radix sort passes. (Asharam)
 
@@ -477,7 +492,8 @@ Bug Fixes
 
 * GITHUB#16971: Fix double DocValuesStats extrema initialization. (Simranjeet Singh)
 
-* GITHUB#17030: Fix precision loss when reducing join scores. (Ke Wei)
+* GITHUB#16892: Escape '=', '<', '>' and '@' in the flexible query parser's QueryParserUtil.escape.
+  (Soma Aishwarya)
 
 Changes in Runtime Behavior
 ---------------------
@@ -515,6 +531,9 @@ Build
   profiling.jfc by host OS. (Prithvi S)
 
 * GITHUB#16036: Upgrade gradle to 9.5.0 (Dawid Weiss)
+
+* GITHUB#17035: Upgrade to a custom fork of JFlex (1.10.0); tokenizer regeneration is an order
+  of magnitude faster and needs far less memory. (Dawid Weiss)
 
 Other
 ---------------------

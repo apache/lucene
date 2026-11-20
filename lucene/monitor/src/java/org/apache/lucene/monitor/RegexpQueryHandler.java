@@ -19,7 +19,6 @@ package org.apache.lucene.monitor;
 
 import java.util.Collections;
 import java.util.Set;
-import java.util.function.BiConsumer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.Query;
@@ -108,7 +107,7 @@ public class RegexpQueryHandler implements CustomQueryHandler {
       }
 
       @Override
-      public void collectTerms(BiConsumer<String, BytesRef> termCollector) {
+      public void collectTerms(TermCollector termCollector) {
         termCollector.accept(term.field(), term.bytes());
         termCollector.accept(term.field(), wildcardTokenBytes);
       }
