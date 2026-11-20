@@ -932,15 +932,14 @@ public class TestAnalyzingSuggester extends LuceneTestCase {
       assertTrue(numStopChars > 0 || matches.size() > 0);
 
       if (matches.size() > 1) {
-        matches.sort(
-            (left, right) -> {
-              int cmp = Long.compare(right.weight, left.weight);
-              if (cmp == 0) {
-                return left.analyzedForm.compareTo(right.analyzedForm);
-              } else {
-                return cmp;
-              }
-            });
+        matches.sort((left, right) -> {
+          int cmp = Long.compare(right.weight, left.weight);
+          if (cmp == 0) {
+            return left.analyzedForm.compareTo(right.analyzedForm);
+          } else {
+            return cmp;
+          }
+        });
       }
 
       if (matches.size() > topN) {

@@ -615,60 +615,57 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
 
       AtomicBoolean stop = new AtomicBoolean();
       Thread writer =
-          new Thread(
-              () -> {
-                try {
-                  for (int i = 0, max = RandomizedTest.randomIntBetween(100, 200); i < max; i++) {
-                    String fileName = "file-" + i;
-                    try (IndexOutput output = dir.createOutput(fileName, newIOContext(random()))) {
-                      assert output != null;
-                      // Add some lags so that the other thread can read the content of the
-                      // directory.
-                      Thread.yield();
-                    }
-                    assertTrue(slowFileExists(dir, fileName));
-                  }
-                } catch (IOException e) {
-                  throw new UncheckedIOException(e);
-                } finally {
-                  stop.set(true);
+          new Thread(() -> {
+            try {
+              for (int i = 0, max = RandomizedTest.randomIntBetween(100, 200); i < max; i++) {
+                String fileName = "file-" + i;
+                try (IndexOutput output = dir.createOutput(fileName, newIOContext(random()))) {
+                  assert output != null;
+                  // Add some lags so that the other thread can read the content of the
+                  // directory.
+                  Thread.yield();
                 }
-              });
+                assertTrue(slowFileExists(dir, fileName));
+              }
+            } catch (IOException e) {
+              throw new UncheckedIOException(e);
+            } finally {
+              stop.set(true);
+            }
+          });
 
       Thread reader =
-          new Thread(
-              () -> {
-                try {
-                  Random rnd = new Random(RandomizedTest.randomLong());
-                  while (!stop.get()) {
-                    String[] files =
-                        Arrays.stream(dir.listAll())
-                            .filter(
-                                name -> !ExtrasFS.isExtra(name)) // Ignore anything from ExtraFS.
-                            .toArray(String[]::new);
+          new Thread(() -> {
+            try {
+              Random rnd = new Random(RandomizedTest.randomLong());
+              while (!stop.get()) {
+                String[] files =
+                    Arrays.stream(dir.listAll())
+                        .filter(name -> !ExtrasFS.isExtra(name)) // Ignore anything from ExtraFS.
+                        .toArray(String[]::new);
 
-                    if (files.length > 0) {
-                      do {
-                        String file = randomFrom(rnd, files);
-                        try (IndexInput input = dir.openInput(file, newIOContext(random()))) {
-                          // Just open, nothing else.
-                          assert input != null;
-                        } catch (AccessDeniedException _) {
-                          // Access denied is allowed for files for which the output is still open
-                          // (MockDirectoryWriter enforces
-                          // this, for example). Since we don't synchronize with the writer thread,
-                          // just ignore it.
-                        } catch (IOException e) {
-                          throw new UncheckedIOException(
-                              "Something went wrong when opening: " + file, e);
-                        }
-                      } while (rnd.nextInt(3) != 0); // Sometimes break and list files again.
+                if (files.length > 0) {
+                  do {
+                    String file = randomFrom(rnd, files);
+                    try (IndexInput input = dir.openInput(file, newIOContext(random()))) {
+                      // Just open, nothing else.
+                      assert input != null;
+                    } catch (AccessDeniedException _) {
+                      // Access denied is allowed for files for which the output is still open
+                      // (MockDirectoryWriter enforces
+                      // this, for example). Since we don't synchronize with the writer thread,
+                      // just ignore it.
+                    } catch (IOException e) {
+                      throw new UncheckedIOException(
+                          "Something went wrong when opening: " + file, e);
                     }
-                  }
-                } catch (IOException e) {
-                  throw new UncheckedIOException(e);
+                  } while (rnd.nextInt(3) != 0); // Sometimes break and list files again.
                 }
-              });
+              }
+            } catch (IOException e) {
+              throw new UncheckedIOException(e);
+            }
+          });
 
       reader.start();
       writer.start();
@@ -887,24 +884,22 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       CyclicBarrier start = new CyclicBarrier(threads);
       Thread[] copies =
           IntStream.range(0, threads)
-              .mapToObj(
-                  (i) -> {
-                    IndexInput src = input.clone();
-                    Thread t =
-                        new Thread(
-                            () -> {
-                              try {
-                                start.await();
-                                IndexOutput dst = d.createOutput("copy" + i, IOContext.DEFAULT);
-                                dst.copyBytes(src, src.length() - headerLen);
-                                dst.close();
-                              } catch (Exception e) {
-                                throw new RuntimeException(e);
-                              }
-                            });
-                    t.start();
-                    return t;
-                  })
+              .mapToObj(i -> {
+                IndexInput src = input.clone();
+                Thread t =
+                    new Thread(() -> {
+                      try {
+                        start.await();
+                        IndexOutput dst = d.createOutput("copy" + i, IOContext.DEFAULT);
+                        dst.copyBytes(src, src.length() - headerLen);
+                        dst.close();
+                      } catch (Exception e) {
+                        throw new RuntimeException(e);
+                      }
+                    });
+                t.start();
+                return t;
+              })
               .toArray(Thread[]::new);
 
       for (Thread t : copies) {

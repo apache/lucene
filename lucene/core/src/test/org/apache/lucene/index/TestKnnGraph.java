@@ -297,24 +297,23 @@ public class TestKnnGraph extends LuceneTestCase {
     final CountDownLatch latch = new CountDownLatch(1);
     for (int i = 0; i < threads.length; i++) {
       threads[i] =
-          new Thread(
-              () -> {
-                try {
-                  latch.await();
-                  IndexSearcher searcher = manager.acquire();
-                  try {
-                    assertGraphSearch(
-                        new int[] {0, 15, 3, 18, 5},
-                        new float[] {0.99f, 0.55f, 0.50f, 0.36f, 0.22f},
-                        new float[] {0f, 0.1f},
-                        searcher.getIndexReader());
-                  } finally {
-                    manager.release(searcher);
-                  }
-                } catch (Exception e) {
-                  throw new RuntimeException(e);
-                }
-              });
+          new Thread(() -> {
+            try {
+              latch.await();
+              IndexSearcher searcher = manager.acquire();
+              try {
+                assertGraphSearch(
+                    new int[] {0, 15, 3, 18, 5},
+                    new float[] {0.99f, 0.55f, 0.50f, 0.36f, 0.22f},
+                    new float[] {0f, 0.1f},
+                    searcher.getIndexReader());
+              } finally {
+                manager.release(searcher);
+              }
+            } catch (Exception e) {
+              throw new RuntimeException(e);
+            }
+          });
       threads[i].start();
     }
 

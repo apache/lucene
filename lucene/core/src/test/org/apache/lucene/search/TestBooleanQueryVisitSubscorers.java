@@ -263,7 +263,8 @@ public class TestBooleanQueryVisitSubscorers extends LuceneTestCase {
                     MUST WANDScorer
                             SHOULD TermScorer
                             SHOULD TermScorer
-                            SHOULD TermScorer""")));
+                            SHOULD TermScorer\
+                """)));
   }
 
   public void testGetChildrenBoosterScorer() throws IOException {

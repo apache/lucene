@@ -43,36 +43,35 @@ final class AsciiMatchRangeHighlighter {
     ArrayList<OffsetRange> valueRanges = new ArrayList<>();
     Map<String, List<String>> fieldSnippets = new LinkedHashMap<>();
 
-    fieldHighlights.forEach(
-        (field, matchRanges) -> {
-          int offsetGap = analyzer.getOffsetGap(field);
+    fieldHighlights.forEach((field, matchRanges) -> {
+      int offsetGap = analyzer.getOffsetGap(field);
 
-          String[] values = document.getValues(field);
-          String value;
-          if (values.length == 1) {
-            value = values[0];
-          } else {
-            // This can be inefficient if offset gap is large but recomputing
-            // offsets in a smart way doesn't make sense for tests.
-            String fieldGapPadding = " ".repeat(offsetGap);
-            value = String.join(fieldGapPadding, values);
-          }
+      String[] values = document.getValues(field);
+      String value;
+      if (values.length == 1) {
+        value = values[0];
+      } else {
+        // This can be inefficient if offset gap is large but recomputing
+        // offsets in a smart way doesn't make sense for tests.
+        String fieldGapPadding = " ".repeat(offsetGap);
+        value = String.join(fieldGapPadding, values);
+      }
 
-          // Create permitted range windows for passages so that they don't cross
-          // multi-value boundary.
-          valueRanges.clear();
-          int offset = 0;
-          for (CharSequence v : values) {
-            valueRanges.add(new OffsetRange(offset, offset + v.length()));
-            offset += v.length();
-            offset += offsetGap;
-          }
+      // Create permitted range windows for passages so that they don't cross
+      // multi-value boundary.
+      valueRanges.clear();
+      int offset = 0;
+      for (CharSequence v : values) {
+        valueRanges.add(new OffsetRange(offset, offset + v.length()));
+        offset += v.length();
+        offset += offsetGap;
+      }
 
-          List<Passage> passages =
-              selector.pickBest(value, matchRanges, maxPassageWindow, maxPassages, valueRanges);
+      List<Passage> passages =
+          selector.pickBest(value, matchRanges, maxPassageWindow, maxPassages, valueRanges);
 
-          fieldSnippets.put(field, passageFormatter.format(value, passages, valueRanges));
-        });
+      fieldSnippets.put(field, passageFormatter.format(value, passages, valueRanges));
+    });
 
     return fieldSnippets;
   }
