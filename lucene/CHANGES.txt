@@ -181,6 +181,13 @@ API Changes
   Also removed QueryParserBase.setDeterminizeWorkLimit/getDeterminizeWorkLimit, which are
   no longer needed. (Dimitris Rempapis)
 
+* GITHUB#16999: SimplePatternTokenizer and SimplePatternSplitTokenizer no longer require a
+  deterministic automaton, and no longer determinize implicitly. Determinization is now done only
+  as-needed. This fixes the String constructors of SimplePatternTokenizer rejecting patterns such
+  as "ab|ac". The constructor overloads taking determinizeWorkLimit, and the determinizeWorkLimit
+  argument of their factories, have been removed. To force a classic DFA execution, pass
+  Operations.determinize() of the automaton. (John Wagster)
+
 * GITHUB#15605: Remove unused getCollectors() and internal collector tracking from
   TopFieldCollectorManager. Clarify thread-safety documentation. (Prudhvi Godithi)
 
