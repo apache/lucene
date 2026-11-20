@@ -54,7 +54,12 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
           return v >= min && v <= max;
         };
     return skipper == null
-        ? new DocValuesValueRangeIterator(values, check, 2)
+        ? new DocValuesValueRangeIterator(
+            values,
+            check,
+            2,
+            (from, to, bitSet, offset) ->
+                values.rangeIntoBitSet(from, to, min, max, bitSet, offset))
         : new BulkNumericRangeIterator(
             values, new SkipBlockRangeIterator(skipper, min, max), check, 2, min, max);
   }
@@ -80,7 +85,12 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
           return false;
         };
     return skipper == null
-        ? new DocValuesValueRangeIterator(values, check, 5)
+        ? new DocValuesValueRangeIterator(
+            values,
+            check,
+            5,
+            (from, to, bitSet, offset) ->
+                values.rangeIntoBitSet(from, to, min, max, bitSet, offset))
         : new BulkSortedNumericRangeIterator(
             values, new SkipBlockRangeIterator(skipper, min, max), check, 2, min, max);
   }
@@ -101,7 +111,12 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
           return ord >= min && ord <= max;
         };
     return skipper == null
-        ? new DocValuesValueRangeIterator(values, check, 2)
+        ? new DocValuesValueRangeIterator(
+            values,
+            check,
+            2,
+            (from, to, bitSet, offset) ->
+                values.ordinalRangeIntoBitSet(from, to, min, max, bitSet, offset))
         : new BulkSortedRangeIterator(
             values, new SkipBlockRangeIterator(skipper, min, max), check, 2, min, max);
   }
@@ -548,16 +563,32 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
     }
   }
 
+  @FunctionalInterface
+  private interface RangeIntoBitSet {
+
+    void intoBitSet(int from, int to, FixedBitSet bitSet, int offset) throws IOException;
+  }
+
   private static final class DocValuesValueRangeIterator extends DocValuesRangeIterator {
 
     private final IOBooleanSupplier predicate;
     private final float matchCost;
+    private final RangeIntoBitSet rangeIntoBitSet;
 
     private DocValuesValueRangeIterator(
         DocIdSetIterator disi, IOBooleanSupplier predicate, float matchCost) {
+      this(disi, predicate, matchCost, null);
+    }
+
+    private DocValuesValueRangeIterator(
+        DocIdSetIterator disi,
+        IOBooleanSupplier predicate,
+        float matchCost,
+        RangeIntoBitSet rangeIntoBitSet) {
       super(disi);
       this.predicate = predicate;
       this.matchCost = matchCost;
+      this.rangeIntoBitSet = rangeIntoBitSet;
     }
 
     @Override
@@ -568,6 +599,20 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
     @Override
     public float matchCost() {
       return matchCost;
+    }
+
+    @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      if (rangeIntoBitSet == null) {
+        super.intoBitSet(upTo, bitSet, offset);
+        return;
+      }
+      DocIdSetIterator approximation = approximation();
+      int from = Math.max(approximation.docID(), offset);
+      rangeIntoBitSet.intoBitSet(from, upTo, bitSet, offset);
+      if (approximation.docID() < upTo) {
+        approximation.advance(upTo);
+      }
     }
   }
 

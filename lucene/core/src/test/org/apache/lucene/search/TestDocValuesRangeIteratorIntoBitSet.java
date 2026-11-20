@@ -132,6 +132,66 @@ public class TestDocValuesRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
         searcher.count(q));
   }
 
+  public void testNoSkipperUsesRangeIntoBitSet() throws Exception {
+    try (Directory dir = newDirectory()) {
+      int maxDoc = 100;
+      try (IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig())) {
+        for (int docID = 0; docID < maxDoc; docID++) {
+          long value = docID % 100;
+          Document doc = new Document();
+          doc.add(new NumericDocValuesField("numeric", value));
+          doc.add(new SortedNumericDocValuesField("sorted_numeric", value));
+          doc.add(new SortedNumericDocValuesField("sorted_numeric", value + 100));
+          doc.add(
+              new SortedDocValuesField(
+                  "sorted", new BytesRef(String.format(Locale.ROOT, "%03d", value))));
+          writer.addDocument(doc);
+        }
+        writer.forceMerge(1);
+      }
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        assert reader.leaves().size() == 1;
+        LeafReaderContext context = reader.leaves().getFirst();
+        assertNull(context.reader().getDocValuesSkipper("numeric"));
+        assertNull(context.reader().getDocValuesSkipper("sorted_numeric"));
+        assertNull(context.reader().getDocValuesSkipper("sorted"));
+
+        NumericDocValues numericValues = context.reader().getNumericDocValues("numeric");
+        FixedBitSet actual =
+            assertNoSkipperRangeIntoBitSet(
+                DocValuesRangeIterator.forRange(numericValues, null, 20, 40), maxDoc);
+        assertEquals(21, actual.cardinality());
+
+        SortedNumericDocValues sortedNumericValues =
+            context.reader().getSortedNumericDocValues("sorted_numeric");
+        actual =
+            assertNoSkipperRangeIntoBitSet(
+                DocValuesRangeIterator.forRange(sortedNumericValues, null, 20, 40), maxDoc);
+        assertEquals(21, actual.cardinality());
+
+        SortedDocValues sortedValues = context.reader().getSortedDocValues("sorted");
+        actual =
+            assertNoSkipperRangeIntoBitSet(
+                DocValuesRangeIterator.forOrdinalRange(sortedValues, null, 20, 40), maxDoc);
+        assertEquals(21, actual.cardinality());
+      }
+    }
+  }
+
+  private static FixedBitSet assertNoSkipperRangeIntoBitSet(
+      DocValuesRangeIterator iterator, int maxDoc) throws IOException {
+    DocIdSetIterator approximation = iterator.approximation();
+    assertEquals(0, approximation.nextDoc());
+    FixedBitSet bitSet = new FixedBitSet(maxDoc);
+    int firstWindowEnd = maxDoc / 2;
+    iterator.intoBitSet(firstWindowEnd, bitSet, 0);
+    assertTrue(approximation.docID() >= firstWindowEnd);
+    iterator.intoBitSet(maxDoc, bitSet, 0);
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, approximation.docID());
+    return bitSet;
+  }
+
   public void testSingleFieldRangeCorrectness() throws Exception {
     // Count expected matches by scanning values[] directly
     int expected = 0;
