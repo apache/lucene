@@ -34,6 +34,15 @@ class ExclusiveLongRangeCounter extends LongRangeCounter {
   /** original range number each elementary interval corresponds to (index into countBuffer) */
   private final int[] rangeNums;
 
+  private final LongRangeAndPos[] sortedRanges;
+
+  /** Option B: Fast O(1) precomputed lookup table fields */
+  private final boolean useFastTable;
+
+  private final int[] fastRangeMap;
+  private final long fastMinVal;
+  private final long fastMaxVal;
+
   /** number of counted documents that haven't matched any requested ranges */
   private int missingCount;
 
@@ -45,7 +54,7 @@ class ExclusiveLongRangeCounter extends LongRangeCounter {
 
     // Create a copy of the requested ranges, sorted by min, and keeping track of the original
     // position:
-    LongRangeAndPos[] sortedRanges = new LongRangeAndPos[ranges.length];
+    sortedRanges = new LongRangeAndPos[ranges.length];
     for (int i = 0; i < ranges.length; i++) {
       sortedRanges[i] = new LongRangeAndPos(ranges[i], i);
     }
@@ -70,6 +79,42 @@ class ExclusiveLongRangeCounter extends LongRangeCounter {
         }
       }
     }
+
+    // Option B: Initialize Fast O(1) Precomputed Lookup Table for bounded domains (span <= 65536)
+    if (sortedRanges.length > 0) {
+      long gMin = sortedRanges[0].range.min;
+      long gMax = sortedRanges[sortedRanges.length - 1].range.max;
+      long span = gMax - gMin + 1;
+      if (span > 0 && span <= 65536) {
+        useFastTable = true;
+        fastMinVal = gMin;
+        fastMaxVal = gMax;
+        fastRangeMap = new int[(int) span];
+        Arrays.fill(fastRangeMap, -1);
+
+        for (int i = 0; i < elementaryIntervals.size(); i++) {
+          int rangeNum = rangeNums[i];
+          if (rangeNum != -1) {
+            InclusiveRange interval = elementaryIntervals.get(i);
+            int startOffset = (int) (interval.start - gMin);
+            int endOffset = (int) (interval.end - gMin);
+            for (int k = startOffset; k <= endOffset; k++) {
+              fastRangeMap[k] = rangeNum;
+            }
+          }
+        }
+      } else {
+        useFastTable = false;
+        fastRangeMap = null;
+        fastMinVal = 0;
+        fastMaxVal = 0;
+      }
+    } else {
+      useFastTable = false;
+      fastRangeMap = null;
+      fastMinVal = 0;
+      fastMaxVal = 0;
+    }
   }
 
   @Override
@@ -90,7 +135,32 @@ class ExclusiveLongRangeCounter extends LongRangeCounter {
       return;
     }
 
+    if (useFastTable) {
+      if (v >= fastMinVal && v <= fastMaxVal) {
+        int rangeNum = fastRangeMap[(int) (v - fastMinVal)];
+        if (rangeNum != -1) {
+          increment(rangeNum);
+        } else {
+          missingCount++;
+        }
+      } else {
+        missingCount++;
+      }
+      return;
+    }
+
     super.addSingleValued(v);
+  }
+
+  @Override
+  void addSingleValuedBatch(long[] values, int count) {
+    if (rangeCount() == 0) {
+      missingCount += count;
+      return;
+    }
+    for (int i = 0; i < count; i++) {
+      addSingleValued(values[i]);
+    }
   }
 
   @Override
