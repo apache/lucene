@@ -98,7 +98,7 @@ public final class FuzzyTermsEnum extends BaseTermsEnum {
         terms,
         new AttributeSource(),
         term,
-        () -> new FuzzyAutomatonBuilder(term.text(), maxEdits, prefixLength, transpositions));
+        () -> FuzzyAutomatonCache.build(term.text(), maxEdits, prefixLength, transpositions));
   }
 
   /**
@@ -111,6 +111,7 @@ public final class FuzzyTermsEnum extends BaseTermsEnum {
    *
    * @param terms Delivers terms.
    * @param atts An AttributeSource used to share automata between segments
+   * @param automatonCache An optional cache used to share automata between queries, or null
    * @param term Pattern term.
    * @param maxEdits Maximum edit distance.
    * @param prefixLength the length of the required common prefix
@@ -123,20 +124,23 @@ public final class FuzzyTermsEnum extends BaseTermsEnum {
       Term term,
       int maxEdits,
       int prefixLength,
-      boolean transpositions)
+      boolean transpositions,
+      FuzzyAutomatonCache automatonCache)
       throws IOException {
     this(
         terms,
         atts,
         term,
-        () -> new FuzzyAutomatonBuilder(term.text(), maxEdits, prefixLength, transpositions));
+        automatonCache == null
+            ? () -> FuzzyAutomatonCache.build(term.text(), maxEdits, prefixLength, transpositions)
+            : () -> automatonCache.getOrBuild(term.text(), maxEdits, prefixLength, transpositions));
   }
 
   private FuzzyTermsEnum(
       Terms terms,
       AttributeSource atts,
       Term term,
-      Supplier<FuzzyAutomatonBuilder> automatonBuilder)
+      Supplier<FuzzyAutomatonCache.Automata> automatonBuilder)
       throws IOException {
 
     this.terms = terms;
@@ -370,7 +374,7 @@ public final class FuzzyTermsEnum extends BaseTermsEnum {
 
     int getTermLength();
 
-    void init(Supplier<FuzzyAutomatonBuilder> builder);
+    void init(Supplier<FuzzyAutomatonCache.Automata> supplier);
   }
 
   private static class AutomatonAttributeImpl extends AttributeImpl implements AutomatonAttribute {
@@ -389,13 +393,13 @@ public final class FuzzyTermsEnum extends BaseTermsEnum {
     }
 
     @Override
-    public void init(Supplier<FuzzyAutomatonBuilder> supplier) {
+    public void init(Supplier<FuzzyAutomatonCache.Automata> supplier) {
       if (automata != null) {
         return;
       }
-      FuzzyAutomatonBuilder builder = supplier.get();
-      this.termLength = builder.getTermLength();
-      this.automata = builder.buildAutomatonSet();
+      FuzzyAutomatonCache.Automata built = supplier.get();
+      this.termLength = built.termLength();
+      this.automata = built.automata();
     }
 
     @Override
