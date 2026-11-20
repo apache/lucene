@@ -36,7 +36,7 @@ public final class FieldInvertState {
   final String name;
   final IndexOptions indexOptions;
   int position;
-  int length;
+  int numTerms;
   int numOverlap;
   int offset;
   int maxTermFrequency;
@@ -65,14 +65,14 @@ public final class FieldInvertState {
       String name,
       IndexOptions indexOptions,
       int position,
-      int length,
+      int numTerms,
       int numOverlap,
       int offset,
       int maxTermFrequency,
       int uniqueTermCount) {
     this(indexCreatedVersionMajor, name, indexOptions);
     this.position = position;
-    this.length = length;
+    this.numTerms = numTerms;
     this.numOverlap = numOverlap;
     this.offset = offset;
     this.maxTermFrequency = maxTermFrequency;
@@ -82,7 +82,7 @@ public final class FieldInvertState {
   /** Re-initialize the state */
   void reset() {
     position = -1;
-    length = 0;
+    numTerms = 0;
     numOverlap = 0;
     offset = 0;
     maxTermFrequency = 0;
@@ -124,15 +124,15 @@ public final class FieldInvertState {
   /**
    * Get total number of terms in this field.
    *
-   * @return the length
+   * @return the number of terms
    */
-  public int getLength() {
-    return length;
+  public int getNumTerms() {
+    return numTerms;
   }
 
-  /** Set length value. */
-  public void setLength(int length) {
-    this.length = length;
+  /** Set number of terms. */
+  public void setNumTerms(int numTerms) {
+    this.numTerms = numTerms;
   }
 
   /**

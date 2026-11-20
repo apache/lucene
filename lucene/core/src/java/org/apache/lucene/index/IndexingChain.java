@@ -1926,7 +1926,7 @@ final class IndexingChain implements Accountable {
     public void finish(int docID) throws IOException {
       if (fieldInfo.omitsNorms() == false) {
         long normValue;
-        if (invertState.length == 0) {
+        if (invertState.numTerms == 0) {
           // the field exists in this document, but it did not have
           // any indexed tokens, so we assign a default value of zero
           // to the norm
@@ -2052,11 +2052,11 @@ final class IndexingChain implements Accountable {
 
           try {
             if (fieldInfo.isTermDocField()) {
-              invertState.length = Math.addExact(invertState.length, 1);
+              invertState.numTerms = Math.addExact(invertState.numTerms, 1);
             } else {
-              invertState.length =
+              invertState.numTerms =
                   Math.addExact(
-                      invertState.length, invertState.termFreqAttribute.getTermFrequency());
+                      invertState.numTerms, invertState.termFreqAttribute.getTermFrequency());
             }
           } catch (ArithmeticException ae) {
             throw new IllegalArgumentException(
@@ -2145,9 +2145,9 @@ final class IndexingChain implements Accountable {
       }
       invertState.setAttributeSource(null);
       invertState.position++;
-      invertState.length++;
+      invertState.numTerms++;
       termsHashPerField.start(field, first);
-      invertState.length = Math.addExact(invertState.length, 1);
+      invertState.numTerms = Math.addExact(invertState.numTerms, 1);
       try {
         termsHashPerField.add(binaryValue, docID);
       } catch (MaxBytesLengthExceededException e) {

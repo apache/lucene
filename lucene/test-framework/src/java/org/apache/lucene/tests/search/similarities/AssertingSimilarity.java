@@ -33,15 +33,15 @@ public class AssertingSimilarity extends Similarity {
   @Override
   public long computeNorm(FieldInvertState state) {
     assert state != null;
-    assert state.getLength() > 0;
+    assert state.getNumTerms() > 0;
     assert state.getPosition() >= 0;
     assert state.getOffset() >= 0;
     assert state.getMaxTermFrequency() >= 0; // TODO: seems to be 0 for omitTFAP?
-    assert state.getMaxTermFrequency() <= state.getLength();
+    assert state.getMaxTermFrequency() <= state.getNumTerms();
     assert state.getNumOverlap() >= 0;
-    assert state.getNumOverlap() < state.getLength();
+    assert state.getNumOverlap() < state.getNumTerms();
     assert state.getUniqueTermCount() > 0;
-    assert state.getUniqueTermCount() <= state.getLength();
+    assert state.getUniqueTermCount() <= state.getNumTerms();
     long norm = delegate.computeNorm(state);
     assert norm != 0;
     return norm;

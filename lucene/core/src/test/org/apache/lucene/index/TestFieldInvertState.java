@@ -72,7 +72,7 @@ public class TestFieldInvertState extends LuceneTestCase {
     assertEquals(1, fis.getMaxTermFrequency());
     assertEquals(3, fis.getUniqueTermCount());
     assertEquals(0, fis.getNumOverlap());
-    assertEquals(3, fis.getLength());
+    assertEquals(3, fis.getNumTerms());
     IOUtils.close(w, dir);
   }
 
@@ -120,7 +120,7 @@ public class TestFieldInvertState extends LuceneTestCase {
     assertEquals(maxTermFreq, fis.getMaxTermFrequency());
     assertEquals(counts.size(), fis.getUniqueTermCount());
     assertEquals(numStacked, fis.getNumOverlap());
-    assertEquals(numTokens, fis.getLength());
+    assertEquals(numTokens, fis.getNumTerms());
     assertEquals(pos, fis.getPosition());
 
     IOUtils.close(w, dir);

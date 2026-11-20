@@ -104,7 +104,7 @@ public class TestNorms extends LuceneTestCase {
 
     @Override
     public long computeNorm(FieldInvertState state) {
-      return state.getLength();
+      return state.getNumTerms();
     }
 
     @Override

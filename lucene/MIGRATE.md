@@ -19,6 +19,11 @@
 
 ## Migration from Lucene 11.x to Lucene 12.0
 
+### FieldInvertState length renamed to numTerms (GITHUB#17022)
+
+`FieldInvertState#length`, `getLength()` and `setLength(int)` have been renamed to `numTerms`,
+`getNumTerms()` and `setNumTerms(int)`.
+
 ### HnswGraphSearcher takes a VisitedSet instead of a BitSet (GITHUB#16806)
 
 The constructor `HnswGraphSearcher(NeighborQueue, BitSet)` is now
