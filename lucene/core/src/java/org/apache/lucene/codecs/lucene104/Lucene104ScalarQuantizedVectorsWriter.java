@@ -632,7 +632,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
    *   <li>the merging thread takes the next documents from the merger and notes the source segment
    *       and ordinal of each one's vector;
    *   <li>the tasks claim chunks of the block and encode them into the block's byte arrays (see
-   *       {@link #runChunks});
+   *       {@link #parallelFor});
    *   <li>meanwhile the merging thread writes the previous block, with one call per file.
    * </ol>
    *
@@ -712,14 +712,14 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       Block written = new Block(blockSize, indexLength, queryLength); // empty at first
       boolean more;
       do {
-        nextBlock(encoding);
+        fillNextBlock(encoding);
         // a short block means the merger is exhausted; it must not be called again
         more = encoding.count == blockSize;
         Block toEncode = encoding;
         Block toWrite = written;
         IORangeConsumer encode = (task, from, to) -> encodeRange(toEncode, readers[task], from, to);
         IORunnable writePrevious = () -> writeBlock(toWrite, vectorData, queryData, docsWithField);
-        runChunks(executor, readers.length, toEncode.count, CHUNK_SIZE, encode, writePrevious);
+        parallelFor(executor, readers.length, toEncode.count, CHUNK_SIZE, encode, writePrevious);
         encoding = toWrite;
         written = toEncode;
       } while (more);
@@ -774,7 +774,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       }
     }
 
-    private void nextBlock(Block block) throws IOException {
+    private void fillNextBlock(Block block) throws IOException {
       int count = 0;
       for (SourceIterator sub; count < blockSize && (sub = merger.next()) != null; count++) {
         block.docs[count] = sub.mappedDocID;
@@ -829,21 +829,21 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   }
 
   /**
-   * Runs {@code job} over items 0 to {@code count} on up to {@code numTasks} tasks of {@code
-   * executor}. Each task claims the next {@code chunkSize} items until none are left, so a slow
-   * task does not hold up the others. Task {@code t} always calls {@code job} with {@code task ==
-   * t}, so a job can keep state per task.
+   * A parallel for-loop: runs {@code body} over items 0 to {@code count} on up to {@code numTasks}
+   * tasks of {@code executor}. Each task claims the next {@code chunkSize} items until none are
+   * left, so a slow task does not hold up the others. Task {@code t} always calls {@code body} with
+   * {@code task == t}, so a body can keep state per task.
    *
    * <p>If {@code onMergingThread} is not null, it runs once on the calling thread while the tasks
    * run: the task that runs on the calling thread runs it first ({@link TaskExecutor#invokeAll}
    * always runs at least one task on the calling thread), and if none did, it runs after them.
    */
-  static void runChunks(
+  static void parallelFor(
       TaskExecutor executor,
       int numTasks,
       int count,
       int chunkSize,
-      IORangeConsumer job,
+      IORangeConsumer body,
       IORunnable onMergingThread)
       throws IOException {
     Thread callingThread = Thread.currentThread();
@@ -860,7 +860,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
         for (int from = nextChunk.getAndAdd(chunkSize);
             from < count;
             from = nextChunk.getAndAdd(chunkSize)) {
-          job.accept(task, from, Math.min(count, from + chunkSize));
+          body.accept(task, from, Math.min(count, from + chunkSize));
         }
         return null;
       });
@@ -1011,7 +1011,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
    * Adds the live vectors of {@code values} to {@code sums} and returns how many there are. The
    * merging thread collects the ordinals of up to {@code numWorkers} chunks of {@link
    * #CENTROID_CHUNK_SIZE} live vectors at a time, the tasks each sum one chunk in doubles (see
-   * {@link #runChunks}), and the merging thread adds the chunk sums in chunk order. So the result
+   * {@link #parallelFor}), and the merging thread adds the chunk sums in chunk order. So the result
    * does not depend on the number of workers.
    */
   static int sumVectors(
@@ -1041,7 +1041,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
               }
             }
           };
-      runChunks(executor, numTasks, live, CENTROID_CHUNK_SIZE, sumChunk, null);
+      parallelFor(executor, numTasks, live, CENTROID_CHUNK_SIZE, sumChunk, null);
       for (int c = 0; c < Math.ceilDiv(live, CENTROID_CHUNK_SIZE); c++) {
         for (int d = 0; d < sums.length; d++) {
           sums[d] += chunkSums[c][d];
