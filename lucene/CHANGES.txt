@@ -478,6 +478,8 @@ Bug Fixes
 
 * GITHUB#17019: Fix int overflow bugs when sizing FuzzySet. (Greg Miller)
 
+* GITHUB#17018: Fix NPE when a span query searches over masked fields that don't have any indexed docs in them (Simon Cooper)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
