@@ -145,8 +145,8 @@ public abstract class OffHeapQuantizedByteVectorValues extends LegacyQuantizedBy
       return scoreCorrectionConstant[0];
     }
     slice.seek(((long) targetOrd * byteSize) + numBytes);
-    slice.readFloats(scoreCorrectionConstant, 0, 1);
-    return scoreCorrectionConstant[0];
+    // don't overwrite the cached correction: it belongs to lastOrd, not targetOrd
+    return Float.intBitsToFloat(slice.readInt());
   }
 
   @Override
