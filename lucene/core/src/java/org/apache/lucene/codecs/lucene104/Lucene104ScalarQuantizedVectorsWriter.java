@@ -452,14 +452,11 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
         Math.clamp(Math.ceilDiv(vectorCount, MergedRecordWriter.CHUNK_SIZE), 1, numWorkers);
     OptimizedScalarQuantizer quantizer =
         new OptimizedScalarQuantizer(fieldInfo.getVectorSimilarityFunction());
-    RecordEncoder[] encoders = new RecordEncoder[numTasks];
-    for (int t = 0; t < numTasks; t++) {
-      encoders[t] = new RecordEncoder(quantizer, encoding, centroid, sources, numTasks > 1);
-    }
     boolean indexIsSorted = mergeState.needsIndexSort;
     int blockSize = Math.clamp(vectorCount, 1, QUANTIZE_BLOCK_SIZE);
     MergedRecordWriter records =
-        new MergedRecordWriter(executor, sources, indexIsSorted, encoders, blockSize, withQueries);
+        new MergedRecordWriter(
+            executor, numTasks, sources, indexIsSorted, quantizer, encoding, centroid, blockSize);
     IndexOutput queryOut = null;
     if (withQueries) {
       queryOut =
@@ -619,115 +616,6 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     }
   }
 
-  /**
-   * Quantizes vectors and writes their records: the index-side record and, if there is a query
-   * side, the query-side record. It does what the serial merge did per vector ({@code
-   * QuantizedFloatVectorValues} for the index side, the old loop of {@link
-   * #writeVectorAndQueryData} for both). Each task of a {@link MergedRecordWriter} has its own, so
-   * it is not thread-safe.
-   */
-  static final class RecordEncoder {
-    private final OptimizedScalarQuantizer quantizer;
-    private final ScalarEncoding encoding;
-    private final float[] centroid;
-    // this encoder's view of each source segment, and a scratch vector to center in place
-    private final FloatVectorValues[] sources;
-    private final float[] vector;
-    private final byte[] indexQuantized;
-    private final byte[] indexPacked;
-    private final byte[] queryQuantized;
-    private final byte[] queryPacked;
-    private final byte[][] destinations;
-    private final byte[] bits;
-
-    /**
-     * An encoder for vectors of {@code centroid.length} dimensions, which reads {@code sources}
-     * through copies if {@code copySources}. Only a single task, which runs on the merging thread,
-     * reads the values themselves.
-     */
-    RecordEncoder(
-        OptimizedScalarQuantizer quantizer,
-        ScalarEncoding encoding,
-        float[] centroid,
-        List<SourceIterator> sources,
-        boolean copySources)
-        throws IOException {
-      this.quantizer = quantizer;
-      this.encoding = encoding;
-      this.centroid = centroid;
-      this.sources = new FloatVectorValues[sources.size()];
-      for (int s = 0; s < sources.size(); s++) {
-        FloatVectorValues values = sources.get(s).values;
-        this.sources[s] = copySources ? values.copy() : values;
-      }
-      this.vector = new float[centroid.length];
-      int discretizedDims = encoding.getDiscreteDimensions(centroid.length);
-      indexQuantized = new byte[discretizedDims];
-      indexPacked =
-          switch (encoding) {
-            case UNSIGNED_BYTE, SEVEN_BIT -> indexQuantized;
-            case PACKED_NIBBLE, SINGLE_BIT_QUERY_NIBBLE, DIBIT_QUERY_NIBBLE ->
-                new byte[encoding.getDocPackedLength(discretizedDims)];
-          };
-      queryQuantized = new byte[discretizedDims];
-      queryPacked = new byte[encoding.getQueryPackedLength(discretizedDims)];
-      destinations = new byte[][] {indexQuantized, queryQuantized};
-      bits = new byte[] {encoding.getBits(), encoding.getQueryBits()};
-    }
-
-    int indexRecordLength() {
-      return indexPacked.length + CORRECTIONS_LENGTH;
-    }
-
-    int queryRecordLength() {
-      return queryPacked.length + CORRECTIONS_LENGTH;
-    }
-
-    /** Encodes vectors {@code from} to {@code to} of {@code block} into their slices of it. */
-    void encode(Block block, int from, int to) throws IOException {
-      int indexLength = indexRecordLength();
-      DataOutput index =
-          new ByteArrayDataOutput(
-              block.indexRecords, from * indexLength, (to - from) * indexLength);
-      DataOutput query = null;
-      if (block.queryRecords.length > 0) {
-        int queryLength = queryRecordLength();
-        query =
-            new ByteArrayDataOutput(
-                block.queryRecords, from * queryLength, (to - from) * queryLength);
-      }
-      for (int i = from; i < to; i++) {
-        // a copy, because the quantizer centers its input in place
-        float[] source = sources[block.segments[i]].vectorValue(block.ords[i]);
-        System.arraycopy(source, 0, vector, 0, vector.length);
-        encode(vector, index, query);
-      }
-    }
-
-    /**
-     * Writes the records of {@code vector}, which the quantizer centers in place. Writes no query
-     * record if {@code query} is null.
-     */
-    void encode(float[] vector, DataOutput index, DataOutput query) throws IOException {
-      OptimizedScalarQuantizer.QuantizationResult indexCorrections;
-      if (query == null) {
-        indexCorrections =
-            quantizer.scalarQuantize(vector, indexQuantized, encoding.getBits(), centroid);
-      } else {
-        // centers the vector once and quantizes it at both bit widths, in the order of
-        // destinations: index side, then query side
-        OptimizedScalarQuantizer.QuantizationResult[] corrections =
-            quantizer.multiScalarQuantize(vector, destinations, bits, centroid);
-        indexCorrections = corrections[0];
-        OptimizedScalarQuantizer.QuantizationResult queryCorrections = corrections[1];
-        writeQueryRecord(query, queryQuantized, queryPacked, queryCorrections);
-      }
-      packIndexRecord(encoding, indexQuantized, indexPacked);
-      index.writeBytes(indexPacked, indexPacked.length);
-      writeCorrections(index, indexCorrections);
-    }
-  }
-
   /** Bytes of the corrective terms that follow each record. */
   private static final int CORRECTIONS_LENGTH = 3 * Float.BYTES + Integer.BYTES;
 
@@ -736,7 +624,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
    * replaces the merged view ({@code MergedVectorValues}) that the serial merge read: that view can
    * only be read forward by one thread, so here a {@link DocIDMerger} over the source segments
    * gives the merged order, as it does inside the merged view, and each task reads the source
-   * segments through its own {@link RecordEncoder}.
+   * segments through its own copies of their values.
    *
    * <p>For each block of up to {@code blockSize} merged documents:
    *
@@ -759,38 +647,67 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
 
     private final TaskExecutor executor;
     private final DocIDMerger<SourceIterator> merger;
-    private final RecordEncoder[] encoders;
+    // [task][segment]: each task reads the source segments through its own copies
+    private final FloatVectorValues[][] readers;
+    private final OptimizedScalarQuantizer quantizer;
+    private final ScalarEncoding encoding;
+    private final float[] centroid;
+    private final byte[] bits;
     private final int blockSize;
-    private final int indexLength;
-    // 0 without query-side records
-    private final int queryLength;
+    private final int discreteDims;
+    private final int indexPackedLength;
+    private final int queryPackedLength;
 
     /**
-     * Reads {@code sources} on {@code encoders.length} tasks of {@code executor}, one encoder per
-     * task, in blocks of {@code blockSize} vectors.
+     * Reads {@code sources} on {@code numTasks} tasks of {@code executor}, in blocks of {@code
+     * blockSize} vectors, and quantizes them around {@code centroid}. A single task runs on the
+     * merging thread, so it reads the source values themselves instead of copies.
      */
     MergedRecordWriter(
         TaskExecutor executor,
+        int numTasks,
         List<SourceIterator> sources,
         boolean indexIsSorted,
-        RecordEncoder[] encoders,
-        int blockSize,
-        boolean withQueries)
+        OptimizedScalarQuantizer quantizer,
+        ScalarEncoding encoding,
+        float[] centroid,
+        int blockSize)
         throws IOException {
       this.executor = executor;
       this.merger = DocIDMerger.of(sources, indexIsSorted);
-      this.encoders = encoders;
+      this.readers = new FloatVectorValues[numTasks][sources.size()];
+      for (int t = 0; t < numTasks; t++) {
+        for (int s = 0; s < sources.size(); s++) {
+          FloatVectorValues values = sources.get(s).values;
+          readers[t][s] = numTasks == 1 ? values : values.copy();
+        }
+      }
+      this.quantizer = quantizer;
+      this.encoding = encoding;
+      this.centroid = centroid;
+      this.bits = new byte[] {encoding.getBits(), encoding.getQueryBits()};
       this.blockSize = blockSize;
-      this.indexLength = encoders[0].indexRecordLength();
-      this.queryLength = withQueries ? encoders[0].queryRecordLength() : 0;
+      this.discreteDims = encoding.getDiscreteDimensions(centroid.length);
+      this.indexPackedLength =
+          switch (encoding) {
+            case UNSIGNED_BYTE, SEVEN_BIT -> discreteDims;
+            case PACKED_NIBBLE, SINGLE_BIT_QUERY_NIBBLE, DIBIT_QUERY_NIBBLE ->
+                encoding.getDocPackedLength(discreteDims);
+          };
+      this.queryPackedLength = encoding.getQueryPackedLength(discreteDims);
     }
 
     /**
-     * Writes the index-side records to {@code vectorData} and, with query-side records, those to
-     * {@code queryData}, and adds the merged documents to {@code docsWithField}.
+     * Writes the index-side records to {@code vectorData} and, if {@code queryData} is not null,
+     * the query-side records to it, and adds the merged documents to {@code docsWithField}.
      */
     void write(IndexOutput vectorData, IndexOutput queryData, DocsWithFieldSet docsWithField)
         throws IOException {
+      int indexLength = indexPackedLength + CORRECTIONS_LENGTH;
+      int queryLength = 0;
+      if (queryData != null) {
+        queryLength = queryPackedLength + CORRECTIONS_LENGTH;
+      }
       Block encoding = new Block(blockSize, indexLength, queryLength);
       Block written = new Block(blockSize, indexLength, queryLength); // empty at first
       boolean more;
@@ -800,13 +717,61 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
         more = encoding.count == blockSize;
         Block toEncode = encoding;
         Block toWrite = written;
-        RangeTask encode = (task, from, to) -> encoders[task].encode(toEncode, from, to);
+        IORangeConsumer encode = (task, from, to) -> encodeRange(toEncode, readers[task], from, to);
         IORunnable writePrevious = () -> writeBlock(toWrite, vectorData, queryData, docsWithField);
-        runChunks(executor, encoders.length, toEncode.count, CHUNK_SIZE, encode, writePrevious);
+        runChunks(executor, readers.length, toEncode.count, CHUNK_SIZE, encode, writePrevious);
         encoding = toWrite;
         written = toEncode;
       } while (more);
       writeBlock(written, vectorData, queryData, docsWithField);
+    }
+
+    /**
+     * Quantizes vectors {@code from} to {@code to} of {@code block}, read through {@code segments},
+     * and writes their records at their final offsets in the block. This replaces the per-vector
+     * work of the serial merge ({@code QuantizedFloatVectorValues} and the old loop of {@link
+     * #writeVectorAndQueryData}).
+     */
+    private void encodeRange(Block block, FloatVectorValues[] segments, int from, int to)
+        throws IOException {
+      // scratch for this range: a few KB, small next to reading and quantizing its vectors
+      float[] vector = new float[centroid.length];
+      byte[] indexQuantized = new byte[discreteDims];
+      byte[] indexPacked = indexQuantized;
+      if (indexPackedLength != discreteDims) {
+        indexPacked = new byte[indexPackedLength];
+      }
+      byte[] queryQuantized = new byte[discreteDims];
+      byte[] queryPacked = new byte[queryPackedLength];
+      byte[][] destinations = {indexQuantized, queryQuantized};
+      DataOutput index =
+          new ByteArrayDataOutput(
+              block.indexRecords, from * block.indexLength, (to - from) * block.indexLength);
+      DataOutput query = null;
+      if (block.queryLength > 0) {
+        query =
+            new ByteArrayDataOutput(
+                block.queryRecords, from * block.queryLength, (to - from) * block.queryLength);
+      }
+      for (int i = from; i < to; i++) {
+        // a copy, because the quantizer centers its input in place
+        float[] source = segments[block.segments[i]].vectorValue(block.ords[i]);
+        System.arraycopy(source, 0, vector, 0, vector.length);
+        OptimizedScalarQuantizer.QuantizationResult indexCorrections;
+        if (query == null) {
+          indexCorrections =
+              quantizer.scalarQuantize(vector, indexQuantized, encoding.getBits(), centroid);
+        } else {
+          // centers the vector once and quantizes it at both bit widths: index side, then query
+          OptimizedScalarQuantizer.QuantizationResult[] corrections =
+              quantizer.multiScalarQuantize(vector, destinations, bits, centroid);
+          indexCorrections = corrections[0];
+          writeQueryRecord(query, queryQuantized, queryPacked, corrections[1]);
+        }
+        packIndexRecord(encoding, indexQuantized, indexPacked);
+        index.writeBytes(indexPacked, indexPacked.length);
+        writeCorrections(index, indexCorrections);
+      }
     }
 
     private void nextBlock(Block block) throws IOException {
@@ -822,9 +787,9 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     private void writeBlock(
         Block block, IndexOutput vectorData, IndexOutput queryData, DocsWithFieldSet docsWithField)
         throws IOException {
-      vectorData.writeBytes(block.indexRecords, block.count * indexLength);
+      vectorData.writeBytes(block.indexRecords, block.count * block.indexLength);
       if (queryData != null) {
-        queryData.writeBytes(block.queryRecords, block.count * queryLength);
+        queryData.writeBytes(block.queryRecords, block.count * block.queryLength);
       }
       for (int i = 0; i < block.count; i++) {
         docsWithField.add(block.docs[i]);
@@ -837,11 +802,16 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     final int[] docs;
     final int[] segments;
     final int[] ords;
+    // the encoded records; queryLength is 0 without query-side records
+    final int indexLength;
+    final int queryLength;
     final byte[] indexRecords;
     final byte[] queryRecords;
     int count;
 
     Block(int size, int indexLength, int queryLength) {
+      this.indexLength = indexLength;
+      this.queryLength = queryLength;
       docs = new int[size];
       segments = new int[size];
       ords = new int[size];
@@ -850,9 +820,12 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     }
   }
 
-  /** One chunk of the work of {@link #runChunks}: items {@code from} to {@code to}. */
-  interface RangeTask {
-    void run(int task, int from, int to) throws IOException;
+  /**
+   * Like {@code IOConsumer}, for items {@code from} to {@code to} processed by task {@code task}.
+   */
+  @FunctionalInterface
+  interface IORangeConsumer {
+    void accept(int task, int from, int to) throws IOException;
   }
 
   /**
@@ -870,7 +843,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       int numTasks,
       int count,
       int chunkSize,
-      RangeTask job,
+      IORangeConsumer job,
       IORunnable onMergingThread)
       throws IOException {
     Thread callingThread = Thread.currentThread();
@@ -887,7 +860,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
         for (int from = nextChunk.getAndAdd(chunkSize);
             from < count;
             from = nextChunk.getAndAdd(chunkSize)) {
-          job.run(task, from, Math.min(count, from + chunkSize));
+          job.accept(task, from, Math.min(count, from + chunkSize));
         }
         return null;
       });
@@ -903,7 +876,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
    * ScalarEncoding#UNSIGNED_BYTE} and {@link ScalarEncoding#SEVEN_BIT} write the quantized bytes as
    * they are, so for them this is a copy, and callers that pass the same array for both save it.
    */
-  private static void packIndexRecord(ScalarEncoding encoding, byte[] scratch, byte[] dest) {
+  static void packIndexRecord(ScalarEncoding encoding, byte[] scratch, byte[] dest) {
     switch (encoding) {
       case PACKED_NIBBLE -> OffHeapScalarQuantizedVectorValues.packNibbles(scratch, dest);
       case SINGLE_BIT_QUERY_NIBBLE -> OptimizedScalarQuantizer.packAsBinary(scratch, dest);
@@ -1057,7 +1030,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     int live;
     do {
       live = nextLiveOrds(iterator, liveDocs, ords);
-      RangeTask sumChunk =
+      IORangeConsumer sumChunk =
           (task, from, to) -> {
             double[] chunkSum = chunkSums[from / CENTROID_CHUNK_SIZE];
             Arrays.fill(chunkSum, 0);

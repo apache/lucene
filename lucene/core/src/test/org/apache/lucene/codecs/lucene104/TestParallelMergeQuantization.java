@@ -26,7 +26,6 @@ import java.util.concurrent.TimeUnit;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsWriter.MergedRecordWriter;
-import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsWriter.RecordEncoder;
 import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsWriter.SourceIterator;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
 import org.apache.lucene.document.Document;
@@ -47,6 +46,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.TaskExecutor;
+import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -118,10 +118,8 @@ public class TestParallelMergeQuantization extends LuceneTestCase {
             IndexOutput queryFile = dir.createOutput("serial.query", IOContext.DEFAULT)) {
           // the records of the vectors in merged order, one at a time
           IndexOutput query = queries ? queryFile : null;
-          RecordEncoder encoder =
-              new RecordEncoder(quantizer, encoding, centroid, List.of(), false);
           for (float[] v : vectors) {
-            encoder.encode(v.clone(), index, query);
+            encodeOne(quantizer, encoding, centroid, v.clone(), index, query);
           }
         }
         try (IndexOutput vectorData = dir.createOutput("parallel.index", IOContext.DEFAULT);
@@ -132,13 +130,10 @@ public class TestParallelMergeQuantization extends LuceneTestCase {
           for (int s = 0; s < segmentValues.size(); s++) {
             sources.add(new SourceIterator(segmentDocs.get(s)::get, s, segmentValues.get(s)));
           }
-          RecordEncoder[] encoders = new RecordEncoder[workers];
-          for (int w = 0; w < workers; w++) {
-            encoders[w] = new RecordEncoder(quantizer, encoding, centroid, sources, workers > 1);
-          }
           TaskExecutor taskExecutor = new TaskExecutor(executor);
           MergedRecordWriter records =
-              new MergedRecordWriter(taskExecutor, sources, sorted, encoders, blockSize, queries);
+              new MergedRecordWriter(
+                  taskExecutor, workers, sources, sorted, quantizer, encoding, centroid, blockSize);
           DocsWithFieldSet docsWithField = new DocsWithFieldSet();
           records.write(vectorData, queryData, docsWithField);
           // every live document, in merged order
@@ -294,6 +289,43 @@ public class TestParallelMergeQuantization extends LuceneTestCase {
       w.forceMerge(1);
     }
     return dir;
+  }
+
+  /** Writes the records of one vector, as the serial merge did, quantizing it in place. */
+  private static void encodeOne(
+      OptimizedScalarQuantizer quantizer,
+      ScalarEncoding encoding,
+      float[] centroid,
+      float[] vector,
+      DataOutput index,
+      DataOutput query)
+      throws IOException {
+    int dims = encoding.getDiscreteDimensions(vector.length);
+    byte[] indexQuantized = new byte[dims];
+    byte[] queryQuantized = new byte[dims];
+    OptimizedScalarQuantizer.QuantizationResult indexCorrections;
+    if (query == null) {
+      indexCorrections =
+          quantizer.scalarQuantize(vector, indexQuantized, encoding.getBits(), centroid);
+    } else {
+      byte[][] destinations = {indexQuantized, queryQuantized};
+      byte[] bits = {encoding.getBits(), encoding.getQueryBits()};
+      OptimizedScalarQuantizer.QuantizationResult[] corrections =
+          quantizer.multiScalarQuantize(vector, destinations, bits, centroid);
+      indexCorrections = corrections[0];
+      byte[] queryPacked = new byte[encoding.getQueryPackedLength(dims)];
+      Lucene104ScalarQuantizedVectorsFormat.writeQueryRecord(
+          query, queryQuantized, queryPacked, corrections[1]);
+    }
+    byte[] indexPacked =
+        switch (encoding) {
+          case UNSIGNED_BYTE, SEVEN_BIT -> indexQuantized;
+          case PACKED_NIBBLE, SINGLE_BIT_QUERY_NIBBLE, DIBIT_QUERY_NIBBLE ->
+              new byte[encoding.getDocPackedLength(dims)];
+        };
+    Lucene104ScalarQuantizedVectorsWriter.packIndexRecord(encoding, indexQuantized, indexPacked);
+    index.writeBytes(indexPacked, indexPacked.length);
+    Lucene104ScalarQuantizedVectorsFormat.writeCorrections(index, indexCorrections);
   }
 
   /** A view of {@code values} that cannot be copied. */
