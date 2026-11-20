@@ -43,6 +43,7 @@ import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
 import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
+import org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorScorer;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
@@ -52,7 +53,10 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.NamedThreadFactory;
+import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
+import org.apache.lucene.util.quantization.LegacyQuantizedByteVectorValues;
+import org.apache.lucene.util.quantization.ScalarQuantizer;
 import org.junit.BeforeClass;
 
 public class TestVectorScorer extends LuceneTestCase {
@@ -401,6 +405,119 @@ public class TestVectorScorer extends LuceneTestCase {
         }
       }
     }
+  }
+
+  public void testQuantizedScorerSmallChunkSize() throws IOException {
+    // every node straddles a chunk boundary and is copied on-heap
+    testQuantizedScorer(random().nextLong(4, 16));
+  }
+
+  public void testQuantizedScorerMedChunkSize() throws IOException {
+    // a chunk size where in some nodes will be copied on-heap, while others remain off-heap
+    testQuantizedScorer(64);
+  }
+
+  void testQuantizedScorer(long maxChunkSize) throws IOException {
+    var defaultScorer = new Lucene99ScalarQuantizedVectorScorer(DEFAULT_SCORER);
+    var memSegScorer = VectorizationProvider.lookup(true).getLucene99ScalarQuantizedVectorsScorer();
+    final int size = 20;
+    try (Directory dir = new MMapDirectory(createTempDir("testQuantizedScorer"), maxChunkSize)) {
+      for (int bits : List.of(4, 7)) {
+        var quantizer = new ScalarQuantizer(-1f, 1f, (byte) bits);
+        for (int dims : List.of(31, 32, 33)) {
+          for (var sim : List.of(COSINE, EUCLIDEAN, DOT_PRODUCT, MAXIMUM_INNER_PRODUCT)) {
+            String fileName = "quantized-" + bits + "-" + dims + "-" + sim;
+            try (IndexOutput out = dir.createOutput(fileName, IOContext.DEFAULT)) {
+              for (int i = 0; i < size; i++) {
+                byte[] quantized = new byte[dims];
+                float offset = quantizer.quantize(randomFloatVector(dims, sim), quantized, sim);
+                out.writeBytes(quantized, 0, quantized.length);
+                out.writeInt(Float.floatToIntBits(offset));
+              }
+            }
+            try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
+              var values = quantizedVectorValues(dims, size, quantizer, in);
+
+              // getRandomVectorScorerSupplier
+              var scorer1 = defaultScorer.getRandomVectorScorerSupplier(sim, values).scorer();
+              var scorer2 = memSegScorer.getRandomVectorScorerSupplier(sim, values).scorer();
+              for (int idx0 = 0; idx0 < size; idx0++) {
+                scorer1.setScoringOrdinal(idx0);
+                scorer2.setScoringOrdinal(idx0);
+                for (int idx1 = 0; idx1 < size; idx1++) {
+                  assertEquals(fileName, scorer1.score(idx1), scorer2.score(idx1), DELTA);
+                }
+              }
+
+              // getRandomVectorScorer
+              float[] query = randomFloatVector(dims, sim);
+              var scorer3 = defaultScorer.getRandomVectorScorer(sim, values, query);
+              var scorer4 = memSegScorer.getRandomVectorScorer(sim, values, query);
+              for (int idx1 = 0; idx1 < size; idx1++) {
+                assertEquals(fileName, scorer3.score(idx1), scorer4.score(idx1), DELTA);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /** Uncompressed vectors, each followed by its score correction constant. */
+  static LegacyQuantizedByteVectorValues quantizedVectorValues(
+      int dims, int size, ScalarQuantizer quantizer, IndexInput in) {
+    return new LegacyQuantizedByteVectorValues() {
+      private final byte[] vector = new byte[dims];
+
+      @Override
+      public int dimension() {
+        return dims;
+      }
+
+      @Override
+      public int size() {
+        return size;
+      }
+
+      @Override
+      public byte[] vectorValue(int ord) throws IOException {
+        in.seek((long) ord * (dims + Float.BYTES));
+        in.readBytes(vector, 0, dims);
+        return vector;
+      }
+
+      @Override
+      public float getScoreCorrectionConstant(int ord) throws IOException {
+        in.seek((long) ord * (dims + Float.BYTES) + dims);
+        return Float.intBitsToFloat(in.readInt());
+      }
+
+      @Override
+      public LegacyQuantizedByteVectorValues copy() {
+        return quantizedVectorValues(dims, size, quantizer, in.clone());
+      }
+
+      @Override
+      public IndexInput getSlice() {
+        return in;
+      }
+
+      @Override
+      public ScalarQuantizer getScalarQuantizer() {
+        return quantizer;
+      }
+    };
+  }
+
+  static float[] randomFloatVector(int dims, VectorSimilarityFunction sim) {
+    float[] vector = new float[dims];
+    for (int i = 0; i < dims; i++) {
+      vector[i] = random().nextFloat(-1f, 1f);
+    }
+    if (sim == COSINE) {
+      VectorUtil.l2normalize(vector);
+    }
+    return vector;
   }
 
   KnnVectorValues vectorValues(int dims, int size, IndexInput in, VectorSimilarityFunction sim)
