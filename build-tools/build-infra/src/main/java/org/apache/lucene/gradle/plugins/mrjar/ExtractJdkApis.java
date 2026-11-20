@@ -162,34 +162,29 @@ public final class ExtractJdkApis {
       String internalName = parsed.thisClass().asInternalName();
       System.out.println("Writing stub for class: " + internalName);
       ClassTransform ct =
-          ClassTransform.dropping(
-                  ce ->
-                      switch (ce) {
-                        case MethodModel e -> !isVisible(e.flags());
-                        case FieldModel e -> !isVisible(e.flags());
-                        case SourceFileAttribute _ -> true;
-                        default -> false;
-                      })
-              .andThen(
-                  (builder, ce) -> {
-                    switch (ce) {
-                      case ClassFileVersion _ -> builder.with(classFileVersion);
-                      // the PreviewFeature annotation may refer to its own inner classes and
-                      // therefore we must get rid of the inner class entry:
-                      case InnerClassesAttribute a ->
-                          builder.with(
-                              InnerClassesAttribute.of(
-                                  a.classes().stream()
-                                      .filter(
-                                          c ->
-                                              !CD_PreviewFeature.equals(
-                                                  c.outerClass()
-                                                      .map(ClassEntry::asSymbol)
-                                                      .orElse(null)))
-                                      .toList()));
-                      default -> builder.with(ce);
-                    }
+          ClassTransform.dropping(ce ->
+                  switch (ce) {
+                    case MethodModel e -> !isVisible(e.flags());
+                    case FieldModel e -> !isVisible(e.flags());
+                    case SourceFileAttribute _ -> true;
+                    default -> false;
                   })
+              .andThen((builder, ce) -> {
+                switch (ce) {
+                  case ClassFileVersion _ -> builder.with(classFileVersion);
+                  // the PreviewFeature annotation may refer to its own inner classes and
+                  // therefore we must get rid of the inner class entry:
+                  case InnerClassesAttribute a ->
+                      builder.with(
+                          InnerClassesAttribute.of(
+                              a.classes().stream()
+                                  .filter(c ->
+                                      !CD_PreviewFeature.equals(
+                                          c.outerClass().map(ClassEntry::asSymbol).orElse(null)))
+                                  .toList()));
+                  default -> builder.with(ce);
+                }
+              })
               .andThen(ExtractJdkApis::dropPreview)
               .andThen(
                   ClassTransform.transformingMethods(
@@ -205,17 +200,16 @@ public final class ExtractJdkApis {
     classesToInclude.removeIf(toProcess.keySet()::contains);
     var missingClasses =
         classesToInclude.stream()
-            .filter(
-                internalName -> {
-                  try {
-                    return ClassDesc.ofInternalName(internalName)
-                            .resolveConstantDesc(MethodHandles.publicLookup())
-                            .getModule()
-                        != Object.class.getModule();
-                  } catch (ReflectiveOperationException _) {
-                    return true;
-                  }
-                })
+            .filter(internalName -> {
+              try {
+                return ClassDesc.ofInternalName(internalName)
+                        .resolveConstantDesc(MethodHandles.publicLookup())
+                        .getModule()
+                    != Object.class.getModule();
+              } catch (ReflectiveOperationException _) {
+                return true;
+              }
+            })
             .sorted()
             .toList();
     if (!missingClasses.isEmpty()) {

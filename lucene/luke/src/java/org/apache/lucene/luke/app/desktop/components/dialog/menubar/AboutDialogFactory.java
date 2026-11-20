@@ -152,11 +152,10 @@ public final class AboutDialogFactory implements DialogOpener.DialogFactory {
             ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
             ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
     scrollPane.setBorder(BorderFactory.createLineBorder(Color.gray));
-    SwingUtilities.invokeLater(
-        () -> {
-          // Set the scroll bar position to top
-          scrollPane.getVerticalScrollBar().setValue(0);
-        });
+    SwingUtilities.invokeLater(() -> {
+      // Set the scroll bar position to top
+      scrollPane.getVerticalScrollBar().setValue(0);
+    });
     return scrollPane;
   }
 

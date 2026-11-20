@@ -58,12 +58,11 @@ public class LuceneRootConfigurationPlugin extends LuceneGradlePlugin {
     // Register these plugins early, for everything.
     rootProject
         .getAllprojects()
-        .forEach(
-            project -> {
-              project.getPlugins().apply(BasePlugin.class);
-              project.getPlugins().apply(BuildOptionsPlugin.class);
-              project.getPlugins().apply(BuildOptionGroupsPlugin.class);
-            });
+        .forEach(project -> {
+          project.getPlugins().apply(BasePlugin.class);
+          project.getPlugins().apply(BuildOptionsPlugin.class);
+          project.getPlugins().apply(BuildOptionGroupsPlugin.class);
+        });
 
     // Register other root-level plugins.
     plugins.apply(RegisterBuildGlobalsPlugin.class);
@@ -103,10 +102,9 @@ public class LuceneRootConfigurationPlugin extends LuceneGradlePlugin {
     // Apply more convention plugins to all projects.
     rootProject
         .getAllprojects()
-        .forEach(
-            project -> {
-              project.getPlugins().apply(TuneJvmOptionsPlugin.class);
-            });
+        .forEach(project -> {
+          project.getPlugins().apply(TuneJvmOptionsPlugin.class);
+        });
 
     // wire up included composite builds to validation tasks.
     connectCompositeTasksToMainBuild(rootProject);
@@ -147,20 +145,17 @@ public class LuceneRootConfigurationPlugin extends LuceneGradlePlugin {
     project
         .getTasks()
         .withType(AbstractArchiveTask.class)
-        .configureEach(
-            task -> {
-              task.setDuplicatesStrategy(DuplicatesStrategy.FAIL);
-              task.setPreserveFileTimestamps(false);
-              task.setReproducibleFileOrder(true);
-              task.dirPermissions(
-                  permissions -> {
-                    permissions.unix(0755);
-                  });
-              task.filePermissions(
-                  permissions -> {
-                    permissions.unix(0644);
-                  });
-            });
+        .configureEach(task -> {
+          task.setDuplicatesStrategy(DuplicatesStrategy.FAIL);
+          task.setPreserveFileTimestamps(false);
+          task.setReproducibleFileOrder(true);
+          task.dirPermissions(permissions -> {
+            permissions.unix(0755);
+          });
+          task.filePermissions(permissions -> {
+            permissions.unix(0644);
+          });
+        });
   }
 
   private void connectCompositeTasksToMainBuild(Project rootProject) {
@@ -170,16 +165,14 @@ public class LuceneRootConfigurationPlugin extends LuceneGradlePlugin {
     // Wire up top-level tidy and check from composite builds to the main project.
     tasks
         .named("tidy")
-        .configure(
-            task -> {
-              task.dependsOn(includedBuilds.stream().map(build -> build.task(":tidy")).toList());
-            });
+        .configure(task -> {
+          task.dependsOn(includedBuilds.stream().map(build -> build.task(":tidy")).toList());
+        });
 
     tasks
         .named("check")
-        .configure(
-            task -> {
-              task.dependsOn(includedBuilds.stream().map(build -> build.task(":check")).toList());
-            });
+        .configure(task -> {
+          task.dependsOn(includedBuilds.stream().map(build -> build.task(":check")).toList());
+        });
   }
 }

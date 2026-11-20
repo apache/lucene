@@ -60,16 +60,14 @@ public abstract class ComputeJarInfos extends DefaultTask {
 
   public void include(Provider<Configuration> confProv) {
     Provider<ArtifactCollection> prov =
-        confProv.map(
-            it ->
-                it.getIncoming()
-                    .artifactView(
-                        view -> {
-                          view.lenient(false);
-                          view.componentFilter(
-                              identifier -> !(identifier instanceof ProjectComponentIdentifier));
-                        })
-                    .getArtifacts());
+        confProv.map(it ->
+            it.getIncoming()
+                .artifactView(view -> {
+                  view.lenient(false);
+                  view.componentFilter(
+                      identifier -> !(identifier instanceof ProjectComponentIdentifier));
+                })
+                .getArtifacts());
     getInspectedConfigurations().add(prov);
   }
 
@@ -87,20 +85,18 @@ public abstract class ComputeJarInfos extends DefaultTask {
 
     var jarInfos =
         getInspectedConfigurations().get().stream()
-            .flatMap(
-                col -> {
-                  return col.getArtifacts().stream()
-                      .filter(v -> v.getId() instanceof ModuleComponentArtifactIdentifier)
-                      .map(
-                          artifact -> {
-                            var id = (ModuleComponentArtifactIdentifier) artifact.getId();
-                            return new JarInfo(
-                                id.getComponentIdentifier().getDisplayName(),
-                                id.getComponentIdentifier().getModuleIdentifier().getName(),
-                                artifact.getFile().getName(),
-                                checksum.apply(artifact.getFile()));
-                          });
-                })
+            .flatMap(col -> {
+              return col.getArtifacts().stream()
+                  .filter(v -> v.getId() instanceof ModuleComponentArtifactIdentifier)
+                  .map(artifact -> {
+                    var id = (ModuleComponentArtifactIdentifier) artifact.getId();
+                    return new JarInfo(
+                        id.getComponentIdentifier().getDisplayName(),
+                        id.getComponentIdentifier().getModuleIdentifier().getName(),
+                        artifact.getFile().getName(),
+                        checksum.apply(artifact.getFile()));
+                  });
+            })
             .collect(Collectors.toCollection(TreeSet::new));
 
     JarInfo.serialize(getOutputFile().get().getAsFile().toPath(), new ArrayList<>(jarInfos));

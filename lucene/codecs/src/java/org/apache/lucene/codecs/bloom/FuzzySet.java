@@ -52,7 +52,7 @@ public class FuzzySet implements Accountable {
   public enum ContainsResult {
     MAYBE,
     NO
-  };
+  }
 
   private final FixedBitSet filter;
   private final int bloomSize;

@@ -99,10 +99,9 @@ public final class TokenAttributeDialogFactory implements DialogOpener.DialogFac
 
     List<TokenAttValue> attrValues =
         attributes.stream()
-            .flatMap(
-                att ->
-                    att.getAttValues().entrySet().stream()
-                        .map(e -> TokenAttValue.of(att.getAttClass(), e.getKey(), e.getValue())))
+            .flatMap(att ->
+                att.getAttValues().entrySet().stream()
+                    .map(e -> TokenAttValue.of(att.getAttClass(), e.getKey(), e.getValue())))
             .toList();
     TableUtils.setupTable(
         attributesTable,

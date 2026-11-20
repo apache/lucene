@@ -173,7 +173,7 @@ public abstract class MergePolicy {
     /** Returns pause reasons and associated times in nanoseconds. */
     public Map<PauseReason, Long> getPauseTimes() {
       Set<Entry<PauseReason, AtomicLong>> entries = pauseTimesNS.entrySet();
-      return entries.stream().collect(Collectors.toMap(Entry::getKey, (e) -> e.getValue().get()));
+      return entries.stream().collect(Collectors.toMap(Entry::getKey, e -> e.getValue().get()));
     }
 
     final void setMergeThread(Thread owner) {

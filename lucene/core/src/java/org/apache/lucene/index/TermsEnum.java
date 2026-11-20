@@ -52,7 +52,7 @@ public abstract class TermsEnum implements BytesRefIterator {
     FOUND,
     /** A different term was found after the requested term */
     NOT_FOUND
-  };
+  }
 
   /**
    * Attempts to seek to the exact term, returning true if the term is found. If this returns false,

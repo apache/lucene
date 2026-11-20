@@ -167,31 +167,28 @@ public class ErrorReportingTestListener implements TestOutputListener, TestListe
     var internalOptions = Set.of("tests.workDir", "tests.tmpDir");
 
     return buildOptions.getAllOptions().stream()
-        .filter(
-            option -> {
-              return !internalOptions.contains(option.getName());
-            })
-        .filter(
-            option -> {
-              // if the option is not present, ignore it in repro line.
-              if (!option.isPresent()) {
-                return false;
-              }
+        .filter(option -> {
+          return !internalOptions.contains(option.getName());
+        })
+        .filter(option -> {
+          // if the option is not present, ignore it in repro line.
+          if (!option.isPresent()) {
+            return false;
+          }
 
-              // we only care about options that have non-default values or options
-              // where values are computed at runtime (possibly randomized).
-              if (option.getSource() == BuildOptionValueSource.COMPUTED_VALUE) {
-                return true;
-              }
+          // we only care about options that have non-default values or options
+          // where values are computed at runtime (possibly randomized).
+          if (option.getSource() == BuildOptionValueSource.COMPUTED_VALUE) {
+            return true;
+          }
 
-              // filter out all non-computed options with default values.
-              return !option.isEqualToDefaultValue();
-            })
-        .map(
-            option -> {
-              return Commandline.quoteArgument(
-                  "-P" + option.getName() + "=" + option.asStringProvider().get());
-            })
+          // filter out all non-computed options with default values.
+          return !option.isEqualToDefaultValue();
+        })
+        .map(option -> {
+          return Commandline.quoteArgument(
+              "-P" + option.getName() + "=" + option.asStringProvider().get());
+        })
         .collect(Collectors.joining(" "));
   }
 
@@ -211,7 +208,7 @@ public class ErrorReportingTestListener implements TestOutputListener, TestListe
     if (!descriptor.isComposite()) {
       descriptor = descriptor.getParent();
     }
-    return outputHandlers.computeIfAbsent(TestKey.of(descriptor), (_) -> new OutputHandler());
+    return outputHandlers.computeIfAbsent(TestKey.of(descriptor), _ -> new OutputHandler());
   }
 
   public static class TestKey {
@@ -265,14 +262,13 @@ public class ErrorReportingTestListener implements TestOutputListener, TestListe
 
     public OutputHandler() {
       buffer =
-          new SpillWriter(
-              () -> {
-                try {
-                  return Files.createTempFile(spillDir, "spill-", ".tmp");
-                } catch (IOException e) {
-                  throw new UncheckedIOException(e);
-                }
-              });
+          new SpillWriter(() -> {
+            try {
+              return Files.createTempFile(spillDir, "spill-", ".tmp");
+            } catch (IOException e) {
+              throw new UncheckedIOException(e);
+            }
+          });
 
       Writer sink = buffer;
       if (verboseMode) {

@@ -227,7 +227,7 @@ public abstract class PointValues {
     CELL_OUTSIDE_QUERY,
     /** Return this if the cell partially overlaps the query */
     CELL_CROSSES_QUERY
-  };
+  }
 
   /** Create a new {@link PointTree} to navigate the index */
   public abstract PointTree getPointTree() throws IOException;
