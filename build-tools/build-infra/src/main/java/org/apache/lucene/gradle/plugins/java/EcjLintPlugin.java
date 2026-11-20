@@ -25,6 +25,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
 import org.apache.lucene.gradle.plugins.spotless.ApplyGoogleJavaFormatTask;
@@ -35,10 +36,12 @@ import org.gradle.api.Task;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
+import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.ClasspathNormalizer;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.TaskProvider;
+import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.process.CommandLineArgumentProvider;
 
 /**
@@ -50,6 +53,13 @@ import org.gradle.process.CommandLineArgumentProvider;
 public class EcjLintPlugin extends LuceneGradlePlugin {
   public static final String TASK_PREFIX = "ecjLint";
   public static final String ECJ_LINT_PREFS_PATH = "validation/ecj-lint/ecj.javadocs.prefs";
+
+  /**
+   * javac options (each taking one value) that change the module graph; ecj understands them too.
+   * They are copied from a source set's compile task so ecj resolves the same modules and edges.
+   */
+  private static final Set<String> MODULE_GRAPH_OPTIONS =
+      Set.of("--add-modules", "--add-reads", "--add-exports");
 
   @Override
   public void apply(Project project) {
@@ -152,6 +162,15 @@ public class EcjLintPlugin extends LuceneGradlePlugin {
     // Add all arguments so far as inputs.
     task.getInputs().property("args", args);
 
+    // Lint against the same module graph the compiler sees (e.g. a module that compiles with
+    // --add-modules/--add-reads for an optional module its descriptor doesn't declare).
+    Provider<List<String>> moduleGraphArguments =
+        task.getProject()
+            .getTasks()
+            .named(sourceSet.getCompileJavaTaskName(), JavaCompile.class)
+            .map(compileTask -> moduleGraphArguments(compileTask.getOptions().getCompilerArgs()));
+    task.getInputs().property("moduleGraphArgs", moduleGraphArguments);
+
     var argsEchoFile =
         task.getProject()
             .getLayout()
@@ -171,6 +190,7 @@ public class EcjLintPlugin extends LuceneGradlePlugin {
       allArgs.addAll(List.of("-properties", javadocPrefsPath.toAbsolutePath().toString()));
 
       compilationArguments.asArguments().forEach(allArgs::add);
+      allArgs.addAll(moduleGraphArguments.get());
       if (!classpathArguments.isEmpty()) {
         allArgs.add("-classpath");
         allArgs.add(
@@ -209,5 +229,16 @@ public class EcjLintPlugin extends LuceneGradlePlugin {
         throw new UncheckedIOException(e);
       }
     });
+  }
+
+  private static List<String> moduleGraphArguments(List<String> compilerArgs) {
+    List<String> result = new ArrayList<>();
+    for (int i = 0; i + 1 < compilerArgs.size(); i++) {
+      if (MODULE_GRAPH_OPTIONS.contains(compilerArgs.get(i))) {
+        result.add(compilerArgs.get(i));
+        result.add(compilerArgs.get(++i));
+      }
+    }
+    return result;
   }
 }

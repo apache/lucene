@@ -34,6 +34,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -870,7 +871,7 @@ final class IoUring implements Closeable {
     private static void freeQuietly(
         int ringFd, MemorySegment sq, MemorySegment cq, MemorySegment sqes) {
       unmapQuietly(sqes);
-      if (cq != sq) {
+      if (!Objects.equals(cq, sq)) {
         unmapQuietly(cq);
       }
       unmapQuietly(sq);

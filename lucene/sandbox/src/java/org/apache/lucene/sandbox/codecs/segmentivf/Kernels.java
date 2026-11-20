@@ -30,6 +30,7 @@ import static jdk.incubator.vector.VectorOperators.XOR;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.nio.ByteOrder;
+import java.util.Optional;
 import jdk.incubator.vector.ByteVector;
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.IntVector;
@@ -58,14 +59,19 @@ class Kernels {
     // tests.vectorsize, and test the SIMD kernels anyway, as core's tests do. The table kernels
     // also need JDK 24's selectFrom, which wraps out-of-range indexes (earlier JDKs throw); this
     // module targets 24.
+    Optional<Module> vectorModule = ModuleLayer.boot().findModule("jdk.incubator.vector");
     boolean simd =
-        ModuleLayer.boot().findModule("jdk.incubator.vector").isPresent()
+        vectorModule.isPresent()
             && Constants.IS_HOTSPOT_VM
             && (Constants.IS_CLIENT_VM == false || System.getProperty("tests.vectorsize") != null);
     if (simd == false) {
       return new Kernels();
     }
     try {
+      // The module descriptor deliberately has no `requires jdk.incubator.vector` (see
+      // module-info.java), so add the read edge before Panama links against the Vector API, as
+      // core's VectorizationProvider does.
+      Kernels.class.getModule().addReads(vectorModule.get());
       Class<?> panama = Class.forName(Kernels.class.getName() + "$Panama");
       return (Kernels) panama.getDeclaredConstructor().newInstance();
     } catch (ReflectiveOperationException | LinkageError _) {
@@ -395,8 +401,8 @@ class Kernels {
             ByteVector high = ByteVector.fromArray(BYTES, tables, table + HIGH_TABLE);
             ByteVector code0 = ByteVector.fromMemorySegment(BYTES, codes, run, ORDER);
             ByteVector code1 = ByteVector.fromMemorySegment(BYTES, codes, run + lanes, ORDER);
-            ByteVector code2 = ByteVector.fromMemorySegment(BYTES, codes, run + 2 * lanes, ORDER);
-            ByteVector code3 = ByteVector.fromMemorySegment(BYTES, codes, run + 3 * lanes, ORDER);
+            ByteVector code2 = ByteVector.fromMemorySegment(BYTES, codes, run + 2L * lanes, ORDER);
+            ByteVector code3 = ByteVector.fromMemorySegment(BYTES, codes, run + 3L * lanes, ORDER);
             ByteVector sum0 = code0.selectFrom(low).add(code0.lanewise(LSHR, 4).selectFrom(high));
             ByteVector sum1 = code1.selectFrom(low).add(code1.lanewise(LSHR, 4).selectFrom(high));
             ByteVector sum2 = code2.selectFrom(low).add(code2.lanewise(LSHR, 4).selectFrom(high));
@@ -407,8 +413,8 @@ class Kernels {
             high = ByteVector.fromArray(BYTES, tables, table + HIGH_TABLE);
             code0 = ByteVector.fromMemorySegment(BYTES, codes, run, ORDER);
             code1 = ByteVector.fromMemorySegment(BYTES, codes, run + lanes, ORDER);
-            code2 = ByteVector.fromMemorySegment(BYTES, codes, run + 2 * lanes, ORDER);
-            code3 = ByteVector.fromMemorySegment(BYTES, codes, run + 3 * lanes, ORDER);
+            code2 = ByteVector.fromMemorySegment(BYTES, codes, run + 2L * lanes, ORDER);
+            code3 = ByteVector.fromMemorySegment(BYTES, codes, run + 3L * lanes, ORDER);
             sum0 = sum0.add(code0.selectFrom(low)).add(code0.lanewise(LSHR, 4).selectFrom(high));
             sum1 = sum1.add(code1.selectFrom(low)).add(code1.lanewise(LSHR, 4).selectFrom(high));
             sum2 = sum2.add(code2.selectFrom(low)).add(code2.lanewise(LSHR, 4).selectFrom(high));
@@ -419,8 +425,8 @@ class Kernels {
             high = ByteVector.fromArray(BYTES, tables, table + HIGH_TABLE);
             code0 = ByteVector.fromMemorySegment(BYTES, codes, run, ORDER);
             code1 = ByteVector.fromMemorySegment(BYTES, codes, run + lanes, ORDER);
-            code2 = ByteVector.fromMemorySegment(BYTES, codes, run + 2 * lanes, ORDER);
-            code3 = ByteVector.fromMemorySegment(BYTES, codes, run + 3 * lanes, ORDER);
+            code2 = ByteVector.fromMemorySegment(BYTES, codes, run + 2L * lanes, ORDER);
+            code3 = ByteVector.fromMemorySegment(BYTES, codes, run + 3L * lanes, ORDER);
             sum0 = sum0.add(code0.selectFrom(low)).add(code0.lanewise(LSHR, 4).selectFrom(high));
             sum1 = sum1.add(code1.selectFrom(low)).add(code1.lanewise(LSHR, 4).selectFrom(high));
             sum2 = sum2.add(code2.selectFrom(low)).add(code2.lanewise(LSHR, 4).selectFrom(high));
@@ -431,8 +437,8 @@ class Kernels {
             high = ByteVector.fromArray(BYTES, tables, table + HIGH_TABLE);
             code0 = ByteVector.fromMemorySegment(BYTES, codes, run, ORDER);
             code1 = ByteVector.fromMemorySegment(BYTES, codes, run + lanes, ORDER);
-            code2 = ByteVector.fromMemorySegment(BYTES, codes, run + 2 * lanes, ORDER);
-            code3 = ByteVector.fromMemorySegment(BYTES, codes, run + 3 * lanes, ORDER);
+            code2 = ByteVector.fromMemorySegment(BYTES, codes, run + 2L * lanes, ORDER);
+            code3 = ByteVector.fromMemorySegment(BYTES, codes, run + 3L * lanes, ORDER);
             sum0 = sum0.add(code0.selectFrom(low)).add(code0.lanewise(LSHR, 4).selectFrom(high));
             sum1 = sum1.add(code1.selectFrom(low)).add(code1.lanewise(LSHR, 4).selectFrom(high));
             sum2 = sum2.add(code2.selectFrom(low)).add(code2.lanewise(LSHR, 4).selectFrom(high));

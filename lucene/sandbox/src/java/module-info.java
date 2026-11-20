@@ -17,12 +17,11 @@
 
 /** Various third party contributions and new ideas */
 module org.apache.lucene.sandbox {
+  // The SegmentIVF SIMD kernels use jdk.incubator.vector, but this descriptor does not declare it:
+  // even a `requires static` edge makes javac warn about the incubator module (an error under
+  // -Werror) in every module compiled against this one. The build adds the module for compiling
+  // this module only, and Kernels adds the read edge at runtime when the module is present.
   requires org.apache.lucene.core;
-  // Optional (compile-time) dependency for the SegmentIVF SIMD kernels. `static` so the module
-  // still resolves on a JVM started without `--add-modules jdk.incubator.vector`; the kernels
-  // detect that at runtime and fall back to scalar loops.
-  // ast-grep-ignore: incubator-module-dependency
-  requires static jdk.incubator.vector;
   requires org.apache.lucene.queries;
   requires org.apache.lucene.facet;
   requires java.logging;
