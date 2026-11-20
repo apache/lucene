@@ -800,7 +800,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
         more = encoding.count == blockSize;
         Block toEncode = encoding;
         Block toWrite = written;
-        ChunkJob encode = (task, from, to) -> encoders[task].encode(toEncode, from, to);
+        RangeTask encode = (task, from, to) -> encoders[task].encode(toEncode, from, to);
         IORunnable writePrevious = () -> writeBlock(toWrite, vectorData, queryData, docsWithField);
         runChunks(executor, encoders.length, toEncode.count, CHUNK_SIZE, encode, writePrevious);
         encoding = toWrite;
@@ -851,7 +851,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   }
 
   /** One chunk of the work of {@link #runChunks}: items {@code from} to {@code to}. */
-  interface ChunkJob {
+  interface RangeTask {
     void run(int task, int from, int to) throws IOException;
   }
 
@@ -870,7 +870,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       int numTasks,
       int count,
       int chunkSize,
-      ChunkJob job,
+      RangeTask job,
       IORunnable onMergingThread)
       throws IOException {
     Thread callingThread = Thread.currentThread();
@@ -1057,7 +1057,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     int live;
     do {
       live = nextLiveOrds(iterator, liveDocs, ords);
-      ChunkJob sumChunk =
+      RangeTask sumChunk =
           (task, from, to) -> {
             double[] chunkSum = chunkSums[from / CENTROID_CHUNK_SIZE];
             Arrays.fill(chunkSum, 0);
