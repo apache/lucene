@@ -541,12 +541,11 @@ public class QueryBuilder {
         List<AttributeSource> attributes = graph.getTerms(start);
         TermAndBoost[] terms =
             attributes.stream()
-                .map(
-                    s -> {
-                      TermToBytesRefAttribute t = s.addAttribute(TermToBytesRefAttribute.class);
-                      BoostAttribute b = s.addAttribute(BoostAttribute.class);
-                      return new TermAndBoost(t.getBytesRef(), b.getBoost());
-                    })
+                .map(s -> {
+                  TermToBytesRefAttribute t = s.addAttribute(TermToBytesRefAttribute.class);
+                  BoostAttribute b = s.addAttribute(BoostAttribute.class);
+                  return new TermAndBoost(t.getBytesRef(), b.getBoost());
+                })
                 .toArray(TermAndBoost[]::new);
         assert terms.length > 0;
         if (terms.length == 1) {

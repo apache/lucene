@@ -117,14 +117,13 @@ public abstract class AlternativeJdkSupportPlugin extends LuceneGradlePlugin {
           .register(
               "altJvmWarning",
               task -> {
-                task.doFirst(
-                    t -> {
-                      t.getLogger()
-                          .warn(
-                              "NOTE: Alternative java toolchain will be used for compilation and tests:\nProject will use {}\nGradle runs with {}",
-                              jvmInfo.apply(altJvmExt.getCompilationJvm().get()),
-                              jvmInfo.apply(altJvmExt.getGradleJvm().get()));
-                    });
+                task.doFirst(t -> {
+                  t.getLogger()
+                      .warn(
+                          "NOTE: Alternative java toolchain will be used for compilation and tests:\nProject will use {}\nGradle runs with {}",
+                          jvmInfo.apply(altJvmExt.getCompilationJvm().get()),
+                          jvmInfo.apply(altJvmExt.getGradleJvm().get()));
+                });
               });
     }
   }
@@ -142,35 +141,32 @@ public abstract class AlternativeJdkSupportPlugin extends LuceneGradlePlugin {
       project
           .getTasks()
           .withType(Test.class)
-          .configureEach(
-              task -> {
-                task.dependsOn(":altJvmWarning");
-                task.executable(altJvmExt.getCompilationJvm().get().getJavaExecutable());
-              });
+          .configureEach(task -> {
+            task.dependsOn(":altJvmWarning");
+            task.executable(altJvmExt.getCompilationJvm().get().getJavaExecutable());
+          });
 
       // Set up javac compilation tasks
       project
           .getTasks()
           .withType(JavaCompile.class)
-          .configureEach(
-              task -> {
-                task.dependsOn(":altJvmWarning");
-                task.getOptions().setFork(true);
-                task.getOptions()
-                    .getForkOptions()
-                    .setJavaHome(altJvmExt.getCompilationJvm().get().getJavaHome());
-              });
+          .configureEach(task -> {
+            task.dependsOn(":altJvmWarning");
+            task.getOptions().setFork(true);
+            task.getOptions()
+                .getForkOptions()
+                .setJavaHome(altJvmExt.getCompilationJvm().get().getJavaHome());
+          });
 
       // Set up javadoc compilation.
       File javadocExecutable = altJvmExt.getCompilationJvm().get().getJavadocExecutable();
       project
           .getTasks()
           .withType(RenderJavadocTaskBase.class)
-          .configureEach(
-              task -> {
-                task.dependsOn(":altJvmWarning");
-                task.getExecutable().set(javadocExecutable.toString());
-              });
+          .configureEach(task -> {
+            task.dependsOn(":altJvmWarning");
+            task.getExecutable().set(javadocExecutable.toString());
+          });
     }
   }
 }

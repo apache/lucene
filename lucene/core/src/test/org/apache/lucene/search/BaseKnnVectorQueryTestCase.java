@@ -1010,6 +1010,20 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       assertEquals(TotalHits.Relation.EQUAL_TO, noTimeoutTopDocs.totalHits.relation());
       assertEquals(1, noTimeoutTopDocs.scoreDocs.length);
 
+      // Check that nulls are passed through
+      TimeLimitingKnnCollectorManager nullTimeoutManager =
+          new TimeLimitingKnnCollectorManager(
+              new TopKnnCollectorManager(0, searcher) {
+                @Override
+                public KnnCollector newCollector(
+                    int visitedLimit, KnnSearchStrategy searchStrategy, LeafReaderContext context) {
+                  return null;
+                }
+              },
+              () -> true);
+      assertNull(
+          nullTimeoutManager.newCollector(Integer.MAX_VALUE, null, searcher.leafContexts.get(0)));
+
       // A collector manager that immediately times out
       TimeLimitingKnnCollectorManager timeoutManager =
           new TimeLimitingKnnCollectorManager(delegate, () -> true);

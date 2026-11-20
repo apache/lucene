@@ -718,10 +718,9 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
         int wireNumber = input.readVInt();
         scalarEncoding =
             ScalarEncoding.fromWireNumber(wireNumber)
-                .orElseThrow(
-                    () ->
-                        new IllegalStateException(
-                            "Could not get ScalarEncoding from wire number: " + wireNumber));
+                .orElseThrow(() ->
+                    new IllegalStateException(
+                        "Could not get ScalarEncoding from wire number: " + wireNumber));
         centroid = new float[dimension];
         input.readFloats(centroid, 0, dimension);
         centroidDP = Float.intBitsToFloat(input.readInt());

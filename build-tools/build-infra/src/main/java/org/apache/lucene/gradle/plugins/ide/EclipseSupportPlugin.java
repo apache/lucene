@@ -132,33 +132,31 @@ public class EclipseSupportPlugin extends LuceneGradlePlugin {
                                   Map.entry("ecj-lint-config", ecjLintProps)))),
                       ReplaceTokens.class);
 
-                  task.doLast(
-                      t -> {
-                        var logger = t.getLogger();
-                        logger.lifecycle(
-                            "Eclipse config for Java {} written with ECJ errors configured as '{}'. "
-                                + "Change by altering the build option '{}' to ignore/warning/error: "
-                                + "-P{}=ignore",
-                            eclipseJavaVersion,
-                            errorMode,
-                            OPT_ECLIPSE_ERRORS,
-                            OPT_ECLIPSE_ERRORS);
-                        logger.lifecycle(
-                            "To edit classes of MR-JARs for a specific Java version, regenerate"
-                                + " Eclipse options using: -P{}=24",
-                            OPT_ECLIPSE_JAVA_VERSION);
-                      });
+                  task.doLast(t -> {
+                    var logger = t.getLogger();
+                    logger.lifecycle(
+                        "Eclipse config for Java {} written with ECJ errors configured as '{}'. "
+                            + "Change by altering the build option '{}' to ignore/warning/error: "
+                            + "-P{}=ignore",
+                        eclipseJavaVersion,
+                        errorMode,
+                        OPT_ECLIPSE_ERRORS,
+                        OPT_ECLIPSE_ERRORS);
+                    logger.lifecycle(
+                        "To edit classes of MR-JARs for a specific Java version, regenerate"
+                            + " Eclipse options using: -P{}=24",
+                        OPT_ECLIPSE_JAVA_VERSION);
+                  });
                 });
 
     var tasks = project.getTasks();
     tasks
         .withType(GenerateEclipseJdt.class)
         .named("eclipseJdt")
-        .configure(
-            task -> {
-              task.setEnabled(false);
-              task.dependsOn(luceneEclipseJdt);
-            });
+        .configure(task -> {
+          task.setEnabled(false);
+          task.dependsOn(luceneEclipseJdt);
+        });
 
     var wipePreviousConfiguration =
         tasks.register(
@@ -177,60 +175,51 @@ public class EclipseSupportPlugin extends LuceneGradlePlugin {
     tasks
         .withType(GenerateEclipseClasspath.class)
         .named("eclipseClasspath")
-        .configure(
-            task -> {
-              task.dependsOn(wipePreviousConfiguration);
+        .configure(task -> {
+          task.dependsOn(wipePreviousConfiguration);
 
-              var classpath = task.getClasspath();
-              classpath.setDefaultOutputDir(project.file("build/eclipse"));
-              classpath.setDownloadJavadoc(false);
-              classpath.setDownloadSources(true);
+          var classpath = task.getClasspath();
+          classpath.setDefaultOutputDir(project.file("build/eclipse"));
+          classpath.setDownloadJavadoc(false);
+          classpath.setDownloadSources(true);
 
-              // Collect dependencies from selected configurations
-              // and copy them over to a local configuration.
-              List<Dependency> subdependencies = new ArrayList<>();
+          // Collect dependencies from selected configurations
+          // and copy them over to a local configuration.
+          List<Dependency> subdependencies = new ArrayList<>();
+          project
+              .getAllprojects()
+              .forEach(p -> {
+                if (p.getPlugins().hasPlugin(JavaPlugin.class)) {
+                  subdependencies.addAll(
+                      p.getConfigurations().getByName("compileClasspath").getAllDependencies());
+                  subdependencies.addAll(
+                      p.getConfigurations().getByName("testCompileClasspath").getAllDependencies());
+                }
+              });
+
+          var subconf =
               project
-                  .getAllprojects()
-                  .forEach(
-                      p -> {
-                        if (p.getPlugins().hasPlugin(JavaPlugin.class)) {
-                          subdependencies.addAll(
-                              p.getConfigurations()
-                                  .getByName("compileClasspath")
-                                  .getAllDependencies());
-                          subdependencies.addAll(
-                              p.getConfigurations()
-                                  .getByName("testCompileClasspath")
-                                  .getAllDependencies());
-                        }
-                      });
+                  .getConfigurations()
+                  .detachedConfiguration(subdependencies.toArray(Dependency[]::new));
+          classpath.setPlusConfigurations(List.of(subconf));
 
-              var subconf =
-                  project
-                      .getConfigurations()
-                      .detachedConfiguration(subdependencies.toArray(Dependency[]::new));
-              classpath.setPlusConfigurations(List.of(subconf));
+          classpath
+              .getFile()
+              .whenMerged(cp ->
+                  configureClasspath(project, (org.gradle.plugins.ide.eclipse.model.Classpath) cp));
 
-              classpath
-                  .getFile()
-                  .whenMerged(
-                      cp ->
-                          configureClasspath(
-                              project, (org.gradle.plugins.ide.eclipse.model.Classpath) cp));
-
-              task.getInputs().property("eclipseJavaVersion", eclipseJavaVersion);
-            });
+          task.getInputs().property("eclipseJavaVersion", eclipseJavaVersion);
+        });
   }
 
   private void configureClasspath(Project project, Classpath cp) {
     // wipe references to sources and cross-project refs.
     cp.getEntries()
-        .removeIf(
-            (ClasspathEntry e) -> {
-              return e.getKind().equals("src")
-                  || (e.getKind().equals("lib")
-                      && ((AbstractClasspathEntry) e).getPath().matches("(.+)lucene-.*\\.jar"));
-            });
+        .removeIf((ClasspathEntry e) -> {
+          return e.getKind().equals("src")
+              || (e.getKind().equals("lib")
+                  && ((AbstractClasspathEntry) e).getPath().matches("(.+)lucene-.*\\.jar"));
+        });
 
     // Wipe attributes which only contain a blank "gradle_used_by_scope" for every single library.
     VersionCatalog versionCatalog = getVersionCatalog(project);
@@ -257,24 +246,20 @@ public class EclipseSupportPlugin extends LuceneGradlePlugin {
     var sourceFolderList =
         project.getAllprojects().stream()
             .filter(p -> p.getPlugins().hasPlugin(JavaPlugin.class))
-            .flatMap(
-                p ->
-                    p.getExtensions().getByType(JavaPluginExtension.class).getSourceSets().stream())
+            .flatMap(p ->
+                p.getExtensions().getByType(JavaPluginExtension.class).getSourceSets().stream())
             .filter(s -> sourceSetNames.contains(s.getName()))
-            .flatMap(
-                ss ->
-                    Stream.concat(
-                        ss.getJava().getSrcDirs().stream(),
-                        ss.getResources().getSrcDirs().stream()))
+            .flatMap(ss ->
+                Stream.concat(
+                    ss.getJava().getSrcDirs().stream(), ss.getResources().getSrcDirs().stream()))
             .filter(File::exists)
             .map(dir -> rootDir.relativize(dir.toPath()).toString())
             .sorted()
-            .map(
-                path -> {
-                  var sourceFolder = new SourceFolder(path, "build/eclipse/" + path);
-                  sourceFolder.setExcludes(List.of("module-info.java"));
-                  return sourceFolder;
-                })
+            .map(path -> {
+              var sourceFolder = new SourceFolder(path, "build/eclipse/" + path);
+              sourceFolder.setExcludes(List.of("module-info.java"));
+              return sourceFolder;
+            })
             .toList();
     cp.getEntries().addAll(sourceFolderList);
   }

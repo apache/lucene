@@ -65,12 +65,10 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
           .register(
               "warnForcedLimitedParallelism",
               task -> {
-                task.doFirst(
-                    t -> {
-                      t.getLogger()
-                          .warn(
-                              "'tests.jvm' build option forced to 1 because tests.verbose is true.");
-                    });
+                task.doFirst(t -> {
+                  t.getLogger()
+                      .warn("'tests.jvm' build option forced to 1 because tests.verbose is true.");
+                });
               });
 
       project
@@ -98,15 +96,14 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
 
                 var seedValueProvider = testsSeedOption.asStringProvider();
 
-                task.doFirst(
-                    t -> {
-                      t.getLogger()
-                          .lifecycle(
-                              "Running tests with root randomization seed tests.seed="
-                                  + seedValueProvider.get()
-                                  + ", source: "
-                                  + seedSource);
-                    });
+                task.doFirst(t -> {
+                  t.getLogger()
+                      .lifecycle(
+                          "Running tests with root randomization seed tests.seed="
+                              + seedValueProvider.get()
+                              + ", source: "
+                              + seedSource);
+                });
               });
     }
   }
@@ -144,12 +141,11 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
                 buildOptions.addOption(
                     "tests.jvmargs",
                     "Arguments passed to each forked test JVM.",
-                    project.provider(
-                        () -> {
-                          return (buildGlobals.isCIBuild || defaultVectorizationEnabled)
-                              ? ""
-                              : "-XX:TieredStopAtLevel=1 -XX:+UseParallelGC -XX:ActiveProcessorCount=1";
-                        })));
+                    project.provider(() -> {
+                      return (buildGlobals.isCIBuild || defaultVectorizationEnabled)
+                          ? ""
+                          : "-XX:TieredStopAtLevel=1 -XX:+UseParallelGC -XX:ActiveProcessorCount=1";
+                    })));
 
     // cwd and tmp dir for forked JVMs.
     var buildDirectory = project.getLayout().getBuildDirectory();
@@ -193,10 +189,9 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
             "The number of forked test JVMs",
             project
                 .getProviders()
-                .provider(
-                    () -> {
-                      return Math.min(12, Runtime.getRuntime().availableProcessors());
-                    }));
+                .provider(() -> {
+                  return Math.min(12, Runtime.getRuntime().availableProcessors());
+                }));
 
     // GITHUB#13986: Allow easier configuration of the Panama Vectorization provider with newer Java
     // versions
@@ -241,11 +236,10 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
         buildOptions.addBooleanOption(
             "tests.asserts",
             "Enables or disables assertions mode.",
-            project.provider(
-                () -> {
-                  // Run with assertions for ~75% of all seeds.
-                  return new Random(buildGlobals.getProjectSeedAsLong().get()).nextInt(100) > 25;
-                }));
+            project.provider(() -> {
+              // Run with assertions for ~75% of all seeds.
+              return new Random(buildGlobals.getProjectSeedAsLong().get()).nextInt(100) > 25;
+            }));
     optionsInheritedAsProperties.add("tests.asserts");
 
     buildOptions.addBooleanOption(
@@ -299,12 +293,11 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
         "Sets the default file.encoding on test JVM.",
         project
             .getProviders()
-            .provider(
-                () -> {
-                  return RandomPicks.randomFrom(
-                      new Random(buildGlobals.getProjectSeedAsLong().get()),
-                      List.of("US-ASCII", "ISO-8859-1", "UTF-8"));
-                }));
+            .provider(() -> {
+              return RandomPicks.randomFrom(
+                  new Random(buildGlobals.getProjectSeedAsLong().get()),
+                  List.of("US-ASCII", "ISO-8859-1", "UTF-8"));
+            }));
 
     buildOptions.addBooleanOption(
         "tests.faiss.run", "Explicitly run tests for the Faiss codec.", false);
@@ -332,15 +325,14 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
       if (gradle.getStartParameter().getMaxWorkerCount() > 1) {
         gradle
             .getTaskGraph()
-            .whenReady(
-                graph -> {
-                  var testTasks =
-                      graph.getAllTasks().stream().filter(task -> task instanceof Test).count();
-                  if (testTasks > 1) {
-                    throw new GradleException(
-                        "Run your tests in verbose mode only with --max-workers=1 option passed to gradle.");
-                  }
-                });
+            .whenReady(graph -> {
+              var testTasks =
+                  graph.getAllTasks().stream().filter(task -> task instanceof Test).count();
+              if (testTasks > 1) {
+                throw new GradleException(
+                    "Run your tests in verbose mode only with --max-workers=1 option passed to gradle.");
+              }
+            });
       }
     }
 
@@ -364,10 +356,9 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
     if (incubatorJavaVersion) {
       tasks
           .withType(JavaCompile.class)
-          .configureEach(
-              task -> {
-                task.getOptions().getCompilerArgs().add("-Xlint:-incubating");
-              });
+          .configureEach(task -> {
+            task.getOptions().getCompilerArgs().add("-Xlint:-incubating");
+          });
     }
 
     var wipeOutputsTask =
@@ -389,180 +380,168 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
 
     tasks
         .withType(Test.class)
-        .configureEach(
-            task -> {
-              // Running any test task should first display the root randomization seed.
-              task.dependsOn(":showTestsSeed");
+        .configureEach(task -> {
+          // Running any test task should first display the root randomization seed.
+          task.dependsOn(":showTestsSeed");
 
-              // Wipe any existing outputs before we run.
-              task.dependsOn(wipeOutputsTask);
+          // Wipe any existing outputs before we run.
+          task.dependsOn(wipeOutputsTask);
 
-              File testOutputsDir =
-                  task.getReports()
-                      .getJunitXml()
-                      .getOutputLocation()
-                      .dir("outputs")
-                      .get()
-                      .getAsFile();
+          File testOutputsDir =
+              task.getReports().getJunitXml().getOutputLocation().dir("outputs").get().getAsFile();
 
-              task.getExtensions()
-                  .create("testOutputsExtension", TestOutputsExtension.class)
-                  .getTestOutputsDir()
-                  .set(testOutputsDir);
+          task.getExtensions()
+              .create("testOutputsExtension", TestOutputsExtension.class)
+              .getTestOutputsDir()
+              .set(testOutputsDir);
 
-              // LUCENE-9660: Make it possible to always rerun tests, even if they're incrementally
-              // up-to-date.
-              if (rerunOption.get()) {
-                task.getOutputs().upToDateWhen(_ -> false);
-              }
+          // LUCENE-9660: Make it possible to always rerun tests, even if they're incrementally
+          // up-to-date.
+          if (rerunOption.get()) {
+            task.getOutputs().upToDateWhen(_ -> false);
+          }
 
-              int maxParallelForks = jvmsOption.get();
-              if (verboseMode && maxParallelForks != 1) {
-                task.dependsOn(":warnForcedLimitedParallelism");
-                maxParallelForks = 1;
-              }
-              task.setMaxParallelForks(maxParallelForks);
+          int maxParallelForks = jvmsOption.get();
+          if (verboseMode && maxParallelForks != 1) {
+            task.dependsOn(":warnForcedLimitedParallelism");
+            maxParallelForks = 1;
+          }
+          task.setMaxParallelForks(maxParallelForks);
 
-              if (failFastOption.get()) {
-                task.setFailFast(true);
-              }
+          if (failFastOption.get()) {
+            task.setFailFast(true);
+          }
 
-              // Use junit platform and junit-vintage to run the tests.
-              configureJUnitPlatform(task);
+          // Use junit platform and junit-vintage to run the tests.
+          configureJUnitPlatform(task);
 
-              task.setWorkingDir(testsCwd);
+          task.setWorkingDir(testsCwd);
 
-              task.setMinHeapSize(minHeapSizeOption.get());
-              task.setMaxHeapSize(heapSizeOption.get());
+          task.setMinHeapSize(minHeapSizeOption.get());
+          task.setMaxHeapSize(heapSizeOption.get());
 
-              task.setIgnoreFailures(!haltOnFailureOption.get());
+          task.setIgnoreFailures(!haltOnFailureOption.get());
 
-              if (assertsOption.get()) {
-                task.jvmArgs("-ea", "-esa");
-              } else {
-                task.setEnableAssertions(false);
-              }
+          if (assertsOption.get()) {
+            task.jvmArgs("-ea", "-esa");
+          } else {
+            task.setEnableAssertions(false);
+          }
 
-              // Lucene needs to optional modules at runtime, which we want to enforce for testing
-              // (if the runner JVM does not support them, it will fail tests):
-              task.jvmArgs("--add-modules", "jdk.management");
+          // Lucene needs to optional modules at runtime, which we want to enforce for testing
+          // (if the runner JVM does not support them, it will fail tests):
+          task.jvmArgs("--add-modules", "jdk.management");
 
-              // dump heap on OOM.
-              task.jvmArgs("-XX:+HeapDumpOnOutOfMemoryError");
+          // dump heap on OOM.
+          task.jvmArgs("-XX:+HeapDumpOnOutOfMemoryError");
 
-              // Enable the vector incubator module on supported Java versions:
-              boolean manualMinMajorVersion =
-                  minMajorVersion.isPresent()
-                      && Integer.parseInt(runtimeJava.getMajorVersion()) <= minMajorVersion.get();
-              if (incubatorJavaVersion || manualMinMajorVersion) {
-                task.jvmArgs("--add-modules", "jdk.incubator.vector");
-                if (manualMinMajorVersion) {
-                  task.systemProperty(
-                      "org.apache.lucene.vectorization.upperJavaFeatureVersion",
-                      Integer.toString(minMajorVersion.get()));
-                }
-              }
+          // Enable the vector incubator module on supported Java versions:
+          boolean manualMinMajorVersion =
+              minMajorVersion.isPresent()
+                  && Integer.parseInt(runtimeJava.getMajorVersion()) <= minMajorVersion.get();
+          if (incubatorJavaVersion || manualMinMajorVersion) {
+            task.jvmArgs("--add-modules", "jdk.incubator.vector");
+            if (manualMinMajorVersion) {
+              task.systemProperty(
+                  "org.apache.lucene.vectorization.upperJavaFeatureVersion",
+                  Integer.toString(minMajorVersion.get()));
+            }
+          }
 
-              task.jvmArgs(
-                  "--enable-native-access="
-                      + switch (project.getPath()) {
-                        case ":lucene:codecs",
-                            ":lucene:core",
-                            ":lucene:distribution.tests",
-                            ":lucene:test-framework" ->
-                            "ALL-UNNAMED";
-                        case ":lucene:sandbox" -> "org.apache.lucene.core,ALL-UNNAMED";
-                        default -> "org.apache.lucene.core";
-                      });
-              task.jvmArgs("--illegal-native-access=deny");
-
-              var loggingFileProvider =
-                  project.getObjects().newInstance(LoggingFileArgumentProvider.class);
-              Path loggingConfigFile = gradlePluginResource(project, "testing/logging.properties");
-              loggingFileProvider.getLoggingConfigFile().set(loggingConfigFile.toFile());
-              loggingFileProvider.getTempDir().set(tmpDirOption.get());
-              task.getJvmArgumentProviders().add(loggingFileProvider);
-
-              task.systemProperty("java.awt.headless", "true");
-              task.systemProperty("jdk.map.althashing.threshold", "0");
-
-              // disallow any Java serialization without a filter
-              if (project.getPath().endsWith(".tests")) {
-                // LUCENE-10301: for now, do not use the serialization filter for modular tests
-                // (test framework is not available).
-              } else if (project.getPath().startsWith(":lucene")) {
-                task.systemProperty(
-                    "jdk.serialFilterFactory",
-                    "org.apache.lucene.tests.util.TestObjectInputFilterFactory");
-              }
-
-              if (!Os.isFamily(Os.FAMILY_WINDOWS)) {
-                task.systemProperty("java.security.egd", "file:/dev/./urandom");
-              }
-
-              // Turn jenkins blood red for hashmap bugs
-              task.systemProperty("jdk.map.althashing.threshold", "0");
-
-              // Pass certain buildOptions as system properties
-              var sysProps = task.getSystemProperties().keySet();
-              for (String key : optionsInheritedAsProperties) {
-                Provider<String> option = buildOptions.optionValue(key);
-                if (option.isPresent() && !sysProps.contains(key)) {
-                  task.systemProperty(key, buildOptions.optionValue(key).get());
-                }
-              }
-
-              // Set up cwd and temp locations.
-              // java.io.tmpdir is passed via the LoggingFileArgumentProvider (marked @Internal)
-              // instead of systemProperty to avoid absolute paths affecting the build cache key.
-              loggingFileProvider.getJavaTmpDir().set(workDirOption.get());
-
-              task.doFirst(
-                  _ -> {
-                    testsCwd.mkdirs();
-                    testsTmpDir.mkdirs();
+          task.jvmArgs(
+              "--enable-native-access="
+                  + switch (project.getPath()) {
+                    case ":lucene:codecs",
+                        ":lucene:core",
+                        ":lucene:distribution.tests",
+                        ":lucene:test-framework" ->
+                        "ALL-UNNAMED";
+                    case ":lucene:sandbox" -> "org.apache.lucene.core,ALL-UNNAMED";
+                    default -> "org.apache.lucene.core";
                   });
+          task.jvmArgs("--illegal-native-access=deny");
 
-              task.jvmArgs((Object[]) Commandline.translateCommandline(jvmArgsOption.get()));
+          var loggingFileProvider =
+              project.getObjects().newInstance(LoggingFileArgumentProvider.class);
+          Path loggingConfigFile = gradlePluginResource(project, "testing/logging.properties");
+          loggingFileProvider.getLoggingConfigFile().set(loggingConfigFile.toFile());
+          loggingFileProvider.getTempDir().set(tmpDirOption.get());
+          task.getJvmArgumentProviders().add(loggingFileProvider);
 
-              // Disable HTML report generation. The reports are big and slow to generate.
-              task.getReports().getHtml().getRequired().set(false);
+          task.systemProperty("java.awt.headless", "true");
+          task.systemProperty("jdk.map.althashing.threshold", "0");
 
-              // Set up logging.
-              var logging = task.getTestLogging();
-              logging.events(TestLogEvent.FAILED);
-              logging.setExceptionFormat(TestExceptionFormat.FULL);
-              logging.setShowExceptions(true);
-              logging.setShowCauses(true);
-              logging.setShowStackTraces(true);
-              logging.getStackTraceFilters().clear();
-              logging.setShowStandardStreams(false);
+          // disallow any Java serialization without a filter
+          if (project.getPath().endsWith(".tests")) {
+            // LUCENE-10301: for now, do not use the serialization filter for modular tests
+            // (test framework is not available).
+          } else if (project.getPath().startsWith(":lucene")) {
+            task.systemProperty(
+                "jdk.serialFilterFactory",
+                "org.apache.lucene.tests.util.TestObjectInputFilterFactory");
+          }
 
-              // Disable automatic test class detection, rely on class names only. This is needed
-              // for testing
-              // against JDKs where the bytecode is unparsable by Gradle, for example.
-              // We require all tests to start with Test*, this simplifies include patterns greatly.
-              task.setScanForTestClasses(false);
-              task.include("**/Test*.class");
-              task.exclude("**/*$*");
+          if (!Os.isFamily(Os.FAMILY_WINDOWS)) {
+            task.systemProperty("java.security.egd", "file:/dev/./urandom");
+          }
 
-              var spillDir = task.getTemporaryDir().toPath();
-              var listener =
-                  new ErrorReportingTestListener(
-                      task.getTestLogging(), spillDir, testOutputsDir.toPath(), verboseMode);
-              task.addTestOutputListener(listener);
-              task.addTestListener(listener);
+          // Turn jenkins blood red for hashmap bugs
+          task.systemProperty("jdk.map.althashing.threshold", "0");
 
-              task.doFirst(
-                  _ -> {
-                    task.getLogger()
-                        .info(
-                            "Test folders for {}: cwd={}, tmp={}",
-                            task.getPath(),
-                            testsCwd,
-                            testsTmpDir);
-                  });
-            });
+          // Pass certain buildOptions as system properties
+          var sysProps = task.getSystemProperties().keySet();
+          for (String key : optionsInheritedAsProperties) {
+            Provider<String> option = buildOptions.optionValue(key);
+            if (option.isPresent() && !sysProps.contains(key)) {
+              task.systemProperty(key, buildOptions.optionValue(key).get());
+            }
+          }
+
+          // Set up cwd and temp locations.
+          // java.io.tmpdir is passed via the LoggingFileArgumentProvider (marked @Internal)
+          // instead of systemProperty to avoid absolute paths affecting the build cache key.
+          loggingFileProvider.getJavaTmpDir().set(workDirOption.get());
+
+          task.doFirst(_ -> {
+            testsCwd.mkdirs();
+            testsTmpDir.mkdirs();
+          });
+
+          task.jvmArgs((Object[]) Commandline.translateCommandline(jvmArgsOption.get()));
+
+          // Disable HTML report generation. The reports are big and slow to generate.
+          task.getReports().getHtml().getRequired().set(false);
+
+          // Set up logging.
+          var logging = task.getTestLogging();
+          logging.events(TestLogEvent.FAILED);
+          logging.setExceptionFormat(TestExceptionFormat.FULL);
+          logging.setShowExceptions(true);
+          logging.setShowCauses(true);
+          logging.setShowStackTraces(true);
+          logging.getStackTraceFilters().clear();
+          logging.setShowStandardStreams(false);
+
+          // Disable automatic test class detection, rely on class names only. This is needed
+          // for testing
+          // against JDKs where the bytecode is unparsable by Gradle, for example.
+          // We require all tests to start with Test*, this simplifies include patterns greatly.
+          task.setScanForTestClasses(false);
+          task.include("**/Test*.class");
+          task.exclude("**/*$*");
+
+          var spillDir = task.getTemporaryDir().toPath();
+          var listener =
+              new ErrorReportingTestListener(
+                  task.getTestLogging(), spillDir, testOutputsDir.toPath(), verboseMode);
+          task.addTestOutputListener(listener);
+          task.addTestListener(listener);
+
+          task.doFirst(_ -> {
+            task.getLogger()
+                .info("Test folders for {}: cwd={}, tmp={}", task.getPath(), testsCwd, testsTmpDir);
+          });
+        });
   }
 
   private static void configureJUnitPlatform(Test task) {
@@ -571,26 +550,24 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
     var versionCatalogProvider =
         task.getProject()
             .getProviders()
-            .provider(
-                () ->
-                    task.getProject()
-                        .getExtensions()
-                        .findByType(VersionCatalogsExtension.class)
-                        .named("deps"));
+            .provider(() ->
+                task.getProject()
+                    .getExtensions()
+                    .findByType(VersionCatalogsExtension.class)
+                    .named("deps"));
 
     DependencyHandler dependencies = task.getProject().getDependencies();
     List.of("junitplatform-launcher", "junitplatform-vintage")
-        .forEach(
-            library -> {
-              dependencies.addProvider(
-                  "moduleTestRuntimeOnly",
-                  versionCatalogProvider.flatMap(
-                      versionCatalog -> versionCatalog.findLibrary(library).orElseThrow()),
-                  config -> {
-                    config.exclude(Map.of("group", "org.hamcrest"));
-                    config.exclude(Map.of("group", "junit"));
-                  });
-            });
+        .forEach(library -> {
+          dependencies.addProvider(
+              "moduleTestRuntimeOnly",
+              versionCatalogProvider.flatMap(
+                  versionCatalog -> versionCatalog.findLibrary(library).orElseThrow()),
+              config -> {
+                config.exclude(Map.of("group", "org.hamcrest"));
+                config.exclude(Map.of("group", "junit"));
+              });
+        });
   }
 
   public abstract static class TestOutputsExtension {

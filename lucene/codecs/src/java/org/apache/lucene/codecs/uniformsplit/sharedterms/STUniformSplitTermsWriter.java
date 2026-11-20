@@ -135,9 +135,8 @@ public class STUniformSplitTermsWriter extends UniformSplitTermsWriter {
 
   @Override
   public void write(Fields fields, NormsProducer normsProducer) throws IOException {
-    writeSegment(
-        (blockWriter, dictionaryBuilder) ->
-            writeSingleSegment(fields, normsProducer, blockWriter, dictionaryBuilder));
+    writeSegment((blockWriter, dictionaryBuilder) ->
+        writeSingleSegment(fields, normsProducer, blockWriter, dictionaryBuilder));
   }
 
   /**
@@ -314,10 +313,8 @@ public class STUniformSplitTermsWriter extends UniformSplitTermsWriter {
         }
       }
     }
-    writeSegment(
-        (blockWriter, dictionaryBuilder) ->
-            mergeSegments(
-                mergeState, normsProducer, segmentTermsList, blockWriter, dictionaryBuilder));
+    writeSegment((blockWriter, dictionaryBuilder) ->
+        mergeSegments(mergeState, normsProducer, segmentTermsList, blockWriter, dictionaryBuilder));
   }
 
   private Collection<FieldMetadata> mergeSegments(
