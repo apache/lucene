@@ -217,7 +217,7 @@ public class TestBooleanScorer extends LuceneTestCase {
     dir.close();
   }
 
-  public void testConstantScoreScorerSupplierUsesIntoBitSet() throws IOException {
+  public void testConstantScoreBulkScorerUsesIntoBitSet() throws IOException {
     int[] docs = {1, 2, 4097, 5000, 8195};
     CountingDocIdSetIterator iterator = new CountingDocIdSetIterator(docs);
 
@@ -249,9 +249,8 @@ public class TestBooleanScorer extends LuceneTestCase {
           }
         };
 
-    BulkScorer bulkScorer =
-        ConstantScoreScorerSupplier.fromIterator(iterator, 1f, ScoreMode.COMPLETE_NO_SCORES, 9000)
-            .bulkScorer();
+    // These docs are too sparse for the scorer supplier to pick ConstantScoreBulkScorer.
+    BulkScorer bulkScorer = new ConstantScoreBulkScorer(1f, ScoreMode.COMPLETE_NO_SCORES, iterator);
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, bulkScorer.score(collector, liveDocs, 0, 9000));
     assertArrayEquals(new int[] {1, 8195}, Arrays.copyOf(collected, count[0]));
     assertEquals(3, iterator.intoBitSetCalls);
