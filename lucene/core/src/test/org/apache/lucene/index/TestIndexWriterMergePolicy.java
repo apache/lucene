@@ -505,23 +505,22 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
           writer.addDocument(d3);
         }
         Thread t =
-            new Thread(
-                () -> {
-                  try {
-                    waitForMerge.await();
-                    if (useSoftDeletes) {
-                      writer.softUpdateDocument(
-                          new Term("id", "2"), d2, new NumericDocValuesField("soft_delete", 1));
-                    } else {
-                      writer.updateDocument(new Term("id", "2"), d2);
-                    }
-                    writer.flush();
-                  } catch (Exception e) {
-                    throw new AssertionError(e);
-                  } finally {
-                    waitForUpdate.countDown();
-                  }
-                });
+            new Thread(() -> {
+              try {
+                waitForMerge.await();
+                if (useSoftDeletes) {
+                  writer.softUpdateDocument(
+                      new Term("id", "2"), d2, new NumericDocValuesField("soft_delete", 1));
+                } else {
+                  writer.updateDocument(new Term("id", "2"), d2);
+                }
+                writer.flush();
+              } catch (Exception e) {
+                throw new AssertionError(e);
+              } finally {
+                waitForUpdate.countDown();
+              }
+            });
         t.start();
         writer.commit();
         t.join();
@@ -589,22 +588,21 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
         writer.flush();
         writer.addDocument(d2);
         Thread t =
-            new Thread(
-                () -> {
-                  try {
-                    if (useGetReader) {
-                      DirectoryReader.open(writer).close();
-                    } else {
-                      writer.commit();
-                    }
-                  } catch (IOException e) {
-                    waitForMerge.countDown();
-                    throw new AssertionError(e);
-                  } catch (Throwable te) {
-                    waitForMerge.countDown();
-                    throw te;
-                  }
-                });
+            new Thread(() -> {
+              try {
+                if (useGetReader) {
+                  DirectoryReader.open(writer).close();
+                } else {
+                  writer.commit();
+                }
+              } catch (IOException e) {
+                waitForMerge.countDown();
+                throw new AssertionError(e);
+              } catch (Throwable te) {
+                waitForMerge.countDown();
+                throw te;
+              }
+            });
         t.start();
         waitForMerge.await();
         writer.deleteAll();
@@ -647,14 +645,13 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
         d2.add(new StringField("id", "2", Field.Store.NO));
         writer.addDocument(d2);
         Thread t =
-            new Thread(
-                () -> {
-                  try (DirectoryReader reader = DirectoryReader.open(writer)) {
-                    assertEquals(2, reader.maxDoc());
-                  } catch (IOException e) {
-                    throw new AssertionError(e);
-                  }
-                });
+            new Thread(() -> {
+              try (DirectoryReader reader = DirectoryReader.open(writer)) {
+                assertEquals(2, reader.maxDoc());
+              } catch (IOException e) {
+                throw new AssertionError(e);
+              }
+            });
         t.start();
         waitForMerge.await();
         Document d3 = new Document();
@@ -747,21 +744,20 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
         Thread[] threads = new Thread[1 + random().nextInt(4)];
         for (int i = 0; i < threads.length; i++) {
           Thread t =
-              new Thread(
-                  () -> {
-                    try {
-                      while (iters.decrementAndGet() > 0 || numFullFlushes.get() > 0) {
-                        writer.updateDocument(new Term("id", "1"), d1);
-                        if (random().nextBoolean()) {
-                          writer.addDocument(new Document());
-                        }
-                      }
-                    } catch (Exception e) {
-                      throw new AssertionError(e);
-                    } finally {
-                      done.set(true);
+              new Thread(() -> {
+                try {
+                  while (iters.decrementAndGet() > 0 || numFullFlushes.get() > 0) {
+                    writer.updateDocument(new Term("id", "1"), d1);
+                    if (random().nextBoolean()) {
+                      writer.addDocument(new Document());
                     }
-                  });
+                  }
+                } catch (Exception e) {
+                  throw new AssertionError(e);
+                } finally {
+                  done.set(true);
+                }
+              });
           t.start();
           threads[i] = t;
         }
@@ -1073,16 +1069,15 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
     writer.flush();
 
     Thread t =
-        new Thread(
-            () -> {
-              try {
-                writer.forceMerge(1);
-              } catch (Throwable e) {
-                throw new AssertionError(e);
-              } finally {
-                waitForMergeFinished.countDown();
-              }
-            });
+        new Thread(() -> {
+          try {
+            writer.forceMerge(1);
+          } catch (Throwable e) {
+            throw new AssertionError(e);
+          } finally {
+            waitForMergeFinished.countDown();
+          }
+        });
     t.start();
     waitForInitMergeReader.await();
 
@@ -1163,25 +1158,24 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
     IndexWriter writerWithMergePolicy = new IndexWriter(mockDirectory, iwc);
 
     Thread t =
-        new Thread(
-            () -> {
-              try {
-                waitForInitMergeReader.await();
+        new Thread(() -> {
+          try {
+            waitForInitMergeReader.await();
 
-                Document updateDoc = new Document();
-                updateDoc.add(new StringField("id", "2", Field.Store.YES));
-                updateDoc.add(new StringField("version", "3", Field.Store.YES));
-                Field softDeleteField = new NumericDocValuesField("soft_delete", 1);
-                writerWithMergePolicy.softUpdateDocument(
-                    new Term("id", "2"), updateDoc, softDeleteField);
-                DirectoryReader reader = DirectoryReader.open(writerWithMergePolicy, true, false);
-                reader.close();
+            Document updateDoc = new Document();
+            updateDoc.add(new StringField("id", "2", Field.Store.YES));
+            updateDoc.add(new StringField("version", "3", Field.Store.YES));
+            Field softDeleteField = new NumericDocValuesField("soft_delete", 1);
+            writerWithMergePolicy.softUpdateDocument(
+                new Term("id", "2"), updateDoc, softDeleteField);
+            DirectoryReader reader = DirectoryReader.open(writerWithMergePolicy, true, false);
+            reader.close();
 
-                waitForDVUpdate.countDown();
-              } catch (Exception e) {
-                throw new AssertionError(e);
-              }
-            });
+            waitForDVUpdate.countDown();
+          } catch (Exception e) {
+            throw new AssertionError(e);
+          }
+        });
     t.start();
 
     try (DirectoryReader mergedReader = DirectoryReader.open(writerWithMergePolicy)) {
@@ -1255,25 +1249,24 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
     IndexWriter writerWithMergePolicy = new IndexWriter(mockDirectory, iwc);
 
     Thread t =
-        new Thread(
-            () -> {
-              try {
-                waitForInitMergeReader.await();
+        new Thread(() -> {
+          try {
+            waitForInitMergeReader.await();
 
-                Document updateDoc = new Document();
-                updateDoc.add(new StringField("id", "2", Field.Store.YES));
-                updateDoc.add(new StringField("version", "3", Field.Store.YES));
-                Field softDeleteField = new NumericDocValuesField("soft_delete", 1);
-                writerWithMergePolicy.softUpdateDocument(
-                    new Term("id", "2"), updateDoc, softDeleteField);
-                DirectoryReader reader = DirectoryReader.open(writerWithMergePolicy, true, false);
-                reader.close();
+            Document updateDoc = new Document();
+            updateDoc.add(new StringField("id", "2", Field.Store.YES));
+            updateDoc.add(new StringField("version", "3", Field.Store.YES));
+            Field softDeleteField = new NumericDocValuesField("soft_delete", 1);
+            writerWithMergePolicy.softUpdateDocument(
+                new Term("id", "2"), updateDoc, softDeleteField);
+            DirectoryReader reader = DirectoryReader.open(writerWithMergePolicy, true, false);
+            reader.close();
 
-                waitForDVUpdate.countDown();
-              } catch (Exception e) {
-                throw new AssertionError(e);
-              }
-            });
+            waitForDVUpdate.countDown();
+          } catch (Exception e) {
+            throw new AssertionError(e);
+          }
+        });
     t.start();
 
     writerWithMergePolicy.commit();

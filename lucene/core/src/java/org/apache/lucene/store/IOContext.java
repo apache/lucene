@@ -42,7 +42,7 @@ public interface IOContext {
     FLUSH,
     /** Default context, can be used for reading or writing. */
     DEFAULT
-  };
+  }
 
   /** Implemented by classes that can specify hints on how the file will be used */
   interface FileOpenHint {}

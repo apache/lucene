@@ -79,12 +79,11 @@ public final class LogsPanelProvider {
         new JButton(
             FontUtils.elegantIconHtml("&#xe0e6;", MessageUtils.getLocalizedMessage("button.copy")));
     copyBtn.setMargin(new Insets(3, 3, 3, 3));
-    copyBtn.addActionListener(
-        _ -> {
-          Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-          StringSelection selection = new StringSelection(logTextArea.getText());
-          clipboard.setContents(selection, null);
-        });
+    copyBtn.addActionListener(_ -> {
+      Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+      StringSelection selection = new StringSelection(logTextArea.getText());
+      clipboard.setContents(selection, null);
+    });
     header.add(copyBtn);
 
     panel.add(header, BorderLayout.PAGE_START);
@@ -105,41 +104,38 @@ public final class LogsPanelProvider {
           // Create an immutable copy of the logs to display in the gui thread.
           ArrayList<CircularLogBufferHandler.ImmutableLogRecord> clonedCopy =
               new ArrayList<>(records);
-          SwingUtilities.invokeLater(
-              () -> {
-                Level level = (Level) Objects.requireNonNull(logFilter.getSelectedItem());
+          SwingUtilities.invokeLater(() -> {
+            Level level = (Level) Objects.requireNonNull(logFilter.getSelectedItem());
 
-                String logContent =
-                    clonedCopy.stream()
-                        .filter(record -> record.getLevel().intValue() >= level.intValue())
-                        .map(formatter)
-                        .collect(Collectors.joining("\n"));
+            String logContent =
+                clonedCopy.stream()
+                    .filter(record -> record.getLevel().intValue() >= level.intValue())
+                    .map(formatter)
+                    .collect(Collectors.joining("\n"));
 
-                logTextArea.setText(logContent);
-              });
+            logTextArea.setText(logContent);
+          });
         };
 
     var logBuffer = Objects.requireNonNull(LoggerFactory.circularBuffer);
 
     // Update state on filter change.
-    logFilter.addActionListener(
-        _ -> {
-          updater.accept(logBuffer.getLogRecords());
-        });
+    logFilter.addActionListener(_ -> {
+      updater.accept(logBuffer.getLogRecords());
+    });
 
     // Subscribe to log events and update state only when actually displayed.
-    logTextArea.addHierarchyListener(
-        (HierarchyEvent e) -> {
-          if (e.getComponent() == logTextArea
-              && (e.getChangeFlags() & HierarchyEvent.DISPLAYABILITY_CHANGED) != 0) {
-            if (logTextArea.isDisplayable()) {
-              logBuffer.addUpdateListener(updater);
-              updater.accept(logBuffer.getLogRecords());
-            } else {
-              logBuffer.removeUpdateListener(updater);
-            }
-          }
-        });
+    logTextArea.addHierarchyListener((HierarchyEvent e) -> {
+      if (e.getComponent() == logTextArea
+          && (e.getChangeFlags() & HierarchyEvent.DISPLAYABILITY_CHANGED) != 0) {
+        if (logTextArea.isDisplayable()) {
+          logBuffer.addUpdateListener(updater);
+          updater.accept(logBuffer.getLogRecords());
+        } else {
+          logBuffer.removeUpdateListener(updater);
+        }
+      }
+    });
 
     return logTextArea;
   }

@@ -69,7 +69,7 @@ public class TestScripts extends AbstractLuceneDistributionTest {
         launcher,
         0,
         120,
-        (outputBytes) -> {
+        outputBytes -> {
           // We know it's UTF-8 because we set file.encoding explicitly.
           var output = Files.readString(outputBytes, StandardCharsets.UTF_8);
           Assertions.assertThat(output).contains("[Vader] Hello, Luke.");

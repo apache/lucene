@@ -149,20 +149,19 @@ public class TopSuggestDocsCollector extends SimpleCollector {
       // numSegments), but typically numSegments is smallish and num is smallish so this won't
       // matter much in practice:
 
-      pendingResults.sort(
-          (a, b) -> {
-            // sort by higher score
-            int cmp = Float.compare(b.score, a.score);
-            if (cmp == 0) {
-              // tie-break by completion key
-              cmp = Lookup.CHARSEQUENCE_COMPARATOR.compare(a.key, b.key);
-              if (cmp == 0) {
-                // prefer smaller doc id, in case of a tie
-                cmp = Integer.compare(a.doc, b.doc);
-              }
-            }
-            return cmp;
-          });
+      pendingResults.sort((a, b) -> {
+        // sort by higher score
+        int cmp = Float.compare(b.score, a.score);
+        if (cmp == 0) {
+          // tie-break by completion key
+          cmp = Lookup.CHARSEQUENCE_COMPARATOR.compare(a.key, b.key);
+          if (cmp == 0) {
+            // prefer smaller doc id, in case of a tie
+            cmp = Integer.compare(a.doc, b.doc);
+          }
+        }
+        return cmp;
+      });
 
       List<SuggestScoreDoc> hits = new ArrayList<>();
 

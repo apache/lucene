@@ -133,24 +133,22 @@ public class TestClassloadingDeadlock extends Assert {
 
     final CyclicBarrier barrier = new CyclicBarrier(numThreads);
     IntStream.range(0, numThreads)
-        .forEach(
-            taskNo ->
-                pool.execute(
-                    () -> {
-                      try {
-                        // Await a common barrier point for all threads and then
-                        // run racy code. This is intentional.
-                        barrier.await();
-                        tasks.get(taskNo % numTasks).call();
-                      } catch (Throwable t) {
-                        synchronized (args) {
-                          System.err.println(
-                              Thread.currentThread().getName() + " failed to call racy method:");
-                          t.printStackTrace(System.err);
-                        }
-                        Runtime.getRuntime().halt(1); // signal failure to caller
-                      }
-                    }));
+        .forEach(taskNo ->
+            pool.execute(() -> {
+              try {
+                // Await a common barrier point for all threads and then
+                // run racy code. This is intentional.
+                barrier.await();
+                tasks.get(taskNo % numTasks).call();
+              } catch (Throwable t) {
+                synchronized (args) {
+                  System.err.println(
+                      Thread.currentThread().getName() + " failed to call racy method:");
+                  t.printStackTrace(System.err);
+                }
+                Runtime.getRuntime().halt(1); // signal failure to caller
+              }
+            }));
 
     pool.shutdown();
 

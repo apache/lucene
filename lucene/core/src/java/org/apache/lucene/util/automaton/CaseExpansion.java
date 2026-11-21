@@ -23,7 +23,7 @@ import java.util.function.IntConsumer;
 
 /**
  * This file contains unicode properties used by {@code RegExp}. The data was generated using ICU4J
- * v78.3.0.0, unicode version: 17.0.0.0.
+ * v79.1.0.0, unicode version: 18.0.0.0.
  */
 final class CaseExpansion {
   private CaseExpansion() {}
@@ -64,6 +64,7 @@ final class CaseExpansion {
         break;
       case 0x00DF: // LATIN SMALL LETTER SHARP S
         fn.accept(0x1E9E); // LATIN CAPITAL LETTER SHARP S
+        fn.accept(0x1DF95); // LATIN SMALL LIGATURE LONG S WITH DESCENDER S
         break;
       case 0x00E5: // LATIN SMALL LETTER A WITH RING ABOVE
         fn.accept(0x212B); // ANGSTROM SIGN
@@ -286,6 +287,9 @@ final class CaseExpansion {
       case 0x1E9B: // LATIN SMALL LETTER LONG S WITH DOT ABOVE
         fn.accept(0x1E61); // LATIN SMALL LETTER S WITH DOT ABOVE
         break;
+      case 0x1E9E: // LATIN CAPITAL LETTER SHARP S
+        fn.accept(0x1DF95); // LATIN SMALL LIGATURE LONG S WITH DESCENDER S
+        break;
       case 0x1FBE: // GREEK PROSGEGRAMMENI
         fn.accept(0x0345); // COMBINING GREEK YPOGEGRAMMENI
         fn.accept(0x03B9); // GREEK SMALL LETTER IOTA
@@ -316,6 +320,10 @@ final class CaseExpansion {
         break;
       case 0xFB06: // LATIN SMALL LIGATURE ST
         fn.accept(0xFB05); // LATIN SMALL LIGATURE LONG S T
+        break;
+      case 0x1DF95: // LATIN SMALL LIGATURE LONG S WITH DESCENDER S
+        fn.accept(0x00DF); // LATIN SMALL LETTER SHARP S
+        fn.accept(0x1E9E); // LATIN CAPITAL LETTER SHARP S
         break;
     }
   }

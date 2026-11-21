@@ -535,32 +535,31 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
 
     ensureSaneIWCOnNightly(conf);
 
-    conf.setMergedSegmentWarmer(
-        (reader) -> {
-          if (VERBOSE) {
-            System.out.println("TEST: now warm merged reader=" + reader);
-          }
-          var core = SEGMENT_READER_ACCESS.getCore((SegmentReader) reader);
-          warmed.put(core, Boolean.TRUE);
-          final int maxDoc = reader.maxDoc();
-          final Bits liveDocs = reader.getLiveDocs();
-          int sum = 0;
-          final int inc = Math.max(1, maxDoc / 50);
-          StoredFields storedFields = reader.storedFields();
-          for (int docID = 0; docID < maxDoc; docID += inc) {
-            if (liveDocs == null || liveDocs.get(docID)) {
-              final Document doc = storedFields.document(docID);
-              sum += doc.getFields().size();
-            }
-          }
+    conf.setMergedSegmentWarmer(reader -> {
+      if (VERBOSE) {
+        System.out.println("TEST: now warm merged reader=" + reader);
+      }
+      var core = SEGMENT_READER_ACCESS.getCore((SegmentReader) reader);
+      warmed.put(core, Boolean.TRUE);
+      final int maxDoc = reader.maxDoc();
+      final Bits liveDocs = reader.getLiveDocs();
+      int sum = 0;
+      final int inc = Math.max(1, maxDoc / 50);
+      StoredFields storedFields = reader.storedFields();
+      for (int docID = 0; docID < maxDoc; docID += inc) {
+        if (liveDocs == null || liveDocs.get(docID)) {
+          final Document doc = storedFields.document(docID);
+          sum += doc.getFields().size();
+        }
+      }
 
-          IndexSearcher searcher = newSearcher(reader, false);
-          sum += searcher.search(new TermQuery(new Term("body", "united")), 10).totalHits.value();
+      IndexSearcher searcher = newSearcher(reader, false);
+      sum += searcher.search(new TermQuery(new Term("body", "united")), 10).totalHits.value();
 
-          if (VERBOSE) {
-            System.out.println("TEST: warm visited " + sum + " fields");
-          }
-        });
+      if (VERBOSE) {
+        System.out.println("TEST: warm visited " + sum + " fields");
+      }
+    });
 
     if (VERBOSE) {
       conf.setInfoStream(

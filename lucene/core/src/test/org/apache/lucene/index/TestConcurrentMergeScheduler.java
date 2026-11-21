@@ -480,19 +480,18 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
             mergeScheduler.new MergeThread(mergeSource, merge) {
               @Override
               public void run() {
-                executor.execute(
-                    () -> {
-                      if (Thread.currentThread() == this) {
-                        threadsExecutedOnSelf.incrementAndGet();
-                      } else {
-                        threadsExecutedOnPool.incrementAndGet();
-                      }
-                      try {
-                        latch.await();
-                      } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                      }
-                    });
+                executor.execute(() -> {
+                  if (Thread.currentThread() == this) {
+                    threadsExecutedOnSelf.incrementAndGet();
+                  } else {
+                    threadsExecutedOnPool.incrementAndGet();
+                  }
+                  try {
+                    latch.await();
+                  } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                  }
+                });
               }
             });
       }
@@ -1038,14 +1037,13 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
                 }
               }) {
         Thread t =
-            new Thread(
-                () -> {
-                  try {
-                    writer.forceMerge(1);
-                  } catch (IOException e) {
-                    throw new AssertionError(e);
-                  }
-                });
+            new Thread(() -> {
+              try {
+                writer.forceMerge(1);
+              } catch (IOException e) {
+                throw new AssertionError(e);
+              }
+            });
         ConcurrentMergeScheduler cms =
             (ConcurrentMergeScheduler) writer.getConfig().getMergeScheduler();
         cms.setMaxMergesAndThreads(2, 2);
