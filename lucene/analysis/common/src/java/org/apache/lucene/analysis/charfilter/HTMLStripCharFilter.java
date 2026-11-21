@@ -42,7 +42,7 @@ public final class HTMLStripCharFilter extends BaseCharFilter {
   private static final int YYEOF = -1;
 
   /** Initial size of the lookahead buffer. */
-  private static final int ZZ_BUFFERSIZE = 16384;
+  private static final int ZZ_BUFFERSIZE = 2048;
 
   /** Lexical states. */
   private static final int YYINITIAL = 0;

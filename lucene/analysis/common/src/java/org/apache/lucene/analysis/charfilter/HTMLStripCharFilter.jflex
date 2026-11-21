@@ -38,6 +38,7 @@ import org.apache.lucene.analysis.util.OpenStringBuilder;
 %final
 %public
 %char
+%buffer 2048
 %function nextChar
 %class HTMLStripCharFilter
 %extends BaseCharFilter

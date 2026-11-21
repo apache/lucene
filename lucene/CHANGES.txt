@@ -402,6 +402,9 @@ Optimizations
 
 * GITHUB#16757: Speed up building cached bit sets in LRUQueryCache. (Ke Wei)
 
+* GITHUB#17057: HTMLStripCharFilter starts with a 2,048-char scanner buffer instead of 16,384
+  chars, so each instance allocates about 28 KB less; the buffer still grows for long tokens. (Asharam)
+
 Bug Fixes
 ---------------------
 * GITHUB#17020: Reduce CachingTokenFilter memory use by not copying stale term bytes in

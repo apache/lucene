@@ -1,6 +1,6 @@
 {
     "gradle/regenerate/jflex/skeleton.default.txt": "58944f66c9113a940dfaf6a17210ec8219024390",
     "lucene/analysis/common/src/java/org/apache/lucene/analysis/charfilter/HTMLCharacterEntities.jflex": "d1aa75b9b37646efe31731394f84a063eb7eed9d",
-    "lucene/analysis/common/src/java/org/apache/lucene/analysis/charfilter/HTMLStripCharFilter.java": "f91634e841396e38daf626176da8d065d9a3975c",
-    "lucene/analysis/common/src/java/org/apache/lucene/analysis/charfilter/HTMLStripCharFilter.jflex": "b2ae7bec8b6e3fe5a4820d45d0cff99a7c7e6d36"
+    "lucene/analysis/common/src/java/org/apache/lucene/analysis/charfilter/HTMLStripCharFilter.java": "95ea1a9755238ae6ae315725f825d0295a321214",
+    "lucene/analysis/common/src/java/org/apache/lucene/analysis/charfilter/HTMLStripCharFilter.jflex": "6fbfe56de7eeb3153626ea5765fe4b7ca06c93e7"
 }
