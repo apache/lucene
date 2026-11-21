@@ -36,6 +36,17 @@ public class TestVisitedSet extends LuceneTestCase {
     assertBitSet(HnswGraphSearcher.createVisitedSet(100, 152_831));
     assertHashSet(HnswGraphSearcher.createVisitedSet(100, 152_832));
 
+    // a query keeps the bit set until expectedVisitedNodes < graphSize / 2048
+    assertBitSet(VisitedSet.createForQuery(100, 101 * 2048 - 1));
+    assertHashSet(VisitedSet.createForQuery(100, 101 * 2048));
+    // up to 2^21 nodes, a 256 KB bit set; past that, the graphSize / 128 rule of create
+    assertBitSet(VisitedSet.createForQuery(1500, 1 << 21));
+    assertHashSet(VisitedSet.createForQuery(1500, (1 << 21) + 1));
+    assertBitSet(VisitedSet.createForQuery(20_000, (1 << 21) + 1));
+    // k = 100 expects 1455 visits at these sizes
+    assertBitSet(HnswGraphSearcher.createQueryVisitedSet(100, 1 << 21));
+    assertHashSet(HnswGraphSearcher.createQueryVisitedSet(100, (1 << 21) + 1));
+
     RandomVectorScorerSupplier scorerSupplier =
         DefaultFlatVectorScorer.INSTANCE.getRandomVectorScorerSupplier(
             VectorSimilarityFunction.DOT_PRODUCT,
