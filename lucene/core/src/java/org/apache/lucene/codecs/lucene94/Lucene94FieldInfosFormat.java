@@ -17,9 +17,10 @@
 package org.apache.lucene.codecs.lucene94;
 
 import java.io.IOException;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.FieldInfosFormat;
@@ -147,8 +148,8 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
         final int size = input.readVInt(); // read in the size
         infos = new FieldInfo[size];
 
-        // previous field's attribute map, we share when possible:
-        Map<String, String> lastAttributes = Collections.emptyMap();
+        // equal attribute maps are shared across all fields of this segment:
+        Map<Map<String, String>, Map<String, String>> distinctAttributes = new HashMap<>();
 
         for (int i = 0; i < size; i++) {
           String name = input.readString();
@@ -194,11 +195,7 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
           }
           final long dvGen = input.readLong();
           Map<String, String> attributes = input.readMapOfStrings();
-          // just use the last field's map if its the same
-          if (attributes.equals(lastAttributes)) {
-            attributes = lastAttributes;
-          }
-          lastAttributes = attributes;
+          attributes = distinctAttributes.computeIfAbsent(attributes, Function.identity());
           int pointDataDimensionCount = input.readVInt();
           int pointNumBytes;
           int pointIndexDimensionCount = pointDataDimensionCount;
