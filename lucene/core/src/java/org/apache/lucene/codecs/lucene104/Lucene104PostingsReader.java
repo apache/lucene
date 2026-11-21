@@ -66,6 +66,16 @@ public final class Lucene104PostingsReader extends PostingsReaderBase {
 
   static final VectorizationProvider VECTORIZATION_PROVIDER = VectorizationProvider.getInstance();
 
+  /**
+   * Frequencies returned by postings enums that do not need frequencies. This array is shared
+   * across all such postings enums and must never be modified.
+   */
+  private static final int[] ALL_ONES_FREQS = new int[BLOCK_SIZE];
+
+  static {
+    Arrays.fill(ALL_ONES_FREQS, 1);
+  }
+
   private final IndexInput docIn;
   private final IndexInput posIn;
   private final IndexInput payIn;
@@ -304,7 +314,9 @@ public final class Lucene104PostingsReader extends PostingsReaderBase {
     /* Variables when the block is stored as a bit set */
     // Since we use a bit set when it's more storage-efficient, the bit set cannot have more than
     // BLOCK_SIZE*32 bits, which is the maximum possible storage requirement with FOR.
-    private final FixedBitSet docBitSet = new FixedBitSet(BLOCK_SIZE * Integer.SIZE);
+    // Lazily allocated: only needed if at least one block of the postings list is encoded as a bit
+    // set, which requires at least BLOCK_SIZE docs and is unlikely for low-frequency terms.
+    private FixedBitSet docBitSet;
     private int docBitSetBase;
     // Reuse docBuffer for cumulative pop counts of the words of the bit set.
     private final int[] docCumulativeWordPopCounts = docBuffer;
@@ -332,7 +344,8 @@ public final class Lucene104PostingsReader extends PostingsReaderBase {
     private IndexInput docIn;
     private PostingDecodingUtil docInUtil;
 
-    private final int[] freqBuffer = new int[BLOCK_SIZE];
+    // Shared and read-only (ALL_ONES_FREQS) if frequencies are not needed.
+    private final int[] freqBuffer;
     private final int[] posDeltaBuffer;
 
     private final int[] payloadLengthBuffer;
@@ -425,9 +438,9 @@ public final class Lucene104PostingsReader extends PostingsReaderBase {
       this.needsImpacts = needsImpacts;
       needsDocsAndFreqsOnly = needsPos == false && needsImpacts == false;
 
-      if (needsFreq == false) {
-        Arrays.fill(freqBuffer, 1);
-      }
+      // If frequencies are not needed, #freq() always returns 1. Use a shared read-only buffer
+      // rather than allocating and filling one buffer per postings enum.
+      freqBuffer = needsFreq ? new int[BLOCK_SIZE] : ALL_ONES_FREQS;
 
       if (needsImpacts) {
         impactBuffer = new FreqAndNormBuffer();
@@ -598,6 +611,9 @@ public final class Lucene104PostingsReader extends PostingsReaderBase {
       } else {
         // block is encoded as a bit set
         assert level0LastDocID != NO_MORE_DOCS;
+        if (docBitSet == null) {
+          docBitSet = new FixedBitSet(BLOCK_SIZE * Integer.SIZE);
+        }
         docBitSetBase = prevDocID + 1;
         int numLongs;
         if (bitsPerValue == 0) {
@@ -639,7 +655,10 @@ public final class Lucene104PostingsReader extends PostingsReaderBase {
       assert docCountLeft >= 0 && docCountLeft < BLOCK_SIZE;
       if (docFreq == 1) {
         docBuffer[0] = singletonDocID;
-        freqBuffer[0] = (int) totalTermFreq;
+        if (needsFreq) {
+          // freqBuffer is shared and must not be modified otherwise
+          freqBuffer[0] = (int) totalTermFreq;
+        }
         docBuffer[1] = NO_MORE_DOCS;
         assert freqFP == -1;
         docCountLeft = 0;

@@ -402,6 +402,10 @@ Optimizations
 
 * GITHUB#16757: Speed up building cached bit sets in LRUQueryCache. (Ke Wei)
 
+* GITHUB#17024: Postings enums allocate their doc bit set lazily and share a read-only buffer of
+  frequencies when frequencies are not needed, reducing allocations for low-frequency terms.
+  (Asharam)
+
 Bug Fixes
 ---------------------
 * GITHUB#17020: Reduce CachingTokenFilter memory use by not copying stale term bytes in

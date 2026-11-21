@@ -28,10 +28,15 @@ import org.apache.lucene.codecs.lucene103.blocktree.FieldReader;
 import org.apache.lucene.codecs.lucene103.blocktree.Stats;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.FieldType;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FreqAndNormBuffer;
+import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.store.Directory;
@@ -41,6 +46,7 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.BasePostingsFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.BytesRef;
 
 public class TestLucene104PostingsFormat extends BasePostingsFormatTestCase {
 
@@ -73,6 +79,81 @@ public class TestLucene104PostingsFormat extends BasePostingsFormatTestCase {
       assertEquals(i, Lucene104PostingsReader.readVLong15(in));
       assertEquals(out.getPosition(), in.getPosition());
     }
+  }
+
+  /**
+   * Postings enums that do and do not need frequencies, used at the same time and reused across
+   * terms whose postings are a singleton, a tail block only, full blocks encoded as bit sets, and
+   * full packed blocks followed by a tail block.
+   */
+  public void testInterleavedAndReusedEnumsWithAndWithoutFreqs() throws IOException {
+    final int maxDoc = 2_000;
+    final String[] terms = {"single", "tail", "dense", "sparse"};
+    // freqs[t][doc] is the frequency of terms[t] in doc, or 0 if doc does not contain it
+    final int[][] freqs = new int[terms.length][maxDoc];
+    freqs[0][random().nextInt(maxDoc)] = TestUtil.nextInt(random(), 2, 10);
+    for (int i = 0; i < 50; ++i) {
+      freqs[1][random().nextInt(maxDoc)] = TestUtil.nextInt(random(), 1, 5);
+    }
+    for (int doc = 0; doc < maxDoc; ++doc) {
+      freqs[2][doc] = TestUtil.nextInt(random(), 1, 3);
+      if (doc % 7 == 0) {
+        freqs[3][doc] = TestUtil.nextInt(random(), 1, 5);
+      }
+    }
+
+    FieldType type = new FieldType();
+    type.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
+    type.setTokenized(true);
+    type.freeze();
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    iwc.setCodec(getCodec());
+    IndexWriter w = new IndexWriter(dir, iwc);
+    for (int doc = 0; doc < maxDoc; ++doc) {
+      StringBuilder text = new StringBuilder();
+      for (int t = 0; t < terms.length; ++t) {
+        for (int i = 0; i < freqs[t][doc]; ++i) {
+          text.append(terms[t]).append(' ');
+        }
+      }
+      Document d = new Document();
+      d.add(new Field("f", text.toString(), type));
+      w.addDocument(d);
+    }
+    w.forceMerge(1);
+    w.close();
+
+    try (DirectoryReader reader = DirectoryReader.open(dir)) {
+      LeafReader leaf = getOnlyLeafReader(reader);
+      TermsEnum termsEnum = leaf.terms("f").iterator();
+      PostingsEnum reuseNoFreqs = null;
+      PostingsEnum reuseFreqs = null;
+      for (int iter = 0; iter < 20; ++iter) {
+        int t = random().nextInt(terms.length);
+        assertTrue(termsEnum.seekExact(new BytesRef(terms[t])));
+        PostingsEnum noFreqs = termsEnum.postings(reuseNoFreqs, PostingsEnum.NONE);
+        PostingsEnum withFreqs = termsEnum.postings(reuseFreqs, PostingsEnum.FREQS);
+        if (random().nextBoolean()) {
+          reuseNoFreqs = noFreqs;
+          reuseFreqs = withFreqs;
+        }
+        // advance both enums in lockstep so that they decode blocks alternately
+        for (int doc = 0; doc < maxDoc; ++doc) {
+          if (freqs[t][doc] == 0) {
+            continue;
+          }
+          assertEquals(doc, noFreqs.nextDoc());
+          assertEquals(doc, withFreqs.nextDoc());
+          assertEquals(freqs[t][doc], withFreqs.freq());
+          // enums that do not need frequencies share a read-only buffer of ones
+          assertEquals(1, noFreqs.freq());
+        }
+        assertEquals(PostingsEnum.NO_MORE_DOCS, noFreqs.nextDoc());
+        assertEquals(PostingsEnum.NO_MORE_DOCS, withFreqs.nextDoc());
+      }
+    }
+    dir.close();
   }
 
   /** Make sure the final sub-block(s) are not skipped. */
