@@ -402,6 +402,9 @@ Optimizations
 
 * GITHUB#16757: Speed up building cached bit sets in LRUQueryCache. (Ke Wei)
 
+* GITHUB#17045: DocIdSetBuilder sorts doc IDs that are clustered in a small range of the doc ID
+  space with fewer radix sort passes. (Asharam)
+
 Bug Fixes
 ---------------------
 * GITHUB#17020: Reduce CachingTokenFilter memory use by not copying stale term bytes in
