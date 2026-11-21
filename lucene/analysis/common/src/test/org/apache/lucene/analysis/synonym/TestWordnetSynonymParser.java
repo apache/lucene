@@ -36,7 +36,6 @@ public class TestWordnetSynonymParser extends BaseTokenStreamTestCase {
           + "s(100000004,1,'king''s evil',n,1,1).\n"
           + "s(100000004,2,'king''s meany',n,1,1).\n";
 
-  @SuppressWarnings("deprecation")
   public void testSynonyms() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     WordnetSynonymParser parser = new WordnetSynonymParser(true, true, analyzer);
@@ -49,7 +48,8 @@ public class TestWordnetSynonymParser extends BaseTokenStreamTestCase {
           @Override
           protected TokenStreamComponents createComponents(String fieldName) {
             Tokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
-            return new TokenStreamComponents(tokenizer, new SynonymFilter(tokenizer, map, false));
+            return new TokenStreamComponents(
+                tokenizer, new SynonymGraphFilter(tokenizer, map, false));
           }
         };
 
@@ -57,23 +57,23 @@ public class TestWordnetSynonymParser extends BaseTokenStreamTestCase {
     assertAnalyzesTo(
         analyzer,
         "Lost in the woods",
-        new String[] {"Lost", "in", "the", "woods", "wood", "forest"},
+        new String[] {"Lost", "in", "the", "wood", "forest", "woods"},
         new int[] {0, 5, 8, 12, 12, 12},
         new int[] {4, 7, 11, 17, 17, 17},
         new int[] {1, 1, 1, 1, 0, 0});
 
     /* single quote */
-    assertAnalyzesTo(analyzer, "king", new String[] {"king", "baron"});
+    assertAnalyzesTo(analyzer, "king", new String[] {"baron", "king"});
 
     /* multi words */
-    assertAnalyzesTo(analyzer, "king's evil", new String[] {"king's", "king's", "evil", "meany"});
+    assertAnalyzesTo(analyzer, "king's evil", new String[] {"king's", "king's", "meany", "evil"});
 
     /* all expansions, test types */
     assertAnalyzesTo(
         analyzer,
         "Lost in the forest",
-        new String[] {"Lost", "in", "the", "forest", "woods", "wood"},
-        new String[] {"word", "word", "word", "word", "SYNONYM", "SYNONYM"});
+        new String[] {"Lost", "in", "the", "woods", "wood", "forest"},
+        new String[] {"word", "word", "word", "SYNONYM", "SYNONYM", "word"});
     analyzer.close();
   }
 }

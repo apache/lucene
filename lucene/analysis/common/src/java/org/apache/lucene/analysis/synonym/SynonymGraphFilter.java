@@ -61,14 +61,13 @@ import org.apache.lucene.util.fst.FST;
 
 /**
  * Applies single- or multi-token synonyms from a {@link SynonymMap} to an incoming {@link
- * TokenStream}, producing a fully correct graph output. This is a replacement for {@link
- * SynonymFilter}, which produces incorrect graphs for multi-token synonyms.
+ * TokenStream}, producing a fully correct graph output.
  *
  * <p>However, if you use this during indexing, you must follow it with {@link FlattenGraphFilter}
- * to squash tokens on top of one another like {@link SynonymFilter}, because the indexer can't
- * directly consume a graph. To get fully correct positional queries when your synonym replacements
- * are multiple tokens, you should instead apply synonyms using this {@code TokenFilter} at query
- * time and translate the resulting graph to a {@code TermAutomatonQuery} e.g. using {@code
+ * to squash tokens on top of one another, because the indexer can't directly consume a graph. To
+ * get fully correct positional queries when your synonym replacements are multiple tokens, you
+ * should instead apply synonyms using this {@code TokenFilter} at query time and translate the
+ * resulting graph to a {@code TermAutomatonQuery} e.g. using {@code
  * TokenStreamToTermAutomatonQuery}.
  *
  * <p><b>NOTE</b>: this cannot consume an incoming graph; results will be undefined.
