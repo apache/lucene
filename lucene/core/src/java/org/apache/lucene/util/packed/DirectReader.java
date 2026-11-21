@@ -186,13 +186,37 @@ public class DirectReader {
     };
   }
 
-  static final class DirectPackedReader1 extends LongValues {
+  /** Base class for readers of values packed by {@link DirectWriter}. */
+  abstract static class DirectPackedValuesReader extends LongValues implements DirectPackedValues {
     final RandomAccessInput in;
     final long offset;
+    private final int bitsPerValue;
 
-    DirectPackedReader1(RandomAccessInput in, long offset) {
+    DirectPackedValuesReader(RandomAccessInput in, long offset, int bitsPerValue) {
       this.in = in;
       this.offset = offset;
+      this.bitsPerValue = bitsPerValue;
+    }
+
+    @Override
+    public final int bitsPerValue() {
+      return bitsPerValue;
+    }
+
+    @Override
+    public final RandomAccessInput input() {
+      return in;
+    }
+
+    @Override
+    public final long offset() {
+      return offset;
+    }
+  }
+
+  static final class DirectPackedReader1 extends DirectPackedValuesReader {
+    DirectPackedReader1(RandomAccessInput in, long offset) {
+      super(in, offset, 1);
     }
 
     @Override
@@ -206,13 +230,9 @@ public class DirectReader {
     }
   }
 
-  static final class DirectPackedReader2 extends LongValues {
-    final RandomAccessInput in;
-    final long offset;
-
+  static final class DirectPackedReader2 extends DirectPackedValuesReader {
     DirectPackedReader2(RandomAccessInput in, long offset) {
-      this.in = in;
-      this.offset = offset;
+      super(in, offset, 2);
     }
 
     @Override
@@ -226,13 +246,9 @@ public class DirectReader {
     }
   }
 
-  static final class DirectPackedReader4 extends LongValues {
-    final RandomAccessInput in;
-    final long offset;
-
+  static final class DirectPackedReader4 extends DirectPackedValuesReader {
     DirectPackedReader4(RandomAccessInput in, long offset) {
-      this.in = in;
-      this.offset = offset;
+      super(in, offset, 4);
     }
 
     @Override
@@ -246,13 +262,9 @@ public class DirectReader {
     }
   }
 
-  static final class DirectPackedReader8 extends LongValues {
-    final RandomAccessInput in;
-    final long offset;
-
+  static final class DirectPackedReader8 extends DirectPackedValuesReader {
     DirectPackedReader8(RandomAccessInput in, long offset) {
-      this.in = in;
-      this.offset = offset;
+      super(in, offset, 8);
     }
 
     @Override
@@ -265,13 +277,9 @@ public class DirectReader {
     }
   }
 
-  static final class DirectPackedReader12 extends LongValues {
-    final RandomAccessInput in;
-    final long offset;
-
+  static final class DirectPackedReader12 extends DirectPackedValuesReader {
     DirectPackedReader12(RandomAccessInput in, long offset) {
-      this.in = in;
-      this.offset = offset;
+      super(in, offset, 12);
     }
 
     @Override
@@ -286,13 +294,9 @@ public class DirectReader {
     }
   }
 
-  static final class DirectPackedReader16 extends LongValues {
-    final RandomAccessInput in;
-    final long offset;
-
+  static final class DirectPackedReader16 extends DirectPackedValuesReader {
     DirectPackedReader16(RandomAccessInput in, long offset) {
-      this.in = in;
-      this.offset = offset;
+      super(in, offset, 16);
     }
 
     @Override
@@ -305,13 +309,9 @@ public class DirectReader {
     }
   }
 
-  static final class DirectPackedReader20 extends LongValues {
-    final RandomAccessInput in;
-    final long offset;
-
+  static final class DirectPackedReader20 extends DirectPackedValuesReader {
     DirectPackedReader20(RandomAccessInput in, long offset) {
-      this.in = in;
-      this.offset = offset;
+      super(in, offset, 20);
     }
 
     @Override
@@ -326,13 +326,9 @@ public class DirectReader {
     }
   }
 
-  static final class DirectPackedReader24 extends LongValues {
-    final RandomAccessInput in;
-    final long offset;
-
+  static final class DirectPackedReader24 extends DirectPackedValuesReader {
     DirectPackedReader24(RandomAccessInput in, long offset) {
-      this.in = in;
-      this.offset = offset;
+      super(in, offset, 24);
     }
 
     @Override
@@ -345,13 +341,9 @@ public class DirectReader {
     }
   }
 
-  static final class DirectPackedReader28 extends LongValues {
-    final RandomAccessInput in;
-    final long offset;
-
+  static final class DirectPackedReader28 extends DirectPackedValuesReader {
     DirectPackedReader28(RandomAccessInput in, long offset) {
-      this.in = in;
-      this.offset = offset;
+      super(in, offset, 28);
     }
 
     @Override
@@ -366,13 +358,9 @@ public class DirectReader {
     }
   }
 
-  static final class DirectPackedReader32 extends LongValues {
-    final RandomAccessInput in;
-    final long offset;
-
+  static final class DirectPackedReader32 extends DirectPackedValuesReader {
     DirectPackedReader32(RandomAccessInput in, long offset) {
-      this.in = in;
-      this.offset = offset;
+      super(in, offset, 32);
     }
 
     @Override
@@ -385,13 +373,9 @@ public class DirectReader {
     }
   }
 
-  static final class DirectPackedReader40 extends LongValues {
-    final RandomAccessInput in;
-    final long offset;
-
+  static final class DirectPackedReader40 extends DirectPackedValuesReader {
     DirectPackedReader40(RandomAccessInput in, long offset) {
-      this.in = in;
-      this.offset = offset;
+      super(in, offset, 40);
     }
 
     @Override
@@ -404,13 +388,9 @@ public class DirectReader {
     }
   }
 
-  static final class DirectPackedReader48 extends LongValues {
-    final RandomAccessInput in;
-    final long offset;
-
+  static final class DirectPackedReader48 extends DirectPackedValuesReader {
     DirectPackedReader48(RandomAccessInput in, long offset) {
-      this.in = in;
-      this.offset = offset;
+      super(in, offset, 48);
     }
 
     @Override
@@ -423,13 +403,9 @@ public class DirectReader {
     }
   }
 
-  static final class DirectPackedReader56 extends LongValues {
-    final RandomAccessInput in;
-    final long offset;
-
+  static final class DirectPackedReader56 extends DirectPackedValuesReader {
     DirectPackedReader56(RandomAccessInput in, long offset) {
-      this.in = in;
-      this.offset = offset;
+      super(in, offset, 56);
     }
 
     @Override
@@ -442,13 +418,9 @@ public class DirectReader {
     }
   }
 
-  static final class DirectPackedReader64 extends LongValues {
-    final RandomAccessInput in;
-    final long offset;
-
+  static final class DirectPackedReader64 extends DirectPackedValuesReader {
     DirectPackedReader64(RandomAccessInput in, long offset) {
-      this.in = in;
-      this.offset = offset;
+      super(in, offset, 64);
     }
 
     @Override
