@@ -19,6 +19,10 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#16564: Speed up automaton intersection for PrefixQuery, TermRangeQuery and custom binary
+  automata by directly enumerating terms below accepting states with full-alphabet self-loops.
+  (Zhou Hui)
+
 * GITHUB#16806: HNSW searches track the visited nodes of a large graph in a hash set instead of a
   bit set sized to the graph, which makes merges into large segments faster. (Ankur Goel)
 
@@ -27,7 +31,7 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+* GITHUB#17030: Fix precision loss when reducing join scores. (Ke Wei)
 
 Other
 ---------------------
@@ -37,6 +41,9 @@ Other
 
 API Changes
 ---------------------
+* GITHUB#16997: Monitor's QueryTree subclasses now implement collectTerms(TermCollector), and
+  collectTerms(BiConsumer) is final. (Luke Kot-Zaniewski)
+
 * GITHUB#16985: Remove the deprecated TokenSources methods in the highlighter module
   (getAnyTokenStream, getTokenStreamWithOffsets and the getTokenStream overloads taking a Terms,
   IndexReader, Document or plain text). Use TokenSources#getTokenStream(String, Fields, String,
@@ -228,6 +235,17 @@ API Changes
 
 New Features
 ---------------------
+* GITHUB#16957: Add Albanian analyzer (org.apache.lucene.analysis.sq): a normalizer that folds ë/ç and
+  in-word apostrophes, a light suffix-stripping stemmer covering standard and Gheg inflection,
+  and a stop word list. (Visar Uruqi)
+
+* GITHUB#16997: Monitor's QueryTree now merges each group of conjoined, negated leaf queries
+  (e.g. -x:a -x:b) into one "negative disjunct", which documents satisfy by containing none of its
+  terms. This will later let TermFilteredPresearcher skip a query for documents that contain at
+  least one term of each of its negative disjuncts. TermWeightor gains negate and withNegation to
+  weigh the absence of a term, and CustomQueryHandler gains handleNegatedQuery. No presearcher uses
+  these yet. (Luke Kot-Zaniewski)
+
 * GITHUB#16571: A merge can write more than one segment. A merge policy returns document ranges
   from MergePolicy.OneMerge#getDocRangePartitions and the merge writes one output segment per
   range. (Jim Ferenczi)
@@ -266,6 +284,9 @@ New Features
 
 Improvements
 ---------------------
+* GITHUB#16851: Use PriorityQueue#addAll for bulk heap construction in SynonymQuery,
+  LargeNumHitsTopDocsCollector and TermAutomatonScorer. (Zhou Hui)
+
 * GITHUB#15704: Replace LinkedList with more efficient data structure. (Renato Haeberli)
 
 * GITHUB#15682: Use ArrayDeque instead of LinkedList in CompoundWordTokenFilterBase.java. (Renato Haeberli)
@@ -373,11 +394,22 @@ Optimizations
   IOContext, allowing MMapDirectory to open them with confined areas and avoiding JVM-wide
   handshakes when the files are closed. (Alan Woodward)
 
-* GITHUB#XXXXX: Constant-score multi-term queries that match a single term in a segment iterate
+* GITHUB#17021: Skip computing the cardinality of a window in DenseConjunctionBulkScorer when
+  no clause is left to apply. (Asharam)
+
+* GITHUB#14397: Reuse the LZ4 preset dictionary when reading stored fields or term vectors
+  from the same compressed chunk. (Ke Wei)
+
+* GITHUB#16757: Speed up building cached bit sets in LRUQueryCache. (Ke Wei)
+
+* GITHUB#17058: Constant-score multi-term queries that match a single term in a segment iterate
   that term's postings directly instead of building a BooleanQuery per segment. (Asharam)
 
 Bug Fixes
 ---------------------
+* GITHUB#17020: Reduce CachingTokenFilter memory use by not copying stale term bytes in
+  CharTermAttributeImpl#clone. (Eugene Rizhkov)
+
 * GITHUB#16983: UnifiedHighlighter.Builder#withFlags is no longer ignored when building the
   highlighter. (Christoph Büscher)
 
@@ -464,6 +496,11 @@ Bug Fixes
 
 * GITHUB#16971: Fix double DocValuesStats extrema initialization. (Simranjeet Singh)
 
+* GITHUB#16892: Escape '=', '<', '>' and '@' in the flexible query parser's QueryParserUtil.escape.
+  (Soma Aishwarya)
+
+* GITHUB#17018: Fix NPE when a span query searches over masked fields that don't have any indexed docs in them (Simon Cooper)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
@@ -500,6 +537,9 @@ Build
   profiling.jfc by host OS. (Prithvi S)
 
 * GITHUB#16036: Upgrade gradle to 9.5.0 (Dawid Weiss)
+
+* GITHUB#17035: Upgrade to a custom fork of JFlex (1.10.0); tokenizer regeneration is an order
+  of magnitude faster and needs far less memory. (Dawid Weiss)
 
 Other
 ---------------------

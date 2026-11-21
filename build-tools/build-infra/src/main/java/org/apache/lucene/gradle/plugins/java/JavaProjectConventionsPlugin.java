@@ -29,13 +29,12 @@ public class JavaProjectConventionsPlugin extends LuceneGradlePlugin {
   public void apply(Project project) {
     applicableToRootProjectOnly(project);
 
-    project.allprojects(
-        p -> {
-          if (Stream.of("src/java", "src/test", "src/tools")
-              .anyMatch(srcDir -> p.file(srcDir).exists())) {
-            applyJavaPlugins(p);
-          }
-        });
+    project.allprojects(p -> {
+      if (Stream.of("src/java", "src/test", "src/tools")
+          .anyMatch(srcDir -> p.file(srcDir).exists())) {
+        applyJavaPlugins(p);
+      }
+    });
   }
 
   private void applyJavaPlugins(Project project) {

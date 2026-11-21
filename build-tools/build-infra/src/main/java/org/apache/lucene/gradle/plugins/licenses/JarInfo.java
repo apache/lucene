@@ -53,13 +53,12 @@ record JarInfo(String id, String module, String fileName, String checksum)
       @SuppressWarnings("unchecked")
       var asList = (List<Map<String, String>>) new JsonSlurper().parse(input);
       return asList.stream()
-          .map(
-              asMap ->
-                  new JarInfo(
-                      asMap.get("id"),
-                      asMap.get("module"),
-                      asMap.get("fileName"),
-                      asMap.get("checksum")))
+          .map(asMap ->
+              new JarInfo(
+                  asMap.get("id"),
+                  asMap.get("module"),
+                  asMap.get("fileName"),
+                  asMap.get("checksum")))
           .toList();
     } catch (IOException e) {
       throw new UncheckedIOException(e);

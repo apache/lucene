@@ -42,22 +42,22 @@ public class TestSegmentCacheables extends LuceneTestCase {
 
   public void testMultipleDocValuesDelegates() throws IOException {
 
-    SegmentCacheable seg = (_) -> true;
-    SegmentCacheable non = (_) -> false;
-    SegmentCacheable dv1 = (ctx) -> DocValues.isCacheable(ctx, "field1");
-    SegmentCacheable dv2 = (ctx) -> DocValues.isCacheable(ctx, "field2");
-    SegmentCacheable dv3 = (ctx) -> DocValues.isCacheable(ctx, "field3");
-    SegmentCacheable dv34 = (ctx) -> DocValues.isCacheable(ctx, "field3", "field4");
-    SegmentCacheable dv12 = (ctx) -> DocValues.isCacheable(ctx, "field1", "field2");
+    SegmentCacheable seg = _ -> true;
+    SegmentCacheable non = _ -> false;
+    SegmentCacheable dv1 = ctx -> DocValues.isCacheable(ctx, "field1");
+    SegmentCacheable dv2 = ctx -> DocValues.isCacheable(ctx, "field2");
+    SegmentCacheable dv3 = ctx -> DocValues.isCacheable(ctx, "field3");
+    SegmentCacheable dv34 = ctx -> DocValues.isCacheable(ctx, "field3", "field4");
+    SegmentCacheable dv12 = ctx -> DocValues.isCacheable(ctx, "field1", "field2");
 
-    SegmentCacheable seg_dv1 = (ctx) -> isCacheable(ctx, seg, dv1);
-    SegmentCacheable dv2_dv34 = (ctx) -> isCacheable(ctx, dv2, dv34);
-    SegmentCacheable dv2_non = (ctx) -> isCacheable(ctx, dv2, non);
+    SegmentCacheable seg_dv1 = ctx -> isCacheable(ctx, seg, dv1);
+    SegmentCacheable dv2_dv34 = ctx -> isCacheable(ctx, dv2, dv34);
+    SegmentCacheable dv2_non = ctx -> isCacheable(ctx, dv2, non);
 
-    SegmentCacheable seg_dv1_dv2_dv34 = (ctx) -> isCacheable(ctx, seg_dv1, dv2_dv34);
+    SegmentCacheable seg_dv1_dv2_dv34 = ctx -> isCacheable(ctx, seg_dv1, dv2_dv34);
 
-    SegmentCacheable dv1_dv3 = (ctx) -> isCacheable(ctx, dv1, dv3);
-    SegmentCacheable dv12_dv1_dv3 = (ctx) -> isCacheable(ctx, dv12, dv1_dv3);
+    SegmentCacheable dv1_dv3 = ctx -> isCacheable(ctx, dv1, dv3);
+    SegmentCacheable dv12_dv1_dv3 = ctx -> isCacheable(ctx, dv12, dv1_dv3);
 
     Directory dir = newDirectory();
     IndexWriterConfig iwc = newIndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE);

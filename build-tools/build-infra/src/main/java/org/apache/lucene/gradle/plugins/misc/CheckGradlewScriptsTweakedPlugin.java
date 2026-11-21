@@ -49,30 +49,28 @@ public class CheckGradlewScriptsTweakedPlugin extends LuceneGradlePlugin {
                 task -> {
                   var scripts =
                       Stream.of("gradlew", "gradlew.bat")
-                          .map(
-                              name ->
-                                  project.getLayout().getProjectDirectory().file(name).getAsFile())
+                          .map(name ->
+                              project.getLayout().getProjectDirectory().file(name).getAsFile())
                           .toList();
 
                   task.getInputs().files(scripts);
-                  task.doFirst(
-                      _ -> {
-                        try {
-                          for (var script : scripts) {
-                            var content = Files.readString(script.toPath(), StandardCharsets.UTF_8);
-                            if (!content.contains("START OF LUCENE CUSTOMIZATION")) {
-                              throw new GradleException(
-                                  "Launch script "
-                                      + script
-                                      + " seems to be missing Lucene-specific"
-                                      + " customizations (have you upgraded gradle wrapper?)."
-                                      + " Review the history of this file and reapply the required tweaks.");
-                            }
-                          }
-                        } catch (IOException e) {
-                          throw new UncheckedIOException(e);
+                  task.doFirst(_ -> {
+                    try {
+                      for (var script : scripts) {
+                        var content = Files.readString(script.toPath(), StandardCharsets.UTF_8);
+                        if (!content.contains("START OF LUCENE CUSTOMIZATION")) {
+                          throw new GradleException(
+                              "Launch script "
+                                  + script
+                                  + " seems to be missing Lucene-specific"
+                                  + " customizations (have you upgraded gradle wrapper?)."
+                                  + " Review the history of this file and reapply the required tweaks.");
                         }
-                      });
+                      }
+                    } catch (IOException e) {
+                      throw new UncheckedIOException(e);
+                    }
+                  });
                 });
 
     project.getTasks().named("check").configure(t -> t.dependsOn(gradlewScriptsTweaked));

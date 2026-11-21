@@ -103,11 +103,10 @@ public final class ConfirmDialogFactory implements DialogOpener.DialogFactory {
     JPanel footer = new JPanel(new FlowLayout(FlowLayout.TRAILING));
     footer.setOpaque(false);
     JButton okBtn = new JButton(MessageUtils.getLocalizedMessage("button.ok"));
-    okBtn.addActionListener(
-        _ -> {
-          callback.call();
-          dialog.dispose();
-        });
+    okBtn.addActionListener(_ -> {
+      callback.call();
+      dialog.dispose();
+    });
     footer.add(okBtn);
     JButton closeBtn = new JButton(MessageUtils.getLocalizedMessage("button.close"));
     closeBtn.addActionListener(_ -> dialog.dispose());

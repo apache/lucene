@@ -66,7 +66,7 @@ public class PhraseHelper {
 
   public static final PhraseHelper NONE =
       new PhraseHelper(
-          MatchAllDocsQuery.INSTANCE, "_ignored_", (_) -> false, _ -> null, _ -> null, true);
+          MatchAllDocsQuery.INSTANCE, "_ignored_", _ -> false, _ -> null, _ -> null, true);
 
   private final String fieldName;
   private final Set<BytesRef> positionInsensitiveTerms; // (TermQuery terms)
@@ -229,7 +229,7 @@ public class PhraseHelper {
     IndexSearcher searcher = new IndexSearcher(leafReader);
     searcher.setQueryCache(null);
 
-    // for each SpanQuery, grab it's Spans and put it into a PriorityQueue
+    // for each SpanQuery, grab its Spans and put it into a PriorityQueue
     PriorityQueue<Spans> spansPriorityQueue =
         PriorityQueue.usingComparator(
             spanQueries.size(), Comparator.comparingInt(Spans::startPosition));
