@@ -65,9 +65,13 @@ final class LongRangeNode {
       outputs.add(range.pos());
     } else if (left != null) {
       assert right != null;
-      // Recurse:
-      left.addOutputs(range);
-      right.addOutputs(range);
+      // The children partition this node, so only descend into intersecting children.
+      if (range.range().min <= left.end) {
+        left.addOutputs(range);
+      }
+      if (range.range().max >= right.start) {
+        right.addOutputs(range);
+      }
     }
   }
 
