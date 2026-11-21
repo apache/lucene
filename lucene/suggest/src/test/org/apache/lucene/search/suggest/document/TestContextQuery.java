@@ -64,6 +64,21 @@ public class TestContextQuery extends LuceneTestCase {
     assertTrue(expected.getMessage().contains(ContextQuery.class.getSimpleName()));
   }
 
+  public void testReservedCharsInQueryContext() throws Exception {
+    ContextQuery query =
+        new ContextQuery(
+            new PrefixCompletionQuery(
+                new MockAnalyzer(random()), new Term("suggest_field", "sugg")));
+    for (int reserved : TestContextSuggestField.RESERVED_CHARS) {
+      String context = "ad" + (char) reserved + "min";
+      IllegalArgumentException expected =
+          expectThrows(IllegalArgumentException.class, () -> query.addContext(context));
+      assertTrue(
+          expected.getMessage(),
+          expected.getMessage().contains("[0x" + Integer.toHexString(reserved) + "]"));
+    }
+  }
+
   public void testSimpleContextQuery() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     RandomIndexWriter iw =
