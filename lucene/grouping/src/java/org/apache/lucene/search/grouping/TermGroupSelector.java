@@ -83,10 +83,10 @@ public class TermGroupSelector extends GroupSelector<BytesRef> {
       groupId = -1;
       return includeEmpty ? State.ACCEPT : State.SKIP;
     }
+    int ord = docValues.ordValue();
     if (needsGroupLookup) {
       lookupGroupOrdinals();
     }
-    int ord = docValues.ordValue();
     if (ordsToGroupIds.containsKey(ord)) {
       groupId = ordsToGroupIds.get(ord);
       return State.ACCEPT;
@@ -126,7 +126,6 @@ public class TermGroupSelector extends GroupSelector<BytesRef> {
   public void setGroups(Collection<SearchGroup<BytesRef>> searchGroups) {
     this.values.clear();
     this.values.reinit();
-    includeEmpty = false;
     for (SearchGroup<BytesRef> sg : searchGroups) {
       if (sg.groupValue == null) {
         includeEmpty = true;

@@ -73,7 +73,7 @@ public class TestTermGroupSelector extends BaseGroupSelectorTestCase<BytesRef> {
         for (int pass = 0; pass < 4; pass++) {
           boolean restricted = pass >= 2;
           if (pass == 3) {
-            selector.setGroups(List.of(shared));
+            selector.setGroups(List.of(shared, new SearchGroup<>()));
           }
           for (var leaf : reader.leaves()) {
             selector.setNextReader(leaf);
@@ -83,9 +83,7 @@ public class TestTermGroupSelector extends BaseGroupSelectorTestCase<BytesRef> {
             for (int doc = 0; doc < leaf.reader().maxDoc(); doc++) {
               BytesRef group = expected.get(leaf.docBase + doc);
               boolean accept =
-                  restricted
-                      ? (pass == 2 && group == null) || shared.groupValue.equals(group)
-                      : group != null;
+                  restricted ? group == null || shared.groupValue.equals(group) : group != null;
               assertEquals(
                   accept ? GroupSelector.State.ACCEPT : GroupSelector.State.SKIP,
                   selector.advanceTo(doc));
