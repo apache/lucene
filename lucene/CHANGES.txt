@@ -405,6 +405,10 @@ Optimizations
 * GITHUB#17058: Constant-score multi-term queries that match a single term in a segment iterate
   that term's postings directly instead of building a BooleanQuery per segment. (Asharam)
 
+* GITHUB#17045: LSBRadixSorter sorts values that are clustered in a small part of their range with
+  fewer radix passes. This speeds up DocIdSetBuilder, e.g. for range queries on fields whose values
+  follow doc ID order such as timestamps or index sort fields. (Asharam)
+
 Bug Fixes
 ---------------------
 * GITHUB#17020: Reduce CachingTokenFilter memory use by not copying stale term bytes in
