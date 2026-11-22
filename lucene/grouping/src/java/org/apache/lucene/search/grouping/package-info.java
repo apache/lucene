@@ -40,9 +40,11 @@
  *       The collector managers ({@link
  *       org.apache.lucene.search.grouping.FirstPassGroupingCollectorManager}, {@link
  *       org.apache.lucene.search.grouping.BlockGroupingCollectorManager}) name this parameter
- *       <code>topNGroups</code>. For example, with five groups per page, the second page uses a
- *       group offset of 5 and a group limit of 5: it skips the first five groups and returns up to
- *       the next five. The last page can be shorter when fewer groups match.
+ *       <code>topNGroups</code>. The underlying collectors' own <code>topNGroups</code> counts from
+ *       the top, so the managers pass the offset plus the limit to them. For example, with five
+ *       groups per page, the second page uses a group offset of 5 and a group limit of 5: it skips
+ *       the first five groups and returns up to the next five. The last page can be shorter when
+ *       fewer groups match.
  *   <li><code>withinGroupSort</code>: how the documents within each group are sorted. This can be
  *       different from the group sort.
  *   <li><code>withinGroupOffset</code>: how many top documents to skip within each returned group
@@ -50,7 +52,11 @@
  *       the documents inside a group, not the groups.
  *   <li><code>maxDocsPerGroup</code>: the maximum number of documents to return per group, starting
  *       at <code>withinGroupOffset</code> ({@link
- *       org.apache.lucene.search.grouping.GroupingSearch#setGroupDocsLimit}).
+ *       org.apache.lucene.search.grouping.GroupingSearch#setGroupDocsLimit}, {@link
+ *       org.apache.lucene.search.grouping.TopGroupsCollectorManager}). {@link
+ *       org.apache.lucene.search.grouping.BlockGroupingCollectorManager} is the exception: its
+ *       <code>maxDocsPerGroup</code> counts from the top of the group, so pass the offset plus the
+ *       number of documents wanted.
  * </ul>
  *
  * <p>The implementation is two-pass: the first pass ({@link
@@ -84,7 +90,8 @@
  *       groups and top documents per group yourself.
  * </ul>
  *
- * <p>To group by a field, index it as a single-valued {@link
+ * <p>To group by a field with <code>GroupingSearch(String)</code> or {@link
+ * org.apache.lucene.search.grouping.TermGroupSelector}, index it as a single-valued {@link
  * org.apache.lucene.document.SortedDocValuesField}:
  *
  * <pre><code class="language-java">
@@ -97,8 +104,7 @@
  * <pre><code class="language-java">
  *   GroupingSearch groupingSearch = new GroupingSearch("author");
  *   groupingSearch.setGroupSort(groupSort);
- *   // Documents to return within each group:
- *   groupingSearch.setGroupDocsOffset(0);
+ *   // Documents to return within each group (defaults: offset 0, limit 1):
  *   groupingSearch.setGroupDocsLimit(docsPerGroup);
  *
  *   if (useCache) {
@@ -116,7 +122,7 @@
  *   int groupLimit = 5;
  *   TopGroups&lt;BytesRef&gt; result = groupingSearch.search(indexSearcher, query, groupOffset, groupLimit);
  *
- *   // Render groupsResult...
+ *   // Render result...
  *   if (requiredTotalGroupCount) {
  *     int totalGroupCount = result.totalGroupCount;
  *   }
@@ -140,9 +146,9 @@
  *   writer.addDocuments(oneGroup);
  * </code></pre>
  *
- * Then, at search time (<code>groupOffset</code> and <code>topNGroups</code> page the groups as
- * described above; unlike <code>GroupingSearch</code>, the last argument counts documents from the
- * top of each group, including the ones skipped by <code>docOffset</code>):
+ * At search time, <code>groupOffset</code> and <code>topNGroups</code> page the groups as described
+ * above, while the last argument, <code>maxDocsPerGroup</code>, counts documents from the top of
+ * each group, including the ones skipped by <code>docOffset</code>:
  *
  * <pre><code class="language-java">
  *   Query groupEndDocs = new TermQuery(new Term("groupEnd", "x"));
