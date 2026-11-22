@@ -82,9 +82,20 @@ public class RegenerateTasksSupportPlugin extends LuceneGradlePlugin {
   private static final String REGEN_TASK_NAME = "regenerate";
   private static final String REGEN_TASK_WIPE_CHECKSUMS = "removeRegenerateChecksums";
 
+  /** Forces regeneration tasks to run, even if their checksums are up to date. */
+  public static final String OPT_REGENERATE_FORCE = "lucene.regenerate.force";
+
   @Override
   public void apply(Project rootProject) {
     applicableToRootProjectOnly(rootProject);
+
+    Provider<Boolean> forceOption =
+        getBuildOptions(rootProject)
+            .addBooleanOption(
+                OPT_REGENERATE_FORCE,
+                "Force regeneration tasks to run, even if their checksums are up to date"
+                    + " (unlike --rerun-tasks, other tasks are not affected).",
+                false);
 
     var regenTasks =
         rootProject.getAllprojects().stream()
@@ -99,7 +110,7 @@ public class RegenerateTasksSupportPlugin extends LuceneGradlePlugin {
         .projectsEvaluated(_ -> {
           for (var taskCollection : regenTasks) {
             for (Task task : taskCollection.stream().toList()) {
-              configureRegenerateTask(task);
+              configureRegenerateTask(task, forceOption);
             }
           }
         });
@@ -157,7 +168,7 @@ public class RegenerateTasksSupportPlugin extends LuceneGradlePlugin {
     return regenerateTasks;
   }
 
-  private static void configureRegenerateTask(Task delegate) {
+  private static void configureRegenerateTask(Task delegate, Provider<Boolean> forceOption) {
     var project = delegate.getProject();
     var tasks = project.getTasks();
     String taskName = delegate.getName();
@@ -233,6 +244,10 @@ public class RegenerateTasksSupportPlugin extends LuceneGradlePlugin {
             .matching(task -> taskNames.contains(task.getName()))
             .configureEach(other -> {
               other.mustRunAfter(delegate);
+              // Follow-up tasks typically modify their own inputs (code formatting), so
+              // gradle may consider them up to date if the source task writes the same
+              // output again. Always run them if the source task did.
+              other.getOutputs().upToDateWhen(_ -> !delegate.getState().getDidWork());
             });
       }
 
@@ -243,6 +258,10 @@ public class RegenerateTasksSupportPlugin extends LuceneGradlePlugin {
 
         if (project.getGradle().getStartParameter().isRerunTasks()) {
           shouldRerun.set(true);
+        } else if (forceOption.get()) {
+          shouldRerun.set(true);
+          // gradle's own up-to-date checks would skip the task otherwise.
+          delegate.getOutputs().upToDateWhen(_ -> false);
         } else {
           shouldRerun.set(
               project
