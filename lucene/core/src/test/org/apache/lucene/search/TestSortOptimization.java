@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.function.BiFunction;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
@@ -1148,7 +1149,8 @@ public class TestSortOptimization extends LuceneTestCase {
     IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
     for (int value : values) {
       Document doc = new Document();
-      doc.add(new KeywordField("my_field", String.format("%09d", value), Field.Store.NO));
+      doc.add(
+          new KeywordField("my_field", String.format(Locale.ROOT, "%09d", value), Field.Store.NO));
       writer.addDocument(doc);
     }
     writer.forceMerge(1);
@@ -1183,10 +1185,11 @@ public class TestSortOptimization extends LuceneTestCase {
         Sort sort =
             new Sort(KeywordField.newSortField("my_field", reverse, SortedSetSelector.Type.MIN));
         TopDocs topDocs = assertSort(reader, sort, 10, null);
-        assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value(), numDocs);
+        // Terms that are no longer competitive must be dropped from the disjunction
+        assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value(), numDocs / 10);
         FieldDoc after = (FieldDoc) topDocs.scoreDocs[topDocs.scoreDocs.length - 1];
         topDocs = assertSort(reader, sort, 10, after);
-        assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value(), numDocs);
+        assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value(), numDocs / 10);
       }
     }
   }
