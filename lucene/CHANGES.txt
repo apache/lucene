@@ -402,7 +402,7 @@ Optimizations
 
 * GITHUB#16757: Speed up building cached bit sets in LRUQueryCache. (Ke Wei)
 
-* GITHUB#XXXXX: TermGroupSelector maps a segment's ordinals to groups when a document first hits
+* GITHUB#17060: TermGroupSelector maps a segment's ordinals to groups when a document first hits
   them, instead of looking up every group seen so far at each new segment. This speeds up first-pass
   grouping over many segments with mostly distinct groups. (Asharam)
 
