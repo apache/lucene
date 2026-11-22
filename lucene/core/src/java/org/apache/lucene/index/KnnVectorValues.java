@@ -94,7 +94,8 @@ public abstract class KnnVectorValues {
 
   /**
    * Creates a new copy of this {@link KnnVectorValues}. This is helpful when you need to access
-   * different values at once, to avoid overwriting the underlying vector returned.
+   * different values at once, to avoid overwriting the underlying vector returned, or an {@link
+   * #iterator()} that does not share its position with iterators of this instance.
    */
   public abstract KnnVectorValues copy() throws IOException;
 
@@ -126,7 +127,16 @@ public abstract class KnnVectorValues {
     };
   }
 
-  /** Create an iterator for this instance. */
+  /**
+   * Create an iterator over the documents that have a vector in this instance.
+   *
+   * <p>The returned iterator may be a view over state held by this instance, like {@link
+   * org.apache.lucene.search.Scorer#iterator()}: calling this method several times can return
+   * iterators that share one position, so advancing one advances the others, and an iterator
+   * returned after another one was advanced is not positioned on {@code -1}. Sparse fields, where
+   * not every document has a vector, behave this way. To get an independent iterator positioned on
+   * {@code -1}, call this method on a new {@link #copy()}.
+   */
   public DocIndexIterator iterator() {
     throw new UnsupportedOperationException();
   }

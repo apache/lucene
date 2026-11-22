@@ -1163,6 +1163,52 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     }
   }
 
+  /**
+   * Iterators of one instance may share a position (sparse fields do), but an iterator of a new
+   * {@link KnnVectorValues#copy()} must start on -1 and visit every document with a vector.
+   */
+  public void testIteratorOfCopyIsIndependent() throws Exception {
+    VectorEncoding encoding = randomVectorEncoding();
+    int dimension = 2 * TestUtil.nextInt(random(), 1, 10);
+    VectorSimilarityFunction similarity = randomSimilarity();
+    boolean sparse = random().nextBoolean();
+    int numDocs = atLeast(20);
+    List<Integer> docsWithVector = new ArrayList<>();
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+      for (int i = 0; i < numDocs; i++) {
+        Document doc = new Document();
+        if (sparse == false || i % 2 == 0) {
+          addRandomVectorField(doc, "v", encoding, dimension, similarity);
+          docsWithVector.add(i);
+        }
+        w.addDocument(doc);
+      }
+      w.forceMerge(1);
+      try (IndexReader r = DirectoryReader.open(w)) {
+        LeafReader leaf = getOnlyLeafReader(r);
+        KnnVectorValues values =
+            switch (encoding) {
+              case BYTE -> leaf.getByteVectorValues("v");
+              case FLOAT16 -> leaf.getFloat16VectorValues("v");
+              case FLOAT32 -> leaf.getFloatVectorValues("v");
+            };
+        KnnVectorValues.DocIndexIterator first = values.iterator();
+        assertEquals(docsWithVector.get(0).intValue(), first.nextDoc());
+        assertEquals(docsWithVector.get(1).intValue(), first.nextDoc());
+
+        KnnVectorValues.DocIndexIterator fromCopy = values.copy().iterator();
+        assertEquals(-1, fromCopy.docID());
+        for (int expected : docsWithVector) {
+          assertEquals(expected, fromCopy.nextDoc());
+        }
+        assertEquals(NO_MORE_DOCS, fromCopy.nextDoc());
+        // the copy did not move the original iterator
+        assertEquals(docsWithVector.get(1).intValue(), first.docID());
+      }
+    }
+  }
+
   public void testFloatVectorScorerIteration() throws Exception {
     IndexWriterConfig iwc = newIndexWriterConfig();
     if (random().nextBoolean()) {

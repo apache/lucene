@@ -554,6 +554,9 @@ Build
 Other
 ---------------------
 
+* GITHUB#17049: Document that iterators from one KnnVectorValues instance may share a position
+  (sparse fields do), and that iterator() on a copy() gives an independent one. (Chang Yong Lik)
+
 * GITHUB#16513: Add docIDRunEnd contract tests for DV formats to BaseDocValuesFormatTestCase. (Tim Allison)
 
 * GITHUB#16512: AssertingScorer's two-phase iterator now delegates docIDRunEnd(),
