@@ -91,7 +91,8 @@ public class BlockGroupingCollectorManager<T>
    * @param lastDocPerGroup a {@link Weight} that matches the last document in each group block
    * @param withinGroupSort the sort used to rank documents within each group
    * @param withinGroupOffset the offset into each group's documents to start returning from
-   * @param maxDocsPerGroup the maximum number of documents to return per group
+   * @param maxDocsPerGroup how many top documents to keep per group, counted from the top of the
+   *     group; at most {@code maxDocsPerGroup - withinGroupOffset} are returned
    */
   public BlockGroupingCollectorManager(
       Sort groupSort,
