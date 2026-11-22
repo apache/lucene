@@ -16,8 +16,6 @@
  */
 
 /**
- *
- *
  * <h2>Monitoring framework</h2>
  *
  * This package contains classes to allow the monitoring of a stream of documents with a set of

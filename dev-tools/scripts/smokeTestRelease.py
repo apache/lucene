@@ -16,7 +16,7 @@
 
 import argparse
 import codecs
-import datetime
+import datetime as dt
 import filecmp
 import glob
 import hashlib
@@ -446,7 +446,7 @@ def printFileContents(fileName: str) -> None:
 def run(command: str, logFile: str) -> None:
   if cygwin:
     command = cygwinifyPaths(command)
-  if os.system("%s > %s 2>&1" % (command, logFile)):  # ty:ignore[deprecated]
+  if os.system("%s > %s 2>&1" % (command, logFile)):
     logPath: str = str(Path(logFile).resolve())
     print('\ncommand "%s" failed:' % command)
     printFileContents(logFile)
@@ -605,6 +605,7 @@ def verifyUnpacked(java: Any, artifact: str, unpackPath: str, gitRevision: str, 
   ]
   if isSrc:
     expected_src_root_files = [
+      "AI_POLICY.md",
       "build.gradle",
       "build-options.properties",
       "build-tools",
@@ -616,6 +617,7 @@ def verifyUnpacked(java: Any, artifact: str, unpackPath: str, gitRevision: str, 
       "gradlew.bat",
       "help",
       "lucene",
+      "SECURITY.md",
       "settings.gradle",
       "versions.lock",
     ]
@@ -1163,7 +1165,7 @@ def main() -> None:
 
 
 def smokeTest(java: Any, baseURL: str, gitRevision: str, version: str, tmpDir: str, isSigned: bool, local_keys: str | None, testArgs: str, downloadOnly: bool = False) -> None:
-  startTime = datetime.datetime.now()
+  startTime = dt.datetime.now()
 
   # Tests annotated @Nightly are more resource-intensive but often cover
   # important code paths. They're disabled by default to preserve a good
@@ -1219,7 +1221,7 @@ def smokeTest(java: Any, baseURL: str, gitRevision: str, version: str, tmpDir: s
   else:
     print("\nLucene test done (--download-only specified)")
 
-  print("\nSUCCESS! [%s]\n" % (datetime.datetime.now() - startTime))
+  print("\nSUCCESS! [%s]\n" % (dt.datetime.now() - startTime))
 
 
 if __name__ == "__main__":

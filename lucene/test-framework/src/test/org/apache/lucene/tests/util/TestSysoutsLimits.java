@@ -17,6 +17,7 @@
 package org.apache.lucene.tests.util;
 
 import com.carrotsearch.randomizedtesting.RandomizedTest;
+import com.carrotsearch.randomizedtesting.SysGlobals;
 import java.util.stream.Collectors;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -76,6 +77,21 @@ public class TestSysoutsLimits extends WithNestedTests {
             .collect(Collectors.joining("\n"));
 
     Assert.assertTrue(msg, msg.contains("The test or suite printed 10 bytes"));
+  }
+
+  @Test
+  public void testNotEnforcedWhenRepeatingTestCases() {
+    String iters = SysGlobals.SYSPROP_ITERATIONS();
+    try {
+      // Still apply limit for single iter.
+      System.setProperty(iters, "1");
+      Assert.assertEquals(1, new JUnitCore().run(OverSoftLimit.class).getFailureCount());
+
+      System.setProperty(iters, "3");
+      Assert.assertEquals(0, new JUnitCore().run(OverSoftLimit.class).getFailureCount());
+    } finally {
+      System.clearProperty(iters);
+    }
   }
 
   @TestRuleLimitSysouts.Limit(bytes = 10)

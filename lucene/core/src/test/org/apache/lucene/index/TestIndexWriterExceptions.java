@@ -49,6 +49,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.PhraseQuery;
+import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
@@ -2302,6 +2303,27 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
     }
   }
 
+  public void testPerFieldFinishExceptionDoesNotCorruptStoredFields() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = newIndexWriterConfig();
+    iwc.setSimilarity(
+        new BM25Similarity() {
+          @Override
+          public long computeNorm(FieldInvertState state) {
+            return 0; // invalid return that triggers an exception
+          }
+        });
+    IndexWriter w = new IndexWriter(dir, iwc);
+
+    Document bad = new Document();
+    bad.add(new TextField("text", "hello world", Field.Store.NO));
+    expectThrows(IllegalStateException.class, () -> w.addDocument(bad));
+
+    w.commit();
+    w.close();
+    dir.close();
+  }
+
   public void testExceptionJustBeforeFlushWithPointValues() throws Exception {
     Directory dir = newDirectory();
     Analyzer analyzer =
@@ -2319,7 +2341,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
         newIndexWriterConfig(analyzer).setCommitOnClose(false).setMaxBufferedDocs(3);
     MergePolicy mp = iwc.getMergePolicy();
     iwc.setMergePolicy(
-        new SoftDeletesRetentionMergePolicy("soft_delete", MatchAllDocsQuery::new, mp));
+        new SoftDeletesRetentionMergePolicy("soft_delete", () -> MatchAllDocsQuery.INSTANCE, mp));
     IndexWriter w = RandomIndexWriter.mockIndexWriter(dir, iwc, random());
     Document newdoc = new Document();
     newdoc.add(newTextField("crash", "do it on token 4", Field.Store.NO));

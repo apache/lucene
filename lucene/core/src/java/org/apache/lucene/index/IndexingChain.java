@@ -40,6 +40,7 @@ import org.apache.lucene.codecs.PointsFormat;
 import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.KnnByteVectorField;
+import org.apache.lucene.document.KnnFloat16VectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StoredValue;
@@ -57,7 +58,9 @@ import org.apache.lucene.document.column.ObjectTupleCursor;
 import org.apache.lucene.document.column.OrdinalsCursor;
 import org.apache.lucene.document.column.OrdinalsTupleCursor;
 import org.apache.lucene.document.column.TokenStreamColumn;
+import org.apache.lucene.document.column.ValidatingVectorValuesCursor;
 import org.apache.lucene.document.column.VectorColumn;
+import org.apache.lucene.document.column.VectorValuesCursor;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
@@ -658,11 +661,14 @@ final class IndexingChain implements Accountable {
       }
     } finally {
       if (hasHitAbortingException == false) {
-        // Finish each indexed field name seen in the document:
-        for (int i = 0; i < indexedFieldCount; i++) {
-          fields[i].finish(docID);
+        try {
+          // Finish each indexed field name seen in the document:
+          for (int i = 0; i < indexedFieldCount; i++) {
+            fields[i].finish(docID);
+          }
+        } finally {
+          finishStoredFields();
         }
-        finishStoredFields();
         // TODO: for broken docs, optimize termsHash.finishDocument
         try {
           termsHash.finishDocument(docID);
@@ -917,11 +923,14 @@ final class IndexingChain implements Accountable {
         }
       } finally {
         if (hasHitAbortingException == false) {
-          for (int i = 0; i < indexedFieldCount; i++) {
-            fields[i].finish(segDocID);
-          }
-          if (hasStored) {
-            finishStoredFields();
+          try {
+            for (int i = 0; i < indexedFieldCount; i++) {
+              fields[i].finish(segDocID);
+            }
+          } finally {
+            if (hasStored) {
+              finishStoredFields();
+            }
           }
           if (hasInverted) {
             try {
@@ -1251,26 +1260,19 @@ final class IndexingChain implements Accountable {
   private static void processVectorColumn(
       int baseDocID, int numDocs, VectorColumn<?> column, PerField pf, IndexableFieldType fieldType)
       throws IOException {
+    // Dense fast path: hand the writer a values cursor for the whole batch.
+    if (column.density() == Column.Density.DENSE) {
+      processDenseVectorColumn(baseDocID, numDocs, column, pf, fieldType);
+      return;
+    }
+
     final VectorEncoding encoding = fieldType.vectorEncoding();
     final int dimension = fieldType.vectorDimension();
+    final VectorSimilarityFunction similarityFunction = fieldType.vectorSimilarityFunction();
     final ObjectTupleCursor<?> cursor = column.tuples();
     int prevBatchDocID = -1;
-    int consumed = 0;
     int batchDocID;
     switch (encoding) {
-      case FLOAT32 -> {
-        KnnFieldVectorsWriter<float[]> writer =
-            (KnnFieldVectorsWriter<float[]>) pf.knnFieldVectorsWriter;
-        while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-          ColumnValidation.checkDocID(column, batchDocID, numDocs);
-          ColumnValidation.checkVectorDocIDStrictlyIncreasing(column, batchDocID, prevBatchDocID);
-          float[] vec = (float[]) cursor.value();
-          ColumnValidation.checkVectorDimension(column, vec.length, dimension, batchDocID);
-          writer.addValue(baseDocID + batchDocID, vec);
-          prevBatchDocID = batchDocID;
-          consumed++;
-        }
-      }
       case BYTE -> {
         KnnFieldVectorsWriter<byte[]> writer =
             (KnnFieldVectorsWriter<byte[]>) pf.knnFieldVectorsWriter;
@@ -1279,14 +1281,91 @@ final class IndexingChain implements Accountable {
           ColumnValidation.checkVectorDocIDStrictlyIncreasing(column, batchDocID, prevBatchDocID);
           byte[] vec = (byte[]) cursor.value();
           ColumnValidation.checkVectorDimension(column, vec.length, dimension, batchDocID);
+          ColumnValidation.checkByteVectorValue(column, vec, similarityFunction, batchDocID);
           writer.addValue(baseDocID + batchDocID, vec);
           prevBatchDocID = batchDocID;
-          consumed++;
+        }
+      }
+      case FLOAT16 -> {
+        KnnFieldVectorsWriter<short[]> writer =
+            (KnnFieldVectorsWriter<short[]>) pf.knnFieldVectorsWriter;
+        while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+          ColumnValidation.checkDocID(column, batchDocID, numDocs);
+          ColumnValidation.checkVectorDocIDStrictlyIncreasing(column, batchDocID, prevBatchDocID);
+          short[] vec = (short[]) cursor.value();
+          ColumnValidation.checkVectorDimension(column, vec.length, dimension, batchDocID);
+          ColumnValidation.checkFloat16VectorValue(column, vec, similarityFunction, batchDocID);
+          writer.addValue(baseDocID + batchDocID, vec);
+          prevBatchDocID = batchDocID;
+        }
+      }
+      case FLOAT32 -> {
+        KnnFieldVectorsWriter<float[]> writer =
+            (KnnFieldVectorsWriter<float[]>) pf.knnFieldVectorsWriter;
+        while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+          ColumnValidation.checkDocID(column, batchDocID, numDocs);
+          ColumnValidation.checkVectorDocIDStrictlyIncreasing(column, batchDocID, prevBatchDocID);
+          float[] vec = (float[]) cursor.value();
+          ColumnValidation.checkVectorDimension(column, vec.length, dimension, batchDocID);
+          ColumnValidation.checkFloatVectorValue(column, vec, similarityFunction, batchDocID);
+          writer.addValue(baseDocID + batchDocID, vec);
+          prevBatchDocID = batchDocID;
         }
       }
     }
-    if (column.density() == Column.Density.DENSE) {
-      ColumnValidation.checkDenseCount(column, consumed, numDocs);
+  }
+
+  /**
+   * Feeds a DENSE {@link VectorColumn} to the field's vectors writer through a single {@link
+   * KnnFieldVectorsWriter#addDenseValues} call. The count and dimension are checked once per batch;
+   * the per-value checks run as the writer consumes vectors from the cursor, through {@link
+   * ValidatingVectorValuesCursor}.
+   */
+  @SuppressWarnings("unchecked")
+  private static void processDenseVectorColumn(
+      int baseDocID, int numDocs, VectorColumn<?> column, PerField pf, IndexableFieldType fieldType)
+      throws IOException {
+    final VectorValuesCursor<?> cursor = column.values();
+    ColumnValidation.checkDenseCount(column, cursor.size(), numDocs);
+    ColumnValidation.checkVectorCursorDimension(
+        column, cursor.dimension(), fieldType.vectorDimension());
+    final VectorSimilarityFunction similarityFunction = fieldType.vectorSimilarityFunction();
+    final ValidatingVectorValuesCursor<?> validating =
+        switch (fieldType.vectorEncoding()) {
+          case BYTE -> {
+            ValidatingVectorValuesCursor<byte[]> values =
+                ValidatingVectorValuesCursor.ofBytes(
+                    column, (VectorValuesCursor<byte[]>) cursor, similarityFunction);
+            ((KnnFieldVectorsWriter<byte[]>) pf.knnFieldVectorsWriter)
+                .addDenseValues(baseDocID, values);
+            yield values;
+          }
+          case FLOAT16 -> {
+            ValidatingVectorValuesCursor<short[]> values =
+                ValidatingVectorValuesCursor.ofFloat16s(
+                    column, (VectorValuesCursor<short[]>) cursor, similarityFunction);
+            ((KnnFieldVectorsWriter<short[]>) pf.knnFieldVectorsWriter)
+                .addDenseValues(baseDocID, values);
+            yield values;
+          }
+          case FLOAT32 -> {
+            ValidatingVectorValuesCursor<float[]> values =
+                ValidatingVectorValuesCursor.ofFloats(
+                    column, (VectorValuesCursor<float[]>) cursor, similarityFunction);
+            ((KnnFieldVectorsWriter<float[]>) pf.knnFieldVectorsWriter)
+                .addDenseValues(baseDocID, values);
+            yield values;
+          }
+        };
+    if (validating.consumed() != numDocs) {
+      throw new IllegalStateException(
+          "vectors writer for field \""
+              + column.name()
+              + "\" consumed "
+              + validating.consumed()
+              + " of "
+              + numDocs
+              + " dense vectors");
     }
   }
 
@@ -1690,6 +1769,9 @@ final class IndexingChain implements Accountable {
       case BYTE ->
           ((KnnFieldVectorsWriter<byte[]>) pf.knnFieldVectorsWriter)
               .addValue(docID, ((KnnByteVectorField) field).vectorValue());
+      case FLOAT16 ->
+          ((KnnFieldVectorsWriter<short[]>) pf.knnFieldVectorsWriter)
+              .addValue(docID, ((KnnFloat16VectorField) field).vectorValue());
       case FLOAT32 ->
           ((KnnFieldVectorsWriter<float[]>) pf.knnFieldVectorsWriter)
               .addValue(docID, ((KnnFloatVectorField) field).vectorValue());

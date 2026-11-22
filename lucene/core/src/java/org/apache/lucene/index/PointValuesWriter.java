@@ -286,32 +286,32 @@ class PointValuesWriter {
             }
             return new PointValues() {
               @Override
-              public PointTree getPointTree() throws IOException {
+              public PointTree getPointTree() {
                 return values;
               }
 
               @Override
-              public byte[] getMinPackedValue() throws IOException {
+              public byte[] getMinPackedValue() {
                 throw new UnsupportedOperationException();
               }
 
               @Override
-              public byte[] getMaxPackedValue() throws IOException {
+              public byte[] getMaxPackedValue() {
                 throw new UnsupportedOperationException();
               }
 
               @Override
-              public int getNumDimensions() throws IOException {
+              public int getNumDimensions() {
                 throw new UnsupportedOperationException();
               }
 
               @Override
-              public int getNumIndexDimensions() throws IOException {
+              public int getNumIndexDimensions() {
                 throw new UnsupportedOperationException();
               }
 
               @Override
-              public int getBytesPerDimension() throws IOException {
+              public int getBytesPerDimension() {
                 throw new UnsupportedOperationException();
               }
 

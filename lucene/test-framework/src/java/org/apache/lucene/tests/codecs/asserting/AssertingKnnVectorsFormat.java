@@ -28,6 +28,7 @@ import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.MergeState;
@@ -37,9 +38,11 @@ import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.tests.search.AssertingAcceptDocs;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IORunnable;
+import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.hnsw.HnswGraph;
 
 /** Wraps the default KnnVectorsFormat and provides additional assertions. */
@@ -133,11 +136,22 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
 
     @Override
     public FloatVectorValues getFloatVectorValues(String field) throws IOException {
+      return checkFloatVectorValues(field, () -> delegate.getFloatVectorValues(field));
+    }
+
+    @Override
+    public FloatVectorValues getFloatVectorValues(String field, DataAccessHint access)
+        throws IOException {
+      return checkFloatVectorValues(field, () -> delegate.getFloatVectorValues(field, access));
+    }
+
+    private FloatVectorValues checkFloatVectorValues(
+        String field, IOSupplier<FloatVectorValues> values) throws IOException {
       FieldInfo fi = fis.fieldInfo(field);
       assert fi != null
           && fi.getVectorDimension() > 0
           && fi.getVectorEncoding() == VectorEncoding.FLOAT32;
-      FloatVectorValues floatValues = delegate.getFloatVectorValues(field);
+      FloatVectorValues floatValues = values.get();
       assert floatValues != null;
       assert floatValues.iterator().docID() == -1;
       assert floatValues.size() >= 0;
@@ -152,6 +166,20 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
           && fi.getVectorDimension() > 0
           && fi.getVectorEncoding() == VectorEncoding.BYTE;
       ByteVectorValues values = delegate.getByteVectorValues(field);
+      assert values != null;
+      assert values.iterator().docID() == -1;
+      assert values.size() >= 0;
+      assert values.dimension() > 0;
+      return values;
+    }
+
+    @Override
+    public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+      FieldInfo fi = fis.fieldInfo(field);
+      assert fi != null
+          && fi.getVectorDimension() > 0
+          && fi.getVectorEncoding() == VectorEncoding.FLOAT16;
+      Float16VectorValues values = delegate.getFloat16VectorValues(field);
       assert values != null;
       assert values.iterator().docID() == -1;
       assert values.size() >= 0;
@@ -179,6 +207,18 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
       assert fi != null
           && fi.getVectorDimension() > 0
           && fi.getVectorEncoding() == VectorEncoding.BYTE;
+      acceptDocs = AssertingAcceptDocs.wrap(acceptDocs);
+      delegate.search(field, target, knnCollector, acceptDocs);
+    }
+
+    @Override
+    public void search(
+        String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+        throws IOException {
+      FieldInfo fi = fis.fieldInfo(field);
+      assert fi != null
+          && fi.getVectorDimension() > 0
+          && fi.getVectorEncoding() == VectorEncoding.FLOAT16;
       acceptDocs = AssertingAcceptDocs.wrap(acceptDocs);
       delegate.search(field, target, knnCollector, acceptDocs);
     }
@@ -234,6 +274,11 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     @Override
     public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
       return delegate.getOffHeapByteSize(fieldInfo);
+    }
+
+    @Override
+    public int getVectorCount(FieldInfo fieldInfo) throws IOException {
+      return delegate.getVectorCount(fieldInfo);
     }
 
     @Override

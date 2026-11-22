@@ -40,6 +40,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NoMergePolicy;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.IndexSearcher;
@@ -373,5 +374,10 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
   @Override
   protected boolean supportsFloatVectorFallback() {
     return false;
+  }
+
+  @Override
+  protected VectorEncoding randomVectorEncoding() {
+    return random().nextBoolean() ? VectorEncoding.BYTE : VectorEncoding.FLOAT32;
   }
 }

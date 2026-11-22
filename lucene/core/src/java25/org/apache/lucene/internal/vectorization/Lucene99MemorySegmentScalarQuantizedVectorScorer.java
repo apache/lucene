@@ -80,6 +80,13 @@ class Lucene99MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSco
   }
 
   @Override
+  public RandomVectorScorer getRandomVectorScorer(
+      VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, short[] target)
+      throws IOException {
+    return DELEGATE.getRandomVectorScorer(similarityFunction, vectorValues, target);
+  }
+
+  @Override
   public String toString() {
     return "Lucene99MemorySegmentScalarQuantizedVectorScorer()";
   }

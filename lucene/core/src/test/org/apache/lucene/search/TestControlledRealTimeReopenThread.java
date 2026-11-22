@@ -404,11 +404,8 @@ public class TestControlledRealTimeReopenThread extends ThreadedIndexingAndSearc
         };
     waiter.start();
     manager.maybeRefresh();
-    waiter.join(1000);
-    if (!finished.get()) {
-      waiter.interrupt();
-      fail("thread deadlocked on waitForGeneration");
-    }
+    waiter.join();
+    assertTrue("waiter thread terminated abnormally", finished.get());
     thread.close();
     thread.join();
     writer.close();
@@ -640,15 +637,14 @@ public class TestControlledRealTimeReopenThread extends ThreadedIndexingAndSearc
     }
 
     Thread closer =
-        new Thread(
-            () -> {
-              Thread.currentThread().interrupt();
-              try {
-                thread.close();
-              } catch (ThreadInterruptedException _) {
-                // optional: hit the interrupted-join path
-              }
-            });
+        new Thread(() -> {
+          Thread.currentThread().interrupt();
+          try {
+            thread.close();
+          } catch (ThreadInterruptedException _) {
+            // optional: hit the interrupted-join path
+          }
+        });
     closer.start();
     closer.join();
 

@@ -126,9 +126,67 @@ public class TestBitSetIterator extends LuceneTestCase {
     }
   }
 
+  public void testDocIDRunEndScanIsBounded() {
+    final int max = BitSetIterator.MAX_RUN_END_SCAN;
+    final int n = 2 * max + 5;
+    final FixedBitSet fbs = new FixedBitSet(n);
+    fbs.set(0, n);
+    final BitSetIterator it = new BitSetIterator(fbs, n);
+    assertEquals(0, it.nextDoc());
+    assertEquals(max, it.docIDRunEnd());
+    assertEquals(10, it.advance(10));
+    assertEquals(10 + max, it.docIDRunEnd());
+    assertEquals(2 * max, it.advance(2 * max));
+    assertEquals(n, it.docIDRunEnd());
+  }
+
+  public void testDocIDRunEndAfterMovingBackwards() {
+    final FixedBitSet fbs = new FixedBitSet(1_000);
+    fbs.set(0, 100);
+    fbs.set(101, 300);
+    final BitSetIterator it = new BitSetIterator(fbs, fbs.cardinality());
+    assertEquals(150, it.advance(150));
+    assertEquals(300, it.docIDRunEnd());
+    it.setDocId(50);
+    assertEquals(100, it.docIDRunEnd());
+  }
+
+  public void testDocIDRunEndAfterSetDocIdOnModifiedBitSet() {
+    final FixedBitSet fbs = new FixedBitSet(1_000);
+    fbs.set(0, 300);
+    final BitSetIterator it = new BitSetIterator(fbs, fbs.cardinality());
+    assertEquals(50, it.advance(50));
+    assertEquals(300, it.docIDRunEnd());
+    fbs.clear(100);
+    it.setDocId(it.docID());
+    assertEquals(100, it.docIDRunEnd());
+  }
+
+  public void testRandomDocIDRunEndLongRuns() {
+    final Random r = random();
+    final int iters = TEST_NIGHTLY ? 50 : 10;
+    for (int iter = 0; iter < iters; iter++) {
+      final int n = TestUtil.nextInt(r, 1, 4 * BitSetIterator.MAX_RUN_END_SCAN);
+      final BitSet bits = r.nextBoolean() ? new FixedBitSet(n) : new SparseFixedBitSet(n);
+      final int numRuns = TestUtil.nextInt(r, 1, 10);
+      for (int run = 0; run < numRuns; run++) {
+        final int start = r.nextInt(n);
+        final int end = TestUtil.nextInt(r, start, n);
+        for (int d = start; d < end; d++) {
+          bits.set(d);
+        }
+      }
+      final BitSetIterator it = new BitSetIterator(bits, n);
+      for (int d = it.nextDoc(); d != NO_MORE_DOCS; d = it.advance(d + 1 + r.nextInt(5_000))) {
+        assertTrue(bits.get(d));
+        assertEquals(expectedDocIDRunEnd(bits, d), it.docIDRunEnd());
+      }
+    }
+  }
+
   private static int expectedDocIDRunEnd(BitSet bits, int doc) {
     int end = doc + 1;
-    final int len = bits.length();
+    final int len = doc + Math.min(bits.length() - doc, BitSetIterator.MAX_RUN_END_SCAN);
     while (end < len && bits.get(end)) {
       end++;
     }

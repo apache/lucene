@@ -27,11 +27,22 @@ public interface VectorUtilSupport {
   /** Calculates the dot product of the given float arrays. */
   float dotProduct(float[] a, float[] b);
 
+  /**
+   * Calculates the dot product of the given short arrays used when we are using float16 vectors.
+   */
+  float dotProduct(short[] a, short[] b);
+
   /** Returns the cosine similarity between the two vectors. */
   float cosine(float[] v1, float[] v2);
 
+  /** Returns the cosine similarity between the two vectors. */
+  float cosine(short[] v1, short[] v2);
+
   /** Returns the sum of squared differences of the two vectors. */
   float squareDistance(float[] a, float[] b);
+
+  /** Returns the sum of squared differences of the two vectors. */
+  float squareDistance(short[] a, short[] b);
 
   /** Returns the dot product computed over signed bytes. */
   int dotProduct(byte[] a, byte[] b);
@@ -44,6 +55,13 @@ public interface VectorUtilSupport {
 
   /** Returns the dot product computed over unsigned half-bytes, both compressed. */
   int int4DotProductBothPacked(byte[] a, byte[] b);
+
+  /**
+   * Unpacks a uint4 "packed" vector (two values per byte) into one value per byte: the high nibble
+   * of {@code packed[i]} lands at {@code unpacked[i]}, the low nibble at {@code
+   * unpacked[packed.length + i]}.
+   */
+  void int4Unpack(byte[] packed, byte[] unpacked);
 
   /** Returns the dot product computed as though the bytes were unsigned. */
   int uint8DotProduct(byte[] a, byte[] b);

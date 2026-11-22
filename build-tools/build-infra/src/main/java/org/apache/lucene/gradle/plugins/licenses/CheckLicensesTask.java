@@ -34,14 +34,18 @@ import java.util.TreeMap;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javax.inject.Inject;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
 import org.gradle.api.file.ConfigurableFileCollection;
+import org.gradle.api.file.DirectoryProperty;
+import org.gradle.api.file.ProjectLayout;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.CacheableTask;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFiles;
+import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
@@ -119,8 +123,17 @@ public abstract class CheckLicensesTask extends DefaultTask {
   @OutputFile
   public abstract RegularFileProperty getReportFile();
 
-  public CheckLicensesTask() {
+  /**
+   * The root directory; input file paths are reported relative to this directory. Defaults to the
+   * settings directory.
+   */
+  @Internal
+  public abstract DirectoryProperty getRootDir();
+
+  @Inject
+  public CheckLicensesTask(ProjectLayout layout) {
     getMaxScannedHeaderSize().convention(DEFAULT_SCANNED_HEADER);
+    getRootDir().convention(layout.getSettingsDirectory());
   }
 
   @TaskAction
@@ -192,14 +205,13 @@ public abstract class CheckLicensesTask extends DefaultTask {
           "License type counts:\n{}",
           counts.entrySet().stream()
               .sorted((a, b) -> Long.compare(b.getValue().longValue(), a.getValue().longValue()))
-              .map(
-                  e ->
-                      String.format(
-                          Locale.ROOT,
-                          "  - %s: %,d %s",
-                          e.getKey(),
-                          e.getValue(),
-                          e.getValue() == 1 ? "file" : "files"))
+              .map(e ->
+                  String.format(
+                      Locale.ROOT,
+                      "  - %s: %,d %s",
+                      e.getKey(),
+                      e.getValue(),
+                      e.getValue() == 1 ? "file" : "files"))
               .collect(Collectors.joining("\n")));
     }
 
@@ -213,15 +225,14 @@ public abstract class CheckLicensesTask extends DefaultTask {
     }
 
     try (var lineStream = Files.lines(reportFile.toPath())) {
-      lineStream.forEach(
-          line -> {
-            int idx = line.lastIndexOf(':');
-            String path = line.substring(0, idx).trim();
-            String state = line.substring(idx + 1).trim();
-            if (!path.isEmpty() && !state.isEmpty()) {
-              report.put(path, state);
-            }
-          });
+      lineStream.forEach(line -> {
+        int idx = line.lastIndexOf(':');
+        String path = line.substring(0, idx).trim();
+        String state = line.substring(idx + 1).trim();
+        if (!path.isEmpty() && !state.isEmpty()) {
+          report.put(path, state);
+        }
+      });
     }
 
     return report;
@@ -242,7 +253,7 @@ public abstract class CheckLicensesTask extends DefaultTask {
 
   /** Convert the given path to a root-project-relative path with unix path separators. */
   private String toRootRelative(File file) {
-    Path root = getProject().getRootDir().toPath().normalize();
+    Path root = getRootDir().get().getAsFile().toPath().normalize();
     Path p = file.toPath().toAbsolutePath().normalize();
     String key = root.relativize(p).toString();
     if (File.separatorChar != '/') {

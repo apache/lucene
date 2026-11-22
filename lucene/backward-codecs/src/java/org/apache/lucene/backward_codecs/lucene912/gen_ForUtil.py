@@ -364,11 +364,11 @@ def writeDecode(bpv, f):
 if __name__ == "__main__":
     f = open(OUTPUT_FILE, "w")
     f.write(HEADER)
-    for primitive_size in PRIMITIVE_SIZE:
-        f.write(
-            "  static final long[] MASKS%d = new long[%d];\n"
-            % (primitive_size, primitive_size)
-        )
+    f.writelines(
+        "  static final long[] MASKS%d = new long[%d];\n"
+        % (primitive_size, primitive_size)
+        for primitive_size in PRIMITIVE_SIZE
+    )
     f.write("\n")
     f.write("  static {\n")
     for primitive_size in PRIMITIVE_SIZE:
@@ -381,11 +381,11 @@ if __name__ == "__main__":
   // used when the idx is a variable
 """)
     for primitive_size in PRIMITIVE_SIZE:
-        for bpv in range(1, min(MAX_SPECIALIZED_BITS_PER_VALUE + 1, primitive_size)):
-            f.write(
-                "  static final long MASK%d_%d = MASKS%d[%d];\n"
-                % (primitive_size, bpv, primitive_size, bpv)
-            )
+        f.writelines(
+            "  static final long MASK%d_%d = MASKS%d[%d];\n"
+            % (primitive_size, bpv, primitive_size, bpv)
+            for bpv in range(1, min(MAX_SPECIALIZED_BITS_PER_VALUE + 1, primitive_size))
+        )
 
     f.write("""
   /** Decode 128 integers into {@code longs}. */

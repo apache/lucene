@@ -85,6 +85,7 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
 
   @Override
   public int score(LeafCollector collector, Bits acceptDocs, int min, int max) throws IOException {
+    max = Math.min(max, maxDoc);
     collector.setScorer(scorable);
 
     int windowMin = Math.max(lead.docID(), min);

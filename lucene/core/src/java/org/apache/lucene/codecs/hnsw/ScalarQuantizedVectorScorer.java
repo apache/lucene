@@ -109,6 +109,13 @@ public class ScalarQuantizedVectorScorer implements FlatVectorsScorer {
   }
 
   @Override
+  public RandomVectorScorer getRandomVectorScorer(
+      VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, short[] target)
+      throws IOException {
+    return nonQuantizedDelegate.getRandomVectorScorer(similarityFunction, vectorValues, target);
+  }
+
+  @Override
   public String toString() {
     return "ScalarQuantizedVectorScorer(" + "nonQuantizedDelegate=" + nonQuantizedDelegate + ')';
   }

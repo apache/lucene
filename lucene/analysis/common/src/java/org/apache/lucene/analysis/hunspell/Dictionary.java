@@ -356,134 +356,124 @@ public class Dictionary {
       if (line.isEmpty()) continue;
 
       String firstWord = line.split("\\s")[0];
-      // TODO: convert to a switch?
-      if ("AF".equals(firstWord)) {
-        parseAlias(line);
-      } else if ("AM".equals(firstWord)) {
-        parseMorphAlias(line);
-      } else if ("PFX".equals(firstWord)) {
-        parseAffix(
-            prefixes, prefixContFlags, line, reader, PREFIX, seenPatterns, seenStrips, flags);
-      } else if ("SFX".equals(firstWord)) {
-        parseAffix(
-            suffixes, suffixContFlags, line, reader, SUFFIX, seenPatterns, seenStrips, flags);
-      } else if (line.equals("COMPLEXPREFIXES")) {
-        complexPrefixes =
-            true; // 2-stage prefix+1-stage suffix instead of 2-stage suffix+1-stage prefix
-      } else if ("CIRCUMFIX".equals(firstWord)) {
-        circumfix = flagParsingStrategy.parseFlag(singleArgument(reader, line));
-      } else if ("KEEPCASE".equals(firstWord)) {
-        keepcase = flagParsingStrategy.parseFlag(singleArgument(reader, line));
-      } else if ("FORCEUCASE".equals(firstWord)) {
-        forceUCase = flagParsingStrategy.parseFlag(singleArgument(reader, line));
-      } else if ("NEEDAFFIX".equals(firstWord) || "PSEUDOROOT".equals(firstWord)) {
-        needaffix = flagParsingStrategy.parseFlag(singleArgument(reader, line));
-      } else if ("ONLYINCOMPOUND".equals(firstWord)) {
-        onlyincompound = flagParsingStrategy.parseFlag(singleArgument(reader, line));
-      } else if ("CHECKSHARPS".equals(firstWord)) {
-        checkSharpS = true;
-      } else if ("IGNORE".equals(firstWord)) {
-        ignore = singleArgument(reader, line).toCharArray();
-        Arrays.sort(ignore);
-      } else if ("ICONV".equals(firstWord) || "OCONV".equals(firstWord)) {
-        int num = parseNum(reader, line);
-        ConvTable res = parseConversions(reader, num);
-        if (line.startsWith("I")) {
-          iconv = res;
-        } else {
-          oconv = res;
+      switch (firstWord) {
+        case "AF" -> parseAlias(line);
+        case "AM" -> parseMorphAlias(line);
+        case "PFX" ->
+            parseAffix(
+                prefixes, prefixContFlags, line, reader, PREFIX, seenPatterns, seenStrips, flags);
+        case "SFX" ->
+            parseAffix(
+                suffixes, suffixContFlags, line, reader, SUFFIX, seenPatterns, seenStrips, flags);
+        case "COMPLEXPREFIXES" ->
+            complexPrefixes =
+                true; // 2-stage prefix+1-stage suffix instead of 2-stage suffix+1-stage prefix
+        case "CIRCUMFIX" -> circumfix = flagParsingStrategy.parseFlag(singleArgument(reader, line));
+        case "KEEPCASE" -> keepcase = flagParsingStrategy.parseFlag(singleArgument(reader, line));
+        case "FORCEUCASE" ->
+            forceUCase = flagParsingStrategy.parseFlag(singleArgument(reader, line));
+        case "NEEDAFFIX", "PSEUDOROOT" ->
+            needaffix = flagParsingStrategy.parseFlag(singleArgument(reader, line));
+        case "ONLYINCOMPOUND" ->
+            onlyincompound = flagParsingStrategy.parseFlag(singleArgument(reader, line));
+        case "CHECKSHARPS" -> checkSharpS = true;
+        case "IGNORE" -> {
+          ignore = singleArgument(reader, line).toCharArray();
+          Arrays.sort(ignore);
         }
-      } else if ("FULLSTRIP".equals(firstWord)) {
-        fullStrip = true;
-      } else if ("LANG".equals(firstWord)) {
-        language = singleArgument(reader, line);
-        this.alternateCasing = hasLanguage("tr", "az");
-      } else if ("BREAK".equals(firstWord)) {
-        breaks = parseBreaks(reader, line);
-      } else if ("WORDCHARS".equals(firstWord)) {
-        wordChars = firstArgument(reader, line);
-      } else if ("TRY".equals(firstWord)) {
-        tryChars = firstArgument(reader, line);
-      } else if ("REP".equals(firstWord)) {
-        if (tolerateRepRuleCountMismatches()) {
-          String[] parts = splitBySpace(reader, line, 2, Integer.MAX_VALUE);
-          // ignore REP N, as actual N may be incorrect
-          if (parts.length >= 3) {
-            repTable.add(new RepEntry(parts[1], parts[2]));
+        case "ICONV", "OCONV" -> {
+          int num = parseNum(reader, line);
+          ConvTable res = parseConversions(reader, num);
+          if (line.startsWith("I")) {
+            iconv = res;
+          } else {
+            oconv = res;
           }
-        } else {
+        }
+        case "FULLSTRIP" -> fullStrip = true;
+        case "LANG" -> {
+          language = singleArgument(reader, line);
+          this.alternateCasing = hasLanguage("tr", "az");
+        }
+        case "BREAK" -> breaks = parseBreaks(reader, line);
+        case "WORDCHARS" -> wordChars = firstArgument(reader, line);
+        case "TRY" -> tryChars = firstArgument(reader, line);
+        case "REP" -> {
+          if (tolerateRepRuleCountMismatches()) {
+            String[] parts = splitBySpace(reader, line, 2, Integer.MAX_VALUE);
+            // ignore REP N, as actual N may be incorrect
+            if (parts.length >= 3) {
+              repTable.add(new RepEntry(parts[1], parts[2]));
+            }
+          } else {
+            int count = parseNum(reader, line);
+            for (int i = 0; i < count; i++) {
+              String[] parts = splitBySpace(reader, reader.readLine(), 3, Integer.MAX_VALUE);
+              repTable.add(new RepEntry(parts[1], parts[2]));
+            }
+          }
+        }
+        case "MAP" -> {
           int count = parseNum(reader, line);
           for (int i = 0; i < count; i++) {
-            String[] parts = splitBySpace(reader, reader.readLine(), 3, Integer.MAX_VALUE);
-            repTable.add(new RepEntry(parts[1], parts[2]));
+            mapTable.add(parseMapEntry(reader, reader.readLine()));
           }
         }
-      } else if ("MAP".equals(firstWord)) {
-        int count = parseNum(reader, line);
-        for (int i = 0; i < count; i++) {
-          mapTable.add(parseMapEntry(reader, reader.readLine()));
+        case "KEY" -> neighborKeyGroups = singleArgument(reader, line).split("\\|");
+        case "NOSPLITSUGS" -> enableSplitSuggestions = false;
+        case "MAXNGRAMSUGS" -> maxNGramSuggestions = Integer.parseInt(singleArgument(reader, line));
+        case "MAXDIFF" -> {
+          int i = Integer.parseInt(singleArgument(reader, line));
+          if (i < 0 || i > 10) {
+            throw new ParseException("MAXDIFF should be between 0 and 10", reader.getLineNumber());
+          }
+          maxDiff = i;
         }
-      } else if ("KEY".equals(firstWord)) {
-        neighborKeyGroups = singleArgument(reader, line).split("\\|");
-      } else if ("NOSPLITSUGS".equals(firstWord)) {
-        enableSplitSuggestions = false;
-      } else if ("MAXNGRAMSUGS".equals(firstWord)) {
-        maxNGramSuggestions = Integer.parseInt(singleArgument(reader, line));
-      } else if ("MAXDIFF".equals(firstWord)) {
-        int i = Integer.parseInt(singleArgument(reader, line));
-        if (i < 0 || i > 10) {
-          throw new ParseException("MAXDIFF should be between 0 and 10", reader.getLineNumber());
+        case "ONLYMAXDIFF" -> onlyMaxDiff = true;
+        case "FORBIDDENWORD" ->
+            forbiddenword = flagParsingStrategy.parseFlag(singleArgument(reader, line));
+        case "NOSUGGEST" -> noSuggest = flagParsingStrategy.parseFlag(singleArgument(reader, line));
+        case "SUBSTANDARD" ->
+            subStandard = flagParsingStrategy.parseFlag(singleArgument(reader, line));
+        case "COMPOUNDMIN" -> compoundMin = Math.max(1, parseNum(reader, line));
+        case "COMPOUNDWORDMAX" -> compoundMax = Math.max(1, parseNum(reader, line));
+        case "COMPOUNDRULE" -> compoundRules = parseCompoundRules(reader, parseNum(reader, line));
+        case "COMPOUNDFLAG" ->
+            compoundFlag = flagParsingStrategy.parseFlag(singleArgument(reader, line));
+        case "COMPOUNDBEGIN" ->
+            compoundBegin = flagParsingStrategy.parseFlag(singleArgument(reader, line));
+        case "COMPOUNDMIDDLE" ->
+            compoundMiddle = flagParsingStrategy.parseFlag(singleArgument(reader, line));
+        case "COMPOUNDEND" ->
+            compoundEnd = flagParsingStrategy.parseFlag(singleArgument(reader, line));
+        case "COMPOUNDPERMITFLAG" ->
+            compoundPermit = flagParsingStrategy.parseFlag(singleArgument(reader, line));
+        case "COMPOUNDFORBIDFLAG" ->
+            compoundForbid = flagParsingStrategy.parseFlag(singleArgument(reader, line));
+        case "CHECKCOMPOUNDCASE" -> checkCompoundCase = true;
+        case "CHECKCOMPOUNDDUP" -> checkCompoundDup = true;
+        case "CHECKCOMPOUNDREP" -> checkCompoundRep = true;
+        case "CHECKCOMPOUNDTRIPLE" -> checkCompoundTriple = true;
+        case "SIMPLIFIEDTRIPLE" -> simplifiedTriple = true;
+        case "CHECKCOMPOUNDPATTERN" -> {
+          int count = parseNum(reader, line);
+          for (int i = 0; i < count; i++) {
+            checkCompoundPatterns.add(
+                new CheckCompoundPattern(reader.readLine(), flagParsingStrategy, this));
+          }
         }
-        maxDiff = i;
-      } else if ("ONLYMAXDIFF".equals(firstWord)) {
-        onlyMaxDiff = true;
-      } else if ("FORBIDDENWORD".equals(firstWord)) {
-        forbiddenword = flagParsingStrategy.parseFlag(singleArgument(reader, line));
-      } else if ("NOSUGGEST".equals(firstWord)) {
-        noSuggest = flagParsingStrategy.parseFlag(singleArgument(reader, line));
-      } else if ("SUBSTANDARD".equals(firstWord)) {
-        subStandard = flagParsingStrategy.parseFlag(singleArgument(reader, line));
-      } else if ("COMPOUNDMIN".equals(firstWord)) {
-        compoundMin = Math.max(1, parseNum(reader, line));
-      } else if ("COMPOUNDWORDMAX".equals(firstWord)) {
-        compoundMax = Math.max(1, parseNum(reader, line));
-      } else if ("COMPOUNDRULE".equals(firstWord)) {
-        compoundRules = parseCompoundRules(reader, parseNum(reader, line));
-      } else if ("COMPOUNDFLAG".equals(firstWord)) {
-        compoundFlag = flagParsingStrategy.parseFlag(singleArgument(reader, line));
-      } else if ("COMPOUNDBEGIN".equals(firstWord)) {
-        compoundBegin = flagParsingStrategy.parseFlag(singleArgument(reader, line));
-      } else if ("COMPOUNDMIDDLE".equals(firstWord)) {
-        compoundMiddle = flagParsingStrategy.parseFlag(singleArgument(reader, line));
-      } else if ("COMPOUNDEND".equals(firstWord)) {
-        compoundEnd = flagParsingStrategy.parseFlag(singleArgument(reader, line));
-      } else if ("COMPOUNDPERMITFLAG".equals(firstWord)) {
-        compoundPermit = flagParsingStrategy.parseFlag(singleArgument(reader, line));
-      } else if ("COMPOUNDFORBIDFLAG".equals(firstWord)) {
-        compoundForbid = flagParsingStrategy.parseFlag(singleArgument(reader, line));
-      } else if ("CHECKCOMPOUNDCASE".equals(firstWord)) {
-        checkCompoundCase = true;
-      } else if ("CHECKCOMPOUNDDUP".equals(firstWord)) {
-        checkCompoundDup = true;
-      } else if ("CHECKCOMPOUNDREP".equals(firstWord)) {
-        checkCompoundRep = true;
-      } else if ("CHECKCOMPOUNDTRIPLE".equals(firstWord)) {
-        checkCompoundTriple = true;
-      } else if ("SIMPLIFIEDTRIPLE".equals(firstWord)) {
-        simplifiedTriple = true;
-      } else if ("CHECKCOMPOUNDPATTERN".equals(firstWord)) {
-        int count = parseNum(reader, line);
-        for (int i = 0; i < count; i++) {
-          checkCompoundPatterns.add(
-              new CheckCompoundPattern(reader.readLine(), flagParsingStrategy, this));
+        case "SET" ->
+            checkCriticalDirectiveSame(
+                "SET",
+                reader,
+                decoder.charset(),
+                getDecoder(singleArgument(reader, line)).charset());
+        case "FLAG" -> {
+          FlagParsingStrategy strategy = getFlagParsingStrategy(line, decoder.charset());
+          checkCriticalDirectiveSame(
+              "FLAG", reader, flagParsingStrategy.getClass(), strategy.getClass());
         }
-      } else if ("SET".equals(firstWord)) {
-        checkCriticalDirectiveSame(
-            "SET", reader, decoder.charset(), getDecoder(singleArgument(reader, line)).charset());
-      } else if ("FLAG".equals(firstWord)) {
-        FlagParsingStrategy strategy = getFlagParsingStrategy(line, decoder.charset());
-        checkCriticalDirectiveSame(
-            "FLAG", reader, flagParsingStrategy.getClass(), strategy.getClass());
+        default -> {}
       }
     }
 

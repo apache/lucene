@@ -411,7 +411,6 @@ public class TestIntHashSet extends LuceneTestCase {
 
   public void testEqualsSubClass() {
     class Sub extends IntHashSet {}
-    ;
 
     IntHashSet l1 = IntHashSet.from(key1, key2, key3);
     IntHashSet l2 = new Sub();

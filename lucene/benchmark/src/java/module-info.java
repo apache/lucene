@@ -21,6 +21,7 @@ module org.apache.lucene.benchmark {
   requires org.apache.lucene.analysis.common;
   requires org.apache.lucene.facet;
   requires org.apache.lucene.highlighter;
+  requires org.apache.lucene.join;
   requires org.apache.lucene.queries;
   requires org.apache.lucene.queryparser;
   requires org.apache.lucene.spatial_extras;

@@ -46,9 +46,7 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
  * <p>Example usage:
  *
  * <blockquote>
- *
  * stream = new ICUTransformFilter(stream, Transliterator.getInstance("Traditional-Simplified"));
- *
  * </blockquote>
  *
  * <br>

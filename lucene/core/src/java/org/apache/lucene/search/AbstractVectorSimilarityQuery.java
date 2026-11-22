@@ -117,9 +117,10 @@ abstract class AbstractVectorSimilarityQuery extends Query {
    * configured with this query's {@link #searchStrategy}.
    *
    * <p>The manager's {@code strategy} and {@code LeafReaderContext} parameters are intentionally
-   * ignored: top-k queries may override the strategy on a per-search basis, but similarity-
-   * threshold queries pin the strategy to the query's own value at construction time so that {@link
-   * #equals} / {@link #getSearchStrategy()} remain a faithful description of search behavior.
+   * ignored: top-k queries may override the strategy on a per-search basis, but
+   * similarity-threshold queries pin the strategy to the query's own value at construction time so
+   * that {@link #equals} / {@link #getSearchStrategy()} remain a faithful description of search
+   * behavior.
    */
   protected KnnCollectorManager getKnnCollectorManager() {
     return (visitLimit, _, _) ->

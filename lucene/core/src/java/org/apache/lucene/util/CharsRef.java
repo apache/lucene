@@ -17,7 +17,6 @@
 package org.apache.lucene.util;
 
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.Objects;
 
 /**
@@ -148,64 +147,6 @@ public final class CharsRef implements Comparable<CharsRef>, CharSequence, Clone
     // NOTE: must do a real check here to meet the specs of CharSequence
     Objects.checkFromToIndex(start, end, length);
     return new CharsRef(chars, offset + start, end - start);
-  }
-
-  /**
-   * @deprecated This comparator is only a transition mechanism
-   */
-  @Deprecated
-  private static final Comparator<CharsRef> utf16SortedAsUTF8SortOrder =
-      new UTF16SortedAsUTF8Comparator();
-
-  /**
-   * @deprecated This comparator is only a transition mechanism
-   */
-  @Deprecated
-  public static Comparator<CharsRef> getUTF16SortedAsUTF8Comparator() {
-    return utf16SortedAsUTF8SortOrder;
-  }
-
-  /**
-   * @deprecated This comparator is only a transition mechanism
-   */
-  @Deprecated
-  private static class UTF16SortedAsUTF8Comparator implements Comparator<CharsRef> {
-    // Only singleton
-    private UTF16SortedAsUTF8Comparator() {}
-
-    @Override
-    public int compare(CharsRef a, CharsRef b) {
-      int aEnd = a.offset + a.length;
-      int bEnd = b.offset + b.length;
-      int i = Arrays.mismatch(a.chars, a.offset, aEnd, b.chars, b.offset, bEnd);
-
-      if (i >= 0 && i < Math.min(a.length, b.length)) {
-        // http://icu-project.org/docs/papers/utf16_code_point_order.html
-
-        char aChar = a.chars[a.offset + i];
-        char bChar = b.chars[b.offset + i];
-        /* aChar != bChar, fix up each one if they're both in or above the surrogate range, then compare them */
-        if (aChar >= 0xd800 && bChar >= 0xd800) {
-          if (aChar >= 0xe000) {
-            aChar -= 0x800;
-          } else {
-            aChar += 0x2000;
-          }
-
-          if (bChar >= 0xe000) {
-            bChar -= 0x800;
-          } else {
-            bChar += 0x2000;
-          }
-        }
-
-        /* now aChar and bChar are in code point order */
-        return (int) aChar - (int) bChar; /* int must be 32 bits wide */
-      }
-
-      // One is a prefix of the other, or, they are equal:
-      return a.length - b.length;
-    }
   }
 
   /**

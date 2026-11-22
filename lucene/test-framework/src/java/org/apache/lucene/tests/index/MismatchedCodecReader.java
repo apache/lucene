@@ -162,7 +162,7 @@ public class MismatchedCodecReader extends FilterCodecReader {
     }
 
     @Override
-    public DocValuesSkipper getSkipper(FieldInfo field) throws IOException {
+    public DocValuesSkipper getSkipper(FieldInfo field) {
       return in.getSkipper(remapFieldInfo(field));
     }
 

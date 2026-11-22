@@ -125,8 +125,8 @@ public class TestLuceneTestCaseJupiter {
     }
   }
 
-  /// Test cases should use parameter-injected [java.util.Random] or a supplier
-  /// of [java.util.Random]. Avoid using static methods.
+  /// Test cases should use parameter-injected [java.util.Random] or a supplier of
+  /// [java.util.Random]. Avoid using static methods.
   @Nested
   class RandomInjection {
     @Test
@@ -227,56 +227,52 @@ public class TestLuceneTestCaseJupiter {
     @TestFactory
     Stream<DynamicTest> suiteFailureIsTracked() {
       return Stream.of(CallAtPointcut.Pointcut.values())
-          .map(
-              pointcut ->
-                  DynamicTest.dynamicTest(
-                      pointcut.name(),
-                      () -> {
-                        CallAtPointcut.pointcuts = Map.of(pointcut, Assertions::fail);
-                        testKitBuilder(CallAtPointcut.class)
-                            .execute()
-                            .allEvents()
-                            .assertThatEvents()
-                            .haveAtLeast(1, event(finishedWithFailure()));
-                        Assert.assertFalse(
-                            LuceneTestCaseJupiter.suiteFailureTracker.wasSuccessful());
-                      }));
+          .map(pointcut ->
+              DynamicTest.dynamicTest(
+                  pointcut.name(),
+                  () -> {
+                    CallAtPointcut.pointcuts = Map.of(pointcut, Assertions::fail);
+                    testKitBuilder(CallAtPointcut.class)
+                        .execute()
+                        .allEvents()
+                        .assertThatEvents()
+                        .haveAtLeast(1, event(finishedWithFailure()));
+                    Assert.assertFalse(LuceneTestCaseJupiter.suiteFailureTracker.wasSuccessful());
+                  }));
     }
 
     @TestFactory
     Stream<DynamicTest> failedAssumptionsAreNotFailures() {
       return Stream.of(CallAtPointcut.Pointcut.values())
-          .<Map.Entry<CallAtPointcut.Pointcut, Executable>>mapMulti(
-              (pointcut, downstream) -> {
-                downstream.accept(
-                    Map.entry(
-                        pointcut,
-                        () -> {
-                          org.junit.jupiter.api.Assumptions.assumeTrue(false);
-                        }));
-                downstream.accept(
-                    Map.entry(
-                        pointcut,
-                        () -> {
-                          org.assertj.core.api.Assumptions.assumeThat(true).isFalse();
-                        }));
-                downstream.accept(
-                    Map.entry(
-                        pointcut,
-                        () -> {
-                          Assume.assumeTrue(false);
-                        }));
-              })
-          .map(
-              entry -> {
-                return DynamicTest.dynamicTest(
-                    entry.getKey().name(),
+          .<Map.Entry<CallAtPointcut.Pointcut, Executable>>mapMulti((pointcut, downstream) -> {
+            downstream.accept(
+                Map.entry(
+                    pointcut,
                     () -> {
-                      CallAtPointcut.pointcuts = Map.ofEntries(entry);
-                      testKitBuilder(CallAtPointcut.class).execute();
-                      Assert.assertTrue(LuceneTestCaseJupiter.suiteFailureTracker.wasSuccessful());
-                    });
-              });
+                      org.junit.jupiter.api.Assumptions.assumeTrue(false);
+                    }));
+            downstream.accept(
+                Map.entry(
+                    pointcut,
+                    () -> {
+                      org.assertj.core.api.Assumptions.assumeThat(true).isFalse();
+                    }));
+            downstream.accept(
+                Map.entry(
+                    pointcut,
+                    () -> {
+                      Assume.assumeTrue(false);
+                    }));
+          })
+          .map(entry -> {
+            return DynamicTest.dynamicTest(
+                entry.getKey().name(),
+                () -> {
+                  CallAtPointcut.pointcuts = Map.ofEntries(entry);
+                  testKitBuilder(CallAtPointcut.class).execute();
+                  Assert.assertTrue(LuceneTestCaseJupiter.suiteFailureTracker.wasSuccessful());
+                });
+          });
     }
 
     @Test
@@ -298,8 +294,8 @@ public class TestLuceneTestCaseJupiter {
     }
   }
 
-  /// Verifies that failing to close a [org.apache.lucene.store.Directory] created during
-  /// a test causes a test failure, mirroring the behavior of [TestFailIfDirectoryNotClosed]
+  /// Verifies that failing to close a [org.apache.lucene.store.Directory] created during a test
+  /// causes a test failure, mirroring the behavior of [TestFailIfDirectoryNotClosed]
   @Nested
   class UnclosedDirectoryTracking {
     @Test
@@ -329,45 +325,41 @@ public class TestLuceneTestCaseJupiter {
     @TestFactory
     Stream<DynamicTest> testReproLineIsPrinted() throws Exception {
       return Stream.of(CallAtPointcut.Pointcut.values())
-          .map(
-              pointcut -> {
-                return DynamicTest.dynamicTest(
-                    pointcut.name(),
-                    () -> {
-                      String testOutput = collectOutputFrom(Map.of(pointcut, Assertions::fail));
+          .map(pointcut -> {
+            return DynamicTest.dynamicTest(
+                pointcut.name(),
+                () -> {
+                  String testOutput = collectOutputFrom(Map.of(pointcut, Assertions::fail));
 
-                      Assertions.assertThat(testOutput)
-                          .contains(
-                              LuceneTestCaseJupiter.PrintReproduceInfoExtension.TEST_REPRO_LEAD)
-                          .contains(
-                              LuceneTestCaseJupiter.PrintReproduceInfoExtension.TEST_ENV_LEAD);
-                    });
-              });
+                  Assertions.assertThat(testOutput)
+                      .contains(LuceneTestCaseJupiter.PrintReproduceInfoExtension.TEST_REPRO_LEAD)
+                      .contains(LuceneTestCaseJupiter.PrintReproduceInfoExtension.TEST_ENV_LEAD);
+                });
+          });
     }
 
     @TestFactory
     Stream<DynamicTest> testReproLineIsNotPrintedForAssumptions() throws Exception {
       return Stream.of(CallAtPointcut.Pointcut.values())
-          .map(
-              pointcut -> {
-                return DynamicTest.dynamicTest(
-                    pointcut.name(),
-                    () -> {
-                      String testOutput =
-                          collectOutputFrom(
-                              Map.of(
-                                  pointcut,
-                                  () -> {
-                                    Assumptions.assumeTrue(false);
-                                  }));
+          .map(pointcut -> {
+            return DynamicTest.dynamicTest(
+                pointcut.name(),
+                () -> {
+                  String testOutput =
+                      collectOutputFrom(
+                          Map.of(
+                              pointcut,
+                              () -> {
+                                Assumptions.assumeTrue(false);
+                              }));
 
-                      Assertions.assertThat(testOutput)
-                          .doesNotContain(
-                              LuceneTestCaseJupiter.PrintReproduceInfoExtension.TEST_REPRO_LEAD)
-                          .doesNotContain(
-                              LuceneTestCaseJupiter.PrintReproduceInfoExtension.TEST_ENV_LEAD);
-                    });
-              });
+                  Assertions.assertThat(testOutput)
+                      .doesNotContain(
+                          LuceneTestCaseJupiter.PrintReproduceInfoExtension.TEST_REPRO_LEAD)
+                      .doesNotContain(
+                          LuceneTestCaseJupiter.PrintReproduceInfoExtension.TEST_ENV_LEAD);
+                });
+          });
     }
 
     private static String collectOutputFrom(Map<CallAtPointcut.Pointcut, Executable> callables)

@@ -116,6 +116,18 @@ public abstract class FilterDirectory extends Directory {
     return getClass().getSimpleName() + "(" + in.toString() + ")";
   }
 
+  /**
+   * Not delegated to {@link #in}: routes through {@link #createOutput} so per-file bookkeeping
+   * there covers copied files too. Subclasses that don't override {@link #createOutput} and want an
+   * optimized copy (e.g. {@code HardlinkCopyDirectoryWrapper}) may override to delegate: {@code
+   * in.copyFrom(from, src, dest, context)}.
+   */
+  @Override
+  public void copyFrom(Directory from, String src, String dest, IOContext context)
+      throws IOException {
+    copyThroughCreateOutput(from, src, dest, context);
+  }
+
   @Override
   public Set<String> getPendingDeletions() throws IOException {
     return in.getPendingDeletions();

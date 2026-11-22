@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.store;
 
+import static org.hamcrest.Matchers.arrayContainingInAnyOrder;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+
 import java.util.List;
 import java.util.Set;
 import org.apache.lucene.store.IOContext.FileOpenHint;
@@ -38,13 +41,68 @@ public class TestIOContext extends LuceneTestCase {
       assertEquals(context.context(), newContext.context());
       assertEquals(context.mergeInfo(), newContext.mergeInfo());
       assertEquals(context.flushInfo(), newContext.flushInfo());
-      if (context != newContext) {
-        assertTrue(context.mergeInfo() == null && context.flushInfo() == null);
-        assertEquals(Set.of(newHint), newContext.hints());
-      } else {
-        assertTrue(context.mergeInfo() != null || context.flushInfo() != null);
-      }
+      assertEquals(Set.of(newHint), newContext.hints());
     }
+  }
+
+  /** Every context rejects two hints of one type, since a hint is looked up by its type. */
+  public void testRejectsRepeatedHintType() {
+    for (var context : getContexts()) {
+      expectThrows(
+          IllegalArgumentException.class,
+          () -> context.withHints(DataAccessHint.RANDOM, DataAccessHint.SEQUENTIAL));
+    }
+  }
+
+  /** A merge context with no MergeInfo, which is all a reader reopening a file can say. */
+  public void testMergeWithoutMergeInfo() {
+    IOContext context = IOContext.merge();
+    assertEquals(IOContext.Context.MERGE, context.context());
+    assertNull(context.mergeInfo());
+    assertNull(context.flushInfo());
+    assertEquals(Set.of(), context.hints());
+
+    IOContext withHint = context.withHints(DataAccessHint.SEQUENTIAL);
+    assertEquals(IOContext.Context.MERGE, withHint.context());
+    assertNull(withHint.mergeInfo());
+    assertEquals(Set.of(DataAccessHint.SEQUENTIAL), withHint.hints());
+  }
+
+  public void testHintsOfClass() {
+    IOContext context =
+        IOContext.DEFAULT.withHints(
+            CustomTestHint.CUSTOM_TEST_HINT1, PreloadHint.INSTANCE, DataAccessHint.SEQUENTIAL);
+    assertThat(
+        context.hints(CustomTestHint.class).toArray(CustomTestHint[]::new),
+        arrayContainingInAnyOrder(CustomTestHint.CUSTOM_TEST_HINT1));
+  }
+
+  public void testRemoveHint() {
+    IOContext context =
+        IOContext.DEFAULT.withHints(
+            CustomTestHint.CUSTOM_TEST_HINT1, PreloadHint.INSTANCE, DataAccessHint.SEQUENTIAL);
+    assertThat(
+        context.removeHints(CustomTestHint.class).toArray(FileOpenHint[]::new),
+        arrayContainingInAnyOrder(PreloadHint.INSTANCE, DataAccessHint.SEQUENTIAL));
+    assertThat(
+        context.removeHints(DataAccessHint.class).toArray(FileOpenHint[]::new),
+        arrayContainingInAnyOrder(CustomTestHint.CUSTOM_TEST_HINT1, PreloadHint.INSTANCE));
+  }
+
+  public void testOverrideHints() {
+    IOContext context = IOContext.READONCE.overrideHints(DataAccessHint.RANDOM, FileTypeHint.INDEX);
+    assertThat(
+        context.hints(),
+        containsInAnyOrder(DataAccessHint.RANDOM, FileTypeHint.INDEX, ReadOnceHint.INSTANCE));
+    assertEquals(IOContext.READONCE.context(), context.context());
+
+    IOContext replaced = context.overrideHints(FileTypeHint.DATA);
+    assertThat(
+        replaced.hints(),
+        containsInAnyOrder(DataAccessHint.RANDOM, FileTypeHint.DATA, ReadOnceHint.INSTANCE));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> IOContext.DEFAULT.overrideHints(DataAccessHint.RANDOM, DataAccessHint.SEQUENTIAL));
   }
 
   protected List<IOContext> getContexts() {
@@ -52,6 +110,7 @@ public class TestIOContext extends LuceneTestCase {
         IOContext.DEFAULT,
         IOContext.READONCE,
         IOContext.flush(new FlushInfo(1, 2)),
+        IOContext.merge(),
         IOContext.merge(new MergeInfo(1, 2, true, 4)));
   }
 

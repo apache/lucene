@@ -87,28 +87,20 @@ public class AssertingLeafReader extends FilterLeafReader {
 
     CacheHelper coreCacheHelper = in.getCoreCacheHelper();
     if (coreCacheHelper != null) {
-      coreCacheHelper.addClosedListener(
-          cacheKey -> {
-            final Object expectedKey = coreCacheHelper.getKey();
-            assert expectedKey == cacheKey
-                : "Core closed listener called on a different key "
-                    + expectedKey
-                    + " <> "
-                    + cacheKey;
-          });
+      coreCacheHelper.addClosedListener(cacheKey -> {
+        final Object expectedKey = coreCacheHelper.getKey();
+        assert expectedKey == cacheKey
+            : "Core closed listener called on a different key " + expectedKey + " <> " + cacheKey;
+      });
     }
 
     CacheHelper readerCacheHelper = in.getReaderCacheHelper();
     if (readerCacheHelper != null) {
-      readerCacheHelper.addClosedListener(
-          cacheKey -> {
-            final Object expectedKey = readerCacheHelper.getKey();
-            assert expectedKey == cacheKey
-                : "Core closed listener called on a different key "
-                    + expectedKey
-                    + " <> "
-                    + cacheKey;
-          });
+      readerCacheHelper.addClosedListener(cacheKey -> {
+        final Object expectedKey = readerCacheHelper.getKey();
+        assert expectedKey == cacheKey
+            : "Core closed listener called on a different key " + expectedKey + " <> " + cacheKey;
+      });
     }
   }
 
@@ -239,7 +231,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
-    public long getSumDocFreq() throws IOException {
+    public long getSumDocFreq() {
       assertThread("Terms", creationThread);
       final long sumDf = in.getSumDocFreq();
       assert sumDf >= getDocCount();
@@ -247,7 +239,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
-    public long getSumTotalTermFreq() throws IOException {
+    public long getSumTotalTermFreq() {
       assertThread("Terms", creationThread);
       final long sumTtf = in.getSumTotalTermFreq();
       if (hasFreqs() == false) {
@@ -282,7 +274,7 @@ public class AssertingLeafReader extends FilterLeafReader {
       POSITIONED,
       UNPOSITIONED,
       TWO_PHASE_SEEKING;
-    };
+    }
 
     private State state = State.INITIAL;
     private final boolean delegateOverridesSeekExact;
@@ -473,7 +465,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     START,
     ITERATING,
     FINISHED
-  };
+  }
 
   /** Wraps a docsenum with additional checks */
   public static class AssertingPostingsEnum extends FilterPostingsEnum {
@@ -1523,31 +1515,31 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
-    public byte[] getMinPackedValue() throws IOException {
+    public byte[] getMinPackedValue() {
       assertThread("Points", creationThread);
       return Objects.requireNonNull(in.getMinPackedValue());
     }
 
     @Override
-    public byte[] getMaxPackedValue() throws IOException {
+    public byte[] getMaxPackedValue() {
       assertThread("Points", creationThread);
       return Objects.requireNonNull(in.getMaxPackedValue());
     }
 
     @Override
-    public int getNumDimensions() throws IOException {
+    public int getNumDimensions() {
       assertThread("Points", creationThread);
       return in.getNumDimensions();
     }
 
     @Override
-    public int getNumIndexDimensions() throws IOException {
+    public int getNumIndexDimensions() {
       assertThread("Points", creationThread);
       return in.getNumIndexDimensions();
     }
 
     @Override
-    public int getBytesPerDimension() throws IOException {
+    public int getBytesPerDimension() {
       assertThread("Points", creationThread);
       return in.getBytesPerDimension();
     }
@@ -1823,7 +1815,7 @@ public class AssertingLeafReader extends FilterLeafReader {
   }
 
   @Override
-  public DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
+  public DocValuesSkipper getDocValuesSkipper(String field) {
     DocValuesSkipper skipper = super.getDocValuesSkipper(field);
     FieldInfo fi = getFieldInfos().fieldInfo(field);
     if (skipper != null) {
@@ -1879,6 +1871,13 @@ public class AssertingLeafReader extends FilterLeafReader {
       assertThread("Bits", creationThread);
       return in.length();
     }
+
+    @Override
+    public void applyMask(FixedBitSet bitSet, int offset) {
+      assertThread("Bits", creationThread);
+      assert offset >= 0;
+      in.applyMask(bitSet, offset);
+    }
   }
 
   @Override
@@ -1909,6 +1908,14 @@ public class AssertingLeafReader extends FilterLeafReader {
   @Override
   public void searchNearestVectors(
       String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
+    acceptDocs = AssertingAcceptDocs.wrap(acceptDocs);
+    super.searchNearestVectors(field, target, knnCollector, acceptDocs);
+  }
+
+  @Override
+  public void searchNearestVectors(
+      String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     acceptDocs = AssertingAcceptDocs.wrap(acceptDocs);
     super.searchNearestVectors(field, target, knnCollector, acceptDocs);

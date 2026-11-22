@@ -68,29 +68,33 @@ public class GoogleJavaFormatPlugin extends LuceneGradlePlugin {
     tasks.named("check", check -> check.dependsOn(checkTask));
 
     var fileStates = project.getLayout().getBuildDirectory().file("gjf-file-states.json");
+    var formatterVersion =
+        getVersionCatalog(project)
+            .findLibrary("gjf")
+            .orElseThrow()
+            .map(dep -> dep.getModule() + ":" + dep.getVersionConstraint().getRequiredVersion());
     for (var t : List.of(applyTask, checkTask)) {
-      t.configure(
-          task -> {
-            task.getBatchSize().set(batchSizeOption);
-            task.dependsOn(":" + CheckEnvironmentPlugin.TASK_CHECK_JDK_INTERNALS_EXPOSED_TO_GRADLE);
-            task.getFileStateCache().set(fileStates);
-          });
+      t.configure(task -> {
+        task.getBatchSize().set(batchSizeOption);
+        task.getFormatterVersion().set(formatterVersion);
+        task.dependsOn(":" + CheckEnvironmentPlugin.TASK_CHECK_JDK_INTERNALS_EXPOSED_TO_GRADLE);
+        task.getFileStateCache().set(fileStates);
+      });
     }
 
     // Configure details depending on the project.
     for (var t : List.of(applyTask, checkTask)) {
-      t.configure(
-          task -> {
-            var srcTree =
-                project.getPath().equals(":build-tools:build-infra-shadow")
-                    ? project.getRootProject().fileTree("build-tools/build-infra/src")
-                    : project.fileTree("src");
+      t.configure(task -> {
+        var srcTree =
+            project.getPath().equals(":build-tools:build-infra-shadow")
+                ? project.getRootProject().fileTree("build-tools/build-infra/src")
+                : project.fileTree("src");
 
-            srcTree.include("**/*.java");
-            configureExclusions(project, srcTree);
+        srcTree.include("**/*.java");
+        configureExclusions(project, srcTree);
 
-            task.getSourceFiles().setFrom(srcTree);
-          });
+        task.getSourceFiles().setFrom(srcTree);
+      });
     }
   }
 

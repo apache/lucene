@@ -26,15 +26,12 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.HitQueue;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnByteVectorQuery;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopDocsCollector;
-import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
@@ -121,37 +118,8 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
     if (scorer == null) {
       return NO_RESULTS;
     }
-    DiversifyingChildrenFloatKnnVectorQuery.DiversifyingChildrenVectorScorer vectorScorer =
-        new DiversifyingChildrenFloatKnnVectorQuery.DiversifyingChildrenVectorScorer(
-            acceptIterator, parentBitSet, scorer);
-    final int queueSize = Math.min(k, Math.toIntExact(acceptIterator.cost()));
-    HitQueue queue = new HitQueue(queueSize, true);
-    TotalHits.Relation relation = TotalHits.Relation.EQUAL_TO;
-    ScoreDoc topDoc = queue.top();
-    while (vectorScorer.nextParent() != DocIdSetIterator.NO_MORE_DOCS) {
-      // Mark results as partial if timeout is met
-      if (queryTimeout != null && queryTimeout.shouldExit()) {
-        relation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
-        break;
-      }
-
-      float score = vectorScorer.score();
-      if (score > topDoc.score) {
-        topDoc.score = score;
-        topDoc.doc = vectorScorer.bestChild();
-        topDoc = queue.updateTop();
-      }
-    }
-
-    // Remove any remaining sentinel values
-    while (queue.size() > 0 && queue.top().score < 0) {
-      queue.pop();
-    }
-
-    ScoreDoc[] topScoreDocs = queue.drainToArrayHighestFirst(ScoreDoc[]::new);
-
-    TotalHits totalHits = new TotalHits(acceptIterator.cost(), relation);
-    return new TopDocs(totalHits, topScoreDocs);
+    return new DiversifyingChildrenVectorScorer(acceptIterator, parentBitSet, scorer)
+        .collect(k, queryTimeout);
   }
 
   @Override

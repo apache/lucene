@@ -87,7 +87,7 @@ class QueryProfilerWeight extends FilterWeight {
       }
 
       @Override
-      public long cost() {
+      public long cost() throws IOException {
         timer.start();
         try {
           return subQueryScorerSupplier.cost();

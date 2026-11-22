@@ -22,6 +22,7 @@ import java.util.regex.Pattern;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
 
 /**
  * A TokenFilter which applies a Pattern to each token in the stream, replacing match occurrences
@@ -35,7 +36,9 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 public final class PatternReplaceFilter extends TokenFilter {
   private final String replacement;
   private final boolean all;
+  private final boolean ignoreKeywords;
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
+  private final KeywordAttribute keywordAtt = addAttribute(KeywordAttribute.class);
   private final Matcher m;
 
   /**
@@ -50,15 +53,37 @@ public final class PatternReplaceFilter extends TokenFilter {
    * @see Matcher#quoteReplacement
    */
   public PatternReplaceFilter(TokenStream in, Pattern p, String replacement, boolean all) {
+    this(in, p, replacement, all, false);
+  }
+
+  /**
+   * Constructs an instance to replace either the first, or all occurrences
+   *
+   * @param in the TokenStream to process
+   * @param p the patterm to apply to each Token
+   * @param replacement the "replacement string" to substitute, if null a blank string will be used.
+   *     Note that this is not the literal string that will be used, '$' and '\' have special
+   *     meaning.
+   * @param all if true, all matches will be replaced otherwise just the first match.
+   * @param ignoreKeywords if true, tokens with KeywordAttribute set to true will not be processed
+   * @see Matcher#quoteReplacement
+   */
+  public PatternReplaceFilter(
+      TokenStream in, Pattern p, String replacement, boolean all, boolean ignoreKeywords) {
     super(in);
     this.replacement = (null == replacement) ? "" : replacement;
     this.all = all;
+    this.ignoreKeywords = ignoreKeywords;
     this.m = p.matcher(termAtt);
   }
 
   @Override
   public boolean incrementToken() throws IOException {
     if (!input.incrementToken()) return false;
+
+    if (ignoreKeywords && keywordAtt.isKeyword()) {
+      return true;
+    }
 
     m.reset();
     if (m.find()) {
