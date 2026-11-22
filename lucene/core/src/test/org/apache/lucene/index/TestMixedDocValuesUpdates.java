@@ -518,38 +518,37 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
     CyclicBarrier barrier = new CyclicBarrier(threads.length + 1);
     for (int i = 0; i < threads.length; i++) {
       threads[i] =
-          new Thread(
-              () -> {
+          new Thread(() -> {
+            try {
+              barrier.await();
+              for (int doc = 0; doc < 1000; doc++) {
+                int docId = random().nextInt(locks.length);
+                locks[docId].lock();
                 try {
-                  barrier.await();
-                  for (int doc = 0; doc < 1000; doc++) {
-                    int docId = random().nextInt(locks.length);
-                    locks[docId].lock();
-                    try {
-                      Long value = rarely() ? null : random().nextLong(); // sometimes reset it
-                      if (random().nextBoolean()) {
-                        writer.updateDocValues(
-                            new Term("id", docId + ""), new NumericDocValuesField("value", value));
-                      } else {
-                        doUpdate(
-                            new Term("id", docId + ""),
-                            writer,
-                            new NumericDocValuesField("value", value));
-                      }
-                      values[docId] = value;
-                    } catch (IOException e) {
-                      throw new AssertionError(e);
-                    } finally {
-                      locks[docId].unlock();
-                    }
-                    if (rarely()) {
-                      writer.flush();
-                    }
+                  Long value = rarely() ? null : random().nextLong(); // sometimes reset it
+                  if (random().nextBoolean()) {
+                    writer.updateDocValues(
+                        new Term("id", docId + ""), new NumericDocValuesField("value", value));
+                  } else {
+                    doUpdate(
+                        new Term("id", docId + ""),
+                        writer,
+                        new NumericDocValuesField("value", value));
                   }
-                } catch (Exception e) {
+                  values[docId] = value;
+                } catch (IOException e) {
                   throw new AssertionError(e);
+                } finally {
+                  locks[docId].unlock();
                 }
-              });
+                if (rarely()) {
+                  writer.flush();
+                }
+              }
+            } catch (Exception e) {
+              throw new AssertionError(e);
+            }
+          });
       threads[i].start();
     }
 

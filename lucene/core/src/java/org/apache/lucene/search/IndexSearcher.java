@@ -624,6 +624,7 @@ public class IndexSearcher {
     return searchAfter(null, query, n);
   }
 
+<<<<<<< HEAD
   /**
    * Lower-level search API.
    *
@@ -644,6 +645,8 @@ public class IndexSearcher {
     }
   }
 
+=======
+>>>>>>> main
   /** Returns true if any search hit the {@link #setTimeout(QueryTimeout) timeout}. */
   public boolean timedOut() {
     return partialResult;
@@ -740,9 +743,9 @@ public class IndexSearcher {
   }
 
   /**
-   * Lower-level search API. Search all leaves using the given {@link CollectorManager}. In contrast
-   * to {@link #search(Query, Collector)}, this method will use the searcher's {@link Executor} in
-   * order to parallelize execution of the collection on the configured {@link #getSlices()}.
+   * Lower-level search API. Search all leaves using the given {@link CollectorManager}. This method
+   * will use the searcher's {@link Executor} in order to parallelize execution of the collection on
+   * the configured {@link #getSlices()}.
    *
    * @see CollectorManager
    * @lucene.experimental
@@ -779,11 +782,10 @@ public class IndexSearcher {
       for (int i = 0; i < leafSlices.length; ++i) {
         final LeafReaderContextPartition[] leaves = leafSlices[i].partitions;
         final C collector = collectors.get(i);
-        listTasks.add(
-            () -> {
-              search(leaves, weight, collector);
-              return collector;
-            });
+        listTasks.add(() -> {
+          search(leaves, weight, collector);
+          return collector;
+        });
       }
       List<C> results = taskExecutor.invokeAll(listTasks);
       return collectorManager.reduce(results);

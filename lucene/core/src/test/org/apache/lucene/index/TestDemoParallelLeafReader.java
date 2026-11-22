@@ -130,19 +130,17 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
       w = new IndexWriter(indexDir, iwc);
 
       w.getConfig()
-          .setMergedSegmentWarmer(
-              (reader) -> {
-                // This will build the parallel index for the merged segment before the merge
-                // becomes visible, so reopen delay is only due to
-                // newly flushed segments:
-                if (DEBUG)
-                  System.out.println(
-                      Thread.currentThread().getName() + ": TEST: now warm " + reader);
-                // TODO: it's not great that we pass false here; it means we close the reader &
-                // reopen again for NRT reader; still we did "warm" by
-                // building the parallel index, if necessary
-                getParallelLeafReader(reader, false, getCurrentSchemaGen());
-              });
+          .setMergedSegmentWarmer(reader -> {
+            // This will build the parallel index for the merged segment before the merge
+            // becomes visible, so reopen delay is only due to
+            // newly flushed segments:
+            if (DEBUG)
+              System.out.println(Thread.currentThread().getName() + ": TEST: now warm " + reader);
+            // TODO: it's not great that we pass false here; it means we close the reader &
+            // reopen again for NRT reader; still we did "warm" by
+            // building the parallel index, if necessary
+            getParallelLeafReader(reader, false, getCurrentSchemaGen());
+          });
 
       // start with empty commit:
       w.commit();
@@ -681,11 +679,6 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
         @Override
         public void add(OneMerge merge) {
           super.add(new ReindexingOneMerge(merge.segments));
-        }
-
-        @Override
-        public String segString(Directory dir) {
-          return "ReindexingMergeSpec(" + super.segString(dir) + ")";
         }
       }
 

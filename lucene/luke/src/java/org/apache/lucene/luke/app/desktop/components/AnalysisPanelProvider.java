@@ -107,11 +107,10 @@ public final class AnalysisPanelProvider implements AnalysisTabOperator {
 
     operatorRegistry
         .get(CustomAnalyzerPanelOperator.class)
-        .ifPresent(
-            operator -> {
-              operator.setAnalysisModel(analysisModel);
-              operator.resetAnalysisComponents();
-            });
+        .ifPresent(operator -> {
+          operator.setAnalysisModel(analysisModel);
+          operator.resetAnalysisComponents();
+        });
     stepByStepCB.setVisible(true);
   }
 
@@ -188,16 +187,15 @@ public final class AnalysisPanelProvider implements AnalysisTabOperator {
     JButton clearBtn = new JButton(MessageUtils.getLocalizedMessage("button.clear"));
     clearBtn.setFont(StyleConstants.FONT_BUTTON_LARGE);
     clearBtn.setMargin(new Insets(5, 5, 5, 5));
-    clearBtn.addActionListener(
-        _ -> {
-          inputArea.setText("");
-          operatorRegistry
-              .get(SimpleAnalyzeResultPanelOperator.class)
-              .ifPresent(SimpleAnalyzeResultPanelOperator::clearTable);
-          operatorRegistry
-              .get(StepByStepAnalyzeResultPanelOperator.class)
-              .ifPresent(StepByStepAnalyzeResultPanelOperator::clearTable);
-        });
+    clearBtn.addActionListener(_ -> {
+      inputArea.setText("");
+      operatorRegistry
+          .get(SimpleAnalyzeResultPanelOperator.class)
+          .ifPresent(SimpleAnalyzeResultPanelOperator::clearTable);
+      operatorRegistry
+          .get(StepByStepAnalyzeResultPanelOperator.class)
+          .ifPresent(StepByStepAnalyzeResultPanelOperator::clearTable);
+    });
     input.add(clearBtn);
 
     inner1.add(input, BorderLayout.CENTER);
@@ -223,11 +221,10 @@ public final class AnalysisPanelProvider implements AnalysisTabOperator {
 
     operatorRegistry
         .get(SimpleAnalyzeResultPanelOperator.class)
-        .ifPresent(
-            operator -> {
-              operator.setAnalysisModel(analysisModel);
-              operator.executeAnalysis(text);
-            });
+        .ifPresent(operator -> {
+          operator.setAnalysisModel(analysisModel);
+          operator.executeAnalysis(text);
+        });
 
     lowerPanel.setVisible(false);
     lowerPanel.setVisible(true);
@@ -243,11 +240,10 @@ public final class AnalysisPanelProvider implements AnalysisTabOperator {
     lowerPanel.add(stepByStepResult, BorderLayout.CENTER);
     operatorRegistry
         .get(StepByStepAnalyzeResultPanelOperator.class)
-        .ifPresent(
-            operator -> {
-              operator.setAnalysisModel(analysisModel);
-              operator.executeAnalysisStepByStep(text);
-            });
+        .ifPresent(operator -> {
+          operator.setAnalysisModel(analysisModel);
+          operator.executeAnalysisStepByStep(text);
+        });
 
     lowerPanel.setVisible(false);
     lowerPanel.setVisible(true);
@@ -260,7 +256,7 @@ public final class AnalysisPanelProvider implements AnalysisTabOperator {
               "Analysis chain",
               600,
               320,
-              (factory) -> {
+              factory -> {
                 factory.setAnalyzer(analyzer);
               });
     }

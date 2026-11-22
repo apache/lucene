@@ -269,11 +269,10 @@ public class TermFilteredPresearcher extends Presearcher {
   /** Collects terms from a {@link QueryTree} and maps them per-field */
   protected Map<String, BytesRefHash> collectTerms(QueryTree querytree) {
     Map<String, BytesRefHash> fieldTerms = new HashMap<>();
-    querytree.collectTerms(
-        (field, term) -> {
-          BytesRefHash tt = fieldTerms.computeIfAbsent(field, _ -> new BytesRefHash());
-          tt.add(term);
-        });
+    querytree.collectTerms((field, term) -> {
+      BytesRefHash tt = fieldTerms.computeIfAbsent(field, _ -> new BytesRefHash());
+      tt.add(term);
+    });
     return fieldTerms;
   }
 

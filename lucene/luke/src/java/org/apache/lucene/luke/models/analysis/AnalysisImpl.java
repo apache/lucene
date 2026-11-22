@@ -127,10 +127,9 @@ public final class AnalysisImpl implements Analysis {
     while (itr.hasNext()) {
       AttributeImpl att = itr.next();
       Map<String, String> attValues = new LinkedHashMap<>();
-      att.reflectWith(
-          (_, key, value) -> {
-            if (value != null) attValues.put(key, value.toString());
-          });
+      att.reflectWith((_, key, value) -> {
+        if (value != null) attValues.put(key, value.toString());
+      });
       attributes.add(new TokenAttribute(att.getClass().getSimpleName(), attValues));
     }
     return attributes;

@@ -27,7 +27,8 @@
  *
  * <pre><code class="language-java">
  * //... Above, create documents with two fields, one with term vectors (tv) and one without (notv)
- * IndexSearcher searcher = new IndexSearcher(directory);
+ * IndexReader reader = DirectoryReader.open(directory);
+ * IndexSearcher searcher = new IndexSearcher(reader);
  * QueryParser parser = new QueryParser("notv", analyzer);
  * Query query = parser.parse("million");
  *
@@ -35,11 +36,15 @@
  *
  *   SimpleHTMLFormatter htmlFormatter = new SimpleHTMLFormatter();
  *   Highlighter highlighter = new Highlighter(htmlFormatter, new QueryScorer(query));
+ *   StoredFields storedFields = searcher.storedFields();
+ *   TermVectors termVectors = searcher.getIndexReader().termVectors();
  *   for (int i = 0; i &lt; 10; i++) {
  *     int id = hits.scoreDocs[i].doc;
- *     Document doc = searcher.doc(id);
+ *     Document doc = storedFields.document(id);
+ *     // load the term vectors once per document and re-use them for all fields
+ *     Fields tvFields = termVectors.get(id);
  *     String text = doc.get("notv");
- *     TokenStream tokenStream = TokenSources.getAnyTokenStream(searcher.getIndexReader(), id, "notv", analyzer);
+ *     TokenStream tokenStream = TokenSources.getTokenStream("notv", tvFields, text, analyzer, -1);
  *     TextFragment[] frag = highlighter.getBestTextFragments(tokenStream, text, false, 10);//highlighter.getBestFragments(tokenStream, text, 3, "...");
  *     for (int j = 0; j &lt; frag.length; j++) {
  *       if ((frag[j] != null) &amp;&amp; (frag[j].getScore() &gt; 0)) {
@@ -48,7 +53,7 @@
  *     }
  *     //Term vector
  *     text = doc.get("tv");
- *     tokenStream = TokenSources.getAnyTokenStream(searcher.getIndexReader(), hits.scoreDocs[i].doc, "tv", analyzer);
+ *     tokenStream = TokenSources.getTokenStream("tv", tvFields, text, analyzer, -1);
  *     frag = highlighter.getBestTextFragments(tokenStream, text, false, 10);
  *     for (int j = 0; j &lt; frag.length; j++) {
  *       if ((frag[j] != null) &amp;&amp; (frag[j].getScore() &gt; 0)) {

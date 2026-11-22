@@ -21,10 +21,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import org.apache.lucene.search.KnnCollector;
-import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.SparseFixedBitSet;
 
 /**
  * Searches an HNSW graph to find nearest neighbors to a query vector. This particular
@@ -49,7 +46,7 @@ public class FilteredHnswGraphSearcher extends HnswGraphSearcher {
 
   /** Creates a new graph searcher. */
   private FilteredHnswGraphSearcher(
-      NeighborQueue candidates, BitSet visited, int filterSize, HnswGraph graph) {
+      NeighborQueue candidates, VisitedSet visited, int filterSize, HnswGraph graph) {
     super(candidates, visited);
     assert graph.maxConn() > 0 : "graph must have known max connections";
     float filterRatio = filterSize / (float) graph.size();
@@ -81,23 +78,18 @@ public class FilteredHnswGraphSearcher extends HnswGraphSearcher {
       throw new IllegalArgumentException("filterSize must be > 0 and < graph size");
     }
     return new FilteredHnswGraphSearcher(
-        new NeighborQueue(k, true), bitSet(filterSize, getGraphSize(graph), k), filterSize, graph);
+        new NeighborQueue(k, true),
+        visitedSet(filterSize, getGraphSize(graph), k),
+        filterSize,
+        graph);
   }
 
-  private static BitSet bitSet(long filterSize, int graphSize, int topk) {
+  private static VisitedSet visitedSet(long filterSize, int graphSize, int topk) {
     float percentFiltered = (float) filterSize / graphSize;
     assert percentFiltered > 0.0f && percentFiltered < 1.0f;
     double totalOps = Math.log(graphSize) * topk;
     int approximateVisitation = (int) (totalOps / percentFiltered);
-    return bitSet(approximateVisitation, graphSize);
-  }
-
-  private static BitSet bitSet(int expectedBits, int totalBits) {
-    if (expectedBits < (totalBits >>> 7)) {
-      return new SparseFixedBitSet(totalBits);
-    } else {
-      return new FixedBitSet(totalBits);
-    }
+    return VisitedSet.create(approximateVisitation, graphSize);
   }
 
   @Override
@@ -193,22 +185,23 @@ public class FilteredHnswGraphSearcher extends HnswGraphSearcher {
           }
         }
       }
-      // Score the vectors and add them to the candidate list
-      if (bulkScores == null || bulkScores.length < toScore.count()) {
-        bulkScores = new float[toScore.count()];
-      }
+      // Score the vectors and add them to the candidate list, without exceeding the visit limit
       assert toScore.upto == 0;
+      int numToScore =
+          (int) Math.min(toScore.count(), results.visitLimit() - results.visitedCount());
+      if (bulkScores == null || bulkScores.length < numToScore) {
+        bulkScores = new float[numToScore];
+      }
       float maxScore =
-          toScore.count() > 0
-              ? scorer.bulkScore(toScore.nodes, bulkScores, toScore.size)
+          numToScore > 0
+              ? scorer.bulkScore(toScore.nodes, bulkScores, numToScore)
               : Float.NEGATIVE_INFINITY;
-      results.incVisitedCount(toScore.count());
+      results.incVisitedCount(Math.max(numToScore, 0));
       if (maxScore > results.minCompetitiveSimilarity()) {
-        for (int i = 0; i < toScore.count(); i++) {
-          int idx = i + toScore.upto;
-          float friendSimilarity = bulkScores[idx];
+        for (int i = 0; i < numToScore; i++) {
+          float friendSimilarity = bulkScores[i];
           if (friendSimilarity >= minAcceptedSimilarity) {
-            int ord = toScore.nodes[idx];
+            int ord = toScore.nodes[i];
             candidates.add(ord, friendSimilarity);
             if (results.collect(ord, friendSimilarity)) {
               float oldMinAcceptedSimilarity = minAcceptedSimilarity;

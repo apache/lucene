@@ -126,16 +126,15 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
     }
 
     // Sort by highest count:
-    results.sort(
-        (a, b) -> {
-          if (a.value.intValue() > b.value.intValue()) {
-            return -1;
-          } else if (b.value.intValue() > a.value.intValue()) {
-            return 1;
-          } else {
-            return a.dim.compareTo(b.dim);
-          }
-        });
+    results.sort((a, b) -> {
+      if (a.value.intValue() > b.value.intValue()) {
+        return -1;
+      } else if (b.value.intValue() > a.value.intValue()) {
+        return 1;
+      } else {
+        return a.dim.compareTo(b.dim);
+      }
+    });
     return results;
   }
 

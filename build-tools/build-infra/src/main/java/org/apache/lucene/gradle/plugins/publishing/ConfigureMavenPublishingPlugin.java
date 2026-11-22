@@ -115,56 +115,49 @@ public class ConfigureMavenPublishingPlugin extends LuceneGradlePlugin {
         tasks.register(
             "check" + type + "RepositoryPushPreconditions",
             task -> {
-              task.doFirst(
-                  _ -> {
-                    // Make sure we're pushing a release version to release repo and a snapshot
-                    // to a snapshot repo.
-                    if (buildGlobals.snapshotBuild == useReleaseRepository) {
-                      throw new GradleException(
-                          type
-                              + " repository will not accept this version: "
-                              + rootProject.getVersion());
-                    }
+              task.doFirst(_ -> {
+                // Make sure we're pushing a release version to release repo and a snapshot
+                // to a snapshot repo.
+                if (buildGlobals.snapshotBuild == useReleaseRepository) {
+                  throw new GradleException(
+                      type
+                          + " repository will not accept this version: "
+                          + rootProject.getVersion());
+                }
 
-                    // Make sure access credentials have been passed.
-                    if (!asfNexusUsername.isPresent() || !asfNexusPassword.isPresent()) {
-                      throw new GradleException(
-                          "asfNexusUsername or asfNexusPassword is empty: these are required to publish to "
-                              + " ASF Nexus.");
-                    }
-                  });
+                // Make sure access credentials have been passed.
+                if (!asfNexusUsername.isPresent() || !asfNexusPassword.isPresent()) {
+                  throw new GradleException(
+                      "asfNexusUsername or asfNexusPassword is empty: these are required to publish to "
+                          + " ASF Nexus.");
+                }
+              });
             });
 
     buildGlobals
         .getPublishedProjects()
-        .forEach(
-            project -> {
-              // Add the publishing repository
-              var publishingExtension =
-                  project.getExtensions().getByType(PublishingExtension.class);
-              publishingExtension
-                  .getRepositories()
-                  .maven(
-                      repo -> {
-                        repo.setName("Apache" + type);
-                        repo.setUrl(apacheNexusRepositoryUrl);
-                        repo.credentials(
-                            creds -> {
-                              creds.setUsername(asfNexusUsername.getOrNull());
-                              creds.setPassword(asfNexusPassword.getOrNull());
-                            });
-                      });
+        .forEach(project -> {
+          // Add the publishing repository
+          var publishingExtension = project.getExtensions().getByType(PublishingExtension.class);
+          publishingExtension
+              .getRepositories()
+              .maven(repo -> {
+                repo.setName("Apache" + type);
+                repo.setUrl(apacheNexusRepositoryUrl);
+                repo.credentials(creds -> {
+                  creds.setUsername(asfNexusUsername.getOrNull());
+                  creds.setPassword(asfNexusPassword.getOrNull());
+                });
+              });
 
-              // Make sure any actual publication task is preceded by precondition checks.
-              project
-                  .getTasks()
-                  .matching(
-                      task -> task.getName().matches("publish.+ToApache" + type + "Repository"))
-                  .configureEach(
-                      t -> {
-                        t.dependsOn(checkRepositoryPushPreconditions);
-                      });
-            });
+          // Make sure any actual publication task is preceded by precondition checks.
+          project
+              .getTasks()
+              .matching(task -> task.getName().matches("publish.+ToApache" + type + "Repository"))
+              .configureEach(t -> {
+                t.dependsOn(checkRepositoryPushPreconditions);
+              });
+        });
   }
 
   /**
@@ -210,19 +203,17 @@ public class ConfigureMavenPublishingPlugin extends LuceneGradlePlugin {
       // have multiple artifacts there.
       p.getTasks()
           .matching(t -> t.getName().matches("publish.+ToBuildRepository"))
-          .configureEach(
-              t -> {
-                t.dependsOn(cleanBuildTask);
-              });
+          .configureEach(t -> {
+            t.dependsOn(cleanBuildTask);
+          });
 
       var publishingExtension = p.getExtensions().getByType(PublishingExtension.class);
       publishingExtension
           .getRepositories()
-          .maven(
-              repo -> {
-                repo.setName("Build");
-                repo.setUrl(mavenRepositoryDir);
-              });
+          .maven(repo -> {
+            repo.setName("Build");
+            repo.setUrl(mavenRepositoryDir);
+          });
     }
 
     project.getConfigurations().create(MAVEN_ARTIFACTS_CONFIGURATION);
@@ -281,10 +272,9 @@ public class ConfigureMavenPublishingPlugin extends LuceneGradlePlugin {
       for (var p : project.getAllprojects()) {
         p.getPlugins()
             .withType(SigningPlugin.class)
-            .configureEach(
-                _ -> {
-                  p.getExtensions().configure(SigningExtension.class, SigningExtension::useGpgCmd);
-                });
+            .configureEach(_ -> {
+              p.getExtensions().configure(SigningExtension.class, SigningExtension::useGpgCmd);
+            });
       }
     }
   }
@@ -353,21 +343,17 @@ public class ConfigureMavenPublishingPlugin extends LuceneGradlePlugin {
     // Hack: prevent any test fixture JARs from being published.
     project
         .getConfigurations()
-        .matching(
-            cfg ->
-                cfg.getName().equals("testFixturesApiElements")
-                    || cfg.getName().equals("testFixturesRuntimeElements"))
-        .configureEach(
-            cfg -> {
-              project.getComponents().stream()
-                  .filter(c -> "java".equals(c.getName()))
-                  .filter(c -> c instanceof AdhocComponentWithVariants)
-                  .map(c -> (AdhocComponentWithVariants) c)
-                  .forEach(
-                      comp ->
-                          comp.withVariantsFromConfiguration(
-                              cfg, ConfigurationVariantDetails::skip));
-            });
+        .matching(cfg ->
+            cfg.getName().equals("testFixturesApiElements")
+                || cfg.getName().equals("testFixturesRuntimeElements"))
+        .configureEach(cfg -> {
+          project.getComponents().stream()
+              .filter(c -> "java".equals(c.getName()))
+              .filter(c -> c instanceof AdhocComponentWithVariants)
+              .map(c -> (AdhocComponentWithVariants) c)
+              .forEach(comp ->
+                  comp.withVariantsFromConfiguration(cfg, ConfigurationVariantDetails::skip));
+        });
 
     // Hack: do not generate or publish Gradle module metadata (*.module)
     project
@@ -386,60 +372,49 @@ public class ConfigureMavenPublishingPlugin extends LuceneGradlePlugin {
     pom.getDescription().set(prov);
     pom.getUrl().set("https://lucene.apache.org/");
 
-    pom.licenses(
-        licenses ->
-            licenses.license(
-                lic -> {
-                  lic.getName().set("Apache 2");
-                  lic.getUrl().set("https://www.apache.org/licenses/LICENSE-2.0.txt");
-                }));
+    pom.licenses(licenses ->
+        licenses.license(lic -> {
+          lic.getName().set("Apache 2");
+          lic.getUrl().set("https://www.apache.org/licenses/LICENSE-2.0.txt");
+        }));
 
     pom.getInceptionYear().set("2000");
 
-    pom.issueManagement(
-        im -> {
-          im.getSystem().set("github");
-          im.getUrl().set("https://github.com/apache/lucene/issues");
-        });
+    pom.issueManagement(im -> {
+      im.getSystem().set("github");
+      im.getUrl().set("https://github.com/apache/lucene/issues");
+    });
 
-    pom.ciManagement(
-        ci -> {
-          ci.getSystem().set("Jenkins");
-          ci.getUrl().set("https://builds.apache.org/job/Lucene/");
-        });
+    pom.ciManagement(ci -> {
+      ci.getSystem().set("Jenkins");
+      ci.getUrl().set("https://builds.apache.org/job/Lucene/");
+    });
 
-    pom.mailingLists(
-        mls -> {
-          mls.mailingList(
-              ml -> {
-                ml.getName().set("Java User List");
-                ml.getSubscribe().set("java-user-subscribe@lucene.apache.org");
-                ml.getUnsubscribe().set("java-user-unsubscribe@lucene.apache.org");
-                ml.getArchive().set("https://mail-archives.apache.org/mod_mbox/lucene-java-user/");
-              });
-          mls.mailingList(
-              ml -> {
-                ml.getName().set("Java Developer List");
-                ml.getSubscribe().set("dev-subscribe@lucene.apache.org");
-                ml.getUnsubscribe().set("dev-unsubscribe@lucene.apache.org");
-                ml.getArchive().set("https://mail-archives.apache.org/mod_mbox/lucene-dev/");
-              });
-          mls.mailingList(
-              ml -> {
-                ml.getName().set("Java Commits List");
-                ml.getSubscribe().set("commits-subscribe@lucene.apache.org");
-                ml.getUnsubscribe().set("commits-unsubscribe@lucene.apache.org");
-                ml.getArchive()
-                    .set("https://mail-archives.apache.org/mod_mbox/lucene-java-commits/");
-              });
-        });
+    pom.mailingLists(mls -> {
+      mls.mailingList(ml -> {
+        ml.getName().set("Java User List");
+        ml.getSubscribe().set("java-user-subscribe@lucene.apache.org");
+        ml.getUnsubscribe().set("java-user-unsubscribe@lucene.apache.org");
+        ml.getArchive().set("https://mail-archives.apache.org/mod_mbox/lucene-java-user/");
+      });
+      mls.mailingList(ml -> {
+        ml.getName().set("Java Developer List");
+        ml.getSubscribe().set("dev-subscribe@lucene.apache.org");
+        ml.getUnsubscribe().set("dev-unsubscribe@lucene.apache.org");
+        ml.getArchive().set("https://mail-archives.apache.org/mod_mbox/lucene-dev/");
+      });
+      mls.mailingList(ml -> {
+        ml.getName().set("Java Commits List");
+        ml.getSubscribe().set("commits-subscribe@lucene.apache.org");
+        ml.getUnsubscribe().set("commits-unsubscribe@lucene.apache.org");
+        ml.getArchive().set("https://mail-archives.apache.org/mod_mbox/lucene-java-commits/");
+      });
+    });
 
-    pom.scm(
-        scm -> {
-          scm.getConnection().set("scm:git:https://gitbox.apache.org/repos/asf/lucene.git");
-          scm.getDeveloperConnection()
-              .set("scm:git:https://gitbox.apache.org/repos/asf/lucene.git");
-          scm.getUrl().set("https://gitbox.apache.org/repos/asf?p=lucene.git");
-        });
+    pom.scm(scm -> {
+      scm.getConnection().set("scm:git:https://gitbox.apache.org/repos/asf/lucene.git");
+      scm.getDeveloperConnection().set("scm:git:https://gitbox.apache.org/repos/asf/lucene.git");
+      scm.getUrl().set("https://gitbox.apache.org/repos/asf?p=lucene.git");
+    });
   }
 }

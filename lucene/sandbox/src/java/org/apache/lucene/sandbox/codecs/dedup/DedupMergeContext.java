@@ -17,7 +17,7 @@
 package org.apache.lucene.sandbox.codecs.dedup;
 
 import static java.nio.ByteOrder.LITTLE_ENDIAN;
-import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.alignBytes;
+import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.alignRawVectorData;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.hashBytes;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.writeEndMarker;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.writeFieldInfo;
@@ -112,7 +112,7 @@ final class DedupMergeContext implements Accountable {
       int dimension = groupKey.dimension();
       VectorEncoding encoding = groupKey.encoding();
 
-      long vectorDataOffset = alignBytes(vectorData, encoding);
+      long vectorDataOffset = alignRawVectorData(vectorData);
 
       DedupMergeGroup<?, ?> mergeGroup =
           switch (encoding) {

@@ -14,45 +14,43 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-package org.apache.lucene.analysis.es;
+package org.apache.lucene.analysis.sq;
 
 import java.io.IOException;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.miscellaneous.SetKeywordMarkerFilter;
+import org.apache.lucene.analysis.miscellaneous.SetKeywordMarkerFilter; // for javadoc
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
 
 /**
- * A {@link TokenFilter} that applies {@link SpanishMinimalStemmer} to stem Spanish words.
+ * A {@link TokenFilter} that applies {@link AlbanianNormalizer} to normalize Albanian text: <code>
+ * ë</code>/<code>ç</code> are folded to <code>e</code>/<code>c</code> and in-word apostrophes are
+ * removed.
  *
- * <p>To prevent terms from being stemmed use an instance of {@link SetKeywordMarkerFilter} or a
+ * <p>To prevent terms from being normalized use an instance of {@link SetKeywordMarkerFilter} or a
  * custom {@link TokenFilter} that sets the {@link KeywordAttribute} before this {@link
  * TokenStream}.
  *
- * @deprecated Use {@link SpanishPluralStemFilter} instead.
+ * @see AlbanianNormalizer
  */
-@Deprecated
-public final class SpanishMinimalStemFilter extends TokenFilter {
-  private final SpanishMinimalStemmer stemmer = new SpanishMinimalStemmer();
+public final class AlbanianNormalizationFilter extends TokenFilter {
+  private final AlbanianNormalizer normalizer = new AlbanianNormalizer();
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
-  private final KeywordAttribute keywordAttr = addAttribute(KeywordAttribute.class);
+  private final KeywordAttribute keywordAtt = addAttribute(KeywordAttribute.class);
 
-  public SpanishMinimalStemFilter(TokenStream input) {
+  public AlbanianNormalizationFilter(TokenStream input) {
     super(input);
   }
 
   @Override
   public boolean incrementToken() throws IOException {
     if (input.incrementToken()) {
-      if (!keywordAttr.isKeyword()) {
-        final int newlen = stemmer.stem(termAtt.buffer(), termAtt.length());
-        termAtt.setLength(newlen);
+      if (!keywordAtt.isKeyword()) {
+        termAtt.setLength(normalizer.normalize(termAtt.buffer(), termAtt.length()));
       }
       return true;
-    } else {
-      return false;
     }
+    return false;
   }
 }

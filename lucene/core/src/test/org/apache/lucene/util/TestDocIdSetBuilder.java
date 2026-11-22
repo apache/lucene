@@ -69,6 +69,52 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
     assertEquals(new BitDocIdSet(ref), result);
   }
 
+  /** Doc IDs that are clustered in a small range of the doc ID space, in random order. */
+  public void testSparseClustered() throws IOException {
+    for (int iter = 0; iter < 10; ++iter) {
+      final int maxDoc = TestUtil.nextInt(random(), 1 << 16, 1 << 26);
+      // sometimes cross a boundary where a high byte of doc IDs changes
+      final int rangeStart =
+          random().nextBoolean()
+              ? random().nextInt(maxDoc)
+              : Math.max(0, (1 << TestUtil.nextInt(random(), 8, 25)) - random().nextInt(300));
+      final int rangeLength =
+          Math.min(
+              maxDoc - rangeStart,
+              1 << TestUtil.nextInt(random(), 0, random().nextBoolean() ? 9 : 20));
+      if (rangeStart >= maxDoc) {
+        continue;
+      }
+      final boolean multiValued = random().nextBoolean();
+      // few enough doc IDs that the builder does not upgrade to a bit set, even with duplicates
+      final int numDocs = Math.min((maxDoc >>> 7) / 4, TestUtil.nextInt(random(), 1, 3000));
+      DocIdSetBuilder builder =
+          multiValued ? new DocIdSetBuilder(maxDoc) : new DocIdSetBuilder(maxDoc, numDocs, numDocs);
+      final FixedBitSet ref = new FixedBitSet(maxDoc);
+      int numAdded = 0;
+      while (numAdded < numDocs) {
+        int batchSize = TestUtil.nextInt(random(), 1, numDocs - numAdded);
+        DocIdSetBuilder.BulkAdder adder = builder.grow(batchSize);
+        for (int i = 0; i < batchSize; ++i) {
+          int doc = rangeStart + random().nextInt(rangeLength);
+          if (multiValued == false && ref.get(doc)) {
+            // no duplicates allowed, take the next free doc ID
+            doc = ref.nextClearBit(rangeStart);
+            if (doc >= rangeStart + rangeLength) {
+              break;
+            }
+          }
+          adder.add(doc);
+          ref.set(doc);
+        }
+        numAdded += batchSize;
+      }
+      DocIdSet result = builder.build();
+      assertTrue(result instanceof IntArrayDocIdSet);
+      assertEquals(new BitDocIdSet(ref), result);
+    }
+  }
+
   public void testDense() throws IOException {
     final int maxDoc = 1000000 + random().nextInt(1000000);
     DocIdSetBuilder builder = new DocIdSetBuilder(maxDoc);

@@ -14,36 +14,35 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-package org.apache.lucene.analysis.es;
+package org.apache.lucene.analysis.sq;
 
 import java.util.Map;
 import org.apache.lucene.analysis.TokenFilterFactory;
 import org.apache.lucene.analysis.TokenStream;
 
 /**
- * Factory for {@link SpanishMinimalStemFilter}.
+ * Factory for {@link AlbanianLightStemFilter}.
  *
  * <pre><code class="language-xml">
- * &lt;fieldType name="text_eslgtstem" class="solr.TextField" positionIncrementGap="100"&gt;
+ * &lt;fieldType name="text_sqlgtstem" class="solr.TextField" positionIncrementGap="100"&gt;
  *   &lt;analyzer&gt;
  *     &lt;tokenizer class="solr.StandardTokenizerFactory"/&gt;
  *     &lt;filter class="solr.LowerCaseFilterFactory"/&gt;
- *     &lt;filter class="solr.SpanishMinimalStemFilterFactory"/&gt;
+ *     &lt;filter class="solr.AlbanianNormalizationFilterFactory"/&gt;
+ *     &lt;filter class="solr.AlbanianLightStemFilterFactory"/&gt;
  *   &lt;/analyzer&gt;
  * &lt;/fieldType&gt;</code></pre>
  *
+ * @since 12.0.0
  * @lucene.spi {@value #NAME}
- * @deprecated Use {@link SpanishPluralStemFilterFactory} instead
  */
-@Deprecated
-public class SpanishMinimalStemFilterFactory extends TokenFilterFactory {
+public class AlbanianLightStemFilterFactory extends TokenFilterFactory {
 
   /** SPI name */
-  public static final String NAME = "spanishMinimalStem";
+  public static final String NAME = "albanianLightStem";
 
-  /** Creates a new SpanishMinimalStemFilterFactory */
-  public SpanishMinimalStemFilterFactory(Map<String, String> args) {
+  /** Creates a new AlbanianLightStemFilterFactory */
+  public AlbanianLightStemFilterFactory(Map<String, String> args) {
     super(args);
     if (!args.isEmpty()) {
       throw new IllegalArgumentException("Unknown parameters: " + args);
@@ -51,12 +50,12 @@ public class SpanishMinimalStemFilterFactory extends TokenFilterFactory {
   }
 
   /** Default ctor for compatibility with SPI */
-  public SpanishMinimalStemFilterFactory() {
+  public AlbanianLightStemFilterFactory() {
     throw defaultCtorException();
   }
 
   @Override
   public TokenStream create(TokenStream input) {
-    return new SpanishMinimalStemFilter(input);
+    return new AlbanianLightStemFilter(input);
   }
 }

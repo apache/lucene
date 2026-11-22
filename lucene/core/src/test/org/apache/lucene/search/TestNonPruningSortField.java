@@ -70,16 +70,18 @@ public class TestNonPruningSortField extends LuceneTestCase {
     try (DirectoryReader reader = DirectoryReader.open(dir)) {
       IndexSearcher searcher = new IndexSearcher(reader);
       SortField plain = new SortField("f", SortField.Type.LONG);
-      TopDocs expected = searcher.search(new MatchAllDocsQuery(), 10, new Sort(plain));
+      TopDocs expected = searcher.search(MatchAllDocsQuery.INSTANCE, 10, new Sort(plain));
       TopDocs actual =
-          searcher.search(new MatchAllDocsQuery(), 10, new Sort(SortField.withoutPruning(plain)));
+          searcher.search(
+              MatchAllDocsQuery.INSTANCE, 10, new Sort(SortField.withoutPruning(plain)));
       assertEquals(expected.scoreDocs.length, actual.scoreDocs.length);
       for (int i = 0; i < expected.scoreDocs.length; i++) {
         assertEquals(expected.scoreDocs[i].doc, actual.scoreDocs[i].doc);
       }
       // merging per-shard results works with the wrapper
       TopFieldDocs shard =
-          searcher.search(new MatchAllDocsQuery(), 10, new Sort(SortField.withoutPruning(plain)));
+          searcher.search(
+              MatchAllDocsQuery.INSTANCE, 10, new Sort(SortField.withoutPruning(plain)));
       TopDocs merged =
           TopDocs.merge(new Sort(SortField.withoutPruning(plain)), 10, new TopFieldDocs[] {shard});
       assertEquals(10, merged.scoreDocs.length);

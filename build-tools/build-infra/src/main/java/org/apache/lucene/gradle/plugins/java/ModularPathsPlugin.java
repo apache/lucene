@@ -64,92 +64,87 @@ public class ModularPathsPlugin extends LuceneGradlePlugin {
     // Configure modular extensions for each source set.
     //
     SourceSetContainer sourceSets = javaPluginExtension.getSourceSets();
-    sourceSets.configureEach(
-        sourceSet -> {
-          // Create and register a source set extension for manipulating classpath/ module-path
-          ModularPathsExtension modularPaths = new ModularPathsExtension(project, sourceSet);
-          sourceSet.getExtensions().add(MODULAR_PATHS_EXTENSION_NAME, modularPaths);
+    sourceSets.configureEach(sourceSet -> {
+      // Create and register a source set extension for manipulating classpath/ module-path
+      ModularPathsExtension modularPaths = new ModularPathsExtension(project, sourceSet);
+      sourceSet.getExtensions().add(MODULAR_PATHS_EXTENSION_NAME, modularPaths);
 
-          // LUCENE-10344: We have to provide a special-case extension for ECJ because it does
-          // not support all the module-specific javac options.
-          ModularPathsExtension modularPathsForEcj = modularPaths;
-          if (SourceSet.TEST_SOURCE_SET_NAME.equals(sourceSet.getName())
-              && ECJ_CLASSPATH_ONLY_PROJECTS.contains(project.getPath())) {
-            modularPathsForEcj =
-                modularPaths.cloneWithMode(ModularPathsExtension.Mode.CLASSPATH_ONLY);
-          }
-          sourceSet.getExtensions().add(MODULAR_PATHS_EXTENSION_ECJ_NAME, modularPathsForEcj);
+      // LUCENE-10344: We have to provide a special-case extension for ECJ because it does
+      // not support all the module-specific javac options.
+      ModularPathsExtension modularPathsForEcj = modularPaths;
+      if (SourceSet.TEST_SOURCE_SET_NAME.equals(sourceSet.getName())
+          && ECJ_CLASSPATH_ONLY_PROJECTS.contains(project.getPath())) {
+        modularPathsForEcj = modularPaths.cloneWithMode(ModularPathsExtension.Mode.CLASSPATH_ONLY);
+      }
+      sourceSet.getExtensions().add(MODULAR_PATHS_EXTENSION_ECJ_NAME, modularPathsForEcj);
 
-          // TODO: the tests of these projects currently don't compile or work in
-          // module-path mode. Make the modular paths extension use class path only.
-          if (SourceSet.TEST_SOURCE_SET_NAME.equals(sourceSet.getName())
-              && TEST_CLASSPATH_ONLY_PROJECTS.contains(project.getPath())) {
-            modularPaths.setMode(ModularPathsExtension.Mode.CLASSPATH_ONLY);
-          }
+      // TODO: the tests of these projects currently don't compile or work in
+      // module-path mode. Make the modular paths extension use class path only.
+      if (SourceSet.TEST_SOURCE_SET_NAME.equals(sourceSet.getName())
+          && TEST_CLASSPATH_ONLY_PROJECTS.contains(project.getPath())) {
+        modularPaths.setMode(ModularPathsExtension.Mode.CLASSPATH_ONLY);
+      }
 
-          // Configure the JavaCompile task associated with this source set.
-          project
-              .getTasks()
-              .named(sourceSet.getCompileJavaTaskName(), JavaCompile.class)
-              .configure(
-                  task -> {
-                    task.dependsOn(modularPaths.getCompileModulePathConfiguration());
+      // Configure the JavaCompile task associated with this source set.
+      project
+          .getTasks()
+          .named(sourceSet.getCompileJavaTaskName(), JavaCompile.class)
+          .configure(task -> {
+            task.dependsOn(modularPaths.getCompileModulePathConfiguration());
 
-                    // GH-12742: add the modular path as inputs so that if anything changes, the
-                    // task
-                    // is not up to date and is re-run. I [dw] believe this should be a
-                    // @Classpath parameter
-                    // on the task itself... but I don't know how to implement this on an
-                    // existing class.
-                    // this is a workaround but should work just fine though.
-                    task.getInputs()
-                        .files(modularPaths.getCompileModulePathConfiguration())
-                        .withNormalizer(ClasspathNormalizer.class);
+            // GH-12742: add the modular path as inputs so that if anything changes, the
+            // task
+            // is not up to date and is re-run. I [dw] believe this should be a
+            // @Classpath parameter
+            // on the task itself... but I don't know how to implement this on an
+            // existing class.
+            // this is a workaround but should work just fine though.
+            task.getInputs()
+                .files(modularPaths.getCompileModulePathConfiguration())
+                .withNormalizer(ClasspathNormalizer.class);
 
-                    // LUCENE-10327: don't allow gradle to emit an empty sourcepath as it would
-                    // break
-                    // compilation of modules.
-                    task.getOptions().setSourcepath(sourceSet.getJava().getSourceDirectories());
+            // LUCENE-10327: don't allow gradle to emit an empty sourcepath as it would
+            // break
+            // compilation of modules.
+            task.getOptions().setSourcepath(sourceSet.getJava().getSourceDirectories());
 
-                    // Add modular dependencies and their transitive dependencies to module
-                    // path.
-                    task.getOptions()
-                        .getCompilerArgumentProviders()
-                        .add(modularPaths.getCompilationArguments());
+            // Add modular dependencies and their transitive dependencies to module
+            // path.
+            task.getOptions()
+                .getCompilerArgumentProviders()
+                .add(modularPaths.getCompilationArguments());
 
-                    // LUCENE-10304: if we modify the classpath here, IntelliJ no longer sees
-                    // the dependencies as compile-time
-                    // dependencies, don't know why.
-                    if (!ideaSync) {
-                      task.setClasspath(modularPaths.getCompilationClasspath());
-                    }
+            // LUCENE-10304: if we modify the classpath here, IntelliJ no longer sees
+            // the dependencies as compile-time
+            // dependencies, don't know why.
+            if (!ideaSync) {
+              task.setClasspath(modularPaths.getCompilationClasspath());
+            }
 
-                    Property<String> debugInfo =
-                        project
-                            .getObjects()
-                            .property(String.class)
-                            .convention(
-                                project
-                                    .getProviders()
-                                    .provider(modularPaths::getCompilationPathDebugInfo));
+            Property<String> debugInfo =
+                project
+                    .getObjects()
+                    .property(String.class)
+                    .convention(
+                        project.getProviders().provider(modularPaths::getCompilationPathDebugInfo));
 
-                    task.doFirst(t -> t.getLogger().info(debugInfo.get()));
-                  });
+            task.doFirst(t -> t.getLogger().info(debugInfo.get()));
+          });
 
-          // For source sets that contain a module descriptor, configure a jar task that
-          // combines classes and resources into a single module.
-          if (!SourceSet.MAIN_SOURCE_SET_NAME.equals(sourceSet.getName())) {
-            project
-                .getTasks()
-                .register(
-                    sourceSet.getJarTaskName(),
-                    Jar.class,
-                    jar -> {
-                      jar.getArchiveClassifier().set(sourceSet.getName());
-                      jar.from(sourceSet.getOutput());
-                    });
-          }
-        });
+      // For source sets that contain a module descriptor, configure a jar task that
+      // combines classes and resources into a single module.
+      if (!SourceSet.MAIN_SOURCE_SET_NAME.equals(sourceSet.getName())) {
+        project
+            .getTasks()
+            .register(
+                sourceSet.getJarTaskName(),
+                Jar.class,
+                jar -> {
+                  jar.getArchiveClassifier().set(sourceSet.getName());
+                  jar.from(sourceSet.getOutput());
+                });
+      }
+    });
 
     // Connect modular configurations between their "test" and "main" source sets, this reflects
     // the conventions set by the Java plugin.
@@ -255,24 +250,22 @@ public class ModularPathsPlugin extends LuceneGradlePlugin {
     project
         .getTasks()
         .withType(JavaCompile.class)
-        .configureEach(
-            task -> {
-              // TODO: LUCENE-10267: Gradle bug workaround. Remove when upstream is fixed.
-              String projectVersion = String.valueOf(project.getVersion());
+        .configureEach(task -> {
+          // TODO: LUCENE-10267: Gradle bug workaround. Remove when upstream is fixed.
+          String projectVersion = String.valueOf(project.getVersion());
 
-              task.getOptions()
-                  .getCompilerArgumentProviders()
-                  .add(
-                      () -> {
-                        if (task.getClasspath().isEmpty()) {
-                          return Arrays.asList("--module-version", projectVersion);
-                        } else {
-                          return List.of();
-                        }
-                      });
+          task.getOptions()
+              .getCompilerArgumentProviders()
+              .add(() -> {
+                if (task.getClasspath().isEmpty()) {
+                  return Arrays.asList("--module-version", projectVersion);
+                } else {
+                  return List.of();
+                }
+              });
 
-              task.getOptions().getJavaModuleVersion().set(projectVersion);
-            });
+          task.getOptions().getJavaModuleVersion().set(projectVersion);
+        });
   }
 
   /**
@@ -316,37 +309,35 @@ public class ModularPathsPlugin extends LuceneGradlePlugin {
             .value(
                 project
                     .getProviders()
-                    .provider(
-                        () -> {
-                          List<String> args = new ArrayList<>();
+                    .provider(() -> {
+                      List<String> args = new ArrayList<>();
 
-                          // Start with runtime module-path args
-                          modularPaths.getRuntimeArguments().asArguments().forEach(args::add);
+                      // Start with runtime module-path args
+                      modularPaths.getRuntimeArguments().asArguments().forEach(args::add);
 
-                          String cp = modularPaths.getRuntimeClasspath().getAsPath();
-                          if (!cp.isBlank()) {
-                            args.add("-cp");
-                            args.add(cp);
-                          }
+                      String cp = modularPaths.getRuntimeClasspath().getAsPath();
+                      if (!cp.isBlank()) {
+                        args.add("-cp");
+                        args.add(cp);
+                      }
 
-                          // Sanity check: no newlines in individual args
-                          for (String s : args) {
-                            if (s.contains("\n")) {
-                              throw new GradleException("LF in a forked jvm property?: " + s);
-                            }
-                          }
+                      // Sanity check: no newlines in individual args
+                      for (String s : args) {
+                        if (s.contains("\n")) {
+                          throw new GradleException("LF in a forked jvm property?: " + s);
+                        }
+                      }
 
-                          return args;
-                        }));
-    task.doFirst(
-        _ -> {
-          try {
-            Files.createDirectories(forkProperties.toPath().getParent());
-            Files.writeString(forkProperties.toPath(), String.join("\n", jvmArgsProperty.get()));
-          } catch (IOException e) {
-            throw new GradleException("Failed to write fork properties file: " + forkProperties, e);
-          }
-        });
+                      return args;
+                    }));
+    task.doFirst(_ -> {
+      try {
+        Files.createDirectories(forkProperties.toPath().getParent());
+        Files.writeString(forkProperties.toPath(), String.join("\n", jvmArgsProperty.get()));
+      } catch (IOException e) {
+        throw new GradleException("Failed to write fork properties file: " + forkProperties, e);
+      }
+    });
 
     Property<String> debugInfo =
         project
