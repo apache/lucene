@@ -402,6 +402,10 @@ Optimizations
 
 * GITHUB#16757: Speed up building cached bit sets in LRUQueryCache. (Ke Wei)
 
+* GITHUB#17045: LSBRadixSorter sorts values that are clustered in a small part of their range with
+  fewer radix passes. This speeds up DocIdSetBuilder, e.g. for range queries on fields whose values
+  follow doc ID order such as timestamps or index sort fields. (Asharam)
+
 * GITHUB#17060: TermGroupSelector maps a segment's ordinals to groups when a document first hits
   them, instead of looking up every group seen so far at each new segment. This speeds up first-pass
   grouping over many segments with mostly distinct groups. (Asharam)
