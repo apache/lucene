@@ -45,13 +45,13 @@ public abstract class KnnSearchStrategy {
   public abstract void nextVectorsBlock();
 
   /**
-   * Estimates the number of distinct nodes this search strategy expects to visit, bounded by the
-   * graph size. Used to decide between an HNSW search and an exhaustive scan.
+   * Estimates the number of distinct nodes this search strategy expects to visit. Used to decide
+   * between an HNSW search and an exhaustive scan.
    *
    * @param k neighbors to find
    * @param graphSize size of the graph (must be > 0)
    * @param avgDegree average out-degree of nodes in the bottom layer of the graph, or 0 if unknown
-   * @return expected number of distinct visited nodes, in [0, graphSize]
+   * @return the expected number of distinct nodes by a graph traversal
    */
   public int expectedVisitedNodes(int k, int graphSize, float selectivity, float avgDegree) {
     return (int) (k * Math.log(graphSize));
@@ -118,10 +118,13 @@ public abstract class KnnSearchStrategy {
       double baseCost = expectedDegree * logN; // Unfiltered k=1 cost.
       double filteredExplorationEstimate = .28 * Math.pow(k / s, .71) * expectedDegree * logN;
 
-      return (int)
-          Math.max(
-              requiredScores,
-              descent + Math.max(baseCost, squash(localUniverse, filteredExplorationEstimate)));
+      return Math.min(
+          graphSize,
+          (int)
+              Math.max(
+                  requiredScores,
+                  descent
+                      + Math.max(baseCost, squash(localUniverse, filteredExplorationEstimate))));
     }
 
     /**

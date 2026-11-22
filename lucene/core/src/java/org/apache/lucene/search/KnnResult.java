@@ -53,15 +53,20 @@ public record KnnResult(Method strategy, TopDocs topDocs, int strongResultCount)
   }
 
   /**
-   * Returns true if this result came from an approximate search that filled its strong results and
-   * whose weakest strong result is still competitive with {@code minCompetitiveScore}, meaning that
-   * re-searching this segment more deeply could find further competitive hits.
+   * Returns true if this was the result of an optimistic search of a segment that likely contains
+   * more results with scores > `minCompetitiveScore`
    *
+   * @param globalK the number of results requested across all segments
    * @param minCompetitiveScore the minimum score needed to make the global top hits
    */
-  public boolean hasMoreCompetitiveScores(float minCompetitiveScore) {
-    return strategy == Method.APPROXIMATE
-        && strongResultCount > 0
+  public boolean hasMoreCompetitiveScores(int globalK, float minCompetitiveScore) {
+    if (strongResultCount >= topDocs.scoreDocs.length) {
+      return false;
+    }
+    if (strongResultCount >= globalK) {
+      return false;
+    }
+    return strongResultCount > 0
         && topDocs.scoreDocs[strongResultCount - 1].score >= minCompetitiveScore;
   }
 

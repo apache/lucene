@@ -181,8 +181,9 @@ abstract class AbstractKnnVectorQuery extends Query {
         AcceptDocs accept = acceptDocsIter.next();
 
         KnnResult perLeaf = perLeafResults.get(ctx.ord);
-        if (perLeaf.hasMoreCompetitiveScores(minTopKScore)) {
+        if (perLeaf.hasMoreCompetitiveScores(this.k, minTopKScore)) {
           // All this leaf's hits are at or above the global topK min score; explore it further
+          ++reentryCount;
           tasks.add(
               () ->
                   searchLeaf(
@@ -511,8 +512,6 @@ abstract class AbstractKnnVectorQuery extends Query {
         throws IOException {
       KnnCollector delegateCollector =
           knnCollectorManager.newCollector(visitLimit, searchStrategy, ctx);
-      // Seed only from the strong results: they bound where the first pass stopped exploring, while
-      // the extra retained hits would only add seed entry points without improving the search
       TopDocs seedTopDocs = perLeafResults.get(ctx.ord).strongTopDocs();
       VectorScorer scorer = createVectorScorer(ctx, ctx.reader().getFieldInfos().fieldInfo(field));
       if (seedTopDocs.totalHits.value() == 0 || scorer == null) {
