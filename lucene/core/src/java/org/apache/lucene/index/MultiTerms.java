@@ -200,7 +200,7 @@ public final class MultiTerms extends Terms {
   }
 
   @Override
-  public long getSumTotalTermFreq() throws IOException {
+  public long getSumTotalTermFreq() {
     long sum = 0;
     for (Terms terms : subs) {
       final long v = terms.getSumTotalTermFreq();
@@ -211,7 +211,7 @@ public final class MultiTerms extends Terms {
   }
 
   @Override
-  public long getSumDocFreq() throws IOException {
+  public long getSumDocFreq() {
     long sum = 0;
     for (Terms terms : subs) {
       final long v = terms.getSumDocFreq();

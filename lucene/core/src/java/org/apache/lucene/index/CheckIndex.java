@@ -133,6 +133,13 @@ public final class CheckIndex implements Closeable {
     /** True if we were unable to locate and load the segments_N file. */
     public boolean missingSegments;
 
+    /**
+     * Name of the segment whose {@code .si} file could not be read, when that is why {@link
+     * #missingSegments} is set; null when the commit point itself could not be parsed far enough to
+     * name a segment.
+     */
+    public String brokenSegmentName;
+
     /** Name of latest segments_N file in the index. */
     public String segmentsFileName;
 
@@ -651,14 +658,13 @@ public final class CheckIndex implements Closeable {
     // Sort descending by generation so that we always attempt to read the last commit first.  This
     // way if an index has a broken last commit AND a broken old commit, we report the last commit
     // error first:
-    allSegmentsFiles.sort(
-        (a, b) -> {
-          long genA = SegmentInfos.generationFromSegmentsFileName(a);
-          long genB = SegmentInfos.generationFromSegmentsFileName(b);
+    allSegmentsFiles.sort((a, b) -> {
+      long genA = SegmentInfos.generationFromSegmentsFileName(a);
+      long genB = SegmentInfos.generationFromSegmentsFileName(b);
 
-          // reversed natural sort (largest generation first):
-          return -Long.compare(genA, genB);
-        });
+      // reversed natural sort (largest generation first):
+      return Long.compare(genB, genA);
+    });
 
     for (String fileName : allSegmentsFiles) {
 
@@ -676,16 +682,27 @@ public final class CheckIndex implements Closeable {
           throw IOUtils.rethrowAlways(t);
         }
 
+        String which = isLastCommit ? "latest" : "old (not latest)";
         String message;
 
-        if (isLastCommit) {
+        if (t instanceof CorruptSegmentInfoException corrupt) {
+          // The commit point itself parsed far enough to name the segment, so say which one.
+          result.brokenSegmentName = corrupt.getSegmentName();
           message =
-              "ERROR: could not read latest commit point from segments file \""
+              "ERROR: could not read segment \""
+                  + corrupt.getSegmentName()
+                  + "\" referenced by the "
+                  + which
+                  + " commit point in segments file \""
                   + fileName
-                  + "\" in directory";
+                  + "\": its "
+                  + corrupt.getSegmentName()
+                  + ".si is missing or corrupt";
         } else {
           message =
-              "ERROR: could not read old (not latest) commit point segments file \""
+              "ERROR: could not read "
+                  + which
+                  + " commit point from segments file \""
                   + fileName
                   + "\" in directory";
         }
@@ -837,18 +854,17 @@ public final class CheckIndex implements Closeable {
 
       // sort segmentCommitInfos by segment size, as smaller segment tends to finish faster, and
       // hence its output can be printed out faster
-      segmentCommitInfos.sort(
-          (info1, info2) -> {
-            try {
-              return Long.compare(info1.sizeInBytes(), info2.sizeInBytes());
-            } catch (IOException e) {
-              msg(
-                  infoStream,
-                  "ERROR: IOException occurred when comparing SegmentCommitInfo file sizes");
-              if (infoStream != null) e.printStackTrace(infoStream);
-              return 0;
-            }
-          });
+      segmentCommitInfos.sort((info1, info2) -> {
+        try {
+          return Long.compare(info1.sizeInBytes(), info2.sizeInBytes());
+        } catch (IOException e) {
+          msg(
+              infoStream,
+              "ERROR: IOException occurred when comparing SegmentCommitInfo file sizes");
+          if (infoStream != null) e.printStackTrace(infoStream);
+          return 0;
+        }
+      });
 
       // start larger segments earlier
       for (int i = numSegments - 1; i >= 0; i--) {
@@ -991,7 +1007,7 @@ public final class CheckIndex implements Closeable {
 
     final Version version = info.info.getVersion();
     if (info.info.maxDoc() <= 0) {
-      throw new CheckIndexException(" illegal number of documents: maxDoc=" + info.info.maxDoc());
+      throw new CheckIndexException("illegal number of documents: maxDoc=" + info.info.maxDoc());
     }
 
     int toLoseDocCount = info.info.maxDoc();
@@ -1847,8 +1863,7 @@ public final class CheckIndex implements Closeable {
                           + ": startOffset "
                           + startOffset
                           + " < lastStartOffset "
-                          + lastOffset
-                          + "; consider using the FixBrokenOffsets tool in Lucene's backward-codecs module to correct your index");
+                          + lastOffset);
                 }
                 if (endOffset < 0) {
                   throw new CheckIndexException(
@@ -2857,6 +2872,13 @@ public final class CheckIndex implements Closeable {
                     status,
                     reader);
                 break;
+              case FLOAT16:
+                checkFloat16VectorValues(
+                    Objects.requireNonNull(reader.getFloat16VectorValues(fieldInfo.name)),
+                    fieldInfo,
+                    status,
+                    reader);
+                break;
               case FLOAT32:
                 checkFloatVectorValues(
                     Objects.requireNonNull(reader.getFloatVectorValues(fieldInfo.name)),
@@ -3086,6 +3108,58 @@ public final class CheckIndex implements Closeable {
 
   private static void checkFloatVectorValues(
       FloatVectorValues values,
+      FieldInfo fieldInfo,
+      CheckIndex.Status.VectorValuesStatus status,
+      CodecReader codecReader)
+      throws IOException {
+    int count = 0;
+    int everyNdoc = Math.max(values.size() / 64, 1);
+    while (count < values.size()) {
+      // search the first maxNumSearches vectors to exercise the graph
+      if (values.ordToDoc(count) % everyNdoc == 0) {
+        KnnCollector collector = new TopKnnCollector(10, Integer.MAX_VALUE);
+        if (vectorsReaderSupportsSearch(codecReader, fieldInfo.name)) {
+          codecReader
+              .getVectorReader()
+              .search(
+                  fieldInfo.name,
+                  values.vectorValue(count),
+                  collector,
+                  AcceptDocs.fromLiveDocs(null, codecReader.maxDoc()));
+          TopDocs docs = collector.topDocs();
+          if (docs.scoreDocs.length == 0) {
+            throw new CheckIndexException(
+                "Field \"" + fieldInfo.name + "\" failed to search k nearest neighbors");
+          }
+        }
+      }
+      int valueLength = values.vectorValue(count).length;
+      if (valueLength != fieldInfo.getVectorDimension()) {
+        throw new CheckIndexException(
+            "Field \""
+                + fieldInfo.name
+                + "\" has a value whose dimension="
+                + valueLength
+                + " not matching the field's dimension="
+                + fieldInfo.getVectorDimension());
+      }
+      ++count;
+    }
+    if (count != values.size()) {
+      throw new CheckIndexException(
+          "Field \""
+              + fieldInfo.name
+              + "\" has size="
+              + values.size()
+              + " but when iterated, returns "
+              + count
+              + " docs with values");
+    }
+    status.totalVectorValues += count;
+  }
+
+  private static void checkFloat16VectorValues(
+      Float16VectorValues values,
       FieldInfo fieldInfo,
       CheckIndex.Status.VectorValuesStatus status,
       CodecReader codecReader)
@@ -4113,6 +4187,49 @@ public final class CheckIndex implements Closeable {
     }
   }
 
+  private static void checkBulkFetchBinaryDocValues(
+      String fieldName, BinaryDocValues bdv, BinaryDocValues bdv2, int maxDoc) throws IOException {
+
+    int[] docs = new int[16];
+    BytesRef[] values = new BytesRef[16];
+
+    for (int doc = -1; doc < maxDoc; ) {
+      int size = 0;
+      for (int j = 0; j < docs.length; ++j) {
+        doc += 1 + (j & 0x03);
+        if (doc >= maxDoc) {
+          break;
+        }
+        docs[size++] = doc;
+      }
+
+      bdv.binaryValues(size, docs, values);
+
+      for (int j = 0; j < size; ++j) {
+        if (bdv2.advanceExact(docs[j])) {
+          BytesRef expected = BytesRef.deepCopyOf(bdv2.binaryValue());
+          if (values[j] == null || values[j].equals(expected) == false) {
+            throw new CheckIndexException(
+                "field "
+                    + fieldName
+                    + " #binaryValues reports different value: "
+                    + values[j]
+                    + " != "
+                    + expected);
+          }
+        } else {
+          if (values[j] != null) {
+            throw new CheckIndexException(
+                "field "
+                    + fieldName
+                    + " #binaryValues reports non-null for missing doc: "
+                    + values[j]);
+          }
+        }
+      }
+    }
+  }
+
   private static void checkDocValues(
       FieldInfo fi, int maxDoc, DocValuesProducer dvReader, DocValuesStatus status)
       throws Exception {
@@ -4141,6 +4258,8 @@ public final class CheckIndex implements Closeable {
         status.totalBinaryFields++;
         checkDVIterator(fi, dvReader::getBinary);
         checkBinaryDocValues(fi.name, dvReader.getBinary(fi), dvReader.getBinary(fi));
+        checkBulkFetchBinaryDocValues(
+            fi.name, dvReader.getBinary(fi), dvReader.getBinary(fi), maxDoc);
         break;
       case NUMERIC:
         status.totalNumericFields++;

@@ -98,7 +98,7 @@ dependencies {
     ])
   }
   for (Project module : binaryModules) {
-    jars(module, {
+    jars(project(module.path), {
       transitive = false
     })
   }

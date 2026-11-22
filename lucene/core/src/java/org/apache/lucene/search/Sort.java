@@ -18,6 +18,8 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Arrays;
+import org.apache.lucene.index.DocValuesSkipper;
+import org.apache.lucene.index.LeafReader;
 
 /**
  * Encapsulates sort criteria for returned hits.
@@ -131,5 +133,52 @@ public final class Sort {
       }
     }
     return false;
+  }
+
+  /**
+   * Returns the primary index sort field for the given LeafReader, or null if none is configured.
+   *
+   * <p>If sorting against a field would have no effect then that SortField is skipped over and the
+   * next SortField in the list is returned. This can happen for fields with no values in the
+   * segment, or fields that have only a single distinct value.
+   */
+  public static SortField getPrimarySortField(LeafReader reader) {
+    int idx = primarySortFieldIndex(reader);
+    return idx == -1 ? null : reader.getMetaData().sort().fields[idx];
+  }
+
+  /**
+   * Returns the position in the index sort of the field that {@link #getPrimarySortField} would
+   * return, or -1 if the reader has no index sort or every field in it is a no-op.
+   */
+  static int primarySortFieldIndex(LeafReader reader) {
+    Sort sort = reader.getMetaData().sort();
+    if (sort == null) {
+      return -1;
+    }
+    for (int i = 0; i < sort.fields.length; i++) {
+      SortField sf = sort.fields[i];
+      String field = sf.getField();
+      if (field == null) {
+        // Custom field that we don't know anything about, so return it as primary
+        return i;
+      }
+      if (reader.getFieldInfos().fieldInfo(field) == null) {
+        // Field has no values in this segment, so sorting by it has no effect.
+        continue;
+      }
+      // If the field has a skip index, check whether all values are identical,
+      // in which case sorting by this field is a no-op for this segment.  Note
+      // that we also need to check for denseness, as missing values add an
+      // implicit second sort group.
+      DocValuesSkipper skipper = reader.getDocValuesSkipper(field);
+      if (skipper != null
+          && skipper.docCount() == reader.maxDoc()
+          && skipper.minValue() == skipper.maxValue()) {
+        continue;
+      }
+      return i;
+    }
+    return -1;
   }
 }

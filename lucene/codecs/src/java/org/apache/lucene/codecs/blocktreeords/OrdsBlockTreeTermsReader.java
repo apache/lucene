@@ -28,6 +28,7 @@ import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.store.IndexInput;
@@ -226,12 +227,12 @@ public final class OrdsBlockTreeTermsReader extends FieldsProducer {
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
     // term dictionary
-    CodecUtil.checksumEntireFile(in);
+    CodecUtil.checksumEntireFile(in, merge);
 
     // postings
-    postingsReader.checkIntegrity();
+    postingsReader.checkIntegrity(merge);
   }
 
   @Override

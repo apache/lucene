@@ -139,12 +139,12 @@ public class TestMultiTermsEnum extends LuceneTestCase {
         }
 
         @Override
-        public long getSumTotalTermFreq() throws IOException {
+        public long getSumTotalTermFreq() {
           throw new UnsupportedOperationException();
         }
 
         @Override
-        public long getSumDocFreq() throws IOException {
+        public long getSumDocFreq() {
           throw new UnsupportedOperationException();
         }
 
@@ -226,8 +226,8 @@ public class TestMultiTermsEnum extends LuceneTestCase {
       }
 
       @Override
-      public void checkIntegrity() throws IOException {
-        delegate.checkIntegrity();
+      public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+        delegate.checkIntegrity(merge);
       }
 
       @Override

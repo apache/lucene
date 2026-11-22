@@ -24,6 +24,7 @@ import java.io.UncheckedIOException;
 import java.util.Objects;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
@@ -70,7 +71,7 @@ final class FieldsIndexReader extends FieldsIndex {
     indexInput =
         dir.openInput(
             IndexFileNames.segmentFileName(name, suffix, extension),
-            context.withHints(FileTypeHint.INDEX));
+            context.overrideHints(FileTypeHint.INDEX));
     try {
       CodecUtil.checkIndexHeader(
           indexInput, codecName + "Idx", VERSION_START, VERSION_CURRENT, id, suffix);
@@ -154,7 +155,7 @@ final class FieldsIndexReader extends FieldsIndex {
   }
 
   @Override
-  void checkIntegrity() throws IOException {
-    CodecUtil.checksumEntireFile(indexInput);
+  void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+    CodecUtil.checksumEntireFile(indexInput, merge);
   }
 }

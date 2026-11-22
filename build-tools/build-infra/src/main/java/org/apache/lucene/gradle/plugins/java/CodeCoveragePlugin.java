@@ -17,6 +17,7 @@
 package org.apache.lucene.gradle.plugins.java;
 
 import java.io.File;
+import java.util.Map;
 import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
 import org.barfuin.gradle.jacocolog.JacocoLogPlugin;
 import org.gradle.api.Project;
@@ -51,24 +52,23 @@ public class CodeCoveragePlugin extends LuceneGradlePlugin {
         project
             .getExtensions()
             .getByType(ReportingExtension.class)
-            .reports(
-                reports -> {
-                  reports
-                      .register("testCodeCoverageReport", JacocoCoverageReport.class)
-                      .configure(
-                          report -> {
-                            report.getTestSuiteName().set("test");
-                          });
-                });
+            .reports(reports -> {
+              reports
+                  .register("testCodeCoverageReport", JacocoCoverageReport.class)
+                  .configure(report -> {
+                    report.getTestSuiteName().set("test");
+                  });
+            });
 
         project
             .getSubprojects()
-            .forEach(
-                p -> {
-                  if (p.file("src/test").exists()) {
-                    project.getDependencies().add("jacocoAggregation", p);
-                  }
-                });
+            .forEach(p -> {
+              if (p.file("src/test").exists()) {
+                var dependencies = project.getDependencies();
+                dependencies.add(
+                    "jacocoAggregation", dependencies.project(Map.of("path", p.getPath())));
+              }
+            });
 
         var tasks = project.getTasks();
 
@@ -113,19 +113,16 @@ public class CodeCoveragePlugin extends LuceneGradlePlugin {
                 task.dependsOn(jacocoTestReport);
               });
 
-      testTasks.configureEach(
-          task -> {
-            // Configure jacoco destination file to be within the test
-            // task's working directory
-            var jacoco = task.getExtensions().getByType(JacocoTaskExtension.class);
-            jacoco.setDestinationFile(
-                project
-                    .getProviders()
-                    .provider(() -> new File(task.getWorkingDir(), "jacoco.exec")));
+      testTasks.configureEach(task -> {
+        // Configure jacoco destination file to be within the test
+        // task's working directory
+        var jacoco = task.getExtensions().getByType(JacocoTaskExtension.class);
+        jacoco.setDestinationFile(
+            project.getProviders().provider(() -> new File(task.getWorkingDir(), "jacoco.exec")));
 
-            // Test reports run after the test task, if it's run at all.
-            task.finalizedBy(jacocoTestReport);
-          });
+        // Test reports run after the test task, if it's run at all.
+        task.finalizedBy(jacocoTestReport);
+      });
     }
   }
 
@@ -133,14 +130,11 @@ public class CodeCoveragePlugin extends LuceneGradlePlugin {
       TaskContainer tasks, String jacocoTaskName, String logLine) {
     var jacocoAggregatedReport = tasks.withType(JacocoReport.class).named(jacocoTaskName);
 
-    jacocoAggregatedReport.configure(
-        task -> {
-          task.doLast(
-              _ -> {
-                task.getLogger()
-                    .lifecycle(logLine + task.getReports().getHtml().getEntryPoint() + "\n");
-              });
-        });
+    jacocoAggregatedReport.configure(task -> {
+      task.doLast(_ -> {
+        task.getLogger().lifecycle(logLine + task.getReports().getHtml().getEntryPoint() + "\n");
+      });
+    });
     return jacocoAggregatedReport;
   }
 

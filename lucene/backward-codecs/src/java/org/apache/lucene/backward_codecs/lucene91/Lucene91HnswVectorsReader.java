@@ -32,8 +32,10 @@ import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
@@ -214,9 +216,9 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
-    CodecUtil.checksumEntireFile(vectorData);
-    CodecUtil.checksumEntireFile(vectorIndex);
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+    CodecUtil.checksumEntireFile(vectorData, merge);
+    CodecUtil.checksumEntireFile(vectorIndex, merge);
   }
 
   private FieldEntry getFieldEntry(String field) {
@@ -235,6 +237,11 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
 
   @Override
   public ByteVectorValues getByteVectorValues(String field) throws IOException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
     throw new UnsupportedOperationException();
   }
 
@@ -259,6 +266,12 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
 
   @Override
   public void search(String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void search(String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     throw new UnsupportedOperationException();
   }
@@ -310,6 +323,11 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
+  public int getVectorCount(FieldInfo fieldInfo) {
+    return getFieldEntry(fieldInfo.name).size();
+  }
+
+  @Override
   public void close() throws IOException {
     IOUtils.close(vectorData, vectorIndex);
   }
@@ -355,7 +373,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
         }
       }
       final IntUnaryOperator ordToDocOperator =
-          ordToDoc == null ? IntUnaryOperator.identity() : (ord) -> ordToDoc[ord];
+          ordToDoc == null ? IntUnaryOperator.identity() : ord -> ordToDoc[ord];
 
       // read nodes by level
       final var maxConn = input.readInt();
@@ -434,7 +452,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
       this.dimension = dimension;
       this.size = size;
       this.ordToDoc = ordToDoc;
-      ordToDocOperator = ordToDoc == null ? IntUnaryOperator.identity() : (ord) -> ordToDoc[ord];
+      ordToDocOperator = ordToDoc == null ? IntUnaryOperator.identity() : ord -> ordToDoc[ord];
       this.dataIn = dataIn;
       this.similarityFunction = similarityFunction;
       byteSize = Float.BYTES * dimension;

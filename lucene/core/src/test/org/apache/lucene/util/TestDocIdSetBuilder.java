@@ -69,6 +69,52 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
     assertEquals(new BitDocIdSet(ref), result);
   }
 
+  /** Doc IDs that are clustered in a small range of the doc ID space, in random order. */
+  public void testSparseClustered() throws IOException {
+    for (int iter = 0; iter < 10; ++iter) {
+      final int maxDoc = TestUtil.nextInt(random(), 1 << 16, 1 << 26);
+      // sometimes cross a boundary where a high byte of doc IDs changes
+      final int rangeStart =
+          random().nextBoolean()
+              ? random().nextInt(maxDoc)
+              : Math.max(0, (1 << TestUtil.nextInt(random(), 8, 25)) - random().nextInt(300));
+      final int rangeLength =
+          Math.min(
+              maxDoc - rangeStart,
+              1 << TestUtil.nextInt(random(), 0, random().nextBoolean() ? 9 : 20));
+      if (rangeStart >= maxDoc) {
+        continue;
+      }
+      final boolean multiValued = random().nextBoolean();
+      // few enough doc IDs that the builder does not upgrade to a bit set, even with duplicates
+      final int numDocs = Math.min((maxDoc >>> 7) / 4, TestUtil.nextInt(random(), 1, 3000));
+      DocIdSetBuilder builder =
+          multiValued ? new DocIdSetBuilder(maxDoc) : new DocIdSetBuilder(maxDoc, numDocs, numDocs);
+      final FixedBitSet ref = new FixedBitSet(maxDoc);
+      int numAdded = 0;
+      while (numAdded < numDocs) {
+        int batchSize = TestUtil.nextInt(random(), 1, numDocs - numAdded);
+        DocIdSetBuilder.BulkAdder adder = builder.grow(batchSize);
+        for (int i = 0; i < batchSize; ++i) {
+          int doc = rangeStart + random().nextInt(rangeLength);
+          if (multiValued == false && ref.get(doc)) {
+            // no duplicates allowed, take the next free doc ID
+            doc = ref.nextClearBit(rangeStart);
+            if (doc >= rangeStart + rangeLength) {
+              break;
+            }
+          }
+          adder.add(doc);
+          ref.set(doc);
+        }
+        numAdded += batchSize;
+      }
+      DocIdSet result = builder.build();
+      assertTrue(result instanceof IntArrayDocIdSet);
+      assertEquals(new BitDocIdSet(ref), result);
+    }
+  }
+
   public void testDense() throws IOException {
     final int maxDoc = 1000000 + random().nextInt(1000000);
     DocIdSetBuilder builder = new DocIdSetBuilder(maxDoc);
@@ -85,6 +131,23 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
     DocIdSet result = builder.build();
     assertTrue(result instanceof BitDocIdSet);
     assertEquals(new BitDocIdSet(ref), result);
+  }
+
+  public void testExpectMoreUpgradesToBitSet() throws IOException {
+    final int maxDoc = 1 << 14;
+    DocIdSetBuilder builder = new DocIdSetBuilder(maxDoc);
+    builder.grow(1).add(7);
+
+    builder.expectMore((maxDoc >>> 7) + 1L);
+    builder.grow(1).add(11);
+
+    DocIdSet result = builder.build();
+    assertTrue(result instanceof BitDocIdSet);
+    DocIdSetIterator iterator = result.iterator();
+    assertEquals(7, iterator.nextDoc());
+    assertEquals(11, iterator.nextDoc());
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, iterator.nextDoc());
+    assertEquals(2, iterator.cost());
   }
 
   public void testRandom() throws IOException {
@@ -283,12 +346,12 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
     }
 
     @Override
-    public long getSumTotalTermFreq() throws IOException {
+    public long getSumTotalTermFreq() {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public long getSumDocFreq() throws IOException {
+    public long getSumDocFreq() {
       return numValues;
     }
 
@@ -334,27 +397,27 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
     }
 
     @Override
-    public byte[] getMinPackedValue() throws IOException {
+    public byte[] getMinPackedValue() {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public byte[] getMaxPackedValue() throws IOException {
+    public byte[] getMaxPackedValue() {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public int getNumDimensions() throws IOException {
+    public int getNumDimensions() {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public int getNumIndexDimensions() throws IOException {
+    public int getNumIndexDimensions() {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public int getBytesPerDimension() throws IOException {
+    public int getBytesPerDimension() {
       throw new UnsupportedOperationException();
     }
 

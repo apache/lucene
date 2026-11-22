@@ -96,7 +96,7 @@ public class GenerateUTR30DataFiles {
 
   private static void expandRulesInUTR30DataFiles() throws IOException {
     Predicate<Path> predicate =
-        (path) -> {
+        path -> {
           String name = path.getFileName().toString();
           return Files.isRegularFile(path)
               && name.matches(".*\\.(?s:txt)")

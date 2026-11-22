@@ -23,6 +23,7 @@ import org.apache.lucene.codecs.NormsConsumer;
 import org.apache.lucene.codecs.NormsFormat;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
@@ -113,8 +114,8 @@ public class AssertingNormsFormat extends NormsFormat {
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
-      in.checkIntegrity();
+    public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+      in.checkIntegrity(merge);
     }
 
     @Override

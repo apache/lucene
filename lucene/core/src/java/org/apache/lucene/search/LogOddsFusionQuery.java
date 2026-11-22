@@ -259,7 +259,7 @@ public final class LogOddsFusionQuery extends Query implements Iterable<Query> {
           }
 
           @Override
-          public long cost() {
+          public long cost() throws IOException {
             if (cost == -1) {
               long cost = 0;
               for (ScorerSupplier ss : scorerSuppliers) {
@@ -427,13 +427,12 @@ public final class LogOddsFusionQuery extends Query implements Iterable<Query> {
   public String toString(String field) {
     String base =
         this.orderedClauses.stream()
-            .map(
-                subquery -> {
-                  if (subquery instanceof BooleanQuery) {
-                    return "(" + subquery.toString(field) + ")";
-                  }
-                  return subquery.toString(field);
-                })
+            .map(subquery -> {
+              if (subquery instanceof BooleanQuery) {
+                return "(" + subquery.toString(field) + ")";
+              }
+              return subquery.toString(field);
+            })
             .collect(Collectors.joining(" & ", "LogOdds(", ")^" + alpha));
     if (signalWeights != null) {
       return base + " w=" + Arrays.toString(signalWeights);

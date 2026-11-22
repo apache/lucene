@@ -64,86 +64,76 @@ public class ApplyForbiddenApisPlugin extends LuceneGradlePlugin {
         tasks.withType(CheckForbiddenApis.class);
 
     // common configuration of all source sets.
-    allForbiddenApisTasks.configureEach(
-        task -> {
-          task.getBundledSignatures()
-              .addAll(
-                  List.of("jdk-unsafe", "jdk-deprecated", "jdk-non-portable", "jdk-reflection"));
+    allForbiddenApisTasks.configureEach(task -> {
+      task.getBundledSignatures()
+          .addAll(List.of("jdk-unsafe", "jdk-deprecated", "jdk-non-portable", "jdk-reflection"));
 
-          task.getSuppressAnnotations()
-              .addAll(List.of("**.SuppressForbidden", "**.*$SuppressForbidden"));
+      task.getSuppressAnnotations()
+          .addAll(List.of("**.SuppressForbidden", "**.*$SuppressForbidden"));
 
-          // apply logger restrictions to all modules except Luke.
-          if (!project.getPath().equals(":lucene:luke")) {
-            task.setSignaturesFiles(
-                task.getSignaturesFiles()
-                    .plus(
-                        project.files(
-                            forbiddenApisDir.resolve("non-standard/logging.txt").toFile())));
-          }
-        });
+      // apply logger restrictions to all modules except Luke.
+      if (!project.getPath().equals(":lucene:luke")) {
+        task.setSignaturesFiles(
+            task.getSignaturesFiles()
+                .plus(
+                    project.files(forbiddenApisDir.resolve("non-standard/logging.txt").toFile())));
+      }
+    });
 
     // Configure defaults for main source sets
     allForbiddenApisTasks
         .matching(task -> task.getName().matches("forbiddenApisMain\\d*|forbiddenApisTools"))
-        .configureEach(
-            task -> {
-              task.getBundledSignatures().add("jdk-system-out");
+        .configureEach(task -> {
+          task.getBundledSignatures().add("jdk-system-out");
 
-              String ruleGroup =
-                  switch (project.getPath()) {
-                    case ":build-tools:build-infra-shadow" -> "main-build-infra";
-                    default -> "main";
-                  };
+          String ruleGroup =
+              switch (project.getPath()) {
+                case ":build-tools:build-infra-shadow" -> "main-build-infra";
+                default -> "main";
+              };
 
-              addCompileConfigurationSignatureFiles(
-                  project, task, sourceSets, ruleGroup, forbiddenApisDir);
-            });
+          addCompileConfigurationSignatureFiles(
+              project, task, sourceSets, ruleGroup, forbiddenApisDir);
+        });
 
     // Configure defaults for test source sets
     allForbiddenApisTasks
         .matching(task -> task.getName().matches("forbiddenApisTest|forbiddenApisTestFixtures"))
-        .configureEach(
-            task -> {
-              String ruleGroup = "test";
-              addCompileConfigurationSignatureFiles(
-                  project, task, sourceSets, ruleGroup, forbiddenApisDir);
-            });
+        .configureEach(task -> {
+          String ruleGroup = "test";
+          addCompileConfigurationSignatureFiles(
+              project, task, sourceSets, ruleGroup, forbiddenApisDir);
+        });
 
     // Configure defaults for the MR-JAR feature sourceSets: add vector code signatures files
     allForbiddenApisTasks
         .matching(task -> task.getName().matches("forbiddenApisMain\\d+"))
-        .configureEach(
-            task -> {
-              // trick forbiddenapis jdk-nonportable signatures which report the following a
-              // violation:
-              // Due to a bug in forbiddenapis we add them first to suppress them later:
-              // https://github.com/policeman-tools/forbidden-apis/issues/267
-              var vectorExclusions = Set.of("jdk.internal.vm.vector.VectorSupport$Vector");
-              task.getSignatures().addAll(vectorExclusions);
-              task.getSignaturesWithSeveritySuppress().addAll(vectorExclusions);
-              // add specific vector-incubator signatures
-              task.setSignaturesFiles(
-                  task.getSignaturesFiles()
-                      .plus(
-                          project.files(
-                              forbiddenApisDir
-                                  .resolve("non-standard/incubator-vector.txt")
-                                  .toFile())));
-            });
+        .configureEach(task -> {
+          // trick forbiddenapis jdk-nonportable signatures which report the following a
+          // violation:
+          // Due to a bug in forbiddenapis we add them first to suppress them later:
+          // https://github.com/policeman-tools/forbidden-apis/issues/267
+          var vectorExclusions = Set.of("jdk.internal.vm.vector.VectorSupport$Vector");
+          task.getSignatures().addAll(vectorExclusions);
+          task.getSignaturesWithSeveritySuppress().addAll(vectorExclusions);
+          // add specific vector-incubator signatures
+          task.setSignaturesFiles(
+              task.getSignaturesFiles()
+                  .plus(
+                      project.files(
+                          forbiddenApisDir.resolve("non-standard/incubator-vector.txt").toFile())));
+        });
 
     // Junit4->Junit5 transition.
     var forbiddenApisTestTask = allForbiddenApisTasks.named("forbiddenApisTest");
     switch (project.getPath()) {
       case ":lucene:expressions", ":lucene:memory":
-        forbiddenApisTestTask.configure(
-            task -> {
-              task.setSignaturesFiles(
-                  task.getSignaturesFiles()
-                      .plus(
-                          project.files(
-                              forbiddenApisDir.resolve("non-standard/junit4.txt").toFile())));
-            });
+        forbiddenApisTestTask.configure(task -> {
+          task.setSignaturesFiles(
+              task.getSignaturesFiles()
+                  .plus(
+                      project.files(forbiddenApisDir.resolve("non-standard/junit4.txt").toFile())));
+        });
         break;
     }
 
@@ -152,24 +142,21 @@ public class ApplyForbiddenApisPlugin extends LuceneGradlePlugin {
 
     switch (project.getPath()) {
       case ":build-tools:missing-doclet", ":build-tools:build-infra-shadow":
-        forbiddenApisMainTask.configure(
-            task -> {
-              task.getBundledSignatures().removeAll(Set.of("jdk-non-portable", "jdk-system-out"));
-            });
+        forbiddenApisMainTask.configure(task -> {
+          task.getBundledSignatures().removeAll(Set.of("jdk-non-portable", "jdk-system-out"));
+        });
         break;
 
       case ":lucene:demo", ":lucene:benchmark", ":lucene:test-framework":
-        forbiddenApisMainTask.configure(
-            task -> {
-              task.getBundledSignatures().remove("jdk-system-out");
-            });
+        forbiddenApisMainTask.configure(task -> {
+          task.getBundledSignatures().remove("jdk-system-out");
+        });
         break;
 
       case ":lucene:analysis:common":
-        forbiddenApisMainTask.configure(
-            task -> {
-              task.exclude("org/tartarus/**");
-            });
+        forbiddenApisMainTask.configure(task -> {
+          task.exclude("org/tartarus/**");
+        });
         break;
     }
   }
@@ -210,13 +197,12 @@ public class ApplyForbiddenApisPlugin extends LuceneGradlePlugin {
 
     // collect signature files for all other dependencies.
     Provider<List<File>> signatureFiles =
-        allDependenciesProvider.map(
-            allDependencies -> {
-              return collectSignatureLocations(ruleGroup, allDependencies).stream()
-                  .map(forbiddenApisDir::resolve)
-                  .map(Path::toFile)
-                  .toList();
-            });
+        allDependenciesProvider.map(allDependencies -> {
+          return collectSignatureLocations(ruleGroup, allDependencies).stream()
+              .map(forbiddenApisDir::resolve)
+              .map(Path::toFile)
+              .toList();
+        });
 
     var allSignatureFiles = project.files(signatureFiles);
     var existingSignatureFiles = allSignatureFiles.filter(File::exists);
@@ -227,26 +213,25 @@ public class ApplyForbiddenApisPlugin extends LuceneGradlePlugin {
     addBuiltInSignatures(task, allDependenciesProvider);
 
     if (task.getLogger().isInfoEnabled()) {
-      task.doFirst(
-          t -> {
-            t.getLogger()
-                .info(
-                    "All expected signature file locations for source set '{}', configuration '{}':\n{}",
-                    sourceSetName,
-                    compileConfigurationName,
-                    allSignatureFiles.getFiles().stream()
-                        .map(f -> "  " + f)
-                        .collect(Collectors.joining("\n")));
+      task.doFirst(t -> {
+        t.getLogger()
+            .info(
+                "All expected signature file locations for source set '{}', configuration '{}':\n{}",
+                sourceSetName,
+                compileConfigurationName,
+                allSignatureFiles.getFiles().stream()
+                    .map(f -> "  " + f)
+                    .collect(Collectors.joining("\n")));
 
-            t.getLogger()
-                .info(
-                    "Existing signature files for source set '{}':\n{}",
-                    sourceSetName,
-                    allSignatureFiles.getFiles().stream()
-                        .filter(File::exists)
-                        .map(f -> "  " + f)
-                        .collect(Collectors.joining("\n")));
-          });
+        t.getLogger()
+            .info(
+                "Existing signature files for source set '{}':\n{}",
+                sourceSetName,
+                allSignatureFiles.getFiles().stream()
+                    .filter(File::exists)
+                    .map(f -> "  " + f)
+                    .collect(Collectors.joining("\n")));
+      });
     }
   }
 
@@ -259,29 +244,24 @@ public class ApplyForbiddenApisPlugin extends LuceneGradlePlugin {
   private static void addBuiltInSignatures(
       CheckForbiddenApis task,
       Provider<HashSet<ResolvedDependencyResult>> allDependenciesProvider) {
-    task.doFirst(
-        _ -> {
-          var builtInSignatureProvider =
-              allDependenciesProvider.map(
-                  allDependencies -> {
-                    return allDependencies.stream()
-                        .map(
-                            dep -> {
-                              return dep.getSelected().getModuleVersion();
-                            })
-                        .filter(
-                            moduleVersion -> {
-                              return moduleVersion.getGroup().equals("commons-io")
-                                  && moduleVersion.getName().equals("commons-io");
-                            })
-                        .map(
-                            moduleVersion ->
-                                moduleVersion.getName() + "-unsafe-" + moduleVersion.getVersion())
-                        .sorted()
-                        .toList();
-                  });
-          task.getBundledSignatures().addAll(builtInSignatureProvider.get());
-        });
+    task.doFirst(_ -> {
+      var builtInSignatureProvider =
+          allDependenciesProvider.map(allDependencies -> {
+            return allDependencies.stream()
+                .map(dep -> {
+                  return dep.getSelected().getModuleVersion();
+                })
+                .filter(moduleVersion -> {
+                  return moduleVersion.getGroup().equals("commons-io")
+                      && moduleVersion.getName().equals("commons-io");
+                })
+                .map(moduleVersion ->
+                    moduleVersion.getName() + "-unsafe-" + moduleVersion.getVersion())
+                .sorted()
+                .toList();
+          });
+      task.getBundledSignatures().addAll(builtInSignatureProvider.get());
+    });
   }
 
   private Set<String> collectSignatureLocations(
@@ -292,12 +272,11 @@ public class ApplyForbiddenApisPlugin extends LuceneGradlePlugin {
     signatureLocations.add(ruleGroup + "/defaults.txt");
 
     allDependencies.stream()
-        .flatMap(
-            dep -> {
-              var moduleVersion = dep.getSelected().getModuleVersion();
-              var ruleFileName = moduleVersion.getGroup() + "." + moduleVersion.getName() + ".txt";
-              return Set.of("all/" + ruleFileName, ruleGroup + "/" + ruleFileName).stream();
-            })
+        .flatMap(dep -> {
+          var moduleVersion = dep.getSelected().getModuleVersion();
+          var ruleFileName = moduleVersion.getGroup() + "." + moduleVersion.getName() + ".txt";
+          return Set.of("all/" + ruleFileName, ruleGroup + "/" + ruleFileName).stream();
+        })
         .forEach(signatureLocations::add);
 
     return signatureLocations;

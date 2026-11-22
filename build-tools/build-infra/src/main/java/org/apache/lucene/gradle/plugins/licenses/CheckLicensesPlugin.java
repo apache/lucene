@@ -41,16 +41,14 @@ public class CheckLicensesPlugin extends LuceneGradlePlugin {
             .register(CHECK_LICENSES_TASK, CheckLicensesTask.class, this::configureCheckLicenses);
 
     // Link any 'check' task from any subproject to this top-level task.
-    project.subprojects(
-        subproject -> {
-          subproject
-              .getTasks()
-              .named("check")
-              .configure(
-                  checkTask -> {
-                    checkTask.dependsOn(checkLicensesTask);
-                  });
-        });
+    project.subprojects(subproject -> {
+      subproject
+          .getTasks()
+          .named("check")
+          .configure(checkTask -> {
+            checkTask.dependsOn(checkLicensesTask);
+          });
+    });
   }
 
   private void configureCheckLicenses(CheckLicensesTask task) {
@@ -96,6 +94,7 @@ public class CheckLicensesPlugin extends LuceneGradlePlugin {
                 ".gitignore",
                 ".lift.toml",
                 ".pre-commit-config.yml",
+                ".ruff.toml",
                 ".rumdl.toml",
                 ".typos.toml",
                 ".vscode/**",
@@ -104,7 +103,7 @@ public class CheckLicensesPlugin extends LuceneGradlePlugin {
                 "build-options.properties",
                 "dev-tools/**",
                 "gradle/**",
-                "help/*.txt",
+                "help/*.md",
                 "lucene/licenses/*",
                 "versions.lock",
 

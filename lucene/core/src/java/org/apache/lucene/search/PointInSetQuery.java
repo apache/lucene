@@ -17,7 +17,6 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.AbstractCollection;
 import java.util.Arrays;
 import java.util.Collection;
@@ -136,7 +135,9 @@ public abstract class PointInSetQuery extends Query implements Accountable {
     ramBytesUsed =
         BASE_RAM_BYTES
             + RamUsageEstimator.sizeOfObject(field)
-            + RamUsageEstimator.sizeOfObject(sortedPackedPoints);
+            + RamUsageEstimator.sizeOfObject(sortedPackedPoints)
+            + RamUsageEstimator.sizeOfObject(lowerPoint)
+            + RamUsageEstimator.sizeOfObject(upperPoint);
   }
 
   @Override
@@ -214,20 +215,16 @@ public abstract class PointInSetQuery extends Query implements Accountable {
             }
 
             @Override
-            public long cost() {
-              try {
-                if (cost == -1) {
-                  // Computing the cost may be expensive, so only do it if necessary
-                  DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values);
-                  cost =
-                      values.estimateDocCount(
-                          new MergePointVisitor(sortedPackedPoints.iterator(), result));
-                  assert cost >= 0;
-                }
-                return cost;
-              } catch (IOException e) {
-                throw new UncheckedIOException(e);
+            public long cost() throws IOException {
+              if (cost == -1) {
+                // Computing the cost may be expensive, so only do it if necessary
+                DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values);
+                cost =
+                    values.estimateDocCount(
+                        new MergePointVisitor(sortedPackedPoints.iterator(), result));
+                assert cost >= 0;
               }
+              return cost;
             }
           };
         } else {
@@ -253,23 +250,19 @@ public abstract class PointInSetQuery extends Query implements Accountable {
             }
 
             @Override
-            public long cost() {
-              try {
-                if (cost == -1) {
-                  DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values);
-                  SinglePointVisitor visitor = new SinglePointVisitor(result);
-                  TermIterator iterator = sortedPackedPoints.iterator();
-                  cost = 0;
-                  for (BytesRef point = iterator.next(); point != null; point = iterator.next()) {
-                    visitor.setPoint(point);
-                    cost += values.estimateDocCount(visitor);
-                  }
-                  assert cost >= 0;
+            public long cost() throws IOException {
+              if (cost == -1) {
+                DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values);
+                SinglePointVisitor visitor = new SinglePointVisitor(result);
+                TermIterator iterator = sortedPackedPoints.iterator();
+                cost = 0;
+                for (BytesRef point = iterator.next(); point != null; point = iterator.next()) {
+                  visitor.setPoint(point);
+                  cost += values.estimateDocCount(visitor);
                 }
-                return cost;
-              } catch (IOException e) {
-                throw new UncheckedIOException(e);
+                assert cost >= 0;
               }
+              return cost;
             }
           };
         }

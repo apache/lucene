@@ -40,6 +40,7 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
@@ -292,7 +293,7 @@ public class TestSTBlockReader extends LuceneTestCase {
         }
 
         @Override
-        public void checkIntegrity() {}
+        public void checkIntegrity(MergePolicy.OneMerge merge) {}
 
         @Override
         public void close() {}

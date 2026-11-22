@@ -363,20 +363,19 @@ public class TestSuggestField extends LuceneTestCase {
           expected.add(doc);
         }
       }
-      expected.sort(
-          (a, b) -> {
-            // sort by higher score:
-            int cmp = Float.compare(b.value, a.value);
-            if (cmp == 0) {
-              // tie-break by completion key
-              cmp = Lookup.CHARSEQUENCE_COMPARATOR.compare(a.output, b.output);
-              if (cmp == 0) {
-                // prefer smaller doc id, in case of a tie
-                cmp = Integer.compare(a.id, b.id);
-              }
-            }
-            return cmp;
-          });
+      expected.sort((a, b) -> {
+        // sort by higher score:
+        int cmp = Float.compare(b.value, a.value);
+        if (cmp == 0) {
+          // tie-break by completion key
+          cmp = Lookup.CHARSEQUENCE_COMPARATOR.compare(a.output, b.output);
+          if (cmp == 0) {
+            // prefer smaller doc id, in case of a tie
+            cmp = Integer.compare(a.id, b.id);
+          }
+        }
+        return cmp;
+      });
 
       boolean dedup = random().nextBoolean();
       if (dedup) {

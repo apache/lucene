@@ -21,6 +21,8 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.lucene.codecs.Codec;
@@ -32,8 +34,14 @@ import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.SortedSetDocValuesField;
+import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.ReaderUtil;
+import org.apache.lucene.index.SortedNumericDocValues;
+import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.sandbox.document.LongPointMultiRangeBuilder;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
@@ -150,17 +158,12 @@ public class TestSortedDvMultiRangeQuery extends LuceneTestCase {
       TopDocs result2 = searcher.search(query2, reader.maxDoc(), Sort.INDEXORDER);
       TopDocs result3 = searcher.search(query3, reader.maxDoc(), Sort.INDEXORDER);
       TopDocs resultNumeric = searcher.search(queryNumeric, reader.maxDoc(), Sort.INDEXORDER);
-      assertEquals(result2.totalHits, result1.totalHits);
-      assertEquals(result2.totalHits, result3.totalHits);
-      assertEquals(resultNumeric.totalHits, result3.totalHits);
-      assertEquals(result2.scoreDocs.length, result1.scoreDocs.length);
-      assertEquals(result2.scoreDocs.length, result3.scoreDocs.length);
-      assertEquals(resultNumeric.scoreDocs.length, result3.scoreDocs.length);
-      for (int i = 0; i < result2.scoreDocs.length; i++) {
-        assertEquals(result2.scoreDocs[i].doc, result1.scoreDocs[i].doc);
-        assertEquals(result2.scoreDocs[i].doc, result3.scoreDocs[i].doc);
-        assertEquals(result3.scoreDocs[i].doc, resultNumeric.scoreDocs[i].doc);
-      }
+      assertSameResults(
+          "LongPointMultiRange", result1, query1, "BooleanDisjunction", result2, query2, reader);
+      assertSameResults(
+          "SortedSetDV", result3, query3, "BooleanDisjunction", result2, query2, reader);
+      assertSameResults(
+          "SortedNumericDV", resultNumeric, queryNumeric, "SortedSetDV", result3, query3, reader);
 
       IOUtils.close(reader, w, dir);
     }
@@ -309,6 +312,89 @@ public class TestSortedDvMultiRangeQuery extends LuceneTestCase {
           }
         };
     assertEquals("1 2", myrange.toString());
+  }
+
+  private static Set<Integer> docIds(TopDocs docs) {
+    Set<Integer> ids = new TreeSet<>();
+    for (var sd : docs.scoreDocs) {
+      ids.add(sd.doc);
+    }
+    return ids;
+  }
+
+  private void assertSameResults(
+      String nameA,
+      TopDocs a,
+      Query queryA,
+      String nameB,
+      TopDocs b,
+      Query queryB,
+      IndexReader reader)
+      throws IOException {
+    Set<Integer> idsA = docIds(a);
+    Set<Integer> idsB = docIds(b);
+    if (idsA.equals(idsB)) {
+      return;
+    }
+    Set<Integer> onlyA = new TreeSet<>(idsA);
+    onlyA.removeAll(idsB);
+    Set<Integer> onlyB = new TreeSet<>(idsB);
+    onlyB.removeAll(idsA);
+    Set<Integer> allDiff = new TreeSet<>(onlyA);
+    allDiff.addAll(onlyB);
+
+    StringBuilder sb = new StringBuilder();
+    sb.append(nameA)
+        .append("(")
+        .append(idsA.size())
+        .append(") != ")
+        .append(nameB)
+        .append("(")
+        .append(idsB.size())
+        .append(")\n");
+    sb.append("  only in ").append(nameA).append(": ").append(onlyA).append("\n");
+    sb.append("  only in ").append(nameB).append(": ").append(onlyB).append("\n");
+    sb.append("  ").append(nameA).append(" query: ").append(queryA).append("\n");
+    sb.append("  ").append(nameB).append(" query: ").append(queryB).append("\n");
+
+    List<LeafReaderContext> leaves = reader.leaves();
+    for (int docId : allDiff) {
+      LeafReaderContext ctx = leaves.get(ReaderUtil.subIndex(docId, leaves));
+      int localDoc = docId - ctx.docBase;
+      LeafReader leaf = ctx.reader();
+
+      sb.append("  doc=")
+          .append(docId)
+          .append(" in ")
+          .append(nameA)
+          .append("=")
+          .append(idsA.contains(docId))
+          .append(", in ")
+          .append(nameB)
+          .append("=")
+          .append(idsB.contains(docId))
+          .append("\n");
+
+      SortedSetDocValues docValDV = DocValues.getSortedSet(leaf, "docVal");
+      if (docValDV.advanceExact(localDoc)) {
+        sb.append("    docVal:");
+        for (int i = 0; i < docValDV.docValueCount(); i++) {
+          BytesRef term = docValDV.lookupOrd(docValDV.nextOrd());
+          sb.append(" ").append(LongPoint.decodeDimension(term.bytes, term.offset));
+        }
+        sb.append("\n");
+      }
+
+      SortedNumericDocValues numValDV = DocValues.getSortedNumeric(leaf, "numVal");
+      if (numValDV.advanceExact(localDoc)) {
+        sb.append("    numVal:");
+        for (int i = 0; i < numValDV.docValueCount(); i++) {
+          sb.append(" ").append(numValDV.nextValue());
+        }
+        sb.append("\n");
+      }
+    }
+    fail(sb.toString());
   }
 
   public void testMissingField() throws IOException {

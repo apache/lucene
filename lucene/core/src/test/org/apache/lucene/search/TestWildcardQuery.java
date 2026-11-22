@@ -16,11 +16,14 @@
  */
 package org.apache.lucene.search;
 
+import static org.apache.lucene.tests.util.TestUtil.alwaysPostingsFormat;
+import static org.apache.lucene.tests.util.TestUtil.getDefaultPostingsFormat;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.not;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.AutomatonTermsEnum;
@@ -28,6 +31,7 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FilterDirectoryReader;
 import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiTerms;
@@ -38,11 +42,82 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
+import org.apache.lucene.util.automaton.Operations;
 
 /** TestWildcardQuery tests the '*' and '?' wildcard characters. */
 public class TestWildcardQuery extends LuceneTestCase {
+
+  // Match-all-suffix optimization does not support WildcardQuery yet; only check the correctness.
+  public void testSubBlock() throws Exception {
+    Directory dir = newDirectory();
+    // Set minTermBlockSize to 2, maxTermBlockSize to 3, to generate subBlock.
+    PostingsFormat postingsFormat = getDefaultPostingsFormat(2, 3);
+
+    IndexWriter writer =
+        new IndexWriter(dir, newIndexWriterConfig().setCodec(alwaysPostingsFormat(postingsFormat)));
+    String[] categories = new String[] {"regular", "request", "rest", "teacher", "team"};
+
+    for (String category : categories) {
+      Document doc = new Document();
+      doc.add(newStringField("category", category, Field.Store.YES));
+      writer.addDocument(doc);
+    }
+
+    IndexReader reader = DirectoryReader.open(writer);
+    Query query = new WildcardQuery(new Term("category", "re*"));
+
+    IndexSearcher searcher = newSearcher(reader);
+    ScoreDoc[] hits = searcher.search(query, 1000).scoreDocs;
+    assertEquals(3, hits.length);
+
+    query = new WildcardQuery(new Term("category", "tea*"));
+    searcher = newSearcher(reader);
+    hits = searcher.search(query, 1000).scoreDocs;
+    assertEquals(2, hits.length);
+
+    writer.close();
+    reader.close();
+    dir.close();
+  }
+
+  // Match-all-suffix optimization does not support WildcardQuery yet; only check the correctness.
+  public void testDeepSubBlock() throws Exception {
+    Directory dir = newDirectory();
+    // Set minTermBlockSize to 2, maxTermBlockSize to 3, to generate deep subBlock.
+    PostingsFormat postingsFormat = getDefaultPostingsFormat(2, 3);
+
+    IndexWriter writer =
+        new IndexWriter(dir, newIndexWriterConfig().setCodec(alwaysPostingsFormat(postingsFormat)));
+    String[] categories =
+        new String[] {
+          "regular", "request1", "request2", "request3", "request4", "rest", "teacher", "team"
+        };
+
+    for (String category : categories) {
+      Document doc = new Document();
+      doc.add(newStringField("category", category, Field.Store.YES));
+      writer.addDocument(doc);
+    }
+
+    IndexReader reader = DirectoryReader.open(writer);
+    Query query = new WildcardQuery(new Term("category", "re*"));
+    IndexSearcher searcher = newSearcher(reader);
+    ScoreDoc[] hits = searcher.search(query, 1000).scoreDocs;
+    assertEquals(6, hits.length);
+
+    query = new WildcardQuery(new Term("category", "tea*"));
+    searcher = newSearcher(reader);
+    hits = searcher.search(query, 1000).scoreDocs;
+    assertEquals(2, hits.length);
+
+    writer.close();
+    reader.close();
+    dir.close();
+  }
 
   @SuppressWarnings("unlikely-arg-type")
   public void testEquals() {
@@ -233,6 +308,50 @@ public class TestWildcardQuery extends LuceneTestCase {
 
     reader.close();
     indexStore.close();
+  }
+
+  private static Automaton det(Automaton a) {
+    return Operations.determinize(a, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
+  }
+
+  public void testRepeatedAsterisksCollapse() {
+    // Consecutive '*' must collapse to a single any-string automaton: same
+    // language as a single '*', and the same (tiny) shape, not a huge one.
+    Automaton single = det(WildcardQuery.toAutomaton(new Term("field", "*")));
+    Automaton repeated = det(WildcardQuery.toAutomaton(new Term("field", "*".repeat(1000))));
+
+    assertTrue(AutomatonTestUtil.sameLanguage(single, repeated));
+    assertEquals(single.getNumStates(), repeated.getNumStates());
+    assertEquals(single.getNumTransitions(), repeated.getNumTransitions());
+  }
+
+  public void testRepeatedAsterisksCollapseWithEscapesAndLiterals() {
+    // Collapsing applies only to unescaped, consecutive '*'. An escaped '\*'
+    // stays a literal and the surrounding literals / '?' are untouched, so
+    // "a\*b***c?" matches the same language as its single-'*' form "a\*b*c?".
+    Automaton collapsed = det(WildcardQuery.toAutomaton(new Term("field", "a\\*b***c?")));
+    Automaton reference = det(WildcardQuery.toAutomaton(new Term("field", "a\\*b*c?")));
+
+    assertTrue(AutomatonTestUtil.sameLanguage(reference, collapsed));
+    assertEquals(reference.getNumStates(), collapsed.getNumStates());
+    assertEquals(reference.getNumTransitions(), collapsed.getNumTransitions());
+
+    // Escaped '\*' is a literal, so "\*\*\*" matches the string "***", not the
+    // any-string '*' — it must NOT be collapsed.
+    Automaton single = det(WildcardQuery.toAutomaton(new Term("field", "*")));
+    Automaton literalStars = det(WildcardQuery.toAutomaton(new Term("field", "\\*\\*\\*")));
+    assertFalse(AutomatonTestUtil.sameLanguage(single, literalStars));
+  }
+
+  public void testInterleavedStarQuestionDoesNotBlowUp() {
+    // '*?' repeated does not collapse (the '*' are not consecutive), but it
+    // must still build a linearly-sized automaton rather than exploding the way
+    // repeated '*' used to before this fix (GITHUB#16134).
+    int n = 5000;
+    Automaton a = WildcardQuery.toAutomaton(new Term("field", "*?".repeat(n)));
+    assertTrue(
+        "expected roughly linear size, got " + a.getNumTransitions() + " transitions for " + n,
+        a.getNumTransitions() < 100L * n);
   }
 
   private Directory getIndexStore(String field, String[] contents) throws IOException {

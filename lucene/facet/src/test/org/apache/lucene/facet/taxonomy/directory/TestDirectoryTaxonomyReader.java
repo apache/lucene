@@ -671,43 +671,41 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
       Thread[] addThreads = new Thread[RandomNumbers.randomIntBetween(random(), 1, 12)];
       for (int z = 0; z < addThreads.length; z++) {
         addThreads[z] =
-            new Thread(
-                () -> {
-                  // each thread iterates for numThreadIterations times
-                  int numThreadIterations = random().nextInt(10);
-                  for (int threadIterations = 0;
-                      threadIterations < numThreadIterations;
-                      threadIterations++) {
+            new Thread(() -> {
+              // each thread iterates for numThreadIterations times
+              int numThreadIterations = random().nextInt(10);
+              for (int threadIterations = 0;
+                  threadIterations < numThreadIterations;
+                  threadIterations++) {
 
-                    // length of the FacetLabel array that we are going to check
-                    int numOfOrdinalsToCheck =
-                        RandomizedTest.randomIntBetween(1, allOrdinals.length);
-                    int[] ordinals = new int[numOfOrdinalsToCheck];
-                    FacetLabel[] path = new FacetLabel[numOfOrdinalsToCheck];
+                // length of the FacetLabel array that we are going to check
+                int numOfOrdinalsToCheck = RandomizedTest.randomIntBetween(1, allOrdinals.length);
+                int[] ordinals = new int[numOfOrdinalsToCheck];
+                FacetLabel[] path = new FacetLabel[numOfOrdinalsToCheck];
 
-                    for (int i = 0; i < numOfOrdinalsToCheck; i++) {
-                      // we deliberately allow it to choose repeat indexes as this will exercise the
-                      // cache
-                      int ordinalIndex = random().nextInt(allOrdinals.length);
-                      ordinals[i] = allOrdinals[ordinalIndex];
-                      path[i] = allPaths[ordinalIndex];
-                    }
+                for (int i = 0; i < numOfOrdinalsToCheck; i++) {
+                  // we deliberately allow it to choose repeat indexes as this will exercise the
+                  // cache
+                  int ordinalIndex = random().nextInt(allOrdinals.length);
+                  ordinals[i] = allOrdinals[ordinalIndex];
+                  path[i] = allPaths[ordinalIndex];
+                }
 
-                    try {
-                      // main check for correctness is done here
-                      if (assertGettingOrdinals) {
-                        assertGettingOrdinals(r1, ordinals, path);
-                      } else {
-                        assertGettingPaths(r1, path, ordinals);
-                      }
-                    } catch (IOException e) {
-                      // this should ideally never occur, but if it does just rethrow the error to
-                      // the
-                      // caller
-                      throw new RuntimeException(e);
-                    }
+                try {
+                  // main check for correctness is done here
+                  if (assertGettingOrdinals) {
+                    assertGettingOrdinals(r1, ordinals, path);
+                  } else {
+                    assertGettingPaths(r1, path, ordinals);
                   }
-                });
+                } catch (IOException e) {
+                  // this should ideally never occur, but if it does just rethrow the error to
+                  // the
+                  // caller
+                  throw new RuntimeException(e);
+                }
+              }
+            });
       }
       for (Thread t : addThreads) t.start();
       for (Thread t : addThreads) t.join();
@@ -715,5 +713,23 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
 
     r1.close();
     src.close();
+  }
+
+  public void testGetBulkOrdinalsAllCached() throws Exception {
+    Directory dir = newDirectory();
+    DirectoryTaxonomyWriter taxoWriter = new DirectoryTaxonomyWriter(dir);
+    FacetLabel a = new FacetLabel("a");
+    FacetLabel b = new FacetLabel("b");
+    int[] ords = {taxoWriter.addCategory(a), taxoWriter.addCategory(b)};
+    taxoWriter.close();
+
+    DirectoryTaxonomyReader taxoReader = new DirectoryTaxonomyReader(dir);
+    taxoReader.getBulkOrdinals(a, b); // fills the ordinal cache
+    // all ordinals are cached now, so the lookup must not touch the index reader at all
+    taxoReader.getInternalIndexReader().close();
+    assertArrayEquals(ords, taxoReader.getBulkOrdinals(a, b));
+
+    taxoReader.close();
+    dir.close();
   }
 }

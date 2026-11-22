@@ -142,39 +142,31 @@ public abstract class SegmentOrder {
     }
 
     private long loadSortValue(LeafReader reader) {
-      try {
-        DocValuesSkipper skipper = reader.getDocValuesSkipper(field);
-        if (skipper != null) {
-          if (skipper.docCount() == reader.maxDoc() || missingValue == null) {
-            return reverse ? skipper.maxValue() : skipper.minValue();
-          }
+      DocValuesSkipper skipper = reader.getDocValuesSkipper(field);
+      if (skipper != null) {
+        if (skipper.docCount() == reader.maxDoc() || missingValue == null) {
+          return reverse ? skipper.maxValue() : skipper.minValue();
+        }
+        if (reverse) {
+          return Math.max(skipper.maxValue(), missingValue);
+        } else {
+          return Math.min(skipper.minValue(), missingValue);
+        }
+      }
+      PointValues pointValues = reader.getPointValues(field);
+      if (pointValues != null) {
+        if (pointValues.getDocCount() == reader.maxDoc() || missingValue == null) {
           if (reverse) {
-            return Math.max(skipper.maxValue(), missingValue);
+            return pointDecoder.applyAsLong(pointValues.getMaxPackedValue());
           } else {
-            return Math.min(skipper.minValue(), missingValue);
+            return pointDecoder.applyAsLong(pointValues.getMinPackedValue());
           }
         }
-        PointValues pointValues = reader.getPointValues(field);
-        if (pointValues != null) {
-          if (pointValues.getDocCount() == reader.maxDoc() || missingValue == null) {
-            if (reverse) {
-              return pointDecoder.applyAsLong(pointValues.getMaxPackedValue());
-            } else {
-              return pointDecoder.applyAsLong(pointValues.getMinPackedValue());
-            }
-          }
-          if (reverse) {
-            return Math.max(
-                pointDecoder.applyAsLong(pointValues.getMaxPackedValue()), missingValue);
-          } else {
-            return Math.min(
-                pointDecoder.applyAsLong(pointValues.getMinPackedValue()), missingValue);
-          }
+        if (reverse) {
+          return Math.max(pointDecoder.applyAsLong(pointValues.getMaxPackedValue()), missingValue);
+        } else {
+          return Math.min(pointDecoder.applyAsLong(pointValues.getMinPackedValue()), missingValue);
         }
-      } catch (IOException _) {
-        // We can't rethrow exceptions from inside a Comparator, so we instead
-        // return as if there are no index structures to read values from.
-        return reverse ? Long.MAX_VALUE : Long.MIN_VALUE;
       }
       return reverse ? Long.MAX_VALUE : Long.MIN_VALUE;
     }

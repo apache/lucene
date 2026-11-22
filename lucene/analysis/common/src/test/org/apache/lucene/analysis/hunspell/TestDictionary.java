@@ -111,7 +111,7 @@ public class TestDictionary extends LuceneTestCase {
         minLength, maxLength, e -> processed.add(e.root().toString()));
 
     Set<String> cached = new HashSet<>();
-    SuggestibleEntryCache.buildCache(dictionary.words)
+    SuggestibleEntryCache.buildCache(dictionary.words, () -> {})
         .processSuggestibleWords(minLength, maxLength, e -> cached.add(e.root().toString()));
     assertEquals(processed, cached);
 

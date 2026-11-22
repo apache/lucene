@@ -254,13 +254,12 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
     writer.addDocument(doc);
   }
 
-  public static void searchIndex(
-      Directory dir, String oldName, int minIndexMajorVersion, Version nameVersion)
+  public static void searchIndex(Directory dir, String oldName, Version nameVersion)
       throws IOException {
     // QueryParser parser = new QueryParser("contents", new MockAnalyzer(random));
     // Query query = parser.parse("handle:1");
     IndexCommit indexCommit = DirectoryReader.listCommits(dir).get(0);
-    IndexReader reader = DirectoryReader.open(indexCommit, minIndexMajorVersion, null);
+    IndexReader reader = DirectoryReader.open(indexCommit, null);
     IndexSearcher searcher = newSearcher(reader);
 
     TestUtil.checkIndex(dir);
@@ -755,7 +754,7 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
   }
 
   public void testSearchOldIndex() throws Exception {
-    searchIndex(directory, indexPattern, Version.MIN_SUPPORTED_MAJOR, version);
+    searchIndex(directory, indexPattern, version);
   }
 
   public void testFullyMergeOldIndex() throws Exception {
@@ -832,7 +831,10 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
           expectThrows(IllegalArgumentException.class, () -> TestUtil.addIndexesSlowly(w, reader));
       assertEquals(
           e.getMessage(),
-          "Cannot merge a segment that has been created with major version 10 into this index which has been created by major version 11");
+          "Cannot merge a segment that has been created with major version "
+              + version.major
+              + " into this index which has been created by major version "
+              + Version.LATEST.major);
       w.close();
       targetDir2.close();
 
@@ -871,11 +873,11 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
   public void testOpenModeAndCreatedVersion() throws IOException {
     Directory dir = newDirectory(directory);
     int majorVersion = SegmentInfos.readLatestCommit(dir).getIndexCreatedVersionMajor();
-    if (majorVersion != Version.MIN_SUPPORTED_MAJOR && majorVersion != Version.LATEST.major) {
+    if (majorVersion < Version.MIN_SUPPORTED_MAJOR || majorVersion > Version.LATEST.major) {
       fail(
-          "expected one of: ["
+          "expected between: ["
               + Version.MIN_SUPPORTED_MAJOR
-              + ", "
+              + " and "
               + Version.LATEST.major
               + "] but got: "
               + majorVersion);

@@ -196,10 +196,41 @@ public class MultiFieldQueryParser extends QueryParser {
       }
       if (clauses.size() == 0) // happens for stopwords
       return null;
-      return getMultiFieldQuery(clauses);
+      // When maxTerms > 1, `clauses` holds one group per analyzed TERM POSITION
+      // (each group itself a SHOULD-combined field disjunction for that
+      // position) rather than one entry per field for a single term. These
+      // positions must be combined according to the default operator (e.g. all
+      // of them required under AND_OPERATOR), unlike field alternatives, which
+      // always stay SHOULD via getMultiFieldQuery.
+      return maxTerms > 1 ? getMultiTermPositionQuery(clauses) : getMultiFieldQuery(clauses);
     }
     Query q = super.getFieldQuery(field, queryText, quoted);
     return q;
+  }
+
+  /**
+   * Combines the per-position field-disjunction groups built above when a single getFieldQuery call
+   * is analyzed into more than one term (e.g. because the query text reached this method as one
+   * grammar-level token — an escaped separator with no real whitespace, decompounding, CJK
+   * segmentation, synonym expansion, ...). Unlike getMultiFieldQuery (which combines field
+   * alternatives for a single term and always uses SHOULD), this honors the default operator, since
+   * every term position must be satisfied under AND_OPERATOR — matching this class's documented
+   * "all the query's terms must appear" contract regardless of how the terms reached this method.
+   */
+  protected Query getMultiTermPositionQuery(List<Query> positionGroups) throws ParseException {
+    if (positionGroups.isEmpty()) {
+      return null;
+    }
+    if (positionGroups.size() == 1) {
+      return positionGroups.get(0);
+    }
+    BooleanClause.Occur occur =
+        getDefaultOperator() == Operator.OR ? BooleanClause.Occur.SHOULD : BooleanClause.Occur.MUST;
+    BooleanQuery.Builder builder = newBooleanQuery();
+    for (Query group : positionGroups) {
+      builder.add(group, occur);
+    }
+    return builder.build();
   }
 
   @Override

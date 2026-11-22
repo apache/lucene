@@ -34,6 +34,7 @@ import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.store.ChecksumIndexInput;
@@ -130,8 +131,8 @@ final class CompletionFieldsProducer extends FieldsProducer implements Accountab
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
-    delegateFieldsProducer.checkIntegrity();
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+    delegateFieldsProducer.checkIntegrity(merge);
     // TODO: checkIntegrity should checksum the dictionary and index
   }
 

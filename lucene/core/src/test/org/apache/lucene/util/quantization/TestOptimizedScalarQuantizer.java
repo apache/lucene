@@ -78,6 +78,44 @@ public class TestOptimizedScalarQuantizer extends LuceneTestCase {
     }
   }
 
+  public void testDeQuantizeFloat16MatchesFloat() {
+    int dims = 16;
+    int numVectors = 32;
+    float[][] vectors = new float[numVectors][];
+    float[] centroid = new float[dims];
+    for (int i = 0; i < numVectors; ++i) {
+      vectors[i] = new float[dims];
+      for (int j = 0; j < dims; ++j) {
+        vectors[i][j] = randomFloat();
+        centroid[j] += vectors[i][j];
+      }
+    }
+    for (int j = 0; j < dims; ++j) {
+      centroid[j] /= numVectors;
+    }
+    OptimizedScalarQuantizer osq =
+        new OptimizedScalarQuantizer(VectorSimilarityFunction.DOT_PRODUCT);
+    float[] scratch = new float[dims];
+    for (byte bit : ALL_BITS) {
+      byte[] destination = new byte[dims];
+      for (int i = 0; i < numVectors; ++i) {
+        System.arraycopy(vectors[i], 0, scratch, 0, dims);
+        OptimizedScalarQuantizer.QuantizationResult result =
+            osq.scalarQuantize(scratch, destination, bit, centroid);
+        float[] floatDeq = new float[dims];
+        deQuantize(
+            destination, floatDeq, bit, result.lowerInterval(), result.upperInterval(), centroid);
+        short[] shortDeq = new short[dims];
+        deQuantize(
+            destination, shortDeq, bit, result.lowerInterval(), result.upperInterval(), centroid);
+        // The short (fp16) overload must equal the float overload rounded to fp16, component-wise.
+        for (int k = 0; k < dims; ++k) {
+          assertEquals(Float.floatToFloat16(floatDeq[k]), shortDeq[k]);
+        }
+      }
+    }
+  }
+
   public void testAbusiveEdgeCases() {
     // large zero array
     for (VectorSimilarityFunction vectorSimilarityFunction : VectorSimilarityFunction.values()) {
@@ -177,6 +215,75 @@ public class TestOptimizedScalarQuantizer extends LuceneTestCase {
         assertValidQuantizedRange(destination, bit);
       }
     }
+  }
+
+  /**
+   * Verifies that {@code multiScalarQuantize} matches independent {@code scalarQuantize} calls at
+   * both bit widths. The merge path depends on byte-identical index-side and query-side records.
+   */
+  public void testMultiScalarQuantizeMatchesScalarQuantize() {
+    byte[][] bitPairs = new byte[][] {{1, 4}, {2, 4}, {4, 8}};
+    for (int trial = 0; trial < 25; trial++) {
+      int dims = randomIntBetween(1, 1024);
+      float[] vector = new float[dims];
+      float[] centroid = new float[dims];
+      for (int i = 0; i < dims; ++i) {
+        vector[i] = randomFloat();
+        centroid[i] = randomFloat();
+      }
+      for (VectorSimilarityFunction similarityFunction : VectorSimilarityFunction.values()) {
+        float[] scratch = new float[dims];
+        System.arraycopy(vector, 0, scratch, 0, dims);
+        float[] centroidCopy = new float[dims];
+        System.arraycopy(centroid, 0, centroidCopy, 0, dims);
+        if (similarityFunction == VectorSimilarityFunction.COSINE) {
+          VectorUtil.l2normalize(scratch);
+          VectorUtil.l2normalize(centroidCopy);
+        }
+        OptimizedScalarQuantizer osq = new OptimizedScalarQuantizer(similarityFunction);
+        for (byte[] bits : bitPairs) {
+          byte[] multiLow = new byte[dims];
+          byte[] multiHigh = new byte[dims];
+          OptimizedScalarQuantizer.QuantizationResult[] multi =
+              osq.multiScalarQuantize(
+                  scratch.clone(), new byte[][] {multiLow, multiHigh}, bits, centroidCopy);
+          byte[] singleLow = new byte[dims];
+          byte[] singleHigh = new byte[dims];
+          // each single-width call gets its own copy: both center the vector in place
+          OptimizedScalarQuantizer.QuantizationResult low =
+              osq.scalarQuantize(scratch.clone(), singleLow, bits[0], centroidCopy);
+          OptimizedScalarQuantizer.QuantizationResult high =
+              osq.scalarQuantize(scratch.clone(), singleHigh, bits[1], centroidCopy);
+          String where = similarityFunction + " dims=" + dims + " bits=" + bits[0] + "/" + bits[1];
+          assertArrayEquals(where, singleLow, multiLow);
+          assertArrayEquals(where, singleHigh, multiHigh);
+          assertIdenticalResults(where, low, multi[0]);
+          assertIdenticalResults(where, high, multi[1]);
+        }
+      }
+    }
+  }
+
+  private static void assertIdenticalResults(
+      String where,
+      OptimizedScalarQuantizer.QuantizationResult expected,
+      OptimizedScalarQuantizer.QuantizationResult actual) {
+    assertEquals(
+        where + " lowerInterval",
+        Float.floatToRawIntBits(expected.lowerInterval()),
+        Float.floatToRawIntBits(actual.lowerInterval()));
+    assertEquals(
+        where + " upperInterval",
+        Float.floatToRawIntBits(expected.upperInterval()),
+        Float.floatToRawIntBits(actual.upperInterval()));
+    assertEquals(
+        where + " additionalCorrection",
+        Float.floatToRawIntBits(expected.additionalCorrection()),
+        Float.floatToRawIntBits(actual.additionalCorrection()));
+    assertEquals(
+        where + " quantizedComponentSum",
+        expected.quantizedComponentSum(),
+        actual.quantizedComponentSum());
   }
 
   public void testUnpackBinary() {

@@ -180,14 +180,13 @@ public class ModularPathsExtension implements Cloneable, Iterable<Configuration>
         moduleName,
         singleFileCollection
             .getElements()
-            .map(
-                elements -> {
-                  if (elements.size() != 1) {
-                    throw new RuntimeException(
-                        "Expected a single file as an argument for patchModule.");
-                  }
-                  return elements.iterator().next();
-                }));
+            .map(elements -> {
+              if (elements.size() != 1) {
+                throw new RuntimeException(
+                    "Expected a single file as an argument for patchModule.");
+              }
+              return elements.iterator().next();
+            }));
   }
 
   private FileCollection getCompilationModulePath() {

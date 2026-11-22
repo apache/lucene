@@ -133,6 +133,8 @@ import org.apache.lucene.util.packed.DirectWriter;
  *   <li><code>.dvd</code>: DocValues data
  *   <li><code>.dvm</code>: DocValues metadata
  *   <li><code>.dvs</code>: DocValues skip index (since version 1)
+ *   <li><code>.dvp</code>: DocValues presence, i.e. the {@link IndexedDISI} for sparse fields
+ *       (since version 3)
  * </ol>
  *
  * @lucene.experimental
@@ -166,7 +168,9 @@ public final class Lucene90DocValuesFormat extends DocValuesFormat {
         META_CODEC,
         META_EXTENSION,
         SKIP_INDEX_CODEC,
-        SKIP_INDEX_EXTENSION);
+        SKIP_INDEX_EXTENSION,
+        DISI_CODEC,
+        DISI_EXTENSION);
   }
 
   @Override
@@ -178,7 +182,9 @@ public final class Lucene90DocValuesFormat extends DocValuesFormat {
         META_CODEC,
         META_EXTENSION,
         SKIP_INDEX_CODEC,
-        SKIP_INDEX_EXTENSION);
+        SKIP_INDEX_EXTENSION,
+        DISI_CODEC,
+        DISI_EXTENSION);
   }
 
   static final String DATA_CODEC = "Lucene90DocValuesData";
@@ -187,10 +193,14 @@ public final class Lucene90DocValuesFormat extends DocValuesFormat {
   static final String META_EXTENSION = "dvm";
   static final String SKIP_INDEX_CODEC = "Lucene90DocValuesSkipIndex";
   static final String SKIP_INDEX_EXTENSION = "dvs";
+  static final String DISI_CODEC = "Lucene90DocValuesDISI";
+  static final String DISI_EXTENSION = "dvp";
   static final int VERSION_START = 0;
   static final int VERSION_SKIPPER_SEPARATE_FILE = 1;
   static final int VERSION_SKIPPER_MAX_VALUE_COUNT = 2;
-  static final int VERSION_CURRENT = VERSION_SKIPPER_MAX_VALUE_COUNT;
+  // Moves the sparse-field IndexedDISI from .dvd into a dedicated .dvp file.
+  static final int VERSION_DISI_SEPARATE_FILE = 3;
+  static final int VERSION_CURRENT = VERSION_DISI_SEPARATE_FILE;
 
   // indicates docvalues type
   static final byte NUMERIC = 0;

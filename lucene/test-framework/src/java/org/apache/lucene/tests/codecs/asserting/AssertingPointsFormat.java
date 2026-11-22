@@ -22,6 +22,7 @@ import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.SegmentReadState;
@@ -97,8 +98,8 @@ public final class AssertingPointsFormat extends PointsFormat {
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
-      in.checkIntegrity();
+    public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+      in.checkIntegrity(merge);
     }
 
     @Override

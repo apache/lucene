@@ -297,15 +297,14 @@ public class TieredMergePolicy extends MergePolicy {
               info, size(info, mergeContext), mergeContext.numDeletesToMerge(info)));
     }
 
-    sortedBySize.sort(
-        (o1, o2) -> {
-          // Sort by largest size:
-          int cmp = Long.compare(o2.sizeInBytes, o1.sizeInBytes);
-          if (cmp == 0) {
-            cmp = o1.name.compareTo(o2.name);
-          }
-          return cmp;
-        });
+    sortedBySize.sort((o1, o2) -> {
+      // Sort by largest size:
+      int cmp = Long.compare(o2.sizeInBytes, o1.sizeInBytes);
+      if (cmp == 0) {
+        cmp = o1.name.compareTo(o2.name);
+      }
+      return cmp;
+    });
 
     return sortedBySize;
   }

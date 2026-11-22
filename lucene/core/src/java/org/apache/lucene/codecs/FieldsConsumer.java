@@ -81,7 +81,7 @@ public abstract class FieldsConsumer implements Closeable {
       final int maxDoc = mergeState.maxDocs[readerIndex];
       if (f != null) {
         mergeState.checkAborted();
-        f.checkIntegrity();
+        f.checkIntegrity(mergeState.oneMerge);
         slices.add(new ReaderSlice(docBase, maxDoc, readerIndex));
         fields.add(f);
       }

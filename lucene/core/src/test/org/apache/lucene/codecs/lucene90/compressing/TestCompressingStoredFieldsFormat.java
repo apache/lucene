@@ -17,11 +17,15 @@
 package org.apache.lucene.codecs.lucene90.compressing;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.Random;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.DocumentStoredFieldVisitor;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.index.CodecReader;
+import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -29,9 +33,13 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ByteArrayDataOutput;
+import org.apache.lucene.store.ByteBuffersDataInput;
+import org.apache.lucene.store.ByteBuffersIndexInput;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.codecs.compressing.CompressingCodec;
+import org.apache.lucene.tests.codecs.compressing.LZ4WithPresetCompressingCodec;
 import org.apache.lucene.tests.index.BaseStoredFieldsFormatTestCase;
 
 public class TestCompressingStoredFieldsFormat extends BaseStoredFieldsFormatTestCase {
@@ -46,6 +54,65 @@ public class TestCompressingStoredFieldsFormat extends BaseStoredFieldsFormatTes
       return CompressingCodec.randomInstance(random());
     } else {
       return CompressingCodec.reasonableInstance(random());
+    }
+  }
+
+  public void testDictionaryReuse() throws IOException {
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter writer =
+          new IndexWriter(
+              dir,
+              newIndexWriterConfig()
+                  .setCodec(new LZ4WithPresetCompressingCodec(4096, 2, false, 8))
+                  .setMergePolicy(NoMergePolicy.INSTANCE))) {
+        String[] values = {
+          "a".repeat(512),
+          "b".repeat(512),
+          null,
+          "c".repeat(512),
+          "d".repeat(512),
+          "e".repeat(512),
+          "f".repeat(512)
+        };
+        for (String value : values) {
+          Document doc = new Document();
+          if (value != null) {
+            doc.add(new StoredField("text", value));
+          }
+          writer.addDocument(doc);
+        }
+        try (DirectoryReader reader = DirectoryReader.open(writer)) {
+          assertEquals(1, reader.leaves().size());
+          var fields = reader.storedFields();
+          // Docs 0 and 1 share one chunk; docs 2 (empty) and 3 share the next; docs 4 and 5 share
+          // the next.
+          for (int doc : new int[] {0, 1, 2, 3, 4, 5, 3, 0, 2, 3}) {
+            assertEquals(values[doc], fields.document(doc).get("text"));
+          }
+        }
+      }
+    }
+  }
+
+  public void testUnknownTypeFlagIsCorruptIndex() throws Exception {
+    IndexInput source =
+        new ByteBuffersIndexInput(
+            new ByteBuffersDataInput(List.of(ByteBuffer.allocate(1))), "test.fdt");
+    ByteArrayDataInput in = new ByteArrayDataInput(new byte[8]);
+    for (int bits : new int[] {6, 7}) {
+      CorruptIndexException readException =
+          expectThrows(
+              CorruptIndexException.class,
+              () ->
+                  Lucene90CompressingStoredFieldsReader.readField(
+                      in, new DocumentStoredFieldVisitor(), null, bits, source));
+      assertTrue(readException.getMessage().contains("test.fdt"));
+
+      CorruptIndexException skipException =
+          expectThrows(
+              CorruptIndexException.class,
+              () -> Lucene90CompressingStoredFieldsReader.skipField(in, bits, source));
+      assertTrue(skipException.getMessage().contains("test.fdt"));
     }
   }
 

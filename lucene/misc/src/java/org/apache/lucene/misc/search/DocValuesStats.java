@@ -248,7 +248,7 @@ public abstract class DocValuesStats<T> {
     private double sum = 0;
 
     public DoubleDocValuesStats(String field) {
-      super(field, Double.MAX_VALUE, Double.MIN_VALUE);
+      super(field, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY);
     }
 
     @Override
@@ -426,7 +426,7 @@ public abstract class DocValuesStats<T> {
     private double sum = 0;
 
     public SortedDoubleDocValuesStats(String field) {
-      super(field, Double.MAX_VALUE, Double.MIN_VALUE);
+      super(field, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY);
     }
 
     @Override

@@ -17,6 +17,7 @@
 package org.apache.lucene.store;
 
 import java.io.Closeable;
+import java.io.EOFException;
 import java.io.IOException;
 import java.util.Optional;
 import org.apache.lucene.codecs.CompoundFormat;
@@ -36,6 +37,17 @@ import org.apache.lucene.codecs.CompoundFormat;
  *
  * <p>If you access the cloned IndexInput after closing the original object, any <code>readXXX
  * </code> methods will throw {@link AlreadyClosedException}.
+ *
+ * <p>If any read or seek goes beyond the end of the file, it will throw {@link EOFException}. If
+ * any read or seek throws an {@link IOException} (including {@link EOFException}), then the stream
+ * is in an undetermined state and it is recommended to close it.
+ *
+ * <p><b>Warning:</b> Casting an {@code IndexInput} directly to {@link RandomAccessInput} is not
+ * supported, although implementations may implement that interface. The only supported way to
+ * obtain {@link RandomAccessInput} is by calling {@link #randomAccessSlice(long, long)}, which
+ * always returns a <b>new</b> slice, independent from the original {@code IndexInput}. Casting the
+ * original input may modify the state of the {@code IndexInput} when doing random accesses and
+ * needs to be avoided.
  *
  * @see Directory
  */
@@ -67,8 +79,9 @@ public abstract class IndexInput extends DataInput implements Closeable {
 
   /**
    * Sets current position in this file, where the next read will occur. If this is beyond the end
-   * of the file then this will throw {@code EOFException} and then the stream is in an undetermined
-   * state.
+   * of the file then this will throw {@link EOFException}. If this method throws any {@link
+   * IOException} (including {@link EOFException}), then the stream is in an undetermined state and
+   * it is recommended to close it.
    *
    * @see #getFilePointer()
    */
@@ -152,9 +165,12 @@ public abstract class IndexInput extends DataInput implements Closeable {
   }
 
   /**
-   * Creates a random-access slice of this index input, with the given offset and length.
+   * Creates a new random-access slice of this index input, independent from the original input with
+   * the given offset and length. This is the only supported way to obtain a {@link
+   * RandomAccessInput} from an {@code IndexInput}; casting an {@code IndexInput} directly to {@link
+   * RandomAccessInput} is not supported.
    *
-   * <p>The default implementation calls {@link #slice}, and it doesn't support random access, it
+   * <p>The default implementation calls {@link #slice}, and if it doesn't support random access, it
    * implements absolute reads as seek+read.
    */
   public RandomAccessInput randomAccessSlice(long offset, long length) throws IOException {
@@ -237,6 +253,17 @@ public abstract class IndexInput extends DataInput implements Closeable {
    * <p>The default implementation is a no-op.
    */
   public void updateIOContext(IOContext context) throws IOException {}
+
+  /**
+   * Returns false if callers reading with the given {@code IOContext} should open the file again
+   * rather than read through this input. This is a hint based on the advice applied when this input
+   * was opened or sliced.
+   *
+   * <p>The default implementation returns {@code true}, so callers never open the file again.
+   */
+  public boolean isEfficientFor(IOContext context) {
+    return true;
+  }
 
   /**
    * Returns a hint whether all the contents of this input are resident in physical memory. It's a

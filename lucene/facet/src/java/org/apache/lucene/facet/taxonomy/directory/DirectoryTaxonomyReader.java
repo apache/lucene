@@ -354,7 +354,7 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
       }
     }
     // all ordinals found in cache
-    if (indexesMissingFromCache.length == 0) {
+    if (numberOfMissingFromCache == 0) {
       return result;
     }
 

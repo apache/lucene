@@ -29,6 +29,9 @@ public interface HnswGraphProvider {
   /**
    * Return the stored HnswGraph for the given field.
    *
+   * <p>Each call returns a new instance. An instance is not thread-safe, but separate instances can
+   * be read concurrently, so callers that read the graph from several threads get one per thread.
+   *
    * @param field the field containing the graph
    * @return the HnswGraph for the given field if found
    * @throws IOException when reading potentially off-heap graph fails

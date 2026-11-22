@@ -58,7 +58,7 @@ public class CompiledAutomaton implements Accountable {
     SINGLE,
     /** Catch-all for any other automata. */
     NORMAL
-  };
+  }
 
   /** If simplify is true this will be the "simplified" type; else, this is NORMAL */
   public final AUTOMATON_TYPE type;
@@ -258,7 +258,7 @@ public class CompiledAutomaton implements Accountable {
     } else {
       // We already had a DFA (or threw exception), according to mike UTF32toUTF8 won't "blow up"
       binary = Operations.determinize(binary, Integer.MAX_VALUE);
-      runAutomaton = new ByteRunAutomaton(binary, true);
+      runAutomaton = new ByteRunAutomaton(binary, true, isBinary);
 
       this.automaton = runAutomaton.automaton;
 
@@ -490,6 +490,23 @@ public class CompiledAutomaton implements Accountable {
       return runAutomaton;
     }
     return nfaRunAutomaton;
+  }
+
+  /**
+   * Returns {@code true} if this {@link CompiledAutomaton} internally holds the given {@link
+   * Automaton} instance. This is only the case on the {@link AUTOMATON_TYPE#NORMAL} paths built
+   * without a UTF-8 conversion (typically {@code isBinary=true} construction): the DFA path retains
+   * it as {@link #automaton}, and the NFA path retains it inside the internal NFA runner. Returns
+   * {@code false} for {@link AUTOMATON_TYPE#NONE}, {@link AUTOMATON_TYPE#ALL} and {@link
+   * AUTOMATON_TYPE#SINGLE} -- those short-circuit and keep no reference -- and for {@code
+   * isBinary=false} construction, where the internal automaton is a distinct UTF-8 conversion of
+   * the input.
+   *
+   * <p>Useful for callers that keep their own reference to the same {@link Automaton} and want to
+   * avoid double-counting it in their own {@link Accountable#ramBytesUsed()} calculation.
+   */
+  public boolean sharesAutomaton(Automaton a) {
+    return a == automaton || (nfaRunAutomaton != null && nfaRunAutomaton.getAutomaton() == a);
   }
 
   /**

@@ -108,14 +108,13 @@ public class SkipBlockRangeIterator extends AbstractDocIdSetIterator {
 
   @Override
   public long cost() {
-    return DocIdSetIterator.NO_MORE_DOCS;
+    return skipper.docCount();
   }
 
   /**
    * Returns the exclusive end of the current skip block (the actual block boundary from the
-   * skipper), regardless of match state. Unlike {@link #docIDRunEnd()} which returns {@code doc+1}
-   * for MAYBE blocks, this always returns the full block boundary so callers can bulk-evaluate the
-   * entire block at once.
+   * skipper), regardless of match state. {@link #docIDRunEnd()} returns the same boundary for MAYBE
+   * and YES_IF_PRESENT blocks, but may extend beyond it for YES blocks.
    */
   public int blockEnd() {
     return skipper.maxDocID(0) + 1;
@@ -123,18 +122,17 @@ public class SkipBlockRangeIterator extends AbstractDocIdSetIterator {
 
   @Override
   public int docIDRunEnd() throws IOException {
-    if (match != Match.YES) {
-      return doc + 1;
-    }
     int maxDoc = skipper.maxDocID(0);
-    int nextLevel = 1;
-    while (nextLevel < skipper.numLevels()
-        && skipper.minValue(nextLevel) >= minValue
-        && skipper.maxValue(nextLevel) <= maxValue
-        && skipper.maxDocID(nextLevel) - skipper.minDocID(nextLevel)
-            == skipper.docCount(nextLevel) - 1) {
-      maxDoc = skipper.maxDocID(nextLevel);
-      nextLevel++;
+    if (match == Match.YES) {
+      int nextLevel = 1;
+      while (nextLevel < skipper.numLevels()
+          && skipper.minValue(nextLevel) >= minValue
+          && skipper.maxValue(nextLevel) <= maxValue
+          && skipper.maxDocID(nextLevel) - skipper.minDocID(nextLevel)
+              == skipper.docCount(nextLevel) - 1) {
+        maxDoc = skipper.maxDocID(nextLevel);
+        nextLevel++;
+      }
     }
     return maxDoc + 1;
   }
