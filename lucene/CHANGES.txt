@@ -406,6 +406,11 @@ Optimizations
   fewer radix passes. This speeds up DocIdSetBuilder, e.g. for range queries on fields whose values
   follow doc ID order such as timestamps or index sort fields. (Asharam)
 
+* GITHUB#XXXXX: Speed up keyword sorts that skip docs with postings: TermOrdValComparator drops
+  terms that are no longer competitive lazily instead of rebuilding its priority queue on every
+  competitive hit, and no longer opens postings when the segment has too few docs left to pay for
+  them. (Asharam)
+
 Bug Fixes
 ---------------------
 * GITHUB#17020: Reduce CachingTokenFilter memory use by not copying stale term bytes in

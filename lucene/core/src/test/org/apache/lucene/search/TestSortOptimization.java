@@ -1138,6 +1138,59 @@ public class TestSortOptimization extends LuceneTestCase {
     dir.close();
   }
 
+  private DirectoryReader indexUniqueShuffledKeywords(Directory dir, int numDocs)
+      throws IOException {
+    List<Integer> values = new ArrayList<>();
+    for (int i = 0; i < numDocs; ++i) {
+      values.add(i);
+    }
+    Collections.shuffle(values, random());
+    IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
+    for (int value : values) {
+      Document doc = new Document();
+      doc.add(new KeywordField("my_field", String.format("%09d", value), Field.Store.NO));
+      writer.addDocument(doc);
+    }
+    writer.forceMerge(1);
+    DirectoryReader reader = DirectoryReader.open(writer);
+    writer.close();
+    assertEquals(1, reader.leaves().size());
+    return reader;
+  }
+
+  public void testStringSortDoesNotOpenPostingsOnSmallSegment() throws IOException {
+    // Opening hundreds of postings lists to skip a couple thousand docs costs more than checking
+    // these docs' ordinals, so no docs should be skipped here.
+    final int numDocs = 2000;
+    try (Directory dir = newDirectory();
+        DirectoryReader reader = indexUniqueShuffledKeywords(dir, numDocs)) {
+      for (boolean reverse : new boolean[] {false, true}) {
+        Sort sort =
+            new Sort(KeywordField.newSortField("my_field", reverse, SortedSetSelector.Type.MIN));
+        TopDocs topDocs = assertSort(reader, sort, 100, null);
+        assertEquals(numDocs, topDocs.totalHits.value());
+      }
+    }
+  }
+
+  public void testStringSortPostingsWithManyCompetitiveUpdates() throws IOException {
+    // Unique values in random order: the competitive range shrinks on many hits after the
+    // postings disjunction was created.
+    final int numDocs = 50_000;
+    try (Directory dir = newDirectory();
+        DirectoryReader reader = indexUniqueShuffledKeywords(dir, numDocs)) {
+      for (boolean reverse : new boolean[] {false, true}) {
+        Sort sort =
+            new Sort(KeywordField.newSortField("my_field", reverse, SortedSetSelector.Type.MIN));
+        TopDocs topDocs = assertSort(reader, sort, 10, null);
+        assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value(), numDocs);
+        FieldDoc after = (FieldDoc) topDocs.scoreDocs[topDocs.scoreDocs.length - 1];
+        topDocs = assertSort(reader, sort, 10, after);
+        assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value(), numDocs);
+      }
+    }
+  }
+
   public void testStringSortOptimizationFieldMissingInSegmentBasedPostings() throws IOException {
     testStringSortOptimizationFieldMissingInSegment(
         (field, value) -> new KeywordField(field, value, Field.Store.NO));
