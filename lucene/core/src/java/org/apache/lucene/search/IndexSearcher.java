@@ -624,29 +624,6 @@ public class IndexSearcher {
     return searchAfter(null, query, n);
   }
 
-<<<<<<< HEAD
-  /**
-   * Lower-level search API.
-   *
-   * <p>{@link LeafCollector#collect(int)} is called for every matching document.
-   *
-   * @throws TooManyClauses If a query would exceed {@link IndexSearcher#getMaxClauseCount()}
-   *     clauses.
-   * @deprecated This method is being deprecated in favor of {@link IndexSearcher#search(Query,
-   *     CollectorManager)} due to its support for concurrency in IndexSearcher
-   */
-  @Deprecated
-  public void search(Query query, Collector collector) throws IOException {
-    query = rewrite(query, collector.scoreMode().needsScores());
-    Weight weight = createWeight(query, collector.scoreMode(), 1);
-    collector.setWeight(weight);
-    for (LeafReaderContext ctx : leafContexts) { // search each subreader
-      searchLeaf(ctx, 0, ctx.reader().maxDoc(), weight, collector);
-    }
-  }
-
-=======
->>>>>>> main
   /** Returns true if any search hit the {@link #setTimeout(QueryTimeout) timeout}. */
   public boolean timedOut() {
     return partialResult;
