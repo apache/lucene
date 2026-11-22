@@ -87,4 +87,53 @@ public class TestLSBRadixSorter extends LuceneTestCase {
       test(sorter, arr, len);
     }
   }
+
+  public void testClustered() {
+    LSBRadixSorter sorter = new LSBRadixSorter();
+    for (int iter = 0; iter < 100; ++iter) {
+      final int span = 1 << random().nextInt(24);
+      final int min = TestUtil.nextInt(random(), 0, Integer.MAX_VALUE - span);
+      int[] arr = new int[TestUtil.nextInt(random(), 0, 2000)];
+      for (int i = 0; i < arr.length; ++i) {
+        arr[i] = min + random().nextInt(span);
+      }
+      test(sorter, arr, arr.length);
+    }
+  }
+
+  public void testClusteredAcrossByteBoundary() {
+    LSBRadixSorter sorter = new LSBRadixSorter();
+    for (int iter = 0; iter < 100; ++iter) {
+      // A narrow range of values whose high bytes differ.
+      final int boundary = 1 << TestUtil.nextInt(random(), 8, 30);
+      final int halfSpan = TestUtil.nextInt(random(), 1, Math.min(boundary, 1 << 10));
+      int[] arr = new int[TestUtil.nextInt(random(), 30, 2000)];
+      for (int i = 0; i < arr.length; ++i) {
+        arr[i] = TestUtil.nextInt(random(), boundary - halfSpan, boundary + halfSpan - 1);
+      }
+      test(sorter, arr, arr.length);
+    }
+  }
+
+  public void testUnsigned() {
+    // Values that need 32 bits are sorted as unsigned ints.
+    LSBRadixSorter sorter = new LSBRadixSorter();
+    for (int iter = 0; iter < 10; ++iter) {
+      int[] arr = new int[TestUtil.nextInt(random(), 30, 2000)];
+      final int min = random().nextInt();
+      for (int i = 0; i < arr.length; ++i) {
+        arr[i] = min + random().nextInt(1 << 10);
+      }
+      final int[] expected = ArrayUtil.copyOfSubArray(arr, 0, arr.length);
+      for (int i = 0; i < expected.length; ++i) {
+        expected[i] ^= Integer.MIN_VALUE;
+      }
+      Arrays.sort(expected);
+      for (int i = 0; i < expected.length; ++i) {
+        expected[i] ^= Integer.MIN_VALUE;
+      }
+      sorter.sort(32, arr, arr.length);
+      assertArrayEquals(expected, arr);
+    }
+  }
 }
