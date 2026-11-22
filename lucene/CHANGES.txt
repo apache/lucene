@@ -235,6 +235,10 @@ API Changes
 
 New Features
 ---------------------
+* GITHUB#16957: Add Albanian analyzer (org.apache.lucene.analysis.sq): a normalizer that folds ë/ç and
+  in-word apostrophes, a light suffix-stripping stemmer covering standard and Gheg inflection,
+  and a stop word list. (Visar Uruqi)
+
 * GITHUB#16997: Monitor's QueryTree now merges each group of conjoined, negated leaf queries
   (e.g. -x:a -x:b) into one "negative disjunct", which documents satisfy by containing none of its
   terms. This will later let TermFilteredPresearcher skip a query for documents that contain at
@@ -402,6 +406,10 @@ Optimizations
   frequencies when frequencies are not needed, reducing allocations for low-frequency terms.
   (Asharam)
 
+* GITHUB#17045: LSBRadixSorter sorts values that are clustered in a small part of their range with
+  fewer radix passes. This speeds up DocIdSetBuilder, e.g. for range queries on fields whose values
+  follow doc ID order such as timestamps or index sort fields. (Asharam)
+
 Bug Fixes
 ---------------------
 * GITHUB#17020: Reduce CachingTokenFilter memory use by not copying stale term bytes in
@@ -495,6 +503,8 @@ Bug Fixes
 
 * GITHUB#16892: Escape '=', '<', '>' and '@' in the flexible query parser's QueryParserUtil.escape.
   (Soma Aishwarya)
+
+* GITHUB#17018: Fix NPE when a span query searches over masked fields that don't have any indexed docs in them (Simon Cooper)
 
 Changes in Runtime Behavior
 ---------------------

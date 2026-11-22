@@ -107,4 +107,44 @@ public class TestFilteredHnswGraphSearcher extends LuceneTestCase {
     assertEquals(0, results.scoreDocs[0].doc);
     assertEquals(0.5f, results.scoreDocs[0].score, 0f);
   }
+
+  public void testRespectsVisitLimitWithinBatch() throws IOException {
+    // Entry node 0 links to accepted nodes 1..8, which land in a single scoring batch
+    int numNodes = 10;
+    OnHeapHnswGraph graph = new OnHeapHnswGraph(4, numNodes);
+    for (int node = 0; node < numNodes; node++) {
+      graph.addNode(0, node);
+    }
+    assertTrue(graph.trySetNewEntryNode(0, 0));
+    for (int node = 1; node <= 8; node++) {
+      graph.getNeighbors(0, 0).addInOrder(node, 1f);
+    }
+
+    int[] scored = new int[1];
+    RandomVectorScorer scorer =
+        new RandomVectorScorer() {
+          @Override
+          public float score(int node) {
+            scored[0]++;
+            return node / (float) numNodes;
+          }
+
+          @Override
+          public int maxOrd() {
+            return numNodes;
+          }
+        };
+
+    FixedBitSet acceptOrds = new FixedBitSet(numNodes);
+    acceptOrds.set(0, 9);
+    int visitLimit = 4;
+    KnnCollector collector = new TopKnnCollector(10, visitLimit, KnnSearchStrategy.Hnsw.DEFAULT);
+
+    FilteredHnswGraphSearcher.create(collector.k(), graph, 9, acceptOrds)
+        .search(collector, scorer, graph, acceptOrds);
+
+    assertEquals(visitLimit, collector.visitedCount());
+    assertEquals(visitLimit, scored[0]);
+    assertTrue(collector.earlyTerminated());
+  }
 }
