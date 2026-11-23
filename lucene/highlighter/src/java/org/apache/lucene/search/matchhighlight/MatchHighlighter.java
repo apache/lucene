@@ -175,12 +175,10 @@ public class MatchHighlighter {
     }
 
     void addMatches(Query query, Map<String, List<OffsetRange>> hits) {
-      hits.forEach(
-          (field, offsets) -> {
-            List<QueryOffsetRange> target =
-                matchRanges.computeIfAbsent(field, (_) -> new ArrayList<>());
-            offsets.forEach(o -> target.add(new QueryOffsetRange(query, o.from, o.to)));
-          });
+      hits.forEach((field, offsets) -> {
+        List<QueryOffsetRange> target = matchRanges.computeIfAbsent(field, _ -> new ArrayList<>());
+        offsets.forEach(o -> target.add(new QueryOffsetRange(query, o.from, o.to)));
+      });
     }
   }
 
@@ -214,10 +212,9 @@ public class MatchHighlighter {
           // We're interested in any fields for which existing highlighters are applicable (with or
           // without hits).
           return fieldHighlighters.stream()
-              .anyMatch(
-                  highlighter ->
-                      highlighter.isApplicable(fieldName, true)
-                          || highlighter.isApplicable(fieldName, false));
+              .anyMatch(highlighter ->
+                  highlighter.isApplicable(fieldName, true)
+                      || highlighter.isApplicable(fieldName, false));
         };
 
     // Collect match ranges for each query and associate each range to the origin query.

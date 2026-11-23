@@ -14,29 +14,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-package org.apache.lucene.analysis.es;
+package org.apache.lucene.analysis.sq;
 
 import java.io.Reader;
 import java.io.StringReader;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
-import org.apache.lucene.tests.analysis.MockTokenizer;
 
-/**
- * Simple tests to ensure the spanish minimal stem factory is working.
- *
- * @deprecated Remove with SpanishMinimalStemFilterFactory
- */
-@Deprecated
-public class TestSpanishMinimalStemFilterFactory extends BaseTokenStreamFactoryTestCase {
-  public void testStemming() throws Exception {
-    Reader reader = new StringReader("camisetas");
-    TokenStream stream = new MockTokenizer(MockTokenizer.WHITESPACE, false);
-    ((Tokenizer) stream).setReader(reader);
-    stream = tokenFilterFactory("spanishMinimalStem").create(stream);
-    assertTokenStreamContents(stream, new String[] {"camiseta"});
+/** Simple tests to ensure the Albanian normalization factory is working. */
+public class TestAlbanianNormalizationFilterFactory extends BaseTokenStreamFactoryTestCase {
+  public void testNormalization() throws Exception {
+    Reader reader = new StringReader("Kur'ani është");
+    Tokenizer tokenizer = tokenizerFactory("Standard").create(newAttributeFactory());
+    tokenizer.setReader(reader);
+    TokenStream stream = tokenFilterFactory("AlbanianNormalization").create(tokenizer);
+    assertTokenStreamContents(stream, new String[] {"Kurani", "eshte"});
   }
 
   /** Test that bogus arguments result in exception */
@@ -45,7 +38,7 @@ public class TestSpanishMinimalStemFilterFactory extends BaseTokenStreamFactoryT
         expectThrows(
             IllegalArgumentException.class,
             () -> {
-              tokenFilterFactory("spanishMinimalStem", "bogusArg", "bogusValue");
+              tokenFilterFactory("AlbanianNormalization", "bogusArg", "bogusValue");
             });
     assertTrue(expected.getMessage().contains("Unknown parameters"));
   }

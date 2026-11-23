@@ -15,36 +15,22 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.analysis.miscellaneous;
+package org.apache.lucene.monitor;
 
-import java.util.Map;
-import org.apache.lucene.analysis.TokenFilterFactory;
-import org.apache.lucene.analysis.TokenStream;
+import java.util.function.DoubleUnaryOperator;
+import org.apache.lucene.index.Term;
 
-/**
- * Factory for {@link FixBrokenOffsetsFilter}.
- *
- * @since 7.0.0
- * @lucene.spi {@value #NAME}
- */
-@Deprecated
-public class FixBrokenOffsetsFilterFactory extends TokenFilterFactory {
+/** A TermWeightor with its own weighting of the absence of terms */
+record NegatingTermWeightor(TermWeightor weightor, DoubleUnaryOperator negation)
+    implements TermWeightor {
 
-  /** SPI name */
-  public static final String NAME = "fixBrokenOffsets";
-
-  /** Sole constructor */
-  public FixBrokenOffsetsFilterFactory(Map<String, String> args) {
-    super(args);
-  }
-
-  /** Default ctor for compatibility with SPI */
-  public FixBrokenOffsetsFilterFactory() {
-    throw defaultCtorException();
+  @Override
+  public double applyAsDouble(Term term) {
+    return weightor.applyAsDouble(term);
   }
 
   @Override
-  public TokenStream create(TokenStream input) {
-    return new FixBrokenOffsetsFilter(input);
+  public double negate(double weight) {
+    return negation.applyAsDouble(weight);
   }
 }

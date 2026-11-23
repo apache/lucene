@@ -17,6 +17,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOIntConsumer;
 
 /**
@@ -73,6 +74,17 @@ public abstract class DocIdStream {
    * doc IDs under {@code upTo} anymore. The given array must not be empty.
    */
   public abstract int intoArray(int upTo, int[] array);
+
+  /**
+   * Load doc IDs below {@code upTo} into the provided bit set.
+   *
+   * @param upTo exclusive upper bound of doc IDs to load
+   * @param bitSet the bit set to fill
+   * @param offset subtracted from doc id before setting bits
+   */
+  public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+    forEach(upTo, doc -> bitSet.set(doc - offset));
+  }
 
   /**
    * Return {@code true} if this stream may have remaining doc IDs. This must eventually return

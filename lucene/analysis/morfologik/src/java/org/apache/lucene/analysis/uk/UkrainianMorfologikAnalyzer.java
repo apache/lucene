@@ -94,10 +94,9 @@ public final class UkrainianMorfologikAnalyzer extends StopwordAnalyzerBase {
               ourModule
                   .getLayer()
                   .findModule("morfologik.ukrainian.search")
-                  .orElseThrow(
-                      () ->
-                          new IOException(
-                              "Can't find the resource module: morfologik.ukrainian.search"));
+                  .orElseThrow(() ->
+                      new IOException(
+                          "Can't find the resource module: morfologik.ukrainian.search"));
 
           try (var fsaStream = module.getResourceAsStream("ua/net/nlp/ukrainian.dict");
               var metaStream = module.getResourceAsStream("ua/net/nlp/ukrainian.info")) {

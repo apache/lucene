@@ -129,11 +129,10 @@ public class TestMatchHighlighter extends LuceneTestCase {
     new IndexBuilder(this::toField)
         .doc(FLD_TEXT1, "foo bar baz")
         .doc(FLD_TEXT1, "bar foo baz")
-        .doc(
-            fields -> {
-              fields.add(FLD_TEXT1, "Very long content but not matching anything.");
-              fields.add(FLD_TEXT2, "no foo but bar");
-            })
+        .doc(fields -> {
+          fields.add(FLD_TEXT1, "Very long content but not matching anything.");
+          fields.add(FLD_TEXT2, "no foo but bar");
+        })
         .build(
             analyzer,
             reader -> {
@@ -732,14 +731,13 @@ public class TestMatchHighlighter extends LuceneTestCase {
                   // QueryOffsetRange
                   // so we compute the class based on that.
                   Function<OffsetRange, String> queryToClass =
-                      (range) ->
-                          queryClassMap.get(((MatchHighlighter.QueryOffsetRange) range).query);
+                      range -> queryClassMap.get(((MatchHighlighter.QueryOffsetRange) range).query);
 
                   PassageFormatter passageFormatter =
                       new PassageFormatter(
                           "...",
-                          (range) -> "<span class='" + queryToClass.apply(range) + "'>",
-                          (_) -> "</span>");
+                          range -> "<span class='" + queryToClass.apply(range) + "'>",
+                          _ -> "</span>");
 
                   return passageFormatter.format(contiguousValue, bestPassages, valueRanges);
                 }
@@ -787,11 +785,10 @@ public class TestMatchHighlighter extends LuceneTestCase {
 
   private List<List<String>> toDocList(Stream<MatchHighlighter.DocHighlights> highlights) {
     return highlights
-        .map(
-            docHighlights ->
-                docHighlights.fields.entrySet().stream()
-                    .map(e -> e.getKey() + ": " + String.join(", ", e.getValue()))
-                    .toList())
+        .map(docHighlights ->
+            docHighlights.fields.entrySet().stream()
+                .map(e -> e.getKey() + ": " + String.join(", ", e.getValue()))
+                .toList())
         .toList();
   }
 

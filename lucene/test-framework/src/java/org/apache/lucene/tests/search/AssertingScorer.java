@@ -35,7 +35,7 @@ public class AssertingScorer extends Scorer {
     ITERATING,
     SHALLOW_ADVANCING,
     FINISHED
-  };
+  }
 
   /**
    * Wrap the given scorer with additional checks.

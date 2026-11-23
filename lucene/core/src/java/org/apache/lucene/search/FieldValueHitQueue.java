@@ -196,9 +196,14 @@ public class FieldValueHitQueue<T extends FieldValueHitQueue.Entry> extends Prio
   /**
    * Whether docs in the segment are visited in the order of the search sort: the first search sort
    * is {@code _doc}, or the search sort is a prefix of the segment's index sort. Index sort fields
-   * that have no effect in this segment are ignored.
+   * that have no effect in this segment are ignored. Segments with document blocks only terminate
+   * early for {@code _doc}.
    */
   static boolean canEarlyTerminate(SortField[] searchSort, LeafReader reader) {
+    if (reader.getMetaData().hasBlocks()) {
+      // index sorting only orders parent documents, so child documents break the index sort order
+      return SortField.FIELD_DOC.equals(unwrap(searchSort[0]));
+    }
     if (canEarlyTerminate(new Sort(searchSort), reader.getMetaData().sort())) {
       return true;
     }

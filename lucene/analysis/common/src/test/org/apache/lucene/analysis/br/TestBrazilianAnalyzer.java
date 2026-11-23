@@ -119,6 +119,17 @@ public class TestBrazilianAnalyzer extends BaseTokenStreamTestCase {
     check("quiosque", "quiosqu");
   }
 
+  public void testLogiaSuffixes() throws Exception {
+    check("metodologia", "metodolog");
+    check("metodologias", "metodolog");
+    check("antropologia", "antropolog");
+    check("antropologias", "antropolog");
+    check("terminologia", "terminolog");
+    check("terminologias", "terminolog");
+    check("biologia", "biolog");
+    check("biologias", "biolog");
+  }
+
   public void testNormalization() throws Exception {
     check("Brasil", "brasil"); // lowercase by default
     check("Brasília", "brasil"); // remove diacritics

@@ -972,7 +972,7 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
               lons,
               query,
               liveDocs,
-              (b) -> b.append("  rect=").append(rect));
+              b -> b.append("  rect=").append(rect));
           fail = true;
         }
       }
@@ -1063,7 +1063,7 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
 
         if (hits.get(docID) != expected) {
           Consumer<StringBuilder> explain =
-              (b) -> {
+              b -> {
                 if (Double.isNaN(lats[id]) == false) {
                   double distanceMeters =
                       SloppyMath.haversinMeters(centerLat, centerLon, lats[id], lons[id]);
@@ -1163,7 +1163,7 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
               lons,
               query,
               liveDocs,
-              (b) -> b.append("  polygon=").append(polygon));
+              b -> b.append("  polygon=").append(polygon));
           fail = true;
         }
       }
@@ -1252,7 +1252,7 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
               lons,
               query,
               liveDocs,
-              (b) -> b.append("  geometry=").append(Arrays.toString(geometries)));
+              b -> b.append("  geometry=").append(Arrays.toString(geometries)));
           fail = true;
         }
       }

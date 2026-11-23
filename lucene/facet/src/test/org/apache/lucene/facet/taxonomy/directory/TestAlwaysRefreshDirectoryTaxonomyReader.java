@@ -127,7 +127,7 @@ public class TestAlwaysRefreshDirectoryTaxonomyReader extends FacetTestCase {
   @Ignore("LUCENE-10482: need to make this work on Windows too")
   public void testAlwaysRefreshDirectoryTaxonomyReader() throws IOException {
     testAlwaysRefreshDirectoryTaxonomyReader(
-        (dir) -> {
+        dir -> {
           try {
             return new DirectoryTaxonomyReader(dir);
           } catch (IOException e) {
@@ -137,7 +137,7 @@ public class TestAlwaysRefreshDirectoryTaxonomyReader extends FacetTestCase {
         },
         ArrayIndexOutOfBoundsException.class);
     testAlwaysRefreshDirectoryTaxonomyReader(
-        (dir) -> {
+        dir -> {
           try {
             return new AlwaysRefreshDirectoryTaxonomyReader(dir);
           } catch (IOException e) {
