@@ -104,6 +104,7 @@ public final class RandomLongValues {
             Long.compareUnsigned(maxMultiplier, multiplierLimit) < 0
                 ? maxMultiplier
                 : multiplierLimit;
+        // multiplierBound * gcd <= MAX_VALUE - base, so neither expression below overflows
         return new RandomLongValues(
             random,
             base,
