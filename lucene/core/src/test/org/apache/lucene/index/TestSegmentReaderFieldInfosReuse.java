@@ -17,9 +17,12 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.lang.reflect.Modifier;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.function.Consumer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -191,31 +194,50 @@ public class TestSegmentReaderFieldInfosReuse extends LuceneTestCase {
     equalAttributes.attributes = new HashMap<>(equalAttributes.attributes);
     assertTrue(base.hasSameState(equalAttributes.build()));
 
-    List<Consumer<FieldInfoSpec>> changes =
-        List.of(
-            spec -> spec.name = "g",
-            spec -> spec.number = 2,
-            spec -> spec.storeTermVector = true,
-            spec -> spec.omitNorms = true,
-            spec -> spec.storePayloads = true,
-            spec -> spec.indexOptions = IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS,
-            spec -> spec.docValuesType = DocValuesType.SORTED_NUMERIC,
-            spec -> spec.docValuesSkipIndex = DocValuesSkipIndexType.RANGE,
-            spec -> spec.dvGen = 3L,
-            spec -> spec.attributes = Map.of("k", "w"),
-            spec -> spec.pointDimensionCount = 3,
-            spec -> spec.pointIndexDimensionCount = 2,
-            spec -> spec.pointNumBytes = 8,
-            spec -> spec.vectorDimension = 8,
-            spec -> spec.vectorEncoding = VectorEncoding.BYTE,
-            spec -> spec.vectorSimilarityFunction = VectorSimilarityFunction.DOT_PRODUCT,
-            spec -> spec.softDeletesField = true,
-            spec -> spec.isParentField = true);
-    for (int i = 0; i < changes.size(); i++) {
-      FieldInfoSpec changed = new FieldInfoSpec();
-      changes.get(i).accept(changed);
-      assertFalse("change " + i, base.hasSameState(changed.build()));
+    // One change per FieldInfo instance field, keyed by the name of the field it changes.
+    Map<String, Consumer<FieldInfoSpec>> changes = new TreeMap<>();
+    changes.put("name", spec -> spec.name = "g");
+    changes.put("number", spec -> spec.number = 2);
+    changes.put("storeTermVector", spec -> spec.storeTermVector = true);
+    changes.put("omitNorms", spec -> spec.omitNorms = true);
+    changes.put("storePayloads", spec -> spec.storePayloads = true);
+    changes.put(
+        "indexOptions",
+        spec -> spec.indexOptions = IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
+    changes.put("docValuesType", spec -> spec.docValuesType = DocValuesType.SORTED_NUMERIC);
+    changes.put(
+        "docValuesSkipIndex", spec -> spec.docValuesSkipIndex = DocValuesSkipIndexType.RANGE);
+    changes.put("dvGen", spec -> spec.dvGen = 3L);
+    changes.put("attributes", spec -> spec.attributes = Map.of("k", "w"));
+    changes.put("pointDimensionCount", spec -> spec.pointDimensionCount = 3);
+    changes.put("pointIndexDimensionCount", spec -> spec.pointIndexDimensionCount = 2);
+    changes.put("pointNumBytes", spec -> spec.pointNumBytes = 8);
+    changes.put("vectorDimension", spec -> spec.vectorDimension = 8);
+    changes.put("vectorEncoding", spec -> spec.vectorEncoding = VectorEncoding.BYTE);
+    changes.put(
+        "vectorSimilarityFunction",
+        spec -> spec.vectorSimilarityFunction = VectorSimilarityFunction.DOT_PRODUCT);
+    changes.put("softDeletesField", spec -> spec.softDeletesField = true);
+    changes.put("isParentField", spec -> spec.isParentField = true);
+
+    for (Map.Entry<String, Consumer<FieldInfoSpec>> change : changes.entrySet()) {
+      FieldInfoSpec spec = new FieldInfoSpec();
+      change.getValue().accept(spec);
+      assertFalse(change.getKey(), base.hasSameState(spec.build()));
     }
+
+    // Fails when a field is added to (or removed from) FieldInfo: compare the new field in
+    // FieldInfo#hasSameState, then add a change for it above.
+    Set<String> declared = new TreeSet<>();
+    for (java.lang.reflect.Field f : FieldInfo.class.getDeclaredFields()) {
+      if (Modifier.isStatic(f.getModifiers()) == false && f.isSynthetic() == false) {
+        declared.add(f.getName());
+      }
+    }
+    assertEquals(
+        "every FieldInfo field must be compared by hasSameState and changed by this test",
+        declared,
+        changes.keySet());
   }
 
   private IndexWriterConfig newConfig(int maxDocValuesOverlays) {
