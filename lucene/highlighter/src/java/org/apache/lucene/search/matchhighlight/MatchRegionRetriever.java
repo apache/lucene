@@ -198,7 +198,7 @@ public class MatchRegionRetriever {
     }
 
     shouldLoadStoredField =
-        (field) -> {
+        field -> {
           return fieldsToLoadUnconditionally.test(field)
               || queryAffectedHighlightedFields.contains(field);
         };
@@ -289,7 +289,7 @@ public class MatchRegionRetriever {
     if (maxBlocksProcessedInParallel == 1) {
       // Sequential, own-thread processing.
       drainQueue =
-          (queue) -> {
+          queue -> {
             for (var callable : queue) {
               try {
                 processBlock(callable.call(), consumer);
@@ -302,7 +302,7 @@ public class MatchRegionRetriever {
     } else {
       // Potentially concurrent processing via IndexSearcher's TaskExecutor.
       drainQueue =
-          (queue) -> {
+          queue -> {
             for (var highlightData : taskExecutor.invokeAll(queue)) {
               processBlock(highlightData, consumer);
             }
@@ -477,7 +477,7 @@ public class MatchRegionRetriever {
   public static OffsetsRetrievalStrategySupplier computeOffsetRetrievalStrategies(
       IndexReader reader, Analyzer analyzer) {
     FieldInfos fieldInfos = FieldInfos.getMergedFieldInfos(reader);
-    return (field) -> {
+    return field -> {
       FieldInfo fieldInfo = fieldInfos.fieldInfo(field);
       if (fieldInfo == null) {
         return (_, _) -> {

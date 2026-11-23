@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.analysis.miscellaneous;
 
+import static org.hamcrest.Matchers.stringContainsInOrder;
+
 import java.io.Reader;
 import java.io.StringReader;
 import org.apache.lucene.analysis.TokenStream;
@@ -28,7 +30,6 @@ public class TestTruncateTokenFilterFactory extends BaseTokenStreamFactoryTestCa
 
   public void testCharTruncating() throws Exception {
     testCharTruncating(TruncateTokenFilterFactory.TRUNCATE_AFTER_CHARS_KEY);
-    testCharTruncating(TruncateTokenFilterFactory.PREFIX_LENGTH_KEY);
     testCharTruncating(null);
   }
 
@@ -58,7 +59,6 @@ public class TestTruncateTokenFilterFactory extends BaseTokenStreamFactoryTestCa
 
   public void testCodePointTruncating() throws Exception {
     testCodePointTruncating(TruncateTokenFilterFactory.TRUNCATE_AFTER_CODEPOINTS_KEY);
-    testCodePointTruncating(TruncateTokenFilterFactory.PREFIX_LENGTH_KEY);
     testCodePointTruncating(null);
   }
 
@@ -122,6 +122,15 @@ public class TestTruncateTokenFilterFactory extends BaseTokenStreamFactoryTestCa
                   "6");
             });
     assertTrue(expected.getMessage().contains("Can only give one of the following parameters:"));
+
+    expected =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              tokenFilterFactory("Truncate", "prefixLength", "3");
+            });
+    assertThat(
+        expected.getMessage(), stringContainsInOrder("Unknown parameter(s):", "prefixLength"));
   }
 
   /** Test that negative prefix length result in exception */

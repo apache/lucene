@@ -275,15 +275,14 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
           Integer.MAX_VALUE);
 
       // sort by count
-      expectedCounts.sort(
-          (a, b) -> {
-            int cmp = -Integer.compare(a.getValue(), b.getValue());
-            if (cmp == 0) {
-              // tie break by value
-              cmp = Long.compare(a.getKey(), b.getKey());
-            }
-            return cmp;
-          });
+      expectedCounts.sort((a, b) -> {
+        int cmp = Integer.compare(b.getValue(), a.getValue());
+        if (cmp == 0) {
+          // tie break by value
+          cmp = Long.compare(a.getKey(), b.getKey());
+        }
+        return cmp;
+      });
       int topN;
       if (random().nextBoolean()) {
         topN = docCount;
@@ -374,15 +373,14 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
           Integer.MAX_VALUE);
 
       // sort by count
-      expectedCounts.sort(
-          (a, b) -> {
-            int cmp = -Integer.compare(a.getValue(), b.getValue());
-            if (cmp == 0) {
-              // tie break by value
-              cmp = Long.compare(a.getKey(), b.getKey());
-            }
-            return cmp;
-          });
+      expectedCounts.sort((a, b) -> {
+        int cmp = Integer.compare(b.getValue(), a.getValue());
+        if (cmp == 0) {
+          // tie break by value
+          cmp = Long.compare(a.getKey(), b.getKey());
+        }
+        return cmp;
+      });
       if (random().nextBoolean()) {
         topN = docCount;
       } else {
@@ -538,15 +536,14 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
           Integer.MAX_VALUE);
 
       // sort by count
-      expectedCounts.sort(
-          (a, b) -> {
-            int cmp = -Integer.compare(a.getValue(), b.getValue());
-            if (cmp == 0) {
-              // tie break by value
-              cmp = Long.compare(a.getKey(), b.getKey());
-            }
-            return cmp;
-          });
+      expectedCounts.sort((a, b) -> {
+        int cmp = Integer.compare(b.getValue(), a.getValue());
+        if (cmp == 0) {
+          // tie break by value
+          cmp = Long.compare(a.getKey(), b.getKey());
+        }
+        return cmp;
+      });
       int topN;
       if (random().nextBoolean()) {
         topN = docCount;
@@ -615,15 +612,14 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
           Integer.MAX_VALUE);
 
       // sort by count
-      expectedCounts.sort(
-          (a, b) -> {
-            int cmp = -Integer.compare(a.getValue(), b.getValue());
-            if (cmp == 0) {
-              // tie break by value
-              cmp = Long.compare(a.getKey(), b.getKey());
-            }
-            return cmp;
-          });
+      expectedCounts.sort((a, b) -> {
+        int cmp = Integer.compare(b.getValue(), a.getValue());
+        if (cmp == 0) {
+          // tie break by value
+          cmp = Long.compare(a.getKey(), b.getKey());
+        }
+        return cmp;
+      });
       if (random().nextBoolean()) {
         topN = docCount;
       } else {

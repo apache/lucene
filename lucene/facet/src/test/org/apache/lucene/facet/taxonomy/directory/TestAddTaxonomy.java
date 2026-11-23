@@ -43,18 +43,17 @@ public class TestAddTaxonomy extends FacetTestCase {
       Thread[] addThreads = new Thread[4];
       for (int j = 0; j < addThreads.length; j++) {
         addThreads[j] =
-            new Thread(
-                () -> {
-                  Random random = random();
-                  while (numCats.decrementAndGet() > 0) {
-                    String cat = Integer.toString(random.nextInt(range));
-                    try {
-                      tw.addCategory(new FacetLabel("a", cat));
-                    } catch (IOException e) {
-                      throw new RuntimeException(e);
-                    }
-                  }
-                });
+            new Thread(() -> {
+              Random random = random();
+              while (numCats.decrementAndGet() > 0) {
+                String cat = Integer.toString(random.nextInt(range));
+                try {
+                  tw.addCategory(new FacetLabel("a", cat));
+                } catch (IOException e) {
+                  throw new RuntimeException(e);
+                }
+              }
+            });
       }
 
       for (Thread t : addThreads) t.start();
@@ -203,17 +202,16 @@ public class TestAddTaxonomy extends FacetTestCase {
     Directory dest = newDirectory();
     final DirectoryTaxonomyWriter destTW = new DirectoryTaxonomyWriter(dest);
     Thread t =
-        new Thread(
-            () -> {
-              for (int i = 0; i < numCategories; i++) {
-                try {
-                  destTW.addCategory(new FacetLabel("a", Integer.toString(i)));
-                } catch (IOException e) {
-                  // shouldn't happen - if it does, let the test fail on uncaught exception.
-                  throw new RuntimeException(e);
-                }
-              }
-            });
+        new Thread(() -> {
+          for (int i = 0; i < numCategories; i++) {
+            try {
+              destTW.addCategory(new FacetLabel("a", Integer.toString(i)));
+            } catch (IOException e) {
+              // shouldn't happen - if it does, let the test fail on uncaught exception.
+              throw new RuntimeException(e);
+            }
+          }
+        });
     t.start();
 
     OrdinalMap map = new MemoryOrdinalMap();

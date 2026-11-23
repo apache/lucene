@@ -121,8 +121,8 @@ public class TestAllDictionaries extends LuceneTestCase {
               switch (firstWord) {
                 case "SET":
                 case "FLAG":
-                  local.computeIfAbsent(firstWord, (_) -> new ArrayList<>()).add(is.position());
-                  global.computeIfAbsent(firstWord, (_) -> new ArrayList<>()).add(is.position());
+                  local.computeIfAbsent(firstWord, _ -> new ArrayList<>()).add(is.position());
+                  global.computeIfAbsent(firstWord, _ -> new ArrayList<>()).add(is.position());
                   break;
               }
             }
@@ -132,28 +132,22 @@ public class TestAllDictionaries extends LuceneTestCase {
         }
       }
 
-      local.forEach(
-          (flag, positions) -> {
-            if (positions.size() > 1) {
-              System.out.format(
-                  Locale.ROOT,
-                  "Flag %s at more than one position in %s: %s%n",
-                  flag,
-                  aff,
-                  positions);
-              failTest.set(true);
-            }
-          });
+      local.forEach((flag, positions) -> {
+        if (positions.size() > 1) {
+          System.out.format(
+              Locale.ROOT, "Flag %s at more than one position in %s: %s%n", flag, aff, positions);
+          failTest.set(true);
+        }
+      });
     }
 
-    global.forEach(
-        (flag, positions) -> {
-          long max = positions.stream().mapToLong(v -> v).max().orElse(0);
-          System.out.printf(Locale.ROOT, "Flag %s at maximum offset %s%n", flag, max);
-          Assert.assertTrue(
-              "Flags beyond max prologue scan window: " + max,
-              max < Dictionary.MAX_PROLOGUE_SCAN_WINDOW);
-        });
+    global.forEach((flag, positions) -> {
+      long max = positions.stream().mapToLong(v -> v).max().orElse(0);
+      System.out.printf(Locale.ROOT, "Flag %s at maximum offset %s%n", flag, max);
+      Assert.assertTrue(
+          "Flags beyond max prologue scan window: " + max,
+          max < Dictionary.MAX_PROLOGUE_SCAN_WINDOW);
+    });
 
     if (failTest.get()) {
       throw new AssertionError("Duplicate flags were present in at least one .aff file.");

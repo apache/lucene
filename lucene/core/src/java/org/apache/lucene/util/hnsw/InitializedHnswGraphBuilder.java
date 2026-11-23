@@ -361,7 +361,6 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
         hnsw.addNode(level, newOrd);
         levelToNodes[level].add(newOrd);
         hnsw.trySetNewEntryNode(newOrd, level);
-        scorer.setScoringOrdinal(newOrd);
 
         // Copy neighbors
         NeighborArray newNeighbors = hnsw.getNeighbors(level, newOrd);

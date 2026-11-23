@@ -70,6 +70,34 @@ public class TestBinaryDocValueSelector extends LuceneTestCase {
     srcDir.close();
   }
 
+  public void testDocumentWithoutKey() throws Exception {
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter w =
+          new IndexWriter(
+              dir, new IndexWriterConfig(null).setMergePolicy(NoMergePolicy.INSTANCE))) {
+        Document withKey = new Document();
+        withKey.add(new BinaryDocValuesField("textOrd", new BytesRef("1")));
+        w.addDocument(withKey);
+        Document withoutKey = new Document();
+        withoutKey.add(new StringField("delete", "yes", Field.Store.NO));
+        w.addDocument(withoutKey);
+        w.deleteDocuments(new Term("delete", "yes"));
+      }
+
+      IllegalStateException liveException =
+          expectThrows(
+              IllegalStateException.class,
+              () -> BinaryDocValueSelector.createLiveSelectorsFromIndex("textOrd", dir));
+      assertTrue(liveException.getMessage().contains("doesn't have key textOrd"));
+
+      IllegalStateException deleteException =
+          expectThrows(
+              IllegalStateException.class,
+              () -> BinaryDocValueSelector.createDeleteSelectorFromIndex("textOrd", dir));
+      assertTrue(deleteException.getMessage().contains("doesn't have key textOrd"));
+    }
+  }
+
   private static void assertSequentialIndex(Directory dir, int docNum, int segNum)
       throws IOException {
     IndexReader reader = DirectoryReader.open(dir);

@@ -68,11 +68,10 @@ public abstract class DiversifiedTopDocsCollectorManager<C extends DiversifiedTo
       }
     }
     // Sort descending by score; break ties ascending by doc for determinism
-    allDocs.sort(
-        (a, b) -> {
-          int cmp = Float.compare(b.score, a.score);
-          return cmp != 0 ? cmp : Integer.compare(a.doc, b.doc);
-        });
+    allDocs.sort((a, b) -> {
+      int cmp = Float.compare(b.score, a.score);
+      return cmp != 0 ? cmp : Integer.compare(a.doc, b.doc);
+    });
     // Greedy pick: take up to numHits while honouring maxHitsPerKey per key
     LongIntHashMap keyCounts = new LongIntHashMap();
     List<ScoreDoc> result = new ArrayList<>();

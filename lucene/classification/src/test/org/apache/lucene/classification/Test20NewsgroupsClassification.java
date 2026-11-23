@@ -343,38 +343,37 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
       List<Future<String>> futures,
       Classifier<BytesRef> classifier) {
     futures.add(
-        service.submit(
-            () -> {
-              final long startTime = System.nanoTime();
-              ConfusionMatrixGenerator.ConfusionMatrix confusionMatrix;
-              if (split) {
-                confusionMatrix =
-                    ConfusionMatrixGenerator.getConfusionMatrix(
-                        testReader, classifier, CATEGORY_FIELD, BODY_FIELD, 60000 * 30);
-              } else {
-                confusionMatrix =
-                    ConfusionMatrixGenerator.getConfusionMatrix(
-                        ar, classifier, CATEGORY_FIELD, BODY_FIELD, 60000 * 30);
-              }
-              final long endTime = System.nanoTime();
-              final int elapse = (int) TimeUnit.NANOSECONDS.toSeconds(endTime - startTime);
+        service.submit(() -> {
+          final long startTime = System.nanoTime();
+          ConfusionMatrixGenerator.ConfusionMatrix confusionMatrix;
+          if (split) {
+            confusionMatrix =
+                ConfusionMatrixGenerator.getConfusionMatrix(
+                    testReader, classifier, CATEGORY_FIELD, BODY_FIELD, 60000 * 30);
+          } else {
+            confusionMatrix =
+                ConfusionMatrixGenerator.getConfusionMatrix(
+                    ar, classifier, CATEGORY_FIELD, BODY_FIELD, 60000 * 30);
+          }
+          final long endTime = System.nanoTime();
+          final int elapse = (int) TimeUnit.NANOSECONDS.toSeconds(endTime - startTime);
 
-              return " * "
-                  + classifier
-                  + " \n    * accuracy = "
-                  + confusionMatrix.getAccuracy()
-                  + "\n    * precision = "
-                  + confusionMatrix.getPrecision()
-                  + "\n    * recall = "
-                  + confusionMatrix.getRecall()
-                  + "\n    * f1-measure = "
-                  + confusionMatrix.getF1Measure()
-                  + "\n    * avgClassificationTime = "
-                  + confusionMatrix.getAvgClassificationTime()
-                  + "\n    * time = "
-                  + elapse
-                  + " (sec)\n ";
-            }));
+          return " * "
+              + classifier
+              + " \n    * accuracy = "
+              + confusionMatrix.getAccuracy()
+              + "\n    * precision = "
+              + confusionMatrix.getPrecision()
+              + "\n    * recall = "
+              + confusionMatrix.getRecall()
+              + "\n    * f1-measure = "
+              + confusionMatrix.getF1Measure()
+              + "\n    * avgClassificationTime = "
+              + confusionMatrix.getAvgClassificationTime()
+              + "\n    * time = "
+              + elapse
+              + " (sec)\n ";
+        }));
   }
 
   private int buildIndex(Path indexDir, IndexWriter indexWriter) throws IOException {

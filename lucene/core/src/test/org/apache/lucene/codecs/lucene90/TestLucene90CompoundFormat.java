@@ -258,17 +258,16 @@ public class TestLucene90CompoundFormat extends BaseCompoundFormatTestCase {
         for (int t = 0; t < threadCount; t++) {
           String file = "_123." + (t % 2);
           Thread thread =
-              new Thread(
-                  () -> {
-                    try {
-                      start.await();
-                      try (IndexInput in = cfs.openInput(file, SEQUENTIAL)) {
-                        in.seek(in.length());
-                      }
-                    } catch (Throwable e) {
-                      failures.add(e);
-                    }
-                  });
+              new Thread(() -> {
+                try {
+                  start.await();
+                  try (IndexInput in = cfs.openInput(file, SEQUENTIAL)) {
+                    in.seek(in.length());
+                  }
+                } catch (Throwable e) {
+                  failures.add(e);
+                }
+              });
           thread.start();
           threads.add(thread);
         }
