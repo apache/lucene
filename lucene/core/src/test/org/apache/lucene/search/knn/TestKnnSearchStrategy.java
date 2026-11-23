@@ -37,8 +37,9 @@ public class TestKnnSearchStrategy {
       1, 1, 1.0, 16.0, 1
       1, 1, 0.0, 16.0, 0
       10, 2, 1.0, 16.0, 2
+      100, 10_000, 0.1, 1.0, 387
       100, 100, 0.1, 16.0, 100
-      10000, 2147483647, .0001, 128, 71871564
+      10_000, 2_147_483_647, .0001, 128, 71_871_564
       """)
   void testExpectedVisitedNodesBoundaryCases(
       int k, int numVecs, float selectivity, float avgDegree, int expected) {
@@ -55,11 +56,11 @@ public class TestKnnSearchStrategy {
       textBlock =
           """
       k, numVecs, selectivity, avgDegree, expected
-      10, 1000000, 1.0, 16.0, 354
-      100, 1000000, 1.0, 16.0, 1152
-      1000, 1000000, 1.0, 16.0, 7254
-      10000, 1000000, 1.0, 16.0, 41932
-      100000, 1000000, 1.0, 16.0, 217427
+      10, 1_000_000, 1.0, 16.0, 354
+      100, 1_000_000, 1.0, 16.0, 1152
+      1_000, 1_000_000, 1.0, 16.0, 7254
+      10_000, 1_000_000, 1.0, 16.0, 41932
+      100_000, 1_000_000, 1.0, 16.0, 217427
       """)
   void testExpectedVisitedNodesSublinearInK(
       int k, int numVecs, float selectivity, float avgDegree, int expected) {
@@ -74,12 +75,31 @@ public class TestKnnSearchStrategy {
       textBlock =
           """
       k, numVecs, selectivity, avgDegree, expected
-      100, 1000, 1.0, 16.0, 609
-      100, 100000, 1.0, 16.0, 1032
-      100, 10000000, 1.0, 16.0, 1263
-      100, 1000000000, 1.0, 16.0, 1474
+      100, 1_000, 1.0, 16.0, 609
+      100, 100_000, 1.0, 16.0, 1032
+      100, 10_000_000, 1.0, 16.0, 1263
+      100, 1_000_000_000, 1.0, 16.0, 1474
       """)
   void testExpectedVisitedNodesSublinearInN(
+      int k, int numVecs, float selectivity, float avgDegree, int expected) {
+    KnnSearchStrategy strategy = unfiltered();
+    int actual = strategy.expectedVisitedNodes(k, numVecs, selectivity, avgDegree);
+    assertEquals(expected, actual);
+  }
+
+  @ParameterizedTest
+  @CsvSource(
+      useHeadersInDisplayName = true,
+      textBlock =
+          """
+      k, numVecs, selectivity, avgDegree, expected
+      1000, 100_000, 1.0, 1.0, 1000
+      1000, 100_000, 1.0, 16.0, 6352
+      1000, 100_000, 1.0, 64.0, 25132
+      1000, 100_000, 1.0, 128.0, 46521
+      1000, 100_000, 1.0, 256.0, 66077
+      """)
+  void testExpectedVisitedSaturateWithDegree(
       int k, int numVecs, float selectivity, float avgDegree, int expected) {
     KnnSearchStrategy strategy = unfiltered();
     int actual = strategy.expectedVisitedNodes(k, numVecs, selectivity, avgDegree);
