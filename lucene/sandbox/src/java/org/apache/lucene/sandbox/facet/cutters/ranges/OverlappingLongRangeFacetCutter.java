@@ -36,8 +36,7 @@ import org.apache.lucene.search.LongValuesSource;
 /**
  * {@link LongRangeFacetCutter} for ranges of long value that overlap. Uses segment tree
  * optimisation to find all matching ranges for a given value <a
- * href="https://blog.mikemccandless.com/2013/12/fast-range-faceting-using-segment-trees.html">fast-range-faceting-
- * using-segment-trees.html</a>
+ * href="https://blog.mikemccandless.com/2013/12/fast-range-faceting-using-segment-trees.html">fast-range-faceting-using-segment-trees.html</a>
  */
 class OverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
   private final LongRangeNode root;
@@ -152,12 +151,13 @@ class OverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
   public LeafFacetCutter createLeafCutter(LeafReaderContext context) throws IOException {
     if (fieldName != null) {
       DocValuesSkipper skipper = context.reader().getDocValuesSkipper(fieldName);
+      NumericDocValues singletonValues = singletonFieldValues(context);
+      if (singletonValues != null) {
+        // The single-valued cutter is cheaper even without a skip index.
+        return new OverlappingSingleValuedRangeLeafFacetCutter(
+            asLongValues(singletonValues), boundaries, pos, requestedRangeCount, root, skipper);
+      }
       if (skipper != null) {
-        NumericDocValues singletonValues = singletonFieldValues(context);
-        if (singletonValues != null) {
-          return new OverlappingSingleValuedRangeLeafFacetCutter(
-              asLongValues(singletonValues), boundaries, pos, requestedRangeCount, root, skipper);
-        }
         MultiLongValues values = valuesSource.getValues(context);
         return new OverlappingMultivaluedRangeLeafFacetCutter(
             values, boundaries, pos, requestedRangeCount, root, skipper);

@@ -205,9 +205,8 @@ public class TestLRUQueryCache extends LuceneTestCase {
                                   throws IOException {
                                 return collectorManager.reduce(
                                     collectors.stream()
-                                        .map(
-                                            filterCollector ->
-                                                (DummyTotalHitCountCollector) filterCollector.in)
+                                        .map(filterCollector ->
+                                            (DummyTotalHitCountCollector) filterCollector.in)
                                         .toList());
                               }
                             });
@@ -1978,25 +1977,24 @@ public class TestLRUQueryCache extends LuceneTestCase {
       int from = t * 100;
       int to = Math.min(from + 100, numDocs);
       threads[t] =
-          new Thread(
-              () -> {
-                try {
-                  BulkScorer bulkScorer = cachingWeight.scorerSupplier(singleLeaf).bulkScorer();
-                  bulkScorer.score(
-                      new LeafCollector() {
-                        @Override
-                        public void setScorer(Scorable scorer) {}
+          new Thread(() -> {
+            try {
+              BulkScorer bulkScorer = cachingWeight.scorerSupplier(singleLeaf).bulkScorer();
+              bulkScorer.score(
+                  new LeafCollector() {
+                    @Override
+                    public void setScorer(Scorable scorer) {}
 
-                        @Override
-                        public void collect(int doc) {}
-                      },
-                      null,
-                      from,
-                      to);
-                } catch (Exception e) {
-                  throw new AssertionError(e);
-                }
-              });
+                    @Override
+                    public void collect(int doc) {}
+                  },
+                  null,
+                  from,
+                  to);
+            } catch (Exception e) {
+              throw new AssertionError(e);
+            }
+          });
       threads[t].start();
     }
     for (Thread thread : threads) {
@@ -2398,16 +2396,15 @@ public class TestLRUQueryCache extends LuceneTestCase {
     noCacheHelperSearcher.search(query, 1);
 
     Thread t =
-        new Thread(
-            () -> {
-              try {
-                noCacheReader.close();
-                w.close();
-                dir.close();
-              } catch (Exception e) {
-                throw new RuntimeException(e);
-              }
-            });
+        new Thread(() -> {
+          try {
+            noCacheReader.close();
+            w.close();
+            dir.close();
+          } catch (Exception e) {
+            throw new RuntimeException(e);
+          }
+        });
     t.start();
     t.join();
     cache.close();
@@ -2987,12 +2984,10 @@ public class TestLRUQueryCache extends LuceneTestCase {
       Thread thread = new Thread(r, namePrefix);
       thread.setDaemon(true);
       thread.setPriority(Thread.NORM_PRIORITY);
-      thread.setUncaughtExceptionHandler(
-          (t, e) -> {
-            System.err.println(
-                "Uncaught exception in thread " + t.getName() + ": " + e.getMessage());
-            e.printStackTrace();
-          });
+      thread.setUncaughtExceptionHandler((t, e) -> {
+        System.err.println("Uncaught exception in thread " + t.getName() + ": " + e.getMessage());
+        e.printStackTrace();
+      });
       return thread;
     }
   }

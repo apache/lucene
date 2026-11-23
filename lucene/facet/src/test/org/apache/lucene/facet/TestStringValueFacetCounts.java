@@ -431,14 +431,13 @@ public class TestStringValueFacetCounts extends FacetTestCase {
       // sort expected counts by count, value
       List<Map.Entry<String, Integer>> expectedCountsSorted =
           new ArrayList<>(expectedCounts.entrySet());
-      expectedCountsSorted.sort(
-          (a, b) -> {
-            int cmp = b.getValue().compareTo(a.getValue()); // high-to-low
-            if (cmp == 0) {
-              cmp = a.getKey().compareTo(b.getKey()); // low-to-high
-            }
-            return cmp;
-          });
+      expectedCountsSorted.sort((a, b) -> {
+        int cmp = b.getValue().compareTo(a.getValue()); // high-to-low
+        if (cmp == 0) {
+          cmp = a.getKey().compareTo(b.getKey()); // low-to-high
+        }
+        return cmp;
+      });
 
       // number of labels we expect is the number with a non-zero count
       int expectedLabelCount =

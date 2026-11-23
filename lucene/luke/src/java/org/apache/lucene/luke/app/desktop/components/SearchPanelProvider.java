@@ -654,7 +654,7 @@ public final class SearchPanelProvider implements SearchTabOperator {
             "Confirm Deletion",
             400,
             200,
-            (factory) -> {
+            factory -> {
               factory.setMessage(MessageUtils.getLocalizedMessage("search.message.delete_confirm"));
               factory.setCallback(this::deleteDocs);
             });
@@ -677,45 +677,43 @@ public final class SearchPanelProvider implements SearchTabOperator {
     // show explanation
     JMenuItem item1 =
         new JMenuItem(MessageUtils.getLocalizedMessage("search.results.menu.explain"));
-    item1.addActionListener(
-        _ -> {
-          int docid =
-              (int)
-                  resultsTable
-                      .getModel()
-                      .getValueAt(
-                          resultsTable.getSelectedRow(),
-                          SearchResultsTableModel.Column.DOCID.getIndex());
-          Explanation explanation = searchModel.explain(parse(false), docid);
-          new DialogOpener<>(explainDialogProvider)
-              .open(
-                  "Explanation",
-                  600,
-                  400,
-                  (factory) -> {
-                    factory.setDocid(docid);
-                    factory.setExplanation(explanation);
-                  });
-        });
+    item1.addActionListener(_ -> {
+      int docid =
+          (int)
+              resultsTable
+                  .getModel()
+                  .getValueAt(
+                      resultsTable.getSelectedRow(),
+                      SearchResultsTableModel.Column.DOCID.getIndex());
+      Explanation explanation = searchModel.explain(parse(false), docid);
+      new DialogOpener<>(explainDialogProvider)
+          .open(
+              "Explanation",
+              600,
+              400,
+              factory -> {
+                factory.setDocid(docid);
+                factory.setExplanation(explanation);
+              });
+    });
     popup.add(item1);
 
     // show all fields
     JMenuItem item2 =
         new JMenuItem(MessageUtils.getLocalizedMessage("search.results.menu.showdoc"));
-    item2.addActionListener(
-        _ -> {
-          int docid =
-              (int)
-                  resultsTable
-                      .getModel()
-                      .getValueAt(
-                          resultsTable.getSelectedRow(),
-                          SearchResultsTableModel.Column.DOCID.getIndex());
-          operatorRegistry
-              .get(DocumentsTabOperator.class)
-              .ifPresent(operator -> operator.displayDoc(docid));
-          tabSwitcher.switchTab(TabbedPaneProvider.Tab.DOCUMENTS);
-        });
+    item2.addActionListener(_ -> {
+      int docid =
+          (int)
+              resultsTable
+                  .getModel()
+                  .getValueAt(
+                      resultsTable.getSelectedRow(),
+                      SearchResultsTableModel.Column.DOCID.getIndex());
+      operatorRegistry
+          .get(DocumentsTabOperator.class)
+          .ifPresent(operator -> operator.displayDoc(docid));
+      tabSwitcher.switchTab(TabbedPaneProvider.Tab.DOCUMENTS);
+    });
     popup.add(item2);
 
     return popup;
@@ -796,18 +794,16 @@ public final class SearchPanelProvider implements SearchTabOperator {
               state.getIndexReader(), state.useCompound(), state.keepAllCommits());
       operatorRegistry
           .get(QueryParserTabOperator.class)
-          .ifPresent(
-              operator -> {
-                operator.setSearchableFields(searchModel.getSearchableFieldNames());
-                operator.setRangeSearchableFields(searchModel.getRangeSearchableFieldNames());
-              });
+          .ifPresent(operator -> {
+            operator.setSearchableFields(searchModel.getSearchableFieldNames());
+            operator.setRangeSearchableFields(searchModel.getRangeSearchableFieldNames());
+          });
       operatorRegistry
           .get(SortTabOperator.class)
-          .ifPresent(
-              operator -> {
-                operator.setSearchModel(searchModel);
-                operator.setSortableFields(searchModel.getSortableFieldNames());
-              });
+          .ifPresent(operator -> {
+            operator.setSearchModel(searchModel);
+            operator.setSortableFields(searchModel.getSortableFieldNames());
+          });
       operatorRegistry
           .get(FieldValuesTabOperator.class)
           .ifPresent(operator -> operator.setFields(searchModel.getFieldNames()));
@@ -925,11 +921,10 @@ public final class SearchPanelProvider implements SearchTabOperator {
         }
         List<String> concatValues =
             doc.getFieldValues().entrySet().stream()
-                .map(
-                    e -> {
-                      String v = String.join(",", Arrays.asList(e.getValue()));
-                      return e.getKey() + "=" + v + ";";
-                    })
+                .map(e -> {
+                  String v = String.join(",", Arrays.asList(e.getValue()));
+                  return e.getKey() + "=" + v + ";";
+                })
                 .toList();
         data[i][Column.VALUE.getIndex()] = String.join(" ", concatValues);
       }

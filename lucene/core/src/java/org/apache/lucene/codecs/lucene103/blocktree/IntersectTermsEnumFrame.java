@@ -92,6 +92,8 @@ final class IntersectTermsEnumFrame {
   int startBytePos;
   int suffixLength;
 
+  boolean matchAllSuffix;
+
   private final IntersectTermsEnum ite;
 
   public IntersectTermsEnumFrame(IntersectTermsEnum ite, int ord) throws IOException {

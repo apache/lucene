@@ -67,11 +67,10 @@ public class EcjLintPlugin extends LuceneGradlePlugin {
     var tasks = project.getTasks();
     List<? extends TaskProvider<?>> lintTasks =
         sourceSets.stream()
-            .map(
-                sourceSet ->
-                    tasks.register(
-                        sourceSet.getTaskName(TASK_PREFIX, null),
-                        task -> configureEcjTask(sourceSet, javaExt, javadocPrefsPath, task)))
+            .map(sourceSet ->
+                tasks.register(
+                    sourceSet.getTaskName(TASK_PREFIX, null),
+                    task -> configureEcjTask(sourceSet, javaExt, javadocPrefsPath, task)))
             .toList();
 
     var ecjLintTask =
@@ -86,10 +85,9 @@ public class EcjLintPlugin extends LuceneGradlePlugin {
     // Attach ecjLint to check.
     tasks
         .named("check")
-        .configure(
-            task -> {
-              task.dependsOn(ecjLintTask);
-            });
+        .configure(task -> {
+          task.dependsOn(ecjLintTask);
+        });
   }
 
   private void configureEcjTask(
@@ -168,50 +166,48 @@ public class EcjLintPlugin extends LuceneGradlePlugin {
 
     task.getOutputs().files(argsEchoFile, ecjOutput);
 
-    task.doFirst(
-        _ -> {
-          List<String> allArgs = new ArrayList<>(args);
-          allArgs.addAll(List.of("-properties", javadocPrefsPath.toAbsolutePath().toString()));
+    task.doFirst(_ -> {
+      List<String> allArgs = new ArrayList<>(args);
+      allArgs.addAll(List.of("-properties", javadocPrefsPath.toAbsolutePath().toString()));
 
-          compilationArguments.asArguments().forEach(allArgs::add);
-          if (!classpathArguments.isEmpty()) {
-            allArgs.add("-classpath");
-            allArgs.add(
-                classpathArguments.getFiles().stream()
-                    .map(File::toString)
-                    .collect(Collectors.joining(File.pathSeparator)));
-          }
+      compilationArguments.asArguments().forEach(allArgs::add);
+      if (!classpathArguments.isEmpty()) {
+        allArgs.add("-classpath");
+        allArgs.add(
+            classpathArguments.getFiles().stream()
+                .map(File::toString)
+                .collect(Collectors.joining(File.pathSeparator)));
+      }
 
-          var sources =
-              inputSources.getFiles().stream()
-                  .map(File::toString)
-                  .filter(
-                      file -> {
-                        // Exclude the benchmark class with dependencies on nekohtml,
-                        // which causes module-classpath conflicts and breaks ecj.
-                        return !file.endsWith("DemoHTMLParser.java");
-                      })
-                  .sorted()
-                  .toList();
+      var sources =
+          inputSources.getFiles().stream()
+              .map(File::toString)
+              .filter(file -> {
+                // Exclude the benchmark class with dependencies on nekohtml,
+                // which causes module-classpath conflicts and breaks ecj.
+                return !file.endsWith("DemoHTMLParser.java");
+              })
+              .sorted()
+              .toList();
 
-          allArgs.addAll(sources);
+      allArgs.addAll(sources);
 
-          File ecjOutputFile = ecjOutput.get().getAsFile();
-          try (var out = new PrintWriter(ecjOutputFile, StandardCharsets.UTF_8)) {
-            Files.writeString(argsEchoFile.get().getAsFile().toPath(), String.join("\n", allArgs));
+      File ecjOutputFile = ecjOutput.get().getAsFile();
+      try (var out = new PrintWriter(ecjOutputFile, StandardCharsets.UTF_8)) {
+        Files.writeString(argsEchoFile.get().getAsFile().toPath(), String.join("\n", allArgs));
 
-            var success =
-                new Main(out, out, false /* systemExit */, null /* options */, null /* progress */)
-                    .compile(allArgs.toArray(String[]::new));
+        var success =
+            new Main(out, out, false /* systemExit */, null /* options */, null /* progress */)
+                .compile(allArgs.toArray(String[]::new));
 
-            out.flush();
-            if (!success) {
-              throw new GradleException(
-                  "ecj linter failed:\n" + Files.readString(ecjOutputFile.toPath()));
-            }
-          } catch (IOException e) {
-            throw new UncheckedIOException(e);
-          }
-        });
+        out.flush();
+        if (!success) {
+          throw new GradleException(
+              "ecj linter failed:\n" + Files.readString(ecjOutputFile.toPath()));
+        }
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      }
+    });
   }
 }
