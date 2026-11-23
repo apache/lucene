@@ -243,6 +243,10 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
           }
           bulkNodes[numNodes++] = friendOrd;
         }
+        // Don't score more nodes than the visit limit allows
+        numNodes =
+            (int)
+                Math.max(0, Math.min(numNodes, collector.visitLimit() - collector.visitedCount()));
         float maxScore =
             numNodes > 0
                 ? scorer.bulkScore(bulkNodes, bulkScores, numNodes)
