@@ -46,7 +46,7 @@ class GlobalOrdinalsWithScoreCollectorManager implements CollectorManager<Collec
   // become immutable when we can have any number of concurrent readers. Locks are per-block and
   // guard the match bits, scores and occurrence counts of that block together. Several slices can
   // collect concurrently, including different partitions of the same segment, so this is needed
-  // with or without an ordinal map. It is null when the search runs a single slice.
+  // with or without an ordinal map.
   final Lock[] locks;
 
   // also written concurrently
@@ -54,13 +54,7 @@ class GlobalOrdinalsWithScoreCollectorManager implements CollectorManager<Collec
   protected final Occurrences occurrences;
 
   GlobalOrdinalsWithScoreCollectorManager(
-      String field,
-      OrdinalMap ordinalMap,
-      long valueCount,
-      ScoreMode scoreMode,
-      int min,
-      int max,
-      boolean concurrent) {
+      String field, OrdinalMap ordinalMap, long valueCount, ScoreMode scoreMode, int min, int max) {
     if (valueCount > Integer.MAX_VALUE) {
       // We simply don't support more than
       throw new IllegalStateException("Can't collect more than [" + Integer.MAX_VALUE + "] ids");
@@ -83,13 +77,9 @@ class GlobalOrdinalsWithScoreCollectorManager implements CollectorManager<Collec
     } else {
       this.occurrences = null;
     }
-    if (concurrent) {
-      this.locks = new Lock[numBlocks(valueCount)];
-      for (int i = 0; i < locks.length; i++) {
-        locks[i] = new ReentrantLock();
-      }
-    } else {
-      this.locks = null;
+    this.locks = new Lock[numBlocks(valueCount)];
+    for (int i = 0; i < locks.length; i++) {
+      locks[i] = new ReentrantLock();
     }
   }
 
@@ -169,16 +159,12 @@ class GlobalOrdinalsWithScoreCollectorManager implements CollectorManager<Collec
           final int globalOrd = (int) segmentOrdToGlobalOrdLookup.get(docTermOrds.ordValue());
           // The scorer is owned by this leaf collector, so score outside the lock.
           final double newScore = scorer.score();
-          if (locks == null) {
+          Lock lock = locks[globalOrd / arraySize];
+          lock.lock();
+          try {
             collectOrd(globalOrd, newScore);
-          } else {
-            Lock lock = locks[globalOrd / arraySize];
-            lock.lock();
-            try {
-              collectOrd(globalOrd, newScore);
-            } finally {
-              lock.unlock();
-            }
+          } finally {
+            lock.unlock();
           }
         }
       }
@@ -241,16 +227,12 @@ class GlobalOrdinalsWithScoreCollectorManager implements CollectorManager<Collec
         public void collect(int doc) throws IOException {
           if (docTermOrds.advanceExact(doc)) {
             final int globalOrd = (int) segmentOrdToGlobalOrdLookup.get(docTermOrds.ordValue());
-            if (locks == null) {
+            Lock lock = locks[globalOrd / arraySize];
+            lock.lock();
+            try {
               collectOrd(globalOrd);
-            } else {
-              Lock lock = locks[globalOrd / arraySize];
-              lock.lock();
-              try {
-                collectOrd(globalOrd);
-              } finally {
-                lock.unlock();
-              }
+            } finally {
+              lock.unlock();
             }
           }
         }

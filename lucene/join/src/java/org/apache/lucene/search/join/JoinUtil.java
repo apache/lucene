@@ -579,15 +579,7 @@ public final class JoinUtil {
     }
     GlobalOrdinalsWithScoreCollectorManager globalOrdinalsWithScoreCollectorManager =
         new GlobalOrdinalsWithScoreCollectorManager(
-            joinField,
-            ordinalMap,
-            valueCount,
-            scoreMode,
-            min,
-            max,
-            // IndexSearcher creates one collector per slice and collects each slice on its own
-            // thread, so with a single slice the collector needs no locking.
-            searcher.getSlices().length > 1);
+            joinField, ordinalMap, valueCount, scoreMode, min, max);
     searcher.search(rewrittenFromQuery, globalOrdinalsWithScoreCollectorManager);
     return new GlobalOrdinalsWithScoreQuery(
         globalOrdinalsWithScoreCollectorManager,
