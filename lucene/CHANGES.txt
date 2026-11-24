@@ -241,10 +241,14 @@ New Features
 
 * GITHUB#16997: Monitor's QueryTree now merges each group of conjoined, negated leaf queries
   (e.g. -x:a -x:b) into one "negative disjunct", which documents satisfy by containing none of its
-  terms. This will later let TermFilteredPresearcher skip a query for documents that contain at
-  least one term of each of its negative disjuncts. TermWeightor gains negate and withNegation to
-  weigh the absence of a term, and CustomQueryHandler gains handleNegatedQuery. No presearcher uses
-  these yet. (Luke Kot-Zaniewski)
+  terms. TermWeightor gains negate and withNegation to weigh the absence of a term, and
+  CustomQueryHandler gains handleNegatedQuery. (Luke Kot-Zaniewski)
+
+* GITHUB#16997: Monitor's TermFilteredPresearcher and MultipassTermFilteredPresearcher can now
+  filter on negated clauses. With a maximum number of negative disjuncts greater than 0, a query is
+  skipped for documents that contain at least one term of each of its negative disjuncts, so that,
+  for example, "*:* -flag:true" is only selected for documents without flag:true.
+  (Luke Kot-Zaniewski)
 
 * GITHUB#16571: A merge can write more than one segment. A merge policy returns document ranges
   from MergePolicy.OneMerge#getDocRangePartitions and the merge writes one output segment per
@@ -329,6 +333,9 @@ Optimizations
   prefetch call until 1024 consecutive hits, then every 256th call; a miss goes back to probing on every call.
   The first prefetch on a file always probes: a hit on a warm file switches to sampling immediately, a miss
   makes the file earn the 1024 hits. (Michael Marshall)
+
+* GITHUB#16868: LongRangeFacetCutter: use the single-valued leaf cutter for single-valued segments,
+  with or without a doc-values skip index. (Jakub Slowinski)
 
 * GITHUB#16746: Speed up decoding long overlapping LZ4 matches using bulk copies
   of initialized bytes. (Andre Kurait)
@@ -506,6 +513,8 @@ Bug Fixes
   (Soma Aishwarya)
 
 * GITHUB#17018: Fix NPE when a span query searches over masked fields that don't have any indexed docs in them (Simon Cooper)
+
+* GITHUB#16896: Fix long overflow in GCD-encoded DocValues range transform. (Ke Wei)
 
 Changes in Runtime Behavior
 ---------------------

@@ -170,7 +170,7 @@ public class TestDisjunctionMaxQuery extends LuceneTestCase {
     super.tearDown();
   }
 
-  public void testSkipToFirsttimeMiss() throws IOException {
+  public void testSkipToFirstTimeMiss() throws IOException {
     final DisjunctionMaxQuery dq =
         new DisjunctionMaxQuery(Arrays.asList(tq("id", "d1"), tq("dek", "DOES_NOT_EXIST")), 0.0f);
 
@@ -182,11 +182,12 @@ public class TestDisjunctionMaxQuery extends LuceneTestCase {
     final boolean skipOk = ds.iterator().advance(3) != DocIdSetIterator.NO_MORE_DOCS;
     if (skipOk) {
       fail(
-          "firsttime skipTo found a match? ... " + r.storedFields().document(ds.docID()).get("id"));
+          "first time skipTo found a match? ... "
+              + r.storedFields().document(ds.docID()).get("id"));
     }
   }
 
-  public void testSkipToFirsttimeHit() throws IOException {
+  public void testSkipToFirstTimeHit() throws IOException {
     final DisjunctionMaxQuery dq =
         new DisjunctionMaxQuery(
             Arrays.asList(tq("dek", "albino"), tq("dek", "DOES_NOT_EXIST")), 0.0f);
@@ -197,7 +198,7 @@ public class TestDisjunctionMaxQuery extends LuceneTestCase {
     LeafReaderContext context = (LeafReaderContext) s.getTopReaderContext();
     final Scorer ds = dw.scorer(context);
     assertTrue(
-        "firsttime skipTo found no match",
+        "first time skipTo found no match",
         ds.iterator().advance(3) != DocIdSetIterator.NO_MORE_DOCS);
     assertEquals("found wrong docid", "d4", r.storedFields().document(ds.docID()).get("id"));
   }
@@ -394,7 +395,7 @@ public class TestDisjunctionMaxQuery extends LuceneTestCase {
       String doc3 = s.storedFields().document(h[3].doc).get("id");
 
       assertTrue("doc0 should be d2 or d4: " + doc0, doc0.equals("d2") || doc0.equals("d4"));
-      assertTrue("doc1 should be d2 or d4: " + doc0, doc1.equals("d2") || doc1.equals("d4"));
+      assertTrue("doc1 should be d2 or d4: " + doc1, doc1.equals("d2") || doc1.equals("d4"));
       assertEquals("score0 and score1 should match", score0, score1, SCORE_COMP_THRESH);
       assertEquals("wrong third", "d3", doc2);
       assertTrue(
