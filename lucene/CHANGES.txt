@@ -413,7 +413,7 @@ Optimizations
   fewer radix passes. This speeds up DocIdSetBuilder, e.g. for range queries on fields whose values
   follow doc ID order such as timestamps or index sort fields. (Asharam)
 
-* GITHUB#XXXXX: Speed up sorting on indexed keyword fields: TermOrdValComparator drops terms that
+* GITHUB#17069: Speed up sorting on indexed keyword fields: TermOrdValComparator drops terms that
   are no longer competitive lazily instead of rebuilding its priority queue on every competitive
   hit, and no longer opens postings when the segment has too few docs left to pay for them.
   (Asharam)
