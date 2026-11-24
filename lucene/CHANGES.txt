@@ -326,6 +326,8 @@ Improvements
   through the new VectorColumn#values cursor and KnnFieldVectorsWriter#addDenseValues, instead of
   adding vectors one document at a time. (Mayya Sharipova)
 
+* GITHUB#17027: IntersectTermsEnum now checks the query timeout during long terms dictionary scans. (Prudhvi Godithi)
+
 Optimizations
 ---------------------
 * GITHUB#16145: Bound the prefetch backoff in MemorySegmentIndexInput. The gap between page-cache probes used to
