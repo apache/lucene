@@ -151,25 +151,23 @@ class WritableQueryIndex extends QueryIndex {
     }
     Set<String> ids = new HashSet<>();
     List<Exception> errors = new ArrayList<>();
-    purgeCache(
-        newCache ->
-            scan(
-                (id, _, dataValues) -> {
-                  if (ids.contains(id)) {
-                    // this is a branch of a query that has already been reconstructed, but
-                    // then split by decomposition - we don't need to parse it again
-                    return;
-                  }
-                  ids.add(id);
-                  try {
-                    MonitorQuery mq = serializer.deserialize(dataValues.mq.binaryValue());
-                    for (QueryCacheEntry entry : QueryCacheEntry.decompose(mq, decomposer)) {
-                      newCache.put(entry.cacheId, entry);
-                    }
-                  } catch (Exception e) {
-                    errors.add(e);
-                  }
-                }));
+    purgeCache(newCache ->
+        scan((id, _, dataValues) -> {
+          if (ids.contains(id)) {
+            // this is a branch of a query that has already been reconstructed, but
+            // then split by decomposition - we don't need to parse it again
+            return;
+          }
+          ids.add(id);
+          try {
+            MonitorQuery mq = serializer.deserialize(dataValues.mq.binaryValue());
+            for (QueryCacheEntry entry : QueryCacheEntry.decompose(mq, decomposer)) {
+              newCache.put(entry.cacheId, entry);
+            }
+          } catch (Exception e) {
+            errors.add(e);
+          }
+        }));
     if (errors.size() > 0) {
       IllegalStateException e =
           new IllegalStateException("Couldn't parse some queries from the index");
@@ -247,12 +245,10 @@ class WritableQueryIndex extends QueryIndex {
 
   @Override
   public void purgeCache() throws IOException {
-    purgeCache(
-        newCache ->
-            scan(
-                (_, query, _) -> {
-                  if (query != null) newCache.put(query.cacheId, query);
-                }));
+    purgeCache(newCache ->
+        scan((_, query, _) -> {
+          if (query != null) newCache.put(query.cacheId, query);
+        }));
     lastPurged = System.nanoTime();
     listeners.forEach(MonitorUpdateListener::onPurge);
   }

@@ -19,9 +19,13 @@ package org.apache.lucene.monitor;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import org.apache.lucene.index.Term;
@@ -41,8 +45,31 @@ public abstract class QueryTree {
   /** The weight of this node */
   public abstract double weight();
 
-  /** Collect terms from the most highly-weighted path below this node */
-  public abstract void collectTerms(BiConsumer<String, BytesRef> termCollector);
+  /** Collect terms and negative disjuncts from the most highly-weighted path below this node */
+  public abstract void collectTerms(TermCollector termCollector);
+
+  /**
+   * Collect terms from the most highly-weighted path below this node, with negative disjuncts
+   * collected as the ANYTOKEN
+   */
+  public final void collectTerms(BiConsumer<String, BytesRef> termCollector) {
+    collectTerms(termCollector::accept);
+  }
+
+  /** Receives the terms of the most highly-weighted path, including negative disjuncts */
+  public interface TermCollector extends BiConsumer<String, BytesRef> {
+
+    /**
+     * The current path is also satisfied by a document containing none of {@code terms}
+     *
+     * <p>The default collects the ANYTOKEN, so that collectors that do not support negative
+     * disjuncts select the query for every document.
+     */
+    default void negativeDisjunct(Set<Term> terms) {
+      accept(
+          TermFilteredPresearcher.ANYTOKEN_FIELD, new BytesRef(TermFilteredPresearcher.ANYTOKEN));
+    }
+  }
 
   /**
    * Find the next-most highly-weighted path below this node
@@ -99,7 +126,7 @@ public abstract class QueryTree {
       }
 
       @Override
-      public void collectTerms(BiConsumer<String, BytesRef> termCollector) {
+      public void collectTerms(TermCollector termCollector) {
         termCollector.accept(field, term);
       }
 
@@ -124,7 +151,7 @@ public abstract class QueryTree {
       }
 
       @Override
-      public void collectTerms(BiConsumer<String, BytesRef> termCollector) {
+      public void collectTerms(TermCollector termCollector) {
         termCollector.accept(
             TermFilteredPresearcher.ANYTOKEN_FIELD, new BytesRef(TermFilteredPresearcher.ANYTOKEN));
       }
@@ -137,6 +164,56 @@ public abstract class QueryTree {
       @Override
       public String toString(int depth) {
         return space(depth) + "ANY[" + reason + "]";
+      }
+    };
+  }
+
+  /**
+   * Returns a negative disjunct leaf, satisfied by documents that contain none of {@code terms},
+   * weighted by the strongest of their {@link TermWeightor#negate(double) negated weights}
+   */
+  public static QueryTree negativeDisjunct(Set<Term> terms, TermWeightor weightor) {
+    // The sum would be exact for independent terms but overestimates correlated ones; the max is a
+    // lower bound whatever the correlation.
+    double weight = 0;
+    for (Term term : terms) {
+      weight = Math.max(weight, weightor.negate(weightor.applyAsDouble(term)));
+    }
+    return negativeDisjunct(terms, weight);
+  }
+
+  /**
+   * Returns a negative disjunct leaf, satisfied by documents that contain none of {@code terms}
+   *
+   * <p>The weight must be greater than 0
+   */
+  public static QueryTree negativeDisjunct(Set<Term> terms, double weight) {
+    if (terms.isEmpty()) {
+      throw new IllegalArgumentException("A negative disjunct must have at least one term");
+    }
+    SortedSet<Term> sorted = Collections.unmodifiableSortedSet(new TreeSet<>(terms));
+    return new QueryTree() {
+      @Override
+      public double weight() {
+        if (weight <= 0) {
+          throw new IllegalArgumentException("Negative disjunct weights must be greater than 0");
+        }
+        return weight;
+      }
+
+      @Override
+      public void collectTerms(TermCollector termCollector) {
+        termCollector.negativeDisjunct(sorted);
+      }
+
+      @Override
+      public boolean advancePhase(double minWeight) {
+        return false;
+      }
+
+      @Override
+      public String toString(int depth) {
+        return space(depth) + "NegativeDisjunct" + sorted + "^" + weight;
       }
     };
   }
@@ -199,7 +276,7 @@ public abstract class QueryTree {
     }
 
     @Override
-    public void collectTerms(BiConsumer<String, BytesRef> termCollector) {
+    public void collectTerms(TermCollector termCollector) {
       children.get(0).collectTerms(termCollector);
     }
 
@@ -250,7 +327,7 @@ public abstract class QueryTree {
     }
 
     @Override
-    public void collectTerms(BiConsumer<String, BytesRef> termCollector) {
+    public void collectTerms(TermCollector termCollector) {
       for (QueryTree child : children) {
         child.collectTerms(termCollector);
       }

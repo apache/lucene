@@ -128,24 +128,23 @@ public class MergeRateLimiter extends RateLimiter {
     // We only pause the calling thread. This means if the upstream caller (e.g.
     // ConcurrentMergeScheduler)
     // is using multiple intra-threads, they will all be paused independently.
-    lastNS.updateAndGet(
-        last -> {
-          long curNS = System.nanoTime();
-          // Time we should sleep until; this is purely instantaneous
-          // rate (just adds seconds onto the last time we had paused to);
-          // maybe we should also offer decayed recent history one?
-          long targetNS = last + (long) (1000000000 * secondsToPause);
-          long curPauseNS = targetNS - curNS;
-          // We don't bother with thread pausing if the pause is smaller than 2 msec.
-          if (curPauseNS <= MIN_PAUSE_NS) {
-            // Set to curNS, not targetNS, to enforce the instant rate, not
-            // the "averaged over all history" rate:
-            curPauseNSSetter.set(0);
-            return curNS;
-          }
-          curPauseNSSetter.set(curPauseNS);
-          return last;
-        });
+    lastNS.updateAndGet(last -> {
+      long curNS = System.nanoTime();
+      // Time we should sleep until; this is purely instantaneous
+      // rate (just adds seconds onto the last time we had paused to);
+      // maybe we should also offer decayed recent history one?
+      long targetNS = last + (long) (1000000000 * secondsToPause);
+      long curPauseNS = targetNS - curNS;
+      // We don't bother with thread pausing if the pause is smaller than 2 msec.
+      if (curPauseNS <= MIN_PAUSE_NS) {
+        // Set to curNS, not targetNS, to enforce the instant rate, not
+        // the "averaged over all history" rate:
+        curPauseNSSetter.set(0);
+        return curNS;
+      }
+      curPauseNSSetter.set(curPauseNS);
+      return last;
+    });
 
     if (curPauseNSSetter.get() == 0) {
       return -1;

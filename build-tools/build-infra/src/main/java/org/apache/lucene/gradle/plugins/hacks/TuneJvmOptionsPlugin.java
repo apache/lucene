@@ -43,10 +43,9 @@ public class TuneJvmOptionsPlugin extends LuceneGradlePlugin {
     // Inject vm options into custom javadoc rendering.
     tasks
         .withType(RenderJavadocTaskBase.class)
-        .configureEach(
-            task -> {
-              task.getExtraOpts().addAll(vmOpts.stream().map(it -> "-J" + it).toList());
-            });
+        .configureEach(task -> {
+          task.getExtraOpts().addAll(vmOpts.stream().map(it -> "-J" + it).toList());
+        });
 
     // Inject vm options into any JavaExec task... We could narrow it
     // down, but I don't think there is any harm in keeping it broad.
@@ -55,12 +54,11 @@ public class TuneJvmOptionsPlugin extends LuceneGradlePlugin {
     } else {
       tasks
           .withType(JavaExec.class)
-          .configureEach(
-              task -> {
-                List<String> jvmArgs = new ArrayList<>(task.getJvmArgs());
-                jvmArgs.addAll(vmOpts);
-                task.setJvmArgs(jvmArgs);
-              });
+          .configureEach(task -> {
+            List<String> jvmArgs = new ArrayList<>(task.getJvmArgs());
+            jvmArgs.addAll(vmOpts);
+            task.setJvmArgs(jvmArgs);
+          });
     }
 
     // Tweak javac to not be too resource-hungry.
@@ -68,36 +66,35 @@ public class TuneJvmOptionsPlugin extends LuceneGradlePlugin {
     // Avoiding the fork entirely is best.
     tasks
         .withType(JavaCompile.class)
-        .configureEach(
-            task -> {
-              task.getOptions()
-                  .getForkOptions()
-                  .getJvmArgumentProviders()
-                  .add(
-                      new CommandLineArgumentProvider() {
-                        @Override
-                        public Iterable<String> asArguments() {
-                          // Gradle bug: https://github.com/gradle/gradle/issues/22746
-                          //
-                          // Evaluation of this block is delayed until execution time when
-                          // we know which "mode" java compiler task will pick and can set arguments
-                          // accordingly.
-                          //
-                          // There is a side effect to this that arguments passed via the provider
-                          // are not part of up-to-date checks but these are internal JVM flags so
-                          // we
-                          // don't care.
-                          //
-                          // Pass VM options via -J when a custom javaHome is used, and we're in
-                          // fork mode.
-                          if (task.getOptions().isFork()
-                              && task.getOptions().getForkOptions().getJavaHome() != null) {
-                            return vmOpts.stream().map(it -> "-J" + it).toList();
-                          } else {
-                            return vmOpts;
-                          }
-                        }
-                      });
-            });
+        .configureEach(task -> {
+          task.getOptions()
+              .getForkOptions()
+              .getJvmArgumentProviders()
+              .add(
+                  new CommandLineArgumentProvider() {
+                    @Override
+                    public Iterable<String> asArguments() {
+                      // Gradle bug: https://github.com/gradle/gradle/issues/22746
+                      //
+                      // Evaluation of this block is delayed until execution time when
+                      // we know which "mode" java compiler task will pick and can set arguments
+                      // accordingly.
+                      //
+                      // There is a side effect to this that arguments passed via the provider
+                      // are not part of up-to-date checks but these are internal JVM flags so
+                      // we
+                      // don't care.
+                      //
+                      // Pass VM options via -J when a custom javaHome is used, and we're in
+                      // fork mode.
+                      if (task.getOptions().isFork()
+                          && task.getOptions().getForkOptions().getJavaHome() != null) {
+                        return vmOpts.stream().map(it -> "-J" + it).toList();
+                      } else {
+                        return vmOpts;
+                      }
+                    }
+                  });
+        });
   }
 }

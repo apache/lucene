@@ -88,17 +88,16 @@ public class GradleGroovyFormatPlugin extends LuceneGradlePlugin {
           .register(
               taskName,
               spec -> {
-                spec.doFirst(
-                    t -> {
-                      t.getLogger()
-                          .info(
-                              "Spotless is turned off for gradle/groovy scripts. CI "
-                                  + "checks may not pass if you have formatting "
-                                  + "differences (enable '"
-                                  + spotlessGradleScriptsOptionName
-                                  + "' build option to check"
-                                  + "and apply gradle/groovy formatting).");
-                    });
+                spec.doFirst(t -> {
+                  t.getLogger()
+                      .info(
+                          "Spotless is turned off for gradle/groovy scripts. CI "
+                              + "checks may not pass if you have formatting "
+                              + "differences (enable '"
+                              + spotlessGradleScriptsOptionName
+                              + "' build option to check"
+                              + "and apply gradle/groovy formatting).");
+                });
               });
     }
   }

@@ -63,7 +63,7 @@ interface GenericTermsCollector extends Collector {
 
   static Function<SortedSetDocValues> verbose(
       PrintStream out, Function<SortedSetDocValues> mvFunction) {
-    return (ctx) -> {
+    return ctx -> {
       final SortedSetDocValues target = mvFunction.apply(ctx);
       return new SortedSetDocValues() {
 
@@ -236,7 +236,7 @@ interface GenericTermsCollector extends Collector {
           }
         }
       }
-      float[] scores = new float[terms.size()];
+      double[] scores = new double[terms.size()];
       int[] counts;
       if (scoreMode == ScoreMode.Avg) {
         counts = new int[terms.size()];
@@ -247,9 +247,9 @@ interface GenericTermsCollector extends Collector {
       GenericTermsCollector collector = it.next();
       copyScores(collector, scores, counts, firstCollectorNumTerms);
       if (scoreMode == ScoreMode.Min) {
-        Arrays.fill(scores, firstCollectorNumTerms, scores.length, Float.POSITIVE_INFINITY);
+        Arrays.fill(scores, firstCollectorNumTerms, scores.length, Double.POSITIVE_INFINITY);
       } else if (scoreMode == ScoreMode.Max) {
-        Arrays.fill(scores, firstCollectorNumTerms, scores.length, Float.NEGATIVE_INFINITY);
+        Arrays.fill(scores, firstCollectorNumTerms, scores.length, Double.NEGATIVE_INFINITY);
       }
       int i = 1;
       while (it.hasNext()) {
@@ -261,22 +261,24 @@ interface GenericTermsCollector extends Collector {
           scores[j] /= counts[j];
         }
       }
-      return new TermsAndScores(terms, scores);
+      float[] floatScores = new float[scores.length];
+      for (int scoreIndex = 0; scoreIndex < scores.length; scoreIndex++) {
+        floatScores[scoreIndex] = (float) scores[scoreIndex];
+      }
+      return new TermsAndScores(terms, floatScores);
     }
 
     void copyScores(
-        GenericTermsCollector collector, float[] allScores, int[] allCounts, int count) {
+        GenericTermsCollector collector, double[] allScores, int[] allCounts, int count) {
       double[] collectorScores = collector.getScoresArray();
-      for (int i = 0; i < count; i++) {
-        allScores[i] = (float) collectorScores[i];
-      }
+      System.arraycopy(collectorScores, 0, allScores, 0, count);
       if (scoreMode == ScoreMode.Avg) {
         System.arraycopy(collector.getCountsArray(), 0, allCounts, 0, count);
       }
     }
 
     void mergeScores(
-        GenericTermsCollector collector, float[] allScores, int[] allCounts, int[] idMap) {
+        GenericTermsCollector collector, double[] allScores, int[] allCounts, int[] idMap) {
       double[] collectorScores = collector.getScoresArray();
       switch (scoreMode) {
         case Avg ->
@@ -289,32 +291,32 @@ interface GenericTermsCollector extends Collector {
       }
     }
 
-    void mergeScoresMax(double[] collectorScores, float[] allScores, int[] idMap) {
+    void mergeScoresMax(double[] collectorScores, double[] allScores, int[] idMap) {
       for (int j = 0; j < idMap.length; j++) {
-        allScores[idMap[j]] = Math.max((float) collectorScores[j], allScores[idMap[j]]);
+        allScores[idMap[j]] = Math.max(collectorScores[j], allScores[idMap[j]]);
       }
     }
 
-    void mergeScoresMin(double[] collectorScores, float[] allScores, int[] idMap) {
+    void mergeScoresMin(double[] collectorScores, double[] allScores, int[] idMap) {
       for (int j = 0; j < idMap.length; j++) {
-        allScores[idMap[j]] = Math.min((float) collectorScores[j], allScores[idMap[j]]);
+        allScores[idMap[j]] = Math.min(collectorScores[j], allScores[idMap[j]]);
       }
     }
 
-    void mergeScoresSum(double[] collectorScores, float[] allScores, int[] idMap) {
+    void mergeScoresSum(double[] collectorScores, double[] allScores, int[] idMap) {
       for (int j = 0; j < idMap.length; j++) {
-        allScores[idMap[j]] += (float) collectorScores[j];
+        allScores[idMap[j]] += collectorScores[j];
       }
     }
 
     void mergeScoresAvg(
         double[] collectorScores,
-        float[] allScores,
+        double[] allScores,
         int[] collectorCounts,
         int[] allCounts,
         int[] idMap) {
       for (int j = 0; j < idMap.length; j++) {
-        allScores[idMap[j]] += (float) collectorScores[j];
+        allScores[idMap[j]] += collectorScores[j];
         allCounts[idMap[j]] += collectorCounts[j];
       }
     }

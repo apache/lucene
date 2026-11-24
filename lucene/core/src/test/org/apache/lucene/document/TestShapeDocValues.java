@@ -105,12 +105,12 @@ public class TestShapeDocValues extends LuceneTestCase {
     double ay, by, cy;
     IntFunction<Double> decodeX =
         p instanceof Polygon
-            ? (x) -> GeoEncodingUtils.decodeLongitude(x)
-            : (x) -> (double) XYEncodingUtils.decode(x);
+            ? x -> GeoEncodingUtils.decodeLongitude(x)
+            : x -> (double) XYEncodingUtils.decode(x);
     IntFunction<Double> decodeY =
         p instanceof Polygon
-            ? (y) -> GeoEncodingUtils.decodeLatitude(y)
-            : (y) -> (double) XYEncodingUtils.decode(y);
+            ? y -> GeoEncodingUtils.decodeLatitude(y)
+            : y -> (double) XYEncodingUtils.decode(y);
     BiFunction<Double, Double, Geometry> createPoint =
         p instanceof Polygon
             ? (x, y) -> new Point(y, x)
@@ -142,12 +142,12 @@ public class TestShapeDocValues extends LuceneTestCase {
     List<ShapeField.DecodedTriangle> tess = getTessellation(p);
     IntFunction<Double> decodeX =
         p instanceof Polygon
-            ? (x) -> GeoEncodingUtils.decodeLongitude(x)
-            : (x) -> (double) XYEncodingUtils.decode(x);
+            ? x -> GeoEncodingUtils.decodeLongitude(x)
+            : x -> (double) XYEncodingUtils.decode(x);
     IntFunction<Double> decodeY =
         p instanceof Polygon
-            ? (y) -> GeoEncodingUtils.decodeLatitude(y)
-            : (y) -> (double) XYEncodingUtils.decode(y);
+            ? y -> GeoEncodingUtils.decodeLatitude(y)
+            : y -> (double) XYEncodingUtils.decode(y);
     BiFunction<Double[], Double[], Geometry> createRectangle =
         p instanceof Polygon
             ? (min, max) -> new Rectangle(min[1], max[1], min[0], max[0])

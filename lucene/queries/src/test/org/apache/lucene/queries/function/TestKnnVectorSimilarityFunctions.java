@@ -31,6 +31,8 @@ import org.apache.lucene.queries.function.valuesource.ByteKnnVectorFieldSource;
 import org.apache.lucene.queries.function.valuesource.ByteVectorSimilarityFunction;
 import org.apache.lucene.queries.function.valuesource.ConstKnnByteVectorValueSource;
 import org.apache.lucene.queries.function.valuesource.ConstKnnFloatValueSource;
+import org.apache.lucene.queries.function.valuesource.Float16KnnVectorFieldSource;
+import org.apache.lucene.queries.function.valuesource.Float16VectorSimilarityFunction;
 import org.apache.lucene.queries.function.valuesource.FloatKnnVectorFieldSource;
 import org.apache.lucene.queries.function.valuesource.FloatVectorSimilarityFunction;
 import org.apache.lucene.search.IndexSearcher;
@@ -44,6 +46,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.CheckHits;
+import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 import org.junit.AfterClass;
@@ -107,6 +110,40 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
     dir = null;
     analyzer.close();
     analyzer = null;
+  }
+
+  @Test
+  public void vectorSimilarity_floatFieldVectors_shouldCompareMetrics() {
+    var v1 = new FloatKnnVectorFieldSource("vector1");
+    var v2 = new FloatKnnVectorFieldSource("vector2");
+    var euclidean = new FloatVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
+    var equivalent = new FloatVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
+    var cosine = new FloatVectorSimilarityFunction(VectorSimilarityFunction.COSINE, v1, v2);
+    QueryUtils.checkEqual(new FunctionQuery(euclidean), new FunctionQuery(equivalent));
+    QueryUtils.checkUnequal(new FunctionQuery(euclidean), new FunctionQuery(cosine));
+  }
+
+  @Test
+  public void vectorSimilarity_byteFieldVectors_shouldCompareMetrics() {
+    var v1 = new ByteKnnVectorFieldSource("vector1");
+    var v2 = new ByteKnnVectorFieldSource("vector2");
+    var euclidean = new ByteVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
+    var equivalent = new ByteVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
+    var cosine = new ByteVectorSimilarityFunction(VectorSimilarityFunction.COSINE, v1, v2);
+    QueryUtils.checkEqual(new FunctionQuery(euclidean), new FunctionQuery(equivalent));
+    QueryUtils.checkUnequal(new FunctionQuery(euclidean), new FunctionQuery(cosine));
+  }
+
+  @Test
+  public void vectorSimilarity_float16FieldVectors_shouldCompareMetrics() {
+    var v1 = new Float16KnnVectorFieldSource("vector1");
+    var v2 = new Float16KnnVectorFieldSource("vector2");
+    var euclidean = new Float16VectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
+    var equivalent =
+        new Float16VectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
+    var cosine = new Float16VectorSimilarityFunction(VectorSimilarityFunction.COSINE, v1, v2);
+    QueryUtils.checkEqual(new FunctionQuery(euclidean), new FunctionQuery(equivalent));
+    QueryUtils.checkUnequal(new FunctionQuery(euclidean), new FunctionQuery(cosine));
   }
 
   @Test

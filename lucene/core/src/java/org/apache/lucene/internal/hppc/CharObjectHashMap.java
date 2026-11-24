@@ -446,7 +446,7 @@ public class CharObjectHashMap<VType>
   private long sizeOfValues() {
     long size = RamUsageEstimator.shallowSizeOf(values);
     for (ObjectCursor<VType> value : values()) {
-      size += RamUsageEstimator.sizeOfObject(value);
+      size += RamUsageEstimator.sizeOfObject(value.value);
     }
     return size;
   }

@@ -411,7 +411,6 @@ public class TestCharHashSet extends LuceneTestCase {
 
   public void testEqualsSubClass() {
     class Sub extends CharHashSet {}
-    ;
 
     CharHashSet l1 = CharHashSet.from(key1, key2, key3);
     CharHashSet l2 = new Sub();
