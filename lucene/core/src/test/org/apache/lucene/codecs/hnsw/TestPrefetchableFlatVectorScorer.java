@@ -18,8 +18,11 @@ package org.apache.lucene.codecs.hnsw;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.List;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
+import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
 
 /**
  * Tests that {@link PrefetchableFlatVectorScorer} overrides all methods from {@link
@@ -38,6 +41,34 @@ public class TestPrefetchableFlatVectorScorer extends LuceneTestCase {
     implTestDeclaredMethodsOverridden(
         PrefetchableFlatVectorScorer.PrefetchableUpdatableRandomVectorScorer.class.getSuperclass(),
         PrefetchableFlatVectorScorer.PrefetchableUpdatableRandomVectorScorer.class);
+  }
+
+  public void testUpdatableScorerDelegatesBulkScore() throws Exception {
+    FloatVectorValues values =
+        FloatVectorValues.fromFloats(List.of(new float[] {1f}, new float[] {2f}), 1);
+    int[] bulkScoreCalls = new int[1];
+    int[] scoreCalls = new int[1];
+    UpdateableRandomVectorScorer delegate =
+        new UpdateableRandomVectorScorer.AbstractUpdateableRandomVectorScorer(values) {
+          @Override
+          public void setScoringOrdinal(int node) {}
+
+          @Override
+          public float score(int node) {
+            scoreCalls[0]++;
+            return 0f;
+          }
+
+          @Override
+          public float bulkScore(int[] nodes, float[] scores, int numNodes) {
+            bulkScoreCalls[0]++;
+            return 0f;
+          }
+        };
+    new PrefetchableFlatVectorScorer.PrefetchableUpdatableRandomVectorScorer(delegate, values)
+        .bulkScore(new int[] {0, 1}, new float[2], 2);
+    assertEquals(1, bulkScoreCalls[0]);
+    assertEquals(0, scoreCalls[0]);
   }
 
   private void implTestDeclaredMethodsOverridden(Class<?> interfaceClass, Class<?> implClass) {
