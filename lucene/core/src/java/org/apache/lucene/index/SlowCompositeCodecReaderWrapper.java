@@ -33,9 +33,9 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
-import org.apache.lucene.codecs.hnsw.HnswGraphMergeSources;
 import org.apache.lucene.index.MultiDocValues.MultiSortedDocValues;
 import org.apache.lucene.index.MultiDocValues.MultiSortedSetDocValues;
+import org.apache.lucene.index.SortingCodecReader.SortingKnnVectorsReader.MergeSource;
 import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.ArrayUtil;
@@ -794,8 +794,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     return new SlowCompositeKnnVectorsReaderWrapper(codecReaders, docStarts);
   }
 
-  private static class SlowCompositeKnnVectorsReaderWrapper extends KnnVectorsReader
-      implements HnswGraphMergeSources {
+  static class SlowCompositeKnnVectorsReaderWrapper extends KnnVectorsReader {
 
     private final CodecReader[] codecReaders;
     private final KnnVectorsReader[] readers;
@@ -824,13 +823,18 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
       }
     }
 
-    @Override
-    public List<Source> getMergeSources(String field) {
-      List<Source> sources = new ArrayList<>();
+    /**
+     * Return the segments that hold the vectors of the given field, mapping their doc IDs through
+     * {@code sortMap}, for {@link SortingCodecReader.SortingKnnVectorsReader#getMergeSources}.
+     */
+    List<MergeSource> getMergeSources(String field, Sorter.DocMap sortMap) {
+      List<MergeSource> sources = new ArrayList<>();
       for (int i = 0; i < codecReaders.length; i++) {
         if (readers[i] != null && hasVectorValues(codecReaders[i].getFieldInfos(), field)) {
           final int docStart = docStarts[i];
-          sources.add(new Source(readers[i], doc -> docStart + doc, codecReaders[i].maxDoc()));
+          sources.add(
+              new MergeSource(
+                  readers[i], doc -> sortMap.oldToNew(docStart + doc), codecReaders[i].maxDoc()));
         }
       }
       return sources;
