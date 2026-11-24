@@ -62,7 +62,7 @@ public class UpgradeIndexMergePolicy extends FilterMergePolicy {
 
   /**
    * Returns if the given segment should be upgraded. The default implementation will return {@code
-   * !Version.LATEST.equals(si.getVersion())}, so all segments created with a different version
+   * !Version.LATEST.equals(si.info.getVersion())}, so all segments created with a different version
    * number than this Lucene version will get upgraded.
    */
   protected boolean shouldUpgradeSegment(SegmentCommitInfo si) {

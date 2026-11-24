@@ -32,8 +32,8 @@ public final class SetKeywordMarkerFilter extends KeywordMarkerFilter {
   private final CharArraySet keywordSet;
 
   /**
-   * Create a new KeywordSetMarkerFilter, that marks the current token as a keyword if the tokens
-   * term buffer is contained in the given set via the {@link KeywordAttribute}.
+   * Create a new {@link SetKeywordMarkerFilter}, that marks the current token as a keyword if the
+   * tokens term buffer is contained in the given set via the {@link KeywordAttribute}.
    *
    * @param in TokenStream to filter
    * @param keywordSet the keywords set to lookup the current termbuffer
