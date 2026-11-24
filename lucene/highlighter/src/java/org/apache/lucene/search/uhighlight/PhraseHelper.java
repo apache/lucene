@@ -229,7 +229,7 @@ public class PhraseHelper {
     IndexSearcher searcher = new IndexSearcher(leafReader);
     searcher.setQueryCache(null);
 
-    // for each SpanQuery, grab it's Spans and put it into a PriorityQueue
+    // for each SpanQuery, grab its Spans and put it into a PriorityQueue
     PriorityQueue<Spans> spansPriorityQueue =
         PriorityQueue.usingComparator(
             spanQueries.size(), Comparator.comparingInt(Spans::startPosition));
