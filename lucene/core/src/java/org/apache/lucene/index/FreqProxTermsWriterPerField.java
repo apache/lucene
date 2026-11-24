@@ -103,10 +103,10 @@ final class FreqProxTermsWriterPerField extends TermsHashPerField {
   void writeOffsets(int termID, int offsetAccum) {
     final int startOffset = offsetAccum + offsetAttribute.startOffset();
     final int endOffset = offsetAccum + offsetAttribute.endOffset();
-    assert startOffset - freqProxPostingsArray.lastOffsets[termID] >= 0;
-    writeVInt(1, startOffset - freqProxPostingsArray.lastOffsets[termID]);
+    assert startOffset - freqProxPostingsArray.lastStartOffsets[termID] >= 0;
+    writeVInt(1, startOffset - freqProxPostingsArray.lastStartOffsets[termID]);
     writeVInt(1, endOffset - startOffset);
-    freqProxPostingsArray.lastOffsets[termID] = startOffset;
+    freqProxPostingsArray.lastStartOffsets[termID] = startOffset;
   }
 
   @Override
@@ -182,7 +182,7 @@ final class FreqProxTermsWriterPerField extends TermsHashPerField {
       if (hasProx) {
         writeProx(termID, fieldState.position);
         if (hasOffsets) {
-          postings.lastOffsets[termID] = 0;
+          postings.lastStartOffsets[termID] = 0;
           writeOffsets(termID, fieldState.offset);
         }
       } else {
@@ -244,7 +244,7 @@ final class FreqProxTermsWriterPerField extends TermsHashPerField {
       if (writeProx) {
         lastPositions = new int[size];
         if (writeOffsets) {
-          lastOffsets = new int[size];
+          lastStartOffsets = new int[size];
         }
       } else {
         assert !writeOffsets;
@@ -257,12 +257,12 @@ final class FreqProxTermsWriterPerField extends TermsHashPerField {
     int[] lastDocIDs; // Last docID where this term occurred
     int[] lastDocCodes; // Code for prior doc
     int[] lastPositions; // Last position where this term occurred
-    int[] lastOffsets; // Last endOffset where this term occurred
+    int[] lastStartOffsets; // Last startOffset where this term occurred
 
     @Override
     ParallelPostingsArray newInstance(int size) {
       return new FreqProxPostingsArray(
-          size, termFreqs != null, lastPositions != null, lastOffsets != null);
+          size, termFreqs != null, lastPositions != null, lastStartOffsets != null);
     }
 
     @Override
@@ -278,9 +278,9 @@ final class FreqProxTermsWriterPerField extends TermsHashPerField {
         assert to.lastPositions != null;
         System.arraycopy(lastPositions, 0, to.lastPositions, 0, numToCopy);
       }
-      if (lastOffsets != null) {
-        assert to.lastOffsets != null;
-        System.arraycopy(lastOffsets, 0, to.lastOffsets, 0, numToCopy);
+      if (lastStartOffsets != null) {
+        assert to.lastStartOffsets != null;
+        System.arraycopy(lastStartOffsets, 0, to.lastStartOffsets, 0, numToCopy);
       }
       if (termFreqs != null) {
         assert to.termFreqs != null;
@@ -294,7 +294,7 @@ final class FreqProxTermsWriterPerField extends TermsHashPerField {
       if (lastPositions != null) {
         bytes += Integer.BYTES;
       }
-      if (lastOffsets != null) {
+      if (lastStartOffsets != null) {
         bytes += Integer.BYTES;
       }
       if (termFreqs != null) {
