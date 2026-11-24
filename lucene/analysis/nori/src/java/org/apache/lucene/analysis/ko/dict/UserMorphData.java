@@ -23,7 +23,7 @@ final class UserMorphData implements KoMorphData {
   private static final int WORD_COST = -100000;
 
   // NNG left
-  private static final short LEFT_ID = 1781;
+  private static final short LEFT_ID = 1780;
 
   // length, length... indexed by compound ID or null for simple noun
   private final int[][] segmentations;

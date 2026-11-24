@@ -471,6 +471,52 @@ public class TestKoreanTokenizer extends BaseTokenStreamTestCase {
         new int[] {1});
   }
 
+  /**
+   * Particles after a user dictionary noun must be chosen according to whether the noun ends with a
+   * final consonant, like they are for nouns of the system dictionary.
+   */
+  public void testUserDictNounFollowedByParticle() throws IOException {
+    // made-up nouns that are not in the system dictionary
+    UserDictionary userDictionary = UserDictionary.open(new StringReader("모모링\n모모리"));
+    Analyzer userDictAnalyzer =
+        new Analyzer() {
+          @Override
+          protected TokenStreamComponents createComponents(String fieldName) {
+            Tokenizer tokenizer =
+                new KoreanTokenizer(
+                    newAttributeFactory(), userDictionary, DecompoundMode.NONE, false);
+            return new TokenStreamComponents(tokenizer, tokenizer);
+          }
+        };
+
+    // with a final consonant: subject marker 이, conjunctive particle 과
+    assertUserDictNounWithParticle(userDictAnalyzer, "모모링", "이", POS.Tag.JKS);
+    assertUserDictNounWithParticle(userDictAnalyzer, "모모링", "과", POS.Tag.JC);
+    // without a final consonant: subject marker 가, conjunctive particle 나
+    assertUserDictNounWithParticle(userDictAnalyzer, "모모리", "가", POS.Tag.JKS);
+    assertUserDictNounWithParticle(userDictAnalyzer, "모모리", "나", POS.Tag.JC);
+
+    userDictAnalyzer.close();
+  }
+
+  private void assertUserDictNounWithParticle(
+      Analyzer analyzer, String noun, String particle, POS.Tag particleTag) throws IOException {
+    String input = noun + particle;
+    assertAnalyzesTo(
+        analyzer,
+        input,
+        new String[] {noun, particle},
+        new int[] {0, noun.length()},
+        new int[] {noun.length(), input.length()},
+        new int[] {1, 1});
+    assertPartsOfSpeech(
+        analyzer,
+        input,
+        new POS.Type[] {POS.Type.MORPHEME, POS.Type.MORPHEME},
+        new POS.Tag[] {POS.Tag.NNG, particleTag},
+        new POS.Tag[] {POS.Tag.NNG, particleTag});
+  }
+
   public void testInterpunct() throws IOException {
     assertAnalyzesTo(
         analyzer,

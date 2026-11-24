@@ -38,11 +38,11 @@ public final class UserDictionary implements Dictionary<UserMorphData> {
   private final TokenInfoFST fst;
 
   // NNG right
-  private static final short RIGHT_ID = 3533;
+  private static final short RIGHT_ID = 3532;
   // NNG right with hangul and a coda on the last char
-  private static final short RIGHT_ID_T = 3535;
+  private static final short RIGHT_ID_T = 3534;
   // NNG right with hangul and no coda on the last char
-  private static final short RIGHT_ID_F = 3534;
+  private static final short RIGHT_ID_F = 3533;
 
   private UserMorphData morphAtts;
 

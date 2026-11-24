@@ -17,10 +17,14 @@
 package org.apache.lucene.analysis.ko.dict;
 
 import java.io.IOException;
+import java.io.StringReader;
 import java.util.List;
 import org.apache.lucene.analysis.ko.POS;
 import org.apache.lucene.analysis.ko.TestKoreanTokenizer;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.IntsRef;
+import org.apache.lucene.util.IntsRefBuilder;
+import org.apache.lucene.util.fst.Util;
 
 public class TestUserDictionary extends LuceneTestCase {
   public void testLookup() throws IOException {
@@ -56,5 +60,55 @@ public class TestUserDictionary extends LuceneTestCase {
   public void testRead() {
     UserDictionary dictionary = TestKoreanTokenizer.readDict();
     assertNotNull(dictionary);
+  }
+
+  /**
+   * User dictionary nouns must use the same connection context ids as plain common nouns (NNG) in
+   * the system dictionary, both with and without a final consonant on the last syllable.
+   */
+  public void testContextIdsMatchSystemDictionaryNouns() throws IOException {
+    TokenInfoDictionary systemDictionary = TokenInfoDictionary.getInstance();
+    // "사람" ends with a final consonant, "친구" does not
+    String[] nouns = {"사람", "친구"};
+    UserDictionary userDictionary = UserDictionary.open(new StringReader(String.join("\n", nouns)));
+    for (String noun : nouns) {
+      int systemWordId = lookupCommonNounWordId(systemDictionary, noun);
+
+      char[] chars = noun.toCharArray();
+      List<Integer> userWordIds = userDictionary.lookup(chars, 0, chars.length);
+      assertEquals(1, userWordIds.size());
+      int userWordId = userWordIds.get(0);
+
+      assertEquals(
+          "left id of " + noun,
+          systemDictionary.getLeftId(systemWordId),
+          userDictionary.getLeftId(userWordId));
+      assertEquals(
+          "right id of " + noun,
+          systemDictionary.getRightId(systemWordId),
+          userDictionary.getRightId(userWordId));
+    }
+  }
+
+  /** Returns the id of the single common noun (NNG morpheme) entry for the given surface form. */
+  private static int lookupCommonNounWordId(TokenInfoDictionary dictionary, String surface)
+      throws IOException {
+    Long sourceId =
+        Util.get(dictionary.getFST().getInternalFST(), Util.toUTF16(surface, new IntsRefBuilder()));
+    assertNotNull(surface + " should be in the system dictionary", sourceId);
+    IntsRef wordIds = new IntsRef();
+    dictionary.lookupWordIds(sourceId.intValue(), wordIds);
+    int commonNounWordId = -1;
+    for (int i = 0; i < wordIds.length; i++) {
+      int wordId = wordIds.ints[wordIds.offset + i];
+      TokenInfoMorphData morphData = dictionary.getMorphAttributes();
+      if (morphData.getPOSType(wordId) == POS.Type.MORPHEME
+          && morphData.getLeftPOS(wordId) == POS.Tag.NNG) {
+        assertEquals(surface + " should have a single common noun entry", -1, commonNounWordId);
+        commonNounWordId = wordId;
+      }
+    }
+    assertNotEquals(surface + " should have a common noun entry", -1, commonNounWordId);
+    return commonNounWordId;
   }
 }
