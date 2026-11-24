@@ -75,7 +75,10 @@ public class TestUsageTrackingFilterCachingPolicy extends LuceneTestCase {
     w.close();
 
     IndexSearcher searcher = new IndexSearcher(reader);
-    UsageTrackingQueryCachingPolicy policy = new UsageTrackingQueryCachingPolicy();
+    // This test counts uses across bq, q1 and q2, so it needs them all to share one history window.
+    // Histories smaller than 32 use a single stripe; with the default (striped) history, bq could
+    // land in q1's stripe, depending on its class hash, and push q1's earlier uses out of it.
+    UsageTrackingQueryCachingPolicy policy = new UsageTrackingQueryCachingPolicy(31);
     LRUQueryCache cache =
         new LRUQueryCache(10, Long.MAX_VALUE, _ -> true, Float.POSITIVE_INFINITY, 1, null);
     searcher.setQueryCache(cache);
