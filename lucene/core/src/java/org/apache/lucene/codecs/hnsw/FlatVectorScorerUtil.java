@@ -44,8 +44,8 @@ public final class FlatVectorScorerUtil {
   }
 
   /**
-   * Returns a scorer that supports the Lucene104 scalar quantized format. Scorers retrieved through
-   * this method may be optimized on certain platforms.
+   * Returns a scorer for the Lucene104 scalar quantized format. Scorers retrieved through this
+   * method may be optimized on certain platforms.
    */
   public static Lucene104ScalarQuantizedVectorScorer getLucene104ScalarQuantizedVectorsScorer() {
     return IMPL.getLucene104ScalarQuantizedVectorsScorer();

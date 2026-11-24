@@ -86,7 +86,7 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
 
   @Override
   public Lucene104ScalarQuantizedVectorScorer getLucene104ScalarQuantizedVectorsScorer() {
-    return new Lucene104ScalarQuantizedVectorScorer(getLucene99FlatVectorsScorer());
+    return Lucene104MemorySegmentScalarQuantizedVectorScorer.INSTANCE;
   }
 
   @Override

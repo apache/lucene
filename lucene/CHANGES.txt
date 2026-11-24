@@ -19,6 +19,10 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#16564: Speed up automaton intersection for PrefixQuery, TermRangeQuery and custom binary
+  automata by directly enumerating terms below accepting states with full-alphabet self-loops.
+  (Zhou Hui)
+
 * GITHUB#16806: HNSW searches track the visited nodes of a large graph in a hash set instead of a
   bit set sized to the graph, which makes merges into large segments faster. (Ankur Goel)
 
@@ -228,6 +232,10 @@ API Changes
 
 New Features
 ---------------------
+* GITHUB#16571: A merge can write more than one segment. A merge policy returns document ranges
+  from MergePolicy.OneMerge#getDocRangePartitions and the merge writes one output segment per
+  range. (Jim Ferenczi)
+
 * GITHUB#16723: Support SIMD Faiss library variants with runtime fallback. (Abhinav Chinnala)
 
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
@@ -299,6 +307,11 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#16145: Bound the prefetch backoff in MemorySegmentIndexInput. The gap between page-cache probes used to
+  grow without limit, so under memory pressure prefetch effectively stopped working. A file now probes on every
+  prefetch call until 1024 consecutive hits, then every 256th call; a miss goes back to probing on every call.
+  The first prefetch on a file always probes: a hit on a warm file switches to sampling immediately, a miss
+  makes the file earn the 1024 hits. (Michael Marshall)
 
 * GITHUB#16746: Speed up decoding long overlapping LZ4 matches using bulk copies
   of initialized bytes. (Andre Kurait)
@@ -364,12 +377,25 @@ Optimizations
   IOContext, allowing MMapDirectory to open them with confined areas and avoiding JVM-wide
   handshakes when the files are closed. (Alan Woodward)
 
-* GITHUB#16799: Score Lucene104 4-bit merge batches with one int4DotProductSinglePackedBulk call. (Jakub Slowinski)
+* GITHUB#17021: Skip computing the cardinality of a window in DenseConjunctionBulkScorer when
+  no clause is left to apply. (Asharam)
+
+* GITHUB#14397: Reuse the LZ4 preset dictionary when reading stored fields or term vectors
+  from the same compressed chunk. (Ke Wei)
+
+* GITHUB#17013: Perform off-heap bulk scoring for Lucene104 scalar quantized vectors: avoid copy to
+  heap, amortize query loads, and overlap CPU cache misses for 4 document vectors. (Kaival Parikh)
 
 Bug Fixes
 ---------------------
+* GITHUB#17020: Reduce CachingTokenFilter memory use by not copying stale term bytes in
+  CharTermAttributeImpl#clone. (Eugene Rizhkov)
+
 * GITHUB#16983: UnifiedHighlighter.Builder#withFlags is no longer ignored when building the
   highlighter. (Christoph Büscher)
+
+* GITHUB#17000: Fix ramBytesUsed of the hppc *ObjectHashMap classes to measure values rather than
+  cursors. (Chris Parrinello)
 
 * GITHUB#16867: Apply buffered soft-update/delete terms before the global delete buffer reaches the 2GB
   addressing limit of its ByteBlockPool, and stall indexing if the limit is hit during a full flush.
@@ -450,6 +476,8 @@ Bug Fixes
   (Alan Woodward)
 
 * GITHUB#16971: Fix double DocValuesStats extrema initialization. (Simranjeet Singh)
+
+* GITHUB#17030: Fix precision loss when reducing join scores. (Ke Wei)
 
 Changes in Runtime Behavior
 ---------------------

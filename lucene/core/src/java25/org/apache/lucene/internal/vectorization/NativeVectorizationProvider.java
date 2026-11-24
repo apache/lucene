@@ -79,8 +79,13 @@ final class NativeVectorizationProvider extends VectorizationProvider {
 
   @Override
   public Lucene104ScalarQuantizedVectorScorer getLucene104ScalarQuantizedVectorsScorer() {
-    if (NativeVectorUtilSupport.hasInt4DotProductSinglePackedBulk()) {
-      return new Lucene104NativeScalarQuantizedVectorScorer(getLucene99FlatVectorsScorer());
+    if (NativeVectorUtilSupport.isLibraryLoaded()) {
+      // The bulk kernels of the Panama scorer have no native equivalent, so the generic scorer is
+      // used, which reaches the native kernels through VectorUtil.
+      // TODO: move the bulk dot products to VectorUtil / VectorUtilSupport, so that this provider
+      // can implement them natively too: https://github.com/apache/lucene/issues/16556
+      return new Lucene104ScalarQuantizedVectorScorer(
+          delegateVectorUtilProvider.getLucene99FlatVectorsScorer());
     }
     return delegateVectorUtilProvider.getLucene104ScalarQuantizedVectorsScorer();
   }

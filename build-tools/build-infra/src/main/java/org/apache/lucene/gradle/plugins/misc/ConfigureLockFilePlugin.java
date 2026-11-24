@@ -36,15 +36,14 @@ public class ConfigureLockFilePlugin extends LuceneGradlePlugin {
   public void apply(Project rootProject) {
     applicableToRootProjectOnly(rootProject);
 
-    rootProject.allprojects(
-        project -> {
-          // We don't care about the build infra deps in the lock file.
-          if (project.getPath().equals(":build-tools:build-infra-shadow")) {
-            return;
-          }
+    rootProject.allprojects(project -> {
+      // We don't care about the build infra deps in the lock file.
+      if (project.getPath().equals(":build-tools:build-infra-shadow")) {
+        return;
+      }
 
-          configureLockFile(project);
-        });
+      configureLockFile(project);
+    });
   }
 
   private void configureLockFile(Project project) {

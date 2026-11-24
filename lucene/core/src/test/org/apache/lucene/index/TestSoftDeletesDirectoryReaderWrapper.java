@@ -227,17 +227,15 @@ public class TestSoftDeletesDirectoryReaderWrapper extends LuceneTestCase {
         reader.leaves().get(0).reader().getReaderCacheHelper();
     AtomicInteger leafCalled = new AtomicInteger(0);
     AtomicInteger dirCalled = new AtomicInteger(0);
-    readerCacheHelper.addClosedListener(
-        key -> {
-          leafCalled.incrementAndGet();
-          assertSame(key, readerCacheHelper.getKey());
-        });
+    readerCacheHelper.addClosedListener(key -> {
+      leafCalled.incrementAndGet();
+      assertSame(key, readerCacheHelper.getKey());
+    });
     IndexReader.CacheHelper dirReaderCacheHelper = reader.getReaderCacheHelper();
-    dirReaderCacheHelper.addClosedListener(
-        key -> {
-          dirCalled.incrementAndGet();
-          assertSame(key, dirReaderCacheHelper.getKey());
-        });
+    dirReaderCacheHelper.addClosedListener(key -> {
+      dirCalled.incrementAndGet();
+      assertSame(key, dirReaderCacheHelper.getKey());
+    });
     assertEquals(2, reader.numDocs());
     assertEquals(2, reader.maxDoc());
     assertEquals(0, reader.numDeletedDocs());

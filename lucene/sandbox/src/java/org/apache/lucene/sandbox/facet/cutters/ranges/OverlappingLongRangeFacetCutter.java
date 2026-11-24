@@ -36,8 +36,7 @@ import org.apache.lucene.search.LongValuesSource;
 /**
  * {@link LongRangeFacetCutter} for ranges of long value that overlap. Uses segment tree
  * optimisation to find all matching ranges for a given value <a
- * href="https://blog.mikemccandless.com/2013/12/fast-range-faceting-using-segment-trees.html">fast-range-faceting-
- * using-segment-trees.html</a>
+ * href="https://blog.mikemccandless.com/2013/12/fast-range-faceting-using-segment-trees.html">fast-range-faceting-using-segment-trees.html</a>
  */
 class OverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
   private final LongRangeNode root;

@@ -162,17 +162,15 @@ record DedupQuantizer(ScalarEncoding encoding) {
       int flavorWireNumber = meta.readVInt();
       Flavor flavor =
           Flavor.fromWireNumber(flavorWireNumber)
-              .orElseThrow(
-                  () ->
-                      new CorruptIndexException(
-                          "Invalid flavor wire number: " + flavorWireNumber, meta));
+              .orElseThrow(() ->
+                  new CorruptIndexException(
+                      "Invalid flavor wire number: " + flavorWireNumber, meta));
       int wireNumber = meta.readVInt();
       ScalarEncoding encoding =
           ScalarEncoding.fromWireNumber(wireNumber)
-              .orElseThrow(
-                  () ->
-                      new CorruptIndexException(
-                          "Invalid scalar encoding wire number: " + wireNumber, meta));
+              .orElseThrow(() ->
+                  new CorruptIndexException(
+                      "Invalid scalar encoding wire number: " + wireNumber, meta));
       long offset = meta.readLong();
       long size = meta.readLong();
       if (blocks.put(flavor, new QuantizedBlock(encoding, offset, size)) != null) {
