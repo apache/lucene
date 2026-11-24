@@ -415,7 +415,7 @@ Optimizations
 
 Bug Fixes
 ---------------------
-* GITHUB#PENDING: Fix the connection context ids that Nori assigns to user dictionary nouns. They
+* GITHUB#17070: Fix the connection context ids that Nori assigns to user dictionary nouns. They
   were off by one, so the noun was treated as a state-change noun and particles after it were
   chosen as if the presence of a final consonant was reversed. (David Choi)
 
