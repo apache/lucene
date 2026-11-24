@@ -511,6 +511,8 @@ Bug Fixes
 
 * GITHUB#16896: Fix long overflow in GCD-encoded DocValues range transform. (Ke Wei)
 
+* GITHUB#17067: Fix PrefetchableUpdatableRandomVectorScorer to delegate bulkScore. (Shubham Chaudhary)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
