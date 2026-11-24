@@ -924,8 +924,8 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
 
   /**
    * Computes the centroid of the merged vectors into {@code mergedCentroid} and returns their
-   * count. Recomputing it reads every vector, on up to {@code workers} tasks when {@code executor}
-   * is not null.
+   * count. Recomputing it reads every vector, on up to {@code workers} tasks of {@code executor};
+   * with one worker, pass an executor that runs tasks on the calling thread.
    */
   static int mergeAndRecalculateCentroids(
       MergeState mergeState,
