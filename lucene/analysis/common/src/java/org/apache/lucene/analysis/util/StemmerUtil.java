@@ -26,7 +26,7 @@ public class StemmerUtil {
   private StemmerUtil() {}
 
   /**
-   * Returns true if the character array starts with the suffix.
+   * Returns true if the character array starts with the prefix.
    *
    * @param s Input Buffer
    * @param len length of input buffer
