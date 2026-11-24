@@ -205,50 +205,30 @@ int32_t lucene_dotProduct(int8_t vec1[], int8_t vec2[], int32_t limit) {
 
 #if defined(__aarch64__) && defined(__linux__)
 
-static int32_t int4SinglePackedScalar(const uint8_t* unpacked, const uint8_t* packed,
-                                      int32_t packedLength) {
-    int32_t result = 0;
-    for (int32_t i = 0; i < packedLength; i++) {
-        result += (packed[i] >> 4) * unpacked[i] + (packed[i] & 0x0F) * unpacked[packedLength + i];
-    }
-    return result;
-}
-
-static void int4DotProductSinglePackedBulk_scalar(const uint8_t unpacked[], const uint8_t vectors[],
-                                                  int32_t stride, const int32_t ords[],
-                                                  int32_t count, int32_t packedLength,
-                                                  int32_t results[]) {
-    for (int32_t d = 0; d < count; d++) {
-        const uint8_t* packed = vectors + (int64_t) ords[d] * stride;
-        results[d] = int4SinglePackedScalar(unpacked, packed, packedLength);
+static void int4DotProductSinglePackedBulk_scalar(int8_t unpacked[], uint8_t vectors[],
+                                                  int64_t o1, int64_t o2, int64_t o3, int64_t o4,
+                                                  int32_t n, int32_t results[]) {
+    const uint8_t* query = (const uint8_t*) unpacked;
+    const uint8_t* const packed[4] = {vectors + o1, vectors + o2, vectors + o3, vectors + o4};
+    int32_t packedLength = n / 2;
+    for (int32_t d = 0; d < 4; d++) {
+        int32_t result = 0;
+        for (int32_t i = 0; i < packedLength; i++) {
+            result += (packed[d][i] >> 4) * query[i] + (packed[d][i] & 0x0F) * query[packedLength + i];
+        }
+        results[d] = result;
     }
 }
 
 #if defined(__ARM_NEON)
+// Loads each block of the query once for all four vectors.
 __attribute__((target("arch=armv8.2-a+dotprod")))
-static int32_t int4SinglePackedNeon(const uint8_t* unpacked, const uint8_t* packed,
-                                    int32_t packedLength) {
-    const uint8x16_t lowMask = vdupq_n_u8(0x0F);
-    uint32x4_t accHigh = vdupq_n_u32(0);
-    uint32x4_t accLow = vdupq_n_u32(0);
-    int32_t i = 0;
-    for (; i + 16 <= packedLength; i += 16) {
-        uint8x16_t block = vld1q_u8(&packed[i]);
-        accHigh = vdotq_u32(accHigh, vshrq_n_u8(block, 4), vld1q_u8(&unpacked[i]));
-        accLow = vdotq_u32(accLow, vandq_u8(block, lowMask), vld1q_u8(&unpacked[packedLength + i]));
-    }
-    int32_t result = (int32_t) vaddvq_u32(vaddq_u32(accHigh, accLow));
-    // Scalar tail
-    for (; i < packedLength; i++) {
-        result += (packed[i] >> 4) * unpacked[i] + (packed[i] & 0x0F) * unpacked[packedLength + i];
-    }
-    return result;
-}
-
-// Four vectors per load of the query.
-__attribute__((target("arch=armv8.2-a+dotprod")))
-static void int4SinglePackedNeon4(const uint8_t* unpacked, const uint8_t* const packed[4],
-                                  int32_t packedLength, int32_t results[4]) {
+static void int4DotProductSinglePackedBulk_neon(int8_t unpacked[], uint8_t vectors[],
+                                                int64_t o1, int64_t o2, int64_t o3, int64_t o4,
+                                                int32_t n, int32_t results[]) {
+    const uint8_t* query = (const uint8_t*) unpacked;
+    const uint8_t* const packed[4] = {vectors + o1, vectors + o2, vectors + o3, vectors + o4};
+    int32_t packedLength = n / 2;
     const uint8x16_t lowMask = vdupq_n_u8(0x0F);
     // One accumulator per vector and nibble, so no dot waits on another.
     uint32x4_t high0 = vdupq_n_u32(0), high1 = vdupq_n_u32(0);
@@ -257,8 +237,8 @@ static void int4SinglePackedNeon4(const uint8_t* unpacked, const uint8_t* const 
     uint32x4_t low2 = vdupq_n_u32(0), low3 = vdupq_n_u32(0);
     int32_t i = 0;
     for (; i + 16 <= packedLength; i += 16) {
-        uint8x16_t high = vld1q_u8(&unpacked[i]);
-        uint8x16_t low = vld1q_u8(&unpacked[packedLength + i]);
+        uint8x16_t high = vld1q_u8(&query[i]);
+        uint8x16_t low = vld1q_u8(&query[packedLength + i]);
         uint8x16_t block0 = vld1q_u8(&packed[0][i]);
         uint8x16_t block1 = vld1q_u8(&packed[1][i]);
         uint8x16_t block2 = vld1q_u8(&packed[2][i]);
@@ -278,31 +258,11 @@ static void int4SinglePackedNeon4(const uint8_t* unpacked, const uint8_t* const 
     results[3] = (int32_t) vaddvq_u32(vaddq_u32(high3, low3));
     // Scalar tail
     for (; i < packedLength; i++) {
-        uint8_t high = unpacked[i];
-        uint8_t low = unpacked[packedLength + i];
+        uint8_t high = query[i];
+        uint8_t low = query[packedLength + i];
         for (int32_t d = 0; d < 4; d++) {
             results[d] += (packed[d][i] >> 4) * high + (packed[d][i] & 0x0F) * low;
         }
-    }
-}
-
-__attribute__((target("arch=armv8.2-a+dotprod")))
-static void int4DotProductSinglePackedBulk_neon(const uint8_t unpacked[], const uint8_t vectors[],
-                                                int32_t stride, const int32_t ords[], int32_t count,
-                                                int32_t packedLength, int32_t results[]) {
-    int32_t d = 0;
-    for (; d + 4 <= count; d += 4) {
-        const uint8_t* packed[4] = {
-            vectors + (int64_t) ords[d] * stride,
-            vectors + (int64_t) ords[d + 1] * stride,
-            vectors + (int64_t) ords[d + 2] * stride,
-            vectors + (int64_t) ords[d + 3] * stride,
-        };
-        int4SinglePackedNeon4(unpacked, packed, packedLength, &results[d]);
-    }
-    for (; d < count; d++) {
-        const uint8_t* packed = vectors + (int64_t) ords[d] * stride;
-        results[d] = int4SinglePackedNeon(unpacked, packed, packedLength);
     }
 }
 #endif
@@ -316,10 +276,9 @@ static void* resolve_int4_single_packed_bulk(uint64_t hwcap) {
     return (void*) int4DotProductSinglePackedBulk_scalar;
 }
 
-// Scores a whole HNSW candidate batch in one call.
 __attribute__((ifunc("resolve_int4_single_packed_bulk")))
-void lucene_int4DotProductSinglePackedBulk(const uint8_t unpacked[], const uint8_t vectors[],
-    int32_t stride, const int32_t ords[], int32_t count, int32_t packedLength, int32_t results[]);
+void lucene_int4DotProductSinglePackedBulk(int8_t unpacked[], uint8_t vectors[], int64_t o1,
+    int64_t o2, int64_t o3, int64_t o4, int32_t n, int32_t results[]);
 #endif
 
 /*

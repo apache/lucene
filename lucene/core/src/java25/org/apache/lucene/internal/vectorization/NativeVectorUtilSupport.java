@@ -139,9 +139,10 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
   private static final FunctionDescriptor findNextGEQDesc =
       FunctionDescriptor.of(JAVA_INT, POINTER, JAVA_INT, JAVA_INT, JAVA_INT);
 
-  // (POINTER, POINTER, INT, POINTER, INT, INT, POINTER) -> void
+  // (POINTER, POINTER, LONG, LONG, LONG, LONG, INT, POINTER) -> void
   private static final FunctionDescriptor int4DotProductSinglePackedBulkDesc =
-      FunctionDescriptor.ofVoid(POINTER, POINTER, JAVA_INT, POINTER, JAVA_INT, JAVA_INT, POINTER);
+      FunctionDescriptor.ofVoid(
+          POINTER, POINTER, JAVA_LONG, JAVA_LONG, JAVA_LONG, JAVA_LONG, JAVA_INT, POINTER);
 
   // Method handles
   private static final MethodHandle dotProduct$MH;
@@ -399,32 +400,39 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
         : PanamaVectorUtilSupport.int4DotProductBothPacked(a, b);
   }
 
-  /** Returns true if the native library implements {@link #int4DotProductSinglePackedBulk}. */
-  public static boolean hasInt4DotProductSinglePackedBulk() {
-    return int4DotProductSinglePackedBulk$MH != null;
-  }
-
   /**
-   * Sets {@code results[i]} to {@link #int4DotProductSinglePacked} of {@code unpacked} and the
-   * packed vector at {@code vectors + ords[i] * stride}, for each {@code i < count}, in one native
-   * call. The native code does not check bounds.
+   * Same as {@link Lucene104MemorySegmentQuantizedVectorOps#int4DotProductSinglePackedBulk}. The
+   * native code does not check bounds, so the four offsets must be those of vectors in {@code seg}.
    */
   public static void int4DotProductSinglePackedBulk(
-      MemorySegment unpacked,
-      MemorySegment vectors,
-      int stride,
-      MemorySegment ords,
-      int count,
+      byte[] unpacked,
+      MemorySegment seg,
+      long d1,
+      long d2,
+      long d3,
+      long d4,
       int packedLength,
-      MemorySegment results) {
-    assert unpacked.byteSize() == 2L * packedLength;
-    assert ords.byteSize() >= (long) count * Integer.BYTES;
-    assert results.byteSize() >= (long) count * Integer.BYTES;
-    try {
-      int4DotProductSinglePackedBulk$MH.invokeExact(
-          unpacked, vectors, stride, ords, count, packedLength, results);
-    } catch (Throwable ex) {
-      throw new AssertionError("should not reach here", ex);
+      int[] results) {
+    if (int4DotProductSinglePackedBulk$MH != null) {
+      assert unpacked.length == 2 * packedLength && results.length >= 4;
+      assert Math.min(Math.min(d1, d2), Math.min(d3, d4)) >= 0
+          && Math.max(Math.max(d1, d2), Math.max(d3, d4)) + packedLength <= seg.byteSize();
+      try {
+        int4DotProductSinglePackedBulk$MH.invokeExact(
+            MemorySegment.ofArray(unpacked),
+            seg,
+            d1,
+            d2,
+            d3,
+            d4,
+            unpacked.length,
+            MemorySegment.ofArray(results));
+      } catch (Throwable ex) {
+        throw new AssertionError("should not reach here", ex);
+      }
+    } else {
+      Lucene104MemorySegmentQuantizedVectorOps.int4DotProductSinglePackedBulk(
+          unpacked, seg, d1, d2, d3, d4, packedLength, results);
     }
   }
 

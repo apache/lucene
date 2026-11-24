@@ -386,6 +386,9 @@ Optimizations
 * GITHUB#17013: Perform off-heap bulk scoring for Lucene104 scalar quantized vectors: avoid copy to
   heap, amortize query loads, and overlap CPU cache misses for 4 document vectors. (Kaival Parikh)
 
+* GITHUB#16799: Bulk score 4-bit Lucene104 vectors with the native dot product library, which uses
+  NEON dot product instructions on aarch64 Linux. (Jakub Slowinski)
+
 Bug Fixes
 ---------------------
 * GITHUB#17020: Reduce CachingTokenFilter memory use by not copying stale term bytes in

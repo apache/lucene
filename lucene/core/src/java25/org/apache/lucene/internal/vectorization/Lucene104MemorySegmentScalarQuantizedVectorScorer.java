@@ -29,6 +29,7 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.FilterIndexInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.MemorySegmentAccessInput;
+import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
@@ -325,8 +326,13 @@ final class Lucene104MemorySegmentScalarQuantizedVectorScorer
 
     @Override
     void dotProducts(long o1, long o2, long o3, long o4, int[] results) {
-      Lucene104MemorySegmentQuantizedVectorOps.int4DotProductSinglePackedBulk(
-          query, dataSeg, o1, o2, o3, o4, packedLength, results);
+      if (Constants.NATIVE_DOT_PRODUCT_ENABLED) {
+        NativeVectorUtilSupport.int4DotProductSinglePackedBulk(
+            query, dataSeg, o1, o2, o3, o4, packedLength, results);
+      } else {
+        Lucene104MemorySegmentQuantizedVectorOps.int4DotProductSinglePackedBulk(
+            query, dataSeg, o1, o2, o3, o4, packedLength, results);
+      }
     }
   }
 

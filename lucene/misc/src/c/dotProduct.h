@@ -41,9 +41,10 @@ int32_t lucene_int4SquareDistance(int8_t a[], int8_t b[], int32_t n);
 // with unpacked[n / 2 + i].
 int32_t lucene_int4DotProductSinglePacked(int8_t unpacked[], uint8_t packed[], int32_t n);
 int32_t lucene_int4SquareDistanceSinglePacked(int8_t unpacked[], uint8_t packed[], int32_t n);
-
-void lucene_int4DotProductSinglePackedBulk(const uint8_t unpacked[], const uint8_t vectors[],
-    int32_t stride, const int32_t ords[], int32_t count, int32_t packedLength, int32_t results[]);
+// lucene_int4DotProductSinglePacked of `unpacked` with each of the four packed vectors at byte
+// offsets o1, o2, o3 and o4 of `vectors`, into results[0..3].
+void lucene_int4DotProductSinglePackedBulk(int8_t unpacked[], uint8_t vectors[], int64_t o1,
+    int64_t o2, int64_t o3, int64_t o4, int32_t n, int32_t results[]);
 
 // Both arrays packed as above; n is their length in bytes.
 int32_t lucene_int4DotProductBothPacked(uint8_t a[], uint8_t b[], int32_t n);
