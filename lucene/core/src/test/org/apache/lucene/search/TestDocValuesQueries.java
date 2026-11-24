@@ -24,6 +24,7 @@ import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -56,6 +57,8 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCaseJupiter;
+import org.apache.lucene.tests.util.RandomLongValues;
+import org.apache.lucene.tests.util.RandomLongValues.Bounds;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
@@ -114,9 +117,10 @@ public class TestDocValuesQueries extends LuceneTestCaseJupiter {
     config.setIndexSort(new Sort(new SortField("dv", SortField.Type.LONG, random.nextBoolean())));
     RandomIndexWriter iw = new RandomIndexWriter(random, dir, config);
     final int numDocs = atLeast(1000);
+    final RandomLongValues values = RandomLongValues.random(random);
     for (int i = 0; i < numDocs; ++i) {
       Document doc = new Document();
-      final long value = TestUtil.nextLong(random, -100, 10000);
+      final long value = values.nextValue();
       doc.add(NumericDocValuesField.indexedField("dv", value));
       doc.add(new LongPoint("idx", value));
       iw.addDocument(doc);
@@ -127,10 +131,9 @@ public class TestDocValuesQueries extends LuceneTestCaseJupiter {
     iw.close();
 
     for (int i = 0; i < 100; ++i) {
-      final long min =
-          random.nextBoolean() ? Long.MIN_VALUE : TestUtil.nextLong(random, -100, 10000);
-      final long max =
-          random.nextBoolean() ? Long.MAX_VALUE : TestUtil.nextLong(random, -100, 10000);
+      final Bounds bounds = values.nextBound();
+      final long min = bounds.min();
+      final long max = bounds.max();
       final Query q1 = LongPoint.newRangeQuery("idx", min, max);
       final Query q2 = NumericDocValuesField.newSlowRangeQuery("dv", min, max);
       assertSameMatches(searcher, q1, q2, false);
@@ -154,12 +157,14 @@ public class TestDocValuesQueries extends LuceneTestCaseJupiter {
             new Sort(new SortField("dv", SortField.Type.LONG, random.nextBoolean())));
         iw = new RandomIndexWriter(random, dir, config);
       }
-      final int numDocs = atLeast(100);
+      final int numDocs = atLeast(500);
+      final RandomLongValues values = RandomLongValues.random(random);
+      final int minValuesPerDoc = random.nextBoolean() ? 1 : 0;
       for (int i = 0; i < numDocs; ++i) {
         Document doc = new Document();
-        final int numValues = TestUtil.nextInt(random, 0, maxValuesPerDoc);
+        final int numValues = TestUtil.nextInt(random, minValuesPerDoc, maxValuesPerDoc);
         for (int j = 0; j < numValues; ++j) {
-          final long value = TestUtil.nextLong(random, -100, 10000);
+          final long value = values.nextValue();
           if (sortedNumeric) {
             if (skypper) {
               doc.add(SortedNumericDocValuesField.indexedField("dv", value));
@@ -185,10 +190,9 @@ public class TestDocValuesQueries extends LuceneTestCaseJupiter {
       iw.close();
 
       for (int i = 0; i < 100; ++i) {
-        final long min =
-            random.nextBoolean() ? Long.MIN_VALUE : TestUtil.nextLong(random, -100, 10000);
-        final long max =
-            random.nextBoolean() ? Long.MAX_VALUE : TestUtil.nextLong(random, -100, 10000);
+        final Bounds bounds = values.nextBound();
+        final long min = bounds.min();
+        final long max = bounds.max();
         final Query q1 = LongPoint.newRangeQuery("idx", min, max);
         final Query q2;
         if (sortedNumeric) {
@@ -219,11 +223,12 @@ public class TestDocValuesQueries extends LuceneTestCaseJupiter {
         iw = new RandomIndexWriter(random, dir, config);
       }
       final int numDocs = atLeast(100);
+      final RandomLongValues values = RandomLongValues.random(random);
       for (int i = 0; i < numDocs; ++i) {
         Document doc = new Document();
         final int numValues = TestUtil.nextInt(random, 0, maxValuesPerDoc);
         for (int j = 0; j < numValues; ++j) {
-          final long value = TestUtil.nextLong(random, -100, 10000);
+          final long value = values.nextValue();
           byte[] encoded = new byte[Long.BYTES];
           LongPoint.encodeDimension(value, encoded, 0);
           if (sortedSet) {
@@ -251,19 +256,20 @@ public class TestDocValuesQueries extends LuceneTestCaseJupiter {
       iw.close();
 
       for (int i = 0; i < 100; ++i) {
-        long min = random.nextBoolean() ? Long.MIN_VALUE : TestUtil.nextLong(random, -100, 10000);
-        long max = random.nextBoolean() ? Long.MAX_VALUE : TestUtil.nextLong(random, -100, 10000);
+        final Bounds bounds = values.nextBound();
+        long min = bounds.min();
+        long max = bounds.max();
         byte[] encodedMin = new byte[Long.BYTES];
         byte[] encodedMax = new byte[Long.BYTES];
         LongPoint.encodeDimension(min, encodedMin, 0);
         LongPoint.encodeDimension(max, encodedMax, 0);
         boolean includeMin = true;
         boolean includeMax = true;
-        if (random.nextBoolean()) {
+        if (min != Long.MAX_VALUE && random.nextBoolean()) {
           includeMin = false;
           min++;
         }
-        if (random.nextBoolean()) {
+        if (max != Long.MIN_VALUE && random.nextBoolean()) {
           includeMax = false;
           max--;
         }
@@ -396,9 +402,10 @@ public class TestDocValuesQueries extends LuceneTestCaseJupiter {
     config.setIndexSort(new Sort(new SortField("dv", SortField.Type.STRING, random.nextBoolean())));
     RandomIndexWriter iw = new RandomIndexWriter(random, dir, config);
     final int numDocs = atLeast(1000);
+    final RandomLongValues values = RandomLongValues.random(random);
     for (int i = 0; i < numDocs; ++i) {
       Document doc = new Document();
-      final long value = TestUtil.nextLong(random, -100, 10000);
+      final long value = values.nextValue();
       byte[] encoded = new byte[Long.BYTES];
       LongPoint.encodeDimension(value, encoded, 0);
       doc.add(SortedDocValuesField.indexedField("dv", newBytesRef(encoded)));
@@ -411,19 +418,20 @@ public class TestDocValuesQueries extends LuceneTestCaseJupiter {
     iw.close();
 
     for (int i = 0; i < 100; ++i) {
-      long min = random.nextBoolean() ? Long.MIN_VALUE : TestUtil.nextLong(random, -100, 10000);
-      long max = random.nextBoolean() ? Long.MAX_VALUE : TestUtil.nextLong(random, -100, 10000);
+      final Bounds bounds = values.nextBound();
+      long min = bounds.min();
+      long max = bounds.max();
       byte[] encodedMin = new byte[Long.BYTES];
       byte[] encodedMax = new byte[Long.BYTES];
       LongPoint.encodeDimension(min, encodedMin, 0);
       LongPoint.encodeDimension(max, encodedMax, 0);
       boolean includeMin = true;
       boolean includeMax = true;
-      if (random.nextBoolean()) {
+      if (min != Long.MAX_VALUE && random.nextBoolean()) {
         includeMin = false;
         min++;
       }
-      if (random.nextBoolean()) {
+      if (max != Long.MIN_VALUE && random.nextBoolean()) {
         includeMax = false;
         max--;
       }
@@ -443,7 +451,8 @@ public class TestDocValuesQueries extends LuceneTestCaseJupiter {
 
   private void assertSameMatches(IndexSearcher searcher, Query q1, Query q2, boolean scores)
       throws IOException {
-    final int maxDoc = searcher.getIndexReader().maxDoc();
+    assertSameMatchesWithoutScores(searcher, q1, q2);
+    final int maxDoc = Math.max(1, searcher.getIndexReader().maxDoc());
     final TopDocs td1 = searcher.search(q1, maxDoc, scores ? Sort.RELEVANCE : Sort.INDEXORDER);
     final TopDocs td2 = searcher.search(q2, maxDoc, scores ? Sort.RELEVANCE : Sort.INDEXORDER);
     assertEquals(td1.totalHits.value(), td2.totalHits.value());
@@ -452,6 +461,51 @@ public class TestDocValuesQueries extends LuceneTestCaseJupiter {
       if (scores) {
         assertEquals(td1.scoreDocs[i].score, td2.scoreDocs[i].score, 10e-7);
       }
+    }
+  }
+
+  // Collecting without scores makes bulk scorers use DocIdSetIterator#intoBitSet
+  private void assertSameMatchesWithoutScores(IndexSearcher searcher, Query q1, Query q2)
+      throws IOException {
+    assertEquals(collectWithoutScores(searcher, q1), collectWithoutScores(searcher, q2));
+  }
+
+  private static Set<Integer> collectWithoutScores(IndexSearcher searcher, Query query)
+      throws IOException {
+    return searcher.search(
+        query,
+        new CollectorManager<NoScoresCollector, Set<Integer>>() {
+          @Override
+          public NoScoresCollector newCollector() {
+            return new NoScoresCollector();
+          }
+
+          @Override
+          public Set<Integer> reduce(Collection<NoScoresCollector> collectors) {
+            Set<Integer> docs = new HashSet<>();
+            collectors.forEach(c -> docs.addAll(c.docs));
+            return docs;
+          }
+        });
+  }
+
+  private static class NoScoresCollector extends SimpleCollector {
+    final Set<Integer> docs = new HashSet<>();
+    private int docBase;
+
+    @Override
+    protected void doSetNextReader(LeafReaderContext context) {
+      docBase = context.docBase;
+    }
+
+    @Override
+    public void collect(int doc) {
+      docs.add(docBase + doc);
+    }
+
+    @Override
+    public ScoreMode scoreMode() {
+      return ScoreMode.COMPLETE_NO_SCORES;
     }
   }
 

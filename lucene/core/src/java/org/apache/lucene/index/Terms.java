@@ -96,6 +96,19 @@ public abstract class Terms {
   }
 
   /**
+   * Like {@link #intersect(CompiledAutomaton, BytesRef)}, but the returned enum may also check the
+   * timeout while it scans terms internally. The default implementation ignores the timeout.
+   *
+   * @param queryTimeout the timeout to check, or {@code null}
+   * @lucene.experimental
+   */
+  public TermsEnum intersect(
+      CompiledAutomaton compiled, BytesRef startTerm, QueryTimeout queryTimeout)
+      throws IOException {
+    return intersect(compiled, startTerm);
+  }
+
+  /**
    * Returns the number of terms for this field, or -1 if this measure isn't stored by the codec.
    * Note that, just like other term measures, this measure does not take deleted documents into
    * account.

@@ -135,9 +135,16 @@ public final class MultiTerms extends Terms {
 
   @Override
   public TermsEnum intersect(CompiledAutomaton compiled, BytesRef startTerm) throws IOException {
+    return intersect(compiled, startTerm, null);
+  }
+
+  @Override
+  public TermsEnum intersect(
+      CompiledAutomaton compiled, BytesRef startTerm, QueryTimeout queryTimeout)
+      throws IOException {
     final List<TermsEnumIndex> termsEnums = new ArrayList<>();
     for (int i = 0; i < subs.length; i++) {
-      final TermsEnum termsEnum = subs[i].intersect(compiled, startTerm);
+      final TermsEnum termsEnum = subs[i].intersect(compiled, startTerm, queryTimeout);
       if (termsEnum != null) {
         termsEnums.add(new TermsEnumIndex(termsEnum, i));
       }

@@ -36,6 +36,7 @@ import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Terms;
@@ -223,6 +224,13 @@ public final class BloomFilteringPostingsFormat extends PostingsFormat {
       public TermsEnum intersect(CompiledAutomaton compiled, final BytesRef startTerm)
           throws IOException {
         return delegateTerms.intersect(compiled, startTerm);
+      }
+
+      @Override
+      public TermsEnum intersect(
+          CompiledAutomaton compiled, final BytesRef startTerm, QueryTimeout queryTimeout)
+          throws IOException {
+        return delegateTerms.intersect(compiled, startTerm, queryTimeout);
       }
 
       @Override

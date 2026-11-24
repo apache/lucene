@@ -2299,7 +2299,11 @@ public class TestJoinUtil extends LuceneTestCase {
     final int splitCount = 13;
     try (Directory dir = newDirectory()) {
       try (IndexWriter w =
-          new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE))) {
+          new IndexWriter(
+              dir,
+              newIndexWriterConfig()
+                  .setMaxBufferedDocs(1000)
+                  .setMergePolicy(NoMergePolicy.INSTANCE))) {
         Document from = new Document();
         from.add(new SortedDocValuesField("from", new BytesRef("split")));
         w.addDocument(from);

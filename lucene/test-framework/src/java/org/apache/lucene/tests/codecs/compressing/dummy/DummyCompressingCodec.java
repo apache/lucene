@@ -27,7 +27,7 @@ import org.apache.lucene.tests.codecs.compressing.CompressingCodec;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 
-/** CompressionCodec that does not compress data, useful for testing. */
+/** {@link CompressingCodec} that does not compress data, useful for testing. */
 // In its own package to make sure the oal.codecs.compressing classes are
 // visible enough to let people write their own CompressionMode
 public class DummyCompressingCodec extends CompressingCodec {

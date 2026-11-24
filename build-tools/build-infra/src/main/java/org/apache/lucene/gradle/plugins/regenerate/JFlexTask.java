@@ -114,6 +114,9 @@ public abstract class JFlexTask extends DefaultTask {
       // Seems like a bug in gjf. https://github.com/google/google-java-format/issues/1260
       text = text.replace("/* Break so we don't hit fall-through warning: */", "");
 
+      // Drop the Eclipse-specific marker jflex adds to its fall-through comments.
+      text = text.replace("//$FALL-THROUGH$ fall through", "// fall through");
+
       Files.writeString(target.toPath(), text);
     } catch (IOException e) {
       throw new UncheckedIOException(e);
