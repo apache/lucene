@@ -400,6 +400,9 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#17054: HNSW vector formats now reject maxConn=1, since merging an HNSW graph with
+  maxConn=1 after deletions never terminates. (Jianliang Qi)
+
 * GITHUB#17020: Reduce CachingTokenFilter memory use by not copying stale term bytes in
   CharTermAttributeImpl#clone. (Eugene Rizhkov)
 

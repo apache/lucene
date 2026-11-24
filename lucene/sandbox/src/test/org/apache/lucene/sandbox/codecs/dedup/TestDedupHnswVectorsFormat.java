@@ -62,6 +62,12 @@ public class TestDedupHnswVectorsFormat extends BaseKnnVectorsFormatTestCase {
     return TestUtil.alwaysKnnVectorsFormat(format);
   }
 
+  public void testLimits() {
+    expectThrows(IllegalArgumentException.class, () -> new DedupHnswVectorsFormat(0, 20));
+    expectThrows(IllegalArgumentException.class, () -> new DedupHnswVectorsFormat(1, 20));
+    new DedupHnswVectorsFormat(2, 20);
+  }
+
   @Override
   protected boolean supportsFloatVectorFallback() {
     return false; // stores raw vectors, no quantized fallback

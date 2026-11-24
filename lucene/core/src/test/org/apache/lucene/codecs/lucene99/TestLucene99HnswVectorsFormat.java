@@ -64,6 +64,7 @@ public class TestLucene99HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
   public void testLimits() {
     expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(-1, 20));
     expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(0, 20));
+    expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(1, 20));
     expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(20, 0));
     expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(20, -1));
     expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(512 + 1, 20));

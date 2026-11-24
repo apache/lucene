@@ -106,9 +106,9 @@ public final class HnswBitVectorsFormat extends KnnVectorsFormat {
   public HnswBitVectorsFormat(
       int maxConn, int beamWidth, int numMergeWorkers, ExecutorService mergeExec) {
     super(NAME);
-    if (maxConn <= 0 || maxConn > MAXIMUM_MAX_CONN) {
+    if (maxConn < 2 || maxConn > MAXIMUM_MAX_CONN) {
       throw new IllegalArgumentException(
-          "maxConn must be positive and less than or equal to "
+          "maxConn must be greater than 1 and less than or equal to "
               + MAXIMUM_MAX_CONN
               + "; maxConn="
               + maxConn);
