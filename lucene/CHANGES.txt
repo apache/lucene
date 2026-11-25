@@ -480,6 +480,8 @@ Bug Fixes
 
 * GITHUB#17018: Fix NPE when a span query searches over masked fields that don't have any indexed docs in them (Simon Cooper)
 
+* GITHUB#17053: Avoid flushing pending DocValues updates to disk for merging segments. (Ke Wei)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)

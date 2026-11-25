@@ -5481,10 +5481,14 @@ public class IndexWriter
                 rld.dropChanges();
               }
               rld.release(sr);
-              release(rld);
               if (drop) {
+                // Drop the merged-away segment from the pool before releasing it, so that
+                // release() doesn't write its pending DV updates: they were already carried over to
+                // the merged segment, and the checkpoint after the write could delete update files
+                // that other source segments of this merge still need.
                 readerPool.drop(rld.info);
               }
+              release(rld);
             }
             deleter.decRef(mr.reader.getSegmentInfo().files());
           });
