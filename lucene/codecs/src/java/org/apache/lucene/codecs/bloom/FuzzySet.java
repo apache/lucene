@@ -68,7 +68,8 @@ public class FuzzySet implements Accountable {
   static final int[] usableBitSetSizes;
 
   static {
-    // Sizes run from 2^6-1 to 2^30-1; see MAX_USABLE_BIT_SET_SIZE
+    // Sizes stop at 2^30-1: a size is used as an all-ones mask, so the backing bit set needs
+    // size+1 bits, and FixedBitSet addresses bits with an int.
     usableBitSetSizes = new int[25];
     for (int i = 0; i < usableBitSetSizes.length; i++) {
       usableBitSetSizes[i] = (1 << (i + 6)) - 1;
@@ -76,18 +77,9 @@ public class FuzzySet implements Accountable {
   }
 
   /**
-   * The largest usable bit set size. A size is used as an all-ones mask, so the backing bit set
-   * needs {@code size + 1} bits, and {@link FixedBitSet} addresses bits with an {@code int}. The
-   * largest power of two that an {@code int} can express is therefore 2^30, capping a set at 2^30
-   * bits (128MB) and its size at 2^30-1.
-   */
-  private static final int MAX_USABLE_BIT_SET_SIZE =
-      usableBitSetSizes[usableBitSetSizes.length - 1];
-
-  /**
    * Rounds down required maxNumberOfBits to the nearest number that is made up of all ones as a
-   * binary number. Use this method where controlling memory use is paramount. Requests above {@link
-   * #MAX_USABLE_BIT_SET_SIZE} are clamped.
+   * binary number. Use this method where controlling memory use is paramount. Requests above the
+   * largest usable size are clamped to it.
    */
   private static int getNearestSetSize(long maxNumberOfBits) {
     int result = usableBitSetSizes[0];
@@ -107,14 +99,17 @@ public class FuzzySet implements Accountable {
   /**
    * Returns a set sized to hold maxNumUniqueValues at no worse than targetMaxFpp.
    *
-   * <p>The target is best effort: a value count needing more bits than this class can address gets
-   * the largest available set, 2^30 bits, whose false-positive rate is worse than requested.
+   * <p>The target is best effort. A value count needing more bits than this class can address gets
+   * the largest available set, and its false-positive rate degrades from there as the value count
+   * grows, far enough that most lookups can end up false positives. Such a set still occupies its
+   * full size while rejecting correspondingly fewer values, so callers sizing well beyond the
+   * addressable range may prefer to forgo a filter entirely.
    */
   public static FuzzySet createOptimalSet(int maxNumUniqueValues, float targetMaxFpp) {
     double optimalNumBits =
         Math.ceil(
             (maxNumUniqueValues * Math.log(targetMaxFpp)) / Math.log(1 / Math.pow(2, Math.log(2))));
-    int setSize = getNearestSetSize((long) Math.min(2 * optimalNumBits, MAX_USABLE_BIT_SET_SIZE));
+    int setSize = getNearestSetSize((long) (2 * optimalNumBits));
     // A set with no hash functions can never answer NO, so always keep at least one.
     int optimalK =
         Math.max(1, (int) Math.round(((double) setSize / maxNumUniqueValues) * Math.log(2)));

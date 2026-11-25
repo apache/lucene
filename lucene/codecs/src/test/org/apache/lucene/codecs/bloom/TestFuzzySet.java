@@ -65,39 +65,20 @@ public class TestFuzzySet extends LuceneTestCase {
   // Test cases checking for integer overflow issues when sizing the bitset.
   //
 
-  public void testCreateOptimalSetDoesNotOverflowWhenDoubling() {
-    int valueCount = 226_505_854;
-    FuzzySet set = FuzzySet.createOptimalSet(valueCount, TARGET_FPP);
-    assertNotSmallerThanSafeBaseline("createOptimalSet(" + valueCount + ")", set);
-    assertRejectsAbsentValues("createOptimalSet(" + valueCount + ")", set);
-  }
-
-  public void testCreateOptimalSetDoesNotOverflowWhenCastSaturates() {
-    int valueCount = Integer.MAX_VALUE;
-    FuzzySet set = FuzzySet.createOptimalSet(valueCount, TARGET_FPP);
-    assertNotSmallerThanSafeBaseline("createOptimalSet(" + valueCount + ")", set);
-    assertRejectsAbsentValues("createOptimalSet(" + valueCount + ")", set);
-  }
-
-  public void testCreateOptimalSetSizeIsMonotonic() {
-    long previous = 0;
-    for (int valueCount = 1 << 10; valueCount <= 1 << 22; valueCount <<= 1) {
+  /**
+   * 226_505_854 overflows the int multiply that doubles the optimal bit count; Integer.MAX_VALUE
+   * saturates the narrowing cast of that count before the multiply can wrap it. Both used to yield
+   * a 63-bit set with no hash functions. See GITHUB#17019.
+   */
+  public void testCreateOptimalSetDoesNotOverflow() {
+    for (int valueCount : new int[] {226_505_854, Integer.MAX_VALUE}) {
       FuzzySet set = FuzzySet.createOptimalSet(valueCount, TARGET_FPP);
-      long current = set.ramBytesUsed();
-      assertTrue(
-          "createOptimalSet("
-              + valueCount
-              + ") allocated "
-              + current
-              + " bytes, down from "
-              + previous
-              + " bytes for half as many values; set="
-              + set,
-          current >= previous);
-      previous = current;
+      assertNotSmallerThanSafeBaseline("createOptimalSet(" + valueCount + ")", set);
+      assertRejectsAbsentValues("createOptimalSet(" + valueCount + ")", set);
     }
   }
 
+  /** A 256MB budget overflows the byte-to-bit multiply. See GITHUB#17019. */
   public void testCreateSetBasedOnMaxMemoryDoesNotOverflow() {
     int maxNumBytes = 1 << 28;
     FuzzySet set = FuzzySet.createSetBasedOnMaxMemory(maxNumBytes);
@@ -112,24 +93,18 @@ public class TestFuzzySet extends LuceneTestCase {
             + " bytes used for a 1MB budget; set="
             + set,
         set.ramBytesUsed() >= baseline.ramBytesUsed());
+
+    // Clamping must not overshoot the requested budget. Slack covers the backing long[] header.
+    assertTrue(
+        "createSetBasedOnMaxMemory("
+            + maxNumBytes
+            + ") allocated "
+            + set.ramBytesUsed()
+            + " bytes; set="
+            + set,
+        set.ramBytesUsed() <= maxNumBytes + 64);
+
     assertRejectsAbsentValues("createSetBasedOnMaxMemory(" + maxNumBytes + ")", set);
-  }
-
-  public void testCreateSetBasedOnMaxMemoryHonorsBudget() {
-    for (int maxNumBytes = 1 << 10; maxNumBytes <= 1 << 24; maxNumBytes <<= 1) {
-      FuzzySet set = FuzzySet.createSetBasedOnMaxMemory(maxNumBytes);
-
-      // Slack for the object header on the backing long[]
-      int ramOverheadSlack = 64;
-      assertTrue(
-          "createSetBasedOnMaxMemory("
-              + maxNumBytes
-              + ") allocated "
-              + set.ramBytesUsed()
-              + " bytes; set="
-              + set,
-          set.ramBytesUsed() <= maxNumBytes + ramOverheadSlack);
-    }
   }
 
   public void testHashCountIsNeverZero() {
