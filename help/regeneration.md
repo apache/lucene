@@ -143,15 +143,17 @@ Scoping the call to a particular task will also work:
 gradlew -p lucene/analysis/common regenerateUnicodeProps --rerun-tasks
 ```
 
-Finally, if you do feel like force-regenerating everything, remember to exclude this monster (it takes quite a long
-time and requires significant heap memory)...
+`--rerun-tasks` forces gradle to rerun *every* task that is scheduled, including compilation and any
+other tasks the regeneration depends on. To force only the regeneration tasks to run and leave everything
+else to gradle's up-to-date checks, use the `lucene.regenerate.force` build option instead:
 
 ```bash
-gradlew regenerate -x regenerateUAX29URLEmailTokenizer --rerun-tasks
+gradlew -p lucene/analysis/common regenerateUnicodeProps -Plucene.regenerate.force=true
 ```
 
-and on Windows, exclude snowball regeneration (requires bash):
+Finally, if you do feel like force-regenerating everything on Windows, exclude snowball regeneration
+(requires bash):
 
 ```bash
-gradlew regenerate -x regenerateUAX29URLEmailTokenizer -x snowball --rerun-tasks
+gradlew regenerate -x snowball --rerun-tasks
 ```
