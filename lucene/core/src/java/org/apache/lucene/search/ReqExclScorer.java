@@ -101,7 +101,7 @@ class ReqExclScorer extends Scorer {
    * wrong, especially given that the cost of this method usually depends on how far you want to
    * advance, but it's probably better than nothing.
    */
-  private static final int ADVANCE_COST = 10;
+  static final int ADVANCE_COST = 10;
 
   private static float matchCost(
       DocIdSetIterator reqApproximation,

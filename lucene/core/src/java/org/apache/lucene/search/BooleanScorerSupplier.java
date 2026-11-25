@@ -262,7 +262,7 @@ final class BooleanScorerSupplier extends ScorerSupplier {
               ? prohibited.get(0)
               : new DisjunctionSumScorer(
                   prohibited, ScoreMode.COMPLETE_NO_SCORES, positiveScorerCost);
-      return new ReqExclBulkScorer(positiveScorer, prohibitedScorer);
+      return new ReqExclBulkScorer(positiveScorer, prohibitedScorer, maxDoc);
     }
   }
 
