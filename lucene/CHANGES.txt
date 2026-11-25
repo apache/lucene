@@ -515,7 +515,7 @@ Bug Fixes
 
 * GITHUB#17067: Fix PrefetchableUpdatableRandomVectorScorer to delegate bulkScore. (Shubham Chaudhary)
 
-* GITHUB#xxxxx: Lucene104 off-heap scalar-quantized vector values no longer overwrite the cached
+* GITHUB#17076: Lucene104 off-heap scalar-quantized vector values no longer overwrite the cached
   corrective terms of the last vector read when reading another ordinal's corrective terms.
   (Lantao Jin)
 
