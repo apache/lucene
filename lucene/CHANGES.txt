@@ -517,6 +517,8 @@ Bug Fixes
 
 * GITHUB#17019: Fix int overflow bugs when sizing FuzzySet. (Greg Miller)
 
+* GITHUB#17053: Avoid flushing pending DocValues updates to disk for merging segments. (Ke Wei)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
