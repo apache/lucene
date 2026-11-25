@@ -5482,9 +5482,10 @@ public class IndexWriter
               }
               rld.release(sr);
               if (drop) {
-                // Drop the merging segment from readerMap should be ahead of release(rld) to avoid
-                // flushing its pending DV updates to disk. Such a flush could checkpoint and delete
-                // update files still needed by other merge sources.
+                // Drop the merged-away segment from the pool before releasing it, so that
+                // release() doesn't write its pending DV updates: they were already carried over to
+                // the merged segment, and the checkpoint after the write could delete update files
+                // that other source segments of this merge still need.
                 readerPool.drop(rld.info);
               }
               release(rld);

@@ -92,6 +92,8 @@ public class TestMergeCarryOverFromDisk extends LuceneTestCase {
           dir.resumeMerge.countDown();
           merger.join(60000);
         }
+        assertFalse(merger.isAlive());
+        assertNull("forceMerge failed: " + dir.failure.get(), dir.failure.get());
         writer.commit();
         try (DirectoryReader reader = DirectoryReader.open(dir)) {
           assertEquals(3, reader.numDocs());

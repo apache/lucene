@@ -33,8 +33,6 @@ Bug Fixes
 ---------------------
 * GITHUB#17030: Fix precision loss when reducing join scores. (Ke Wei)
 
-* GITHUB#17030: Avoid flushing pending DocValues updates to disk for merging segments. (Ke Wei)
-
 Other
 ---------------------
 (No changes)
@@ -493,6 +491,8 @@ Bug Fixes
 
 * GITHUB#16892: Escape '=', '<', '>' and '@' in the flexible query parser's QueryParserUtil.escape.
   (Soma Aishwarya)
+
+* GITHUB#17053: Avoid flushing pending DocValues updates to disk for merging segments. (Ke Wei)
 
 Changes in Runtime Behavior
 ---------------------
