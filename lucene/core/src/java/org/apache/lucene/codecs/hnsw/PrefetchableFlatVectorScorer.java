@@ -238,7 +238,7 @@ public class PrefetchableFlatVectorScorer implements FlatVectorsScorer {
     @Override
     public float bulkScore(int[] nodes, float[] scores, int numNodes) throws IOException {
       values().prefetch(nodes, numNodes);
-      return super.bulkScore(nodes, scores, numNodes);
+      return delegate.bulkScore(nodes, scores, numNodes);
     }
 
     @Override

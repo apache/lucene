@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import org.apache.lucene.backward_codecs.lucene90.blocktree.FieldReader;
 import org.apache.lucene.backward_codecs.lucene90.blocktree.Stats;
 import org.apache.lucene.backward_codecs.lucene99.Lucene99SkipWriter;
@@ -31,10 +32,14 @@ import org.apache.lucene.codecs.CompetitiveImpactAccumulator;
 import org.apache.lucene.codecs.Impact;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.ExitableDirectoryReader.ExitingReaderException;
 import org.apache.lucene.index.FreqAndNormBuffer;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.QueryTimeout;
+import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -43,6 +48,8 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.BasePostingsFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.automaton.CompiledAutomaton;
+import org.apache.lucene.util.automaton.RegExp;
 
 public class TestLucene90PostingsFormat extends BasePostingsFormatTestCase {
   private final Codec codec = TestUtil.alwaysPostingsFormat(new Lucene90RWPostingsFormat());
@@ -75,6 +82,33 @@ public class TestLucene90PostingsFormat extends BasePostingsFormatTestCase {
     r.close();
     w.close();
     d.close();
+  }
+
+  /** A match-nothing leading wildcard scans every term in one next() call; it must be stoppable. */
+  public void testIntersectChecksTimeoutDuringScan() throws IOException {
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig().setCodec(getCodec()))) {
+        for (int i = 0; i < 20_000; i++) {
+          Document doc = new Document();
+          doc.add(new StringField("f", String.format(Locale.ROOT, "%010d", i), Field.Store.NO));
+          w.addDocument(doc);
+        }
+        w.forceMerge(1);
+      }
+      try (DirectoryReader r = DirectoryReader.open(dir)) {
+        int[] polls = new int[1];
+        QueryTimeout exitOnSecondPoll = () -> ++polls[0] >= 2;
+        TermsEnum te =
+            getOnlyLeafReader(r)
+                .terms("f")
+                .intersect(
+                    new CompiledAutomaton(new RegExp(".*q999").toAutomaton()),
+                    null,
+                    exitOnSecondPoll);
+        expectThrows(ExitingReaderException.class, te::next);
+        assertEquals(2, polls[0]);
+      }
+    }
   }
 
   public void testImpactSerialization() throws IOException {

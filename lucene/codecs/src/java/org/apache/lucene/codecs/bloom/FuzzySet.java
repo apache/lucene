@@ -68,7 +68,9 @@ public class FuzzySet implements Accountable {
   static final int[] usableBitSetSizes;
 
   static {
-    usableBitSetSizes = new int[26];
+    // Sizes stop at 2^30-1: a size is used as an all-ones mask, so the backing bit set needs
+    // size+1 bits, and FixedBitSet addresses bits with an int.
+    usableBitSetSizes = new int[25];
     for (int i = 0; i < usableBitSetSizes.length; i++) {
       usableBitSetSizes[i] = (1 << (i + 6)) - 1;
     }
@@ -76,9 +78,10 @@ public class FuzzySet implements Accountable {
 
   /**
    * Rounds down required maxNumberOfBits to the nearest number that is made up of all ones as a
-   * binary number. Use this method where controlling memory use is paramount.
+   * binary number. Use this method where controlling memory use is paramount. Requests above the
+   * largest usable size are clamped to it.
    */
-  private static int getNearestSetSize(int maxNumberOfBits) {
+  private static int getNearestSetSize(long maxNumberOfBits) {
     int result = usableBitSetSizes[0];
     for (int usableBitSetSize : usableBitSetSizes) {
       if (usableBitSetSize <= maxNumberOfBits) {
@@ -89,18 +92,27 @@ public class FuzzySet implements Accountable {
   }
 
   public static FuzzySet createSetBasedOnMaxMemory(int maxNumBytes) {
-    int setSize = getNearestSetSize(maxNumBytes * Byte.SIZE);
+    int setSize = getNearestSetSize((long) maxNumBytes * Byte.SIZE);
     return new FuzzySet(new FixedBitSet(setSize + 1), setSize, 1);
   }
 
+  /**
+   * Returns a set sized to hold maxNumUniqueValues at no worse than targetMaxFpp.
+   *
+   * <p>The target is best effort. A value count needing more bits than this class can address gets
+   * the largest available set, and its false-positive rate degrades from there as the value count
+   * grows, far enough that most lookups can end up false positives. Such a set still occupies its
+   * full size while rejecting correspondingly fewer values, so callers sizing well beyond the
+   * addressable range may prefer to forgo a filter entirely.
+   */
   public static FuzzySet createOptimalSet(int maxNumUniqueValues, float targetMaxFpp) {
-    int setSize =
-        (int)
-            Math.ceil(
-                (maxNumUniqueValues * Math.log(targetMaxFpp))
-                    / Math.log(1 / Math.pow(2, Math.log(2))));
-    setSize = getNearestSetSize(2 * setSize);
-    int optimalK = (int) Math.round(((double) setSize / maxNumUniqueValues) * Math.log(2));
+    double optimalNumBits =
+        Math.ceil(
+            (maxNumUniqueValues * Math.log(targetMaxFpp)) / Math.log(1 / Math.pow(2, Math.log(2))));
+    int setSize = getNearestSetSize((long) (2 * optimalNumBits));
+    // A set with no hash functions can never answer NO, so always keep at least one.
+    int optimalK =
+        Math.max(1, (int) Math.round(((double) setSize / maxNumUniqueValues) * Math.log(2)));
     return new FuzzySet(new FixedBitSet(setSize + 1), setSize, optimalK);
   }
 

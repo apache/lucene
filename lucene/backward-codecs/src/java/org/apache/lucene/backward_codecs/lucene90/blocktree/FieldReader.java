@@ -21,6 +21,7 @@ import static org.apache.lucene.backward_codecs.lucene90.blocktree.Lucene90Block
 import java.io.IOException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.ByteArrayDataInput;
@@ -210,6 +211,13 @@ public final class FieldReader extends Terms {
 
   @Override
   public TermsEnum intersect(CompiledAutomaton compiled, BytesRef startTerm) throws IOException {
+    return intersect(compiled, startTerm, null);
+  }
+
+  @Override
+  public TermsEnum intersect(
+      CompiledAutomaton compiled, BytesRef startTerm, QueryTimeout queryTimeout)
+      throws IOException {
     // if (DEBUG) System.out.println("  FieldReader.intersect startTerm=" +
     // ToStringUtils.bytesRefToString(startTerm));
     // System.out.println("intersect: " + compiled.type + " a=" + compiled.automaton);
@@ -223,7 +231,8 @@ public final class FieldReader extends Terms {
         compiled.getTransitionAccessor(),
         compiled.getByteRunnable(),
         compiled.commonSuffixRef,
-        startTerm);
+        startTerm,
+        queryTimeout);
   }
 
   @Override
