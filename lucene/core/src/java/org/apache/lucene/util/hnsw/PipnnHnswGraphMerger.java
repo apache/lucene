@@ -17,35 +17,40 @@
 package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
-import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.KnnVectorValues;
-import org.apache.lucene.index.MergeState;
 import org.apache.lucene.search.TaskExecutor;
-import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.BitSet;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IORunnable;
-import org.apache.lucene.util.InfoStream;
 
 /**
- * An {@link HnswGraphMerger} that ignores the graphs of the segments being merged and rebuilds the
- * merged graph from scratch with {@link PipnnGraphBuilder}.
+ * An {@link HnswGraphMerger} that rebuilds the merged graph from scratch with {@link
+ * PipnnGraphBuilder} unless one of the segments being merged brings a graph that already covers
+ * most of the merged vectors, in which case it reuses that graph the way {@link
+ * ConcurrentHnswMerger} does and inserts the remaining vectors into it.
  *
  * <p>Rebuilding is what the incremental mergers also do when no source graph can be reused, e.g.
  * when every source segment has deletes, and PiPNN makes that case cheap: the build cost is
- * dominated by dense, cache friendly scoring inside small leaves instead of graph searches.
+ * dominated by dense, cache friendly scoring inside small leaves instead of graph searches. When a
+ * large graph can be reused, inserting the few remaining vectors is cheaper than any rebuild.
  *
  * @lucene.experimental
  */
-public class PipnnHnswGraphMerger implements HnswGraphMerger {
+public class PipnnHnswGraphMerger extends ConcurrentHnswMerger {
 
-  private final FieldInfo fieldInfo;
-  private final RandomVectorScorerSupplier scorerSupplier;
-  private final int M;
-  private final int beamWidth;
+  /**
+   * The merged graph is initialized from an existing graph, instead of rebuilt with PiPNN, when the
+   * largest reusable graph holds at least this share of the merged vectors. The incremental merge
+   * then inserts the remaining share by graph search, at roughly that share of a full HNSW build; a
+   * PiPNN rebuild costs about half a full HNSW build (1M x 1024d, 16 workers), so the two cross
+   * near one half.
+   */
+  static final double REUSE_FRACTION = 0.5;
+
   private final PipnnParams params;
   private final TaskExecutor taskExecutor;
   private final int numWorkers;
-  private final IORunnable abortCheck;
 
   /**
    * @param fieldInfo FieldInfo for the field being merged
@@ -66,42 +71,44 @@ public class PipnnHnswGraphMerger implements HnswGraphMerger {
       TaskExecutor taskExecutor,
       int numWorkers,
       IORunnable abortCheck) {
-    this.fieldInfo = fieldInfo;
-    this.scorerSupplier = scorerSupplier;
-    this.M = M;
-    this.beamWidth = beamWidth;
+    super(fieldInfo, scorerSupplier, M, beamWidth, taskExecutor, numWorkers, abortCheck);
     this.params = params;
     this.taskExecutor = taskExecutor;
     this.numWorkers = numWorkers;
-    this.abortCheck = abortCheck;
-  }
-
-  /** The source graphs are not reused, so readers are accepted but ignored. */
-  @Override
-  public PipnnHnswGraphMerger addReader(
-      KnnVectorsReader reader, MergeState.DocMap docMap, Bits liveDocs) {
-    return this;
   }
 
   @Override
-  public OnHeapHnswGraph merge(
-      KnnVectorValues mergedVectorValues, InfoStream infoStream, int maxOrd) throws IOException {
-    PipnnGraphBuilder builder =
-        PipnnGraphBuilder.create(
-            scorerSupplier,
-            mergedVectorValues,
-            fieldInfo.getVectorSimilarityFunction(),
-            M,
-            beamWidth,
-            HnswGraphBuilder.randSeed,
-            maxOrd,
-            params,
-            taskExecutor,
-            numWorkers);
-    builder.setInfoStream(infoStream);
-    if (abortCheck != null) {
-      builder.setAbortCheck(abortCheck);
+  protected HnswBuilder createBuilder(KnnVectorValues mergedVectorValues, int maxOrd)
+      throws IOException {
+    if (largestGraphReader != null
+        && largestGraphReader.liveVectorCount() >= REUSE_FRACTION * maxOrd) {
+      if (taskExecutor != null) {
+        return super.createBuilder(mergedVectorValues, maxOrd);
+      }
+      // single threaded reuse, as IncrementalHnswGraphMerger does it
+      HnswGraph[] graphs = orderGraphReaders();
+      BitSet initializedNodes = new FixedBitSet(maxOrd);
+      int[][] ordMaps = getNewOrdMapping(mergedVectorValues, initializedNodes);
+      return MergingHnswGraphBuilder.fromGraphs(
+          scorerSupplier,
+          beamWidth,
+          HnswGraphBuilder.randSeed,
+          graphs,
+          ordMaps,
+          maxOrd,
+          initializedNodes,
+          abortCheck);
     }
-    return builder.build(maxOrd);
+    return PipnnGraphBuilder.create(
+        scorerSupplier,
+        mergedVectorValues,
+        fieldInfo.getVectorSimilarityFunction(),
+        M,
+        beamWidth,
+        HnswGraphBuilder.randSeed,
+        maxOrd,
+        params,
+        taskExecutor,
+        numWorkers);
   }
 }

@@ -36,6 +36,8 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.LogDocMergePolicy;
+import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.IndexSearcher;
@@ -72,6 +74,99 @@ public class TestPipnnHnswGraphMerger extends LuceneTestCase {
     }
   }
 
+  /**
+   * With one segment holding most of the vectors and no deletes, the merger initializes from that
+   * segment's graph instead of rebuilding with PiPNN.
+   */
+  public void testReusesDominantGraph() throws IOException {
+    int numDocs = 2000;
+    // 90% of the vectors in the first segment, well above REUSE_FRACTION
+    int[] segmentSizes = {1800, 200};
+    assertEquals(0, countPipnnBuilds(numDocs, segmentSizes, null));
+    ExecutorService exec = Executors.newFixedThreadPool(2, new NamedThreadFactory("pipnn-merge"));
+    try {
+      assertEquals(0, countPipnnBuilds(numDocs, segmentSizes, exec));
+    } finally {
+      exec.shutdownNow();
+    }
+  }
+
+  /** With no segment above REUSE_FRACTION the merge rebuilds with PiPNN, deletes or not. */
+  public void testRebuildsWithoutDominantGraph() throws IOException {
+    int numDocs = 3000;
+    int[] segmentSizes = {1000, 1000, 1000};
+    assertEquals(1, countPipnnBuilds(numDocs, segmentSizes, null));
+  }
+
+  private int countPipnnBuilds(int numDocs, int[] segmentSizes, ExecutorService mergeExec)
+      throws IOException {
+    int dim = 8;
+    float[][] vectors = HnswGraphTestCase.createRandomFloatVectors(numDocs, dim, random());
+    KnnVectorsFormat format =
+        new Lucene99HnswVectorsFormat(M, BEAM_WIDTH, mergeExec == null ? 1 : 2, mergeExec, PARAMS);
+    AtomicInteger pipnnBuilds = new AtomicInteger();
+    try (Directory dir = newDirectory()) {
+      // explicit flushes only, so the segments are exactly segmentSizes
+      IndexWriterConfig config =
+          newIndexWriterConfig()
+              .setCodec(TestUtil.alwaysKnnVectorsFormat(format))
+              .setInfoStream(pipnnBuildCounter(pipnnBuilds))
+              .setMergePolicy(NoMergePolicy.INSTANCE)
+              .setMaxBufferedDocs(IndexWriterConfig.DISABLE_AUTO_FLUSH)
+              .setRAMBufferSizeMB(1024);
+      try (IndexWriter writer = new IndexWriter(dir, config)) {
+        int next = 0;
+        for (int size : segmentSizes) {
+          for (int i = 0; i < size; i++, next++) {
+            Document doc = new Document();
+            doc.add(
+                new KnnFloatVectorField(
+                    VECTOR_FIELD, vectors[next], VectorSimilarityFunction.DOT_PRODUCT));
+            writer.addDocument(doc);
+          }
+          writer.flush();
+        }
+        assertEquals(numDocs, next);
+        writer.commit();
+      }
+      // NoMergePolicy kept the segments apart while indexing; it also refuses forced merges
+      LogDocMergePolicy mergePolicy = new LogDocMergePolicy();
+      mergePolicy.setMergeFactor(100); // one merge of all segments, no cascade
+      config =
+          newIndexWriterConfig()
+              .setCodec(TestUtil.alwaysKnnVectorsFormat(format))
+              .setInfoStream(pipnnBuildCounter(pipnnBuilds))
+              .setMergePolicy(mergePolicy);
+      try (IndexWriter writer = new IndexWriter(dir, config)) {
+        writer.forceMerge(1);
+      }
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        assertEquals(1, reader.leaves().size());
+        assertTrue(HnswUtil.graphIsRooted(reader, VECTOR_FIELD));
+      }
+    }
+    return pipnnBuilds.get();
+  }
+
+  private static InfoStream pipnnBuildCounter(AtomicInteger pipnnBuilds) {
+    return new InfoStream() {
+      @Override
+      public void message(String component, String message) {
+        if (message.startsWith("PiPNN build completed")) {
+          pipnnBuilds.incrementAndGet();
+        }
+      }
+
+      @Override
+      public boolean isEnabled(String component) {
+        return HnswGraphBuilder.HNSW_COMPONENT.equals(component);
+      }
+
+      @Override
+      public void close() {}
+    };
+  }
+
   public void testFormatToStringMentionsPipnn() {
     Lucene99HnswVectorsFormat format =
         new Lucene99HnswVectorsFormat(M, BEAM_WIDTH, 1, null, PARAMS);
@@ -84,7 +179,8 @@ public class TestPipnnHnswGraphMerger extends LuceneTestCase {
     // a graph at all, see Lucene99HnswVectorsFormat#HNSW_GRAPH_THRESHOLD
     int numDocs = TestUtil.nextInt(random(), 1000, 2500);
     int dim = TestUtil.nextInt(random(), 4, 12);
-    int numSegments = TestUtil.nextInt(random(), 2, 5);
+    // at least 3 segments so that none holds REUSE_FRACTION of the vectors and the merge rebuilds
+    int numSegments = TestUtil.nextInt(random(), 3, 5);
     VectorSimilarityFunction similarity =
         RandomizedTest.randomFrom(VectorSimilarityFunction.values());
     float[][] vectors = HnswGraphTestCase.createRandomFloatVectors(numDocs, dim, random());
@@ -96,23 +192,7 @@ public class TestPipnnHnswGraphMerger extends LuceneTestCase {
         new Lucene99HnswVectorsFormat(M, BEAM_WIDTH, numMergeWorkers, mergeExec, PARAMS);
     Codec codec = TestUtil.alwaysKnnVectorsFormat(format);
     AtomicInteger pipnnBuilds = new AtomicInteger();
-    InfoStream infoStream =
-        new InfoStream() {
-          @Override
-          public void message(String component, String message) {
-            if (message.startsWith("PiPNN build completed")) {
-              pipnnBuilds.incrementAndGet();
-            }
-          }
-
-          @Override
-          public boolean isEnabled(String component) {
-            return HnswGraphBuilder.HNSW_COMPONENT.equals(component);
-          }
-
-          @Override
-          public void close() {}
-        };
+    InfoStream infoStream = pipnnBuildCounter(pipnnBuilds);
 
     try (Directory dir = newDirectory()) {
       IndexWriterConfig config = newIndexWriterConfig().setCodec(codec).setInfoStream(infoStream);
@@ -127,7 +207,7 @@ public class TestPipnnHnswGraphMerger extends LuceneTestCase {
             writer.flush();
           }
         }
-        // some deletes, so that the incremental merger would also have to rebuild
+        // some deletes, so that the merged ordinals differ from the segment ordinals
         for (int i = 0; i < numDocs; i += 50) {
           writer.deleteDocuments(new Term(ID_FIELD, Integer.toString(i)));
         }
