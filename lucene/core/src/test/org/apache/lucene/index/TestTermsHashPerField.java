@@ -59,27 +59,28 @@ public class TestTermsHashPerField extends LuceneTestCase {
           void newTerm(int termID, int docID) {
             newCalled.incrementAndGet();
             FreqProxTermsWriterPerField.FreqProxPostingsArray postings = freqProxPostingsArray;
-            postings.lastDocIDs[termID] = docID;
-            postings.lastDocCodes[termID] = docID << 1;
-            postings.termFreqs[termID] = 1;
+            postings.setLastDocID(termID, docID);
+            postings.setLastDocCode(termID, docID << 1);
+            postings.setTermFreq(termID, 1);
           }
 
           @Override
           void addTerm(int termID, int docID) {
             addCalled.incrementAndGet();
             FreqProxTermsWriterPerField.FreqProxPostingsArray postings = freqProxPostingsArray;
-            if (docID != postings.lastDocIDs[termID]) {
-              if (1 == postings.termFreqs[termID]) {
-                writeVInt(0, postings.lastDocCodes[termID] | 1);
+            int lastDocID = postings.lastDocID(termID);
+            if (docID != lastDocID) {
+              if (1 == postings.termFreq(termID)) {
+                writeVInt(0, postings.lastDocCode(termID) | 1);
               } else {
-                writeVInt(0, postings.lastDocCodes[termID]);
-                writeVInt(0, postings.termFreqs[termID]);
+                writeVInt(0, postings.lastDocCode(termID));
+                writeVInt(0, postings.termFreq(termID));
               }
-              postings.termFreqs[termID] = 1;
-              postings.lastDocCodes[termID] = (docID - postings.lastDocIDs[termID]) << 1;
-              postings.lastDocIDs[termID] = docID;
+              postings.setTermFreq(termID, 1);
+              postings.setLastDocCode(termID, (docID - lastDocID) << 1);
+              postings.setLastDocID(termID, docID);
             } else {
-              postings.termFreqs[termID] = Math.addExact(postings.termFreqs[termID], 1);
+              postings.setTermFreq(termID, Math.addExact(postings.termFreq(termID), 1));
             }
           }
 
@@ -109,8 +110,8 @@ public class TestTermsHashPerField extends LuceneTestCase {
     int freq;
     boolean eof = reader.eof();
     if (eof) {
-      docId = postingsArray.lastDocIDs[termId];
-      freq = postingsArray.termFreqs[termId];
+      docId = postingsArray.lastDocID(termId);
+      freq = postingsArray.termFreq(termId);
     } else {
       int code = reader.readVInt();
       docId += code >>> 1;

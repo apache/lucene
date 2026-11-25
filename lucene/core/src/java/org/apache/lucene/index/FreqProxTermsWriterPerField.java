@@ -97,16 +97,17 @@ final class FreqProxTermsWriterPerField extends TermsHashPerField {
     }
 
     assert postingsArray == freqProxPostingsArray;
-    freqProxPostingsArray.lastPositions[termID] = fieldState.position;
+    freqProxPostingsArray.setLastPosition(termID, fieldState.position);
   }
 
   void writeOffsets(int termID, int offsetAccum) {
     final int startOffset = offsetAccum + offsetAttribute.startOffset();
     final int endOffset = offsetAccum + offsetAttribute.endOffset();
-    assert startOffset - freqProxPostingsArray.lastStartOffsets[termID] >= 0;
-    writeVInt(1, startOffset - freqProxPostingsArray.lastStartOffsets[termID]);
+    final int lastStartOffset = freqProxPostingsArray.lastStartOffset(termID);
+    assert startOffset - lastStartOffset >= 0;
+    writeVInt(1, startOffset - lastStartOffset);
     writeVInt(1, endOffset - startOffset);
-    freqProxPostingsArray.lastStartOffsets[termID] = startOffset;
+    freqProxPostingsArray.setLastStartOffset(termID, startOffset);
   }
 
   @Override
@@ -115,14 +116,15 @@ final class FreqProxTermsWriterPerField extends TermsHashPerField {
     // flush
     final FreqProxPostingsArray postings = freqProxPostingsArray;
 
-    postings.lastDocIDs[termID] = docID;
+    postings.setLastDocID(termID, docID);
     if (!hasFreq) {
-      assert postings.termFreqs == null;
-      postings.lastDocCodes[termID] = docID;
+      assert postings.hasFreqs() == false;
+      postings.setLastDocCode(termID, docID);
       fieldState.maxTermFrequency = Math.max(1, fieldState.maxTermFrequency);
     } else {
-      postings.lastDocCodes[termID] = docID << 1;
-      postings.termFreqs[termID] = getTermFreq();
+      postings.setLastDocCode(termID, docID << 1);
+      final int termFreq = getTermFreq();
+      postings.setTermFreq(termID, termFreq);
       if (hasProx) {
         writeProx(termID, fieldState.position);
         if (hasOffsets) {
@@ -131,8 +133,7 @@ final class FreqProxTermsWriterPerField extends TermsHashPerField {
       } else {
         assert !hasOffsets;
       }
-      fieldState.maxTermFrequency =
-          Math.max(postings.termFreqs[termID], fieldState.maxTermFrequency);
+      fieldState.maxTermFrequency = Math.max(termFreq, fieldState.maxTermFrequency);
     }
     fieldState.uniqueTermCount++;
   }
@@ -140,49 +141,52 @@ final class FreqProxTermsWriterPerField extends TermsHashPerField {
   @Override
   void addTerm(final int termID, final int docID) {
     final FreqProxPostingsArray postings = freqProxPostingsArray;
-    assert !hasFreq || postings.termFreqs[termID] > 0;
+    final int lastDocID = postings.lastDocID(termID);
+    assert !hasFreq || postings.termFreq(termID) > 0;
 
     if (!hasFreq) {
-      assert postings.termFreqs == null;
+      assert postings.hasFreqs() == false;
       if (termFreqAtt != null && termFreqAtt.getTermFrequency() != 1) {
         throw new IllegalStateException(
             "field \""
                 + getFieldName()
                 + "\": must index term freq while using custom TermFrequencyAttribute");
       }
-      if (docID != postings.lastDocIDs[termID]) {
+      if (docID != lastDocID) {
         // New document; now encode docCode for previous doc:
-        assert docID > postings.lastDocIDs[termID];
-        writeVInt(0, postings.lastDocCodes[termID]);
-        postings.lastDocCodes[termID] = docID - postings.lastDocIDs[termID];
-        postings.lastDocIDs[termID] = docID;
+        assert docID > lastDocID;
+        writeVInt(0, postings.lastDocCode(termID));
+        postings.setLastDocCode(termID, docID - lastDocID);
+        postings.setLastDocID(termID, docID);
         fieldState.uniqueTermCount++;
       }
-    } else if (docID != postings.lastDocIDs[termID]) {
-      assert docID > postings.lastDocIDs[termID]
-          : "id: " + docID + " postings ID: " + postings.lastDocIDs[termID] + " termID: " + termID;
+    } else if (docID != lastDocID) {
+      assert docID > lastDocID
+          : "id: " + docID + " postings ID: " + lastDocID + " termID: " + termID;
       // Term not yet seen in the current doc but previously
       // seen in other doc(s) since the last flush
 
       // Now that we know doc freq for previous doc,
       // write it & lastDocCode
-      if (1 == postings.termFreqs[termID]) {
-        writeVInt(0, postings.lastDocCodes[termID] | 1);
+      final int lastDocCode = postings.lastDocCode(termID);
+      final int lastTermFreq = postings.termFreq(termID);
+      if (1 == lastTermFreq) {
+        writeVInt(0, lastDocCode | 1);
       } else {
-        writeVInt(0, postings.lastDocCodes[termID]);
-        writeVInt(0, postings.termFreqs[termID]);
+        writeVInt(0, lastDocCode);
+        writeVInt(0, lastTermFreq);
       }
 
       // Init freq for the current document
-      postings.termFreqs[termID] = getTermFreq();
-      fieldState.maxTermFrequency =
-          Math.max(postings.termFreqs[termID], fieldState.maxTermFrequency);
-      postings.lastDocCodes[termID] = (docID - postings.lastDocIDs[termID]) << 1;
-      postings.lastDocIDs[termID] = docID;
+      final int termFreq = getTermFreq();
+      postings.setTermFreq(termID, termFreq);
+      fieldState.maxTermFrequency = Math.max(termFreq, fieldState.maxTermFrequency);
+      postings.setLastDocCode(termID, (docID - lastDocID) << 1);
+      postings.setLastDocID(termID, docID);
       if (hasProx) {
         writeProx(termID, fieldState.position);
         if (hasOffsets) {
-          postings.lastStartOffsets[termID] = 0;
+          postings.setLastStartOffset(termID, 0);
           writeOffsets(termID, fieldState.offset);
         }
       } else {
@@ -193,11 +197,11 @@ final class FreqProxTermsWriterPerField extends TermsHashPerField {
       if (isTermDoc) {
         throw new DuplicateTermException("field '" + getFieldName() + "' has duplicate term");
       }
-      postings.termFreqs[termID] = Math.addExact(postings.termFreqs[termID], getTermFreq());
-      fieldState.maxTermFrequency =
-          Math.max(fieldState.maxTermFrequency, postings.termFreqs[termID]);
+      final int termFreq = Math.addExact(postings.termFreq(termID), getTermFreq());
+      postings.setTermFreq(termID, termFreq);
+      fieldState.maxTermFrequency = Math.max(fieldState.maxTermFrequency, termFreq);
       if (hasProx) {
-        writeProx(termID, fieldState.position - postings.lastPositions[termID]);
+        writeProx(termID, fieldState.position - postings.lastPosition(termID));
         if (hasOffsets) {
           writeOffsets(termID, fieldState.offset);
         }
@@ -232,76 +236,118 @@ final class FreqProxTermsWriterPerField extends TermsHashPerField {
     return new FreqProxPostingsArray(size, hasFreq, hasProx, hasOffsets);
   }
 
+  /**
+   * Per-term state of the in-memory postings. The values of a term are stored next to each other in
+   * a single {@code int[]}, so that the hot indexing path touches one or two cache lines per term
+   * instead of one per value. The record of term {@code t} starts at {@code t * stride}, and only
+   * holds the values that the field's index options need. Since index options are nested (offsets
+   * imply positions, which imply freqs), each value has a fixed slot in the record.
+   */
   static final class FreqProxPostingsArray extends ParallelPostingsArray {
+    /** Last docID where this term occurred. */
+    private static final int LAST_DOC_ID = 0;
+
+    /** Code for prior doc. */
+    private static final int LAST_DOC_CODE = 1;
+
+    /** # times this term occurs in the current doc, only if freqs are indexed. */
+    private static final int TERM_FREQ = 2;
+
+    /** Last position where this term occurred, only if positions are indexed. */
+    private static final int LAST_POSITION = 3;
+
+    /** Last startOffset where this term occurred, only if offsets are indexed. */
+    private static final int LAST_START_OFFSET = 4;
+
+    private final int stride;
+    private final int[] termState;
+
     public FreqProxPostingsArray(
         int size, boolean writeFreqs, boolean writeProx, boolean writeOffsets) {
       super(size);
-      if (writeFreqs) {
-        termFreqs = new int[size];
-      }
-      lastDocIDs = new int[size];
-      lastDocCodes = new int[size];
-      if (writeProx) {
-        lastPositions = new int[size];
-        if (writeOffsets) {
-          lastStartOffsets = new int[size];
-        }
-      } else {
-        assert !writeOffsets;
-      }
-      // System.out.println("PA init freqs=" + writeFreqs + " pos=" + writeProx + " offs=" +
-      // writeOffsets);
+      assert writeFreqs || writeProx == false;
+      assert writeProx || writeOffsets == false;
+      stride = 2 + (writeFreqs ? 1 : 0) + (writeProx ? 1 : 0) + (writeOffsets ? 1 : 0);
+      termState = new int[Math.multiplyExact(size, stride)];
     }
 
-    int[] termFreqs; // # times this term occurs in the current doc
-    int[] lastDocIDs; // Last docID where this term occurred
-    int[] lastDocCodes; // Code for prior doc
-    int[] lastPositions; // Last position where this term occurred
-    int[] lastStartOffsets; // Last startOffset where this term occurred
+    boolean hasFreqs() {
+      return stride > TERM_FREQ;
+    }
+
+    boolean hasPositions() {
+      return stride > LAST_POSITION;
+    }
+
+    boolean hasOffsets() {
+      return stride > LAST_START_OFFSET;
+    }
+
+    int lastDocID(int termID) {
+      return termState[termID * stride + LAST_DOC_ID];
+    }
+
+    int lastDocCode(int termID) {
+      return termState[termID * stride + LAST_DOC_CODE];
+    }
+
+    int termFreq(int termID) {
+      assert hasFreqs();
+      return termState[termID * stride + TERM_FREQ];
+    }
+
+    int lastPosition(int termID) {
+      assert hasPositions();
+      return termState[termID * stride + LAST_POSITION];
+    }
+
+    int lastStartOffset(int termID) {
+      assert hasOffsets();
+      return termState[termID * stride + LAST_START_OFFSET];
+    }
+
+    void setLastDocID(int termID, int lastDocID) {
+      termState[termID * stride + LAST_DOC_ID] = lastDocID;
+    }
+
+    void setLastDocCode(int termID, int lastDocCode) {
+      termState[termID * stride + LAST_DOC_CODE] = lastDocCode;
+    }
+
+    void setTermFreq(int termID, int freq) {
+      assert hasFreqs();
+      termState[termID * stride + TERM_FREQ] = freq;
+    }
+
+    void setLastPosition(int termID, int lastPosition) {
+      assert hasPositions();
+      termState[termID * stride + LAST_POSITION] = lastPosition;
+    }
+
+    void setLastStartOffset(int termID, int lastStartOffset) {
+      assert hasOffsets();
+      termState[termID * stride + LAST_START_OFFSET] = lastStartOffset;
+    }
 
     @Override
     ParallelPostingsArray newInstance(int size) {
-      return new FreqProxPostingsArray(
-          size, termFreqs != null, lastPositions != null, lastStartOffsets != null);
+      return new FreqProxPostingsArray(size, hasFreqs(), hasPositions(), hasOffsets());
     }
 
     @Override
     void copyTo(ParallelPostingsArray toArray, int numToCopy) {
       assert toArray instanceof FreqProxPostingsArray;
       FreqProxPostingsArray to = (FreqProxPostingsArray) toArray;
+      assert to.stride == stride;
 
       super.copyTo(toArray, numToCopy);
 
-      System.arraycopy(lastDocIDs, 0, to.lastDocIDs, 0, numToCopy);
-      System.arraycopy(lastDocCodes, 0, to.lastDocCodes, 0, numToCopy);
-      if (lastPositions != null) {
-        assert to.lastPositions != null;
-        System.arraycopy(lastPositions, 0, to.lastPositions, 0, numToCopy);
-      }
-      if (lastStartOffsets != null) {
-        assert to.lastStartOffsets != null;
-        System.arraycopy(lastStartOffsets, 0, to.lastStartOffsets, 0, numToCopy);
-      }
-      if (termFreqs != null) {
-        assert to.termFreqs != null;
-        System.arraycopy(termFreqs, 0, to.termFreqs, 0, numToCopy);
-      }
+      System.arraycopy(termState, 0, to.termState, 0, Math.multiplyExact(numToCopy, stride));
     }
 
     @Override
     int bytesPerPosting() {
-      int bytes = ParallelPostingsArray.BYTES_PER_POSTING + 2 * Integer.BYTES;
-      if (lastPositions != null) {
-        bytes += Integer.BYTES;
-      }
-      if (lastStartOffsets != null) {
-        bytes += Integer.BYTES;
-      }
-      if (termFreqs != null) {
-        bytes += Integer.BYTES;
-      }
-
-      return bytes;
+      return ParallelPostingsArray.BYTES_PER_POSTING + stride * Integer.BYTES;
     }
   }
 }
