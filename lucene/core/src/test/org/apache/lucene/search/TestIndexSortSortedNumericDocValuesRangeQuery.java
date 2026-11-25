@@ -32,9 +32,11 @@ import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
@@ -42,6 +44,8 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.DummyTotalHitCountCollector;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.RandomLongValues;
+import org.apache.lucene.tests.util.RandomLongValues.Bounds;
 import org.apache.lucene.tests.util.TestUtil;
 import org.hamcrest.MatcherAssert;
 
@@ -71,11 +75,16 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
       RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);
 
       final int numDocs = atLeast(100);
+      final RandomLongValues randomValues = RandomLongValues.random(random());
+      final long[] inputValues = new long[numDocs];
+      final boolean[] hasValue = new boolean[numDocs];
       for (int i = 0; i < numDocs; ++i) {
         Document doc = new Document();
+        doc.add(new NumericDocValuesField("id", i));
         final int numValues = TestUtil.nextInt(random(), 0, 1);
         for (int j = 0; j < numValues; ++j) {
-          final long value = TestUtil.nextLong(random(), -100, 10000);
+          final long value = inputValues[i] = randomValues.nextValue();
+          hasValue[i] = true;
           doc.add(new SortedNumericDocValuesField("dv", value));
           doc.add(new LongPoint("idx", value));
         }
@@ -89,13 +98,13 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
       iw.close();
 
       for (int i = 0; i < 100; ++i) {
-        final long min =
-            random().nextBoolean() ? Long.MIN_VALUE : TestUtil.nextLong(random(), -100, 10000);
-        final long max =
-            random().nextBoolean() ? Long.MAX_VALUE : TestUtil.nextLong(random(), -100, 10000);
+        final Bounds bounds = randomValues.nextBound();
+        final long min = bounds.min();
+        final long max = bounds.max();
         final Query q1 = LongPoint.newRangeQuery("idx", min, max);
         final Query q2 = createQuery("dv", min, max);
         assertSameHits(searcher, q1, q2, false);
+        assertMatchesFromArray(searcher, q2, inputValues, hasValue, min, max);
       }
 
       reader.close();
@@ -126,11 +135,16 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
       RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);
 
       final int numDocs = atLeast(100);
+      final long[] inputValues = new long[numDocs];
+      final boolean[] hasValue = new boolean[numDocs];
       for (int i = 0; i < numDocs; ++i) {
         Document doc = new Document();
+        doc.add(new NumericDocValuesField("id", i));
         final int numValues = TestUtil.nextInt(random(), 0, 1);
         for (int j = 0; j < numValues; ++j) {
           final int value = TestUtil.nextInt(random(), -100, 10000);
+          inputValues[i] = value;
+          hasValue[i] = true;
           doc.add(new SortedNumericDocValuesField("dv", value));
           doc.add(new IntPoint("idx", value));
         }
@@ -151,11 +165,38 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
         final Query q1 = IntPoint.newRangeQuery("idx", min, max);
         final Query q2 = createQuery("dv", min, max);
         assertSameHits(searcher, q1, q2, false);
+        assertMatchesFromArray(searcher, q2, inputValues, hasValue, min, max);
       }
 
       reader.close();
       dir.close();
     }
+  }
+
+  private static void assertMatchesFromArray(
+      IndexSearcher searcher, Query query, long[] values, boolean[] hasValue, long min, long max)
+      throws IOException {
+    Set<Integer> expected = new HashSet<>();
+    for (LeafReaderContext context : searcher.getIndexReader().leaves()) {
+      NumericDocValues ids = DocValues.getNumeric(context.reader(), "id");
+      for (int doc = ids.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = ids.nextDoc()) {
+        if (context.reader().getLiveDocs() != null
+            && context.reader().getLiveDocs().get(doc) == false) {
+          continue;
+        }
+        int id = Math.toIntExact(ids.longValue());
+        if (hasValue[id] && values[id] >= min && values[id] <= max) {
+          expected.add(context.docBase + doc);
+        }
+      }
+    }
+    Set<Integer> actual = new HashSet<>();
+    for (ScoreDoc scoreDoc :
+        searcher.search(query, Math.max(1, searcher.getIndexReader().maxDoc())).scoreDocs) {
+      actual.add(scoreDoc.doc);
+    }
+    assertEquals(query.toString(), expected, actual);
+    assertEquals(query.toString(), expected.size(), searcher.count(query));
   }
 
   private static void assertSameHits(IndexSearcher searcher, Query q1, Query q2, boolean scores)
