@@ -30,12 +30,20 @@ import org.apache.lucene.util.LiveDocs;
 
 /** Just like the default live docs format but with additional asserts. */
 public class AssertingLiveDocsFormat extends LiveDocsFormat {
-  private final LiveDocsFormat in = TestUtil.getDefaultCodec().liveDocsFormat();
+  private final LiveDocsFormat delegate;
+
+  public AssertingLiveDocsFormat() {
+    this(TestUtil.getDefaultCodec().liveDocsFormat());
+  }
+
+  public AssertingLiveDocsFormat(LiveDocsFormat delegate) {
+    this.delegate = delegate;
+  }
 
   @Override
   public Bits readLiveDocs(Directory dir, SegmentCommitInfo info, IOContext context)
       throws IOException {
-    Bits raw = in.readLiveDocs(dir, info, context);
+    Bits raw = delegate.readLiveDocs(dir, info, context);
     assert raw != null;
     check(raw, info.info.maxDoc(), info.getDelCount());
     if (raw instanceof LiveDocs) {
@@ -49,7 +57,7 @@ public class AssertingLiveDocsFormat extends LiveDocsFormat {
       Bits bits, Directory dir, SegmentCommitInfo info, int newDelCount, IOContext context)
       throws IOException {
     check(bits, info.info.maxDoc(), info.getDelCount() + newDelCount);
-    in.writeLiveDocs(bits, dir, info, newDelCount, context);
+    delegate.writeLiveDocs(bits, dir, info, newDelCount, context);
   }
 
   private void check(Bits bits, int expectedLength, int expectedDeleteCount) {
@@ -66,12 +74,12 @@ public class AssertingLiveDocsFormat extends LiveDocsFormat {
 
   @Override
   public void files(SegmentCommitInfo info, Collection<String> files) throws IOException {
-    in.files(info, files);
+    delegate.files(info, files);
   }
 
   @Override
   public String toString() {
-    return "Asserting(" + in + ")";
+    return "Asserting(" + delegate + ")";
   }
 
   static class AssertingBits implements Bits {

@@ -39,20 +39,25 @@ import org.apache.lucene.util.BytesRefBuilder;
 
 /** Just like the default postings format but with additional asserts. */
 public final class AssertingPostingsFormat extends PostingsFormat {
-  private final PostingsFormat in = TestUtil.getDefaultPostingsFormat();
+  private final PostingsFormat delegate;
 
   public AssertingPostingsFormat() {
+    this(TestUtil.getDefaultPostingsFormat());
+  }
+
+  public AssertingPostingsFormat(PostingsFormat delegate) {
     super("Asserting");
+    this.delegate = delegate;
   }
 
   @Override
   public FieldsConsumer fieldsConsumer(SegmentWriteState state) throws IOException {
-    return new AssertingFieldsConsumer(state, in.fieldsConsumer(state));
+    return new AssertingFieldsConsumer(state, delegate.fieldsConsumer(state));
   }
 
   @Override
   public FieldsProducer fieldsProducer(SegmentReadState state) throws IOException {
-    return new AssertingFieldsProducer(in.fieldsProducer(state));
+    return new AssertingFieldsProducer(delegate.fieldsProducer(state));
   }
 
   static class AssertingFieldsProducer extends FieldsProducer {

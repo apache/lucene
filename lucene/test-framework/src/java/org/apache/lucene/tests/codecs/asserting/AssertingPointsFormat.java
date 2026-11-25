@@ -32,32 +32,27 @@ import org.apache.lucene.tests.util.TestUtil;
 
 /** Just like the default point format but with additional asserts. */
 public final class AssertingPointsFormat extends PointsFormat {
-  private final PointsFormat in;
+  private final PointsFormat delegate;
 
   /** Create a new AssertingPointsFormat */
   public AssertingPointsFormat() {
     this(TestUtil.getDefaultCodec().pointsFormat());
   }
 
-  /**
-   * Expert: Create an AssertingPointsFormat. This is only intended to pass special parameters for
-   * testing.
-   */
-  // TODO: can we randomize this a cleaner way? e.g. stored fields and vectors do
-  // this with a separate codec...
-  public AssertingPointsFormat(PointsFormat in) {
-    this.in = in;
+  /** Create an AssertingPointsFormat wrapping the specified format */
+  public AssertingPointsFormat(PointsFormat delegate) {
+    this.delegate = delegate;
   }
 
   @Override
   public PointsWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    return new AssertingPointsWriter(state, in.fieldsWriter(state));
+    return new AssertingPointsWriter(state, delegate.fieldsWriter(state));
   }
 
   @Override
   public PointsReader fieldsReader(SegmentReadState state) throws IOException {
     return new AssertingPointsReader(
-        state.segmentInfo.maxDoc(), in.fieldsReader(state), state.fieldInfos, false);
+        state.segmentInfo.maxDoc(), delegate.fieldsReader(state), state.fieldInfos, false);
   }
 
   static class AssertingPointsReader extends PointsReader {

@@ -36,20 +36,28 @@ import org.apache.lucene.util.BytesRef;
 
 /** Just like the default vectors format but with additional asserts. */
 public class AssertingTermVectorsFormat extends TermVectorsFormat {
-  private final TermVectorsFormat in = TestUtil.getDefaultCodec().termVectorsFormat();
+  private final TermVectorsFormat delegate;
+
+  public AssertingTermVectorsFormat() {
+    this(TestUtil.getDefaultCodec().termVectorsFormat());
+  }
+
+  public AssertingTermVectorsFormat(TermVectorsFormat delegate) {
+    this.delegate = delegate;
+  }
 
   @Override
   public TermVectorsReader vectorsReader(
       Directory directory, SegmentInfo segmentInfo, FieldInfos fieldInfos, IOContext context)
       throws IOException {
     return new AssertingTermVectorsReader(
-        in.vectorsReader(directory, segmentInfo, fieldInfos, context));
+        delegate.vectorsReader(directory, segmentInfo, fieldInfos, context));
   }
 
   @Override
   public TermVectorsWriter vectorsWriter(
       Directory directory, SegmentInfo segmentInfo, IOContext context) throws IOException {
-    return new AssertingTermVectorsWriter(in.vectorsWriter(directory, segmentInfo, context));
+    return new AssertingTermVectorsWriter(delegate.vectorsWriter(directory, segmentInfo, context));
   }
 
   static class AssertingTermVectorsReader extends TermVectorsReader {

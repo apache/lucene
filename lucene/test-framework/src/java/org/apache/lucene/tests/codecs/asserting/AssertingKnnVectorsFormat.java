@@ -48,10 +48,15 @@ import org.apache.lucene.util.hnsw.HnswGraph;
 /** Wraps the default KnnVectorsFormat and provides additional assertions. */
 public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
 
-  private final KnnVectorsFormat delegate = TestUtil.getDefaultKnnVectorsFormat();
+  private final KnnVectorsFormat delegate;
 
   public AssertingKnnVectorsFormat() {
+    this(TestUtil.getDefaultKnnVectorsFormat());
+  }
+
+  public AssertingKnnVectorsFormat(KnnVectorsFormat delegate) {
     super("Asserting");
+    this.delegate = delegate;
   }
 
   @Override
