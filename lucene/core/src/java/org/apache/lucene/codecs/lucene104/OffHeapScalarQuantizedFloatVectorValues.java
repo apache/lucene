@@ -159,10 +159,12 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
           correctiveValues[0], correctiveValues[1], correctiveValues[2], quantizedComponentSum);
     }
     slice.seek(((long) targetOrd * byteSize) + byteValue.length);
-    slice.readFloats(correctiveValues, 0, 3);
-    quantizedComponentSum = slice.readInt();
+    // don't overwrite the cached corrective terms: they belong to lastOrd, not targetOrd
+    float lowerInterval = Float.intBitsToFloat(slice.readInt());
+    float upperInterval = Float.intBitsToFloat(slice.readInt());
+    float additionalCorrection = Float.intBitsToFloat(slice.readInt());
     return new OptimizedScalarQuantizer.QuantizationResult(
-        correctiveValues[0], correctiveValues[1], correctiveValues[2], quantizedComponentSum);
+        lowerInterval, upperInterval, additionalCorrection, slice.readInt());
   }
 
   @Override
