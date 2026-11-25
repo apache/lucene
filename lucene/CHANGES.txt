@@ -571,6 +571,10 @@ API Changes
 
 * GITHUB#16813: Deprecate unused VectorValueSource and MultiValueSource. (Luca Cavanna)
 
+* GITHUB#XXXXX: Add DocIdStream#fork to get an independent stream over the same remaining doc IDs.
+  MultiCollector now uses it to pass DocIdStreams to all its collectors instead of collecting doc
+  IDs one by one. (Ankit Jain)
+
 New Features
 ---------------------
 * GITHUB#16722: Support user dictionary in ThaiTokenizer and ThaiTokenizerFactory.

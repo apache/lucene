@@ -20,7 +20,8 @@ import java.io.IOException;
 import org.apache.lucene.util.IOIntConsumer;
 
 /**
- * A stream of doc IDs. Doc IDs may be consumed at most once.
+ * A stream of doc IDs. Doc IDs may be consumed at most once from a given stream. Use {@link
+ * #fork()} to get an independent stream over the same doc IDs.
  *
  * @see LeafCollector#collect(DocIdStream)
  * @lucene.experimental
@@ -79,4 +80,22 @@ public abstract class DocIdStream {
    * {@code false} when the stream is exhausted.
    */
   public abstract boolean mayHaveRemaining();
+
+  /**
+   * Return a new stream that is positioned at the same point as this stream and returns the same
+   * remaining doc IDs, or {@code null} if this stream doesn't support forking. The returned stream
+   * and this stream can then be consumed independently: consuming one doesn't advance the other.
+   *
+   * <p>A forked stream is only valid as long as this stream is valid, typically until the enclosing
+   * call to {@link LeafCollector#collect(DocIdStream)} returns.
+   *
+   * <p>This is useful for collectors that delegate to multiple collectors, such as {@link
+   * MultiCollector}, so that every delegate can consume doc IDs in bulk. Implementations should
+   * only override this method if they can fork cheaply, typically without copying doc IDs.
+   *
+   * <p>The default implementation returns {@code null}.
+   */
+  public DocIdStream fork() {
+    return null;
+  }
 }
