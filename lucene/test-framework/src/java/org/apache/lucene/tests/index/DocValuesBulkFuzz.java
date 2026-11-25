@@ -136,6 +136,11 @@ abstract class DocValuesBulkFuzz {
 
   abstract SegmentCheck newSegmentCheck(LeafReader reader) throws IOException;
 
+  // the docs that are expected to match when there is no condition on the values
+  static boolean everyDoc(int doc) {
+    return true;
+  }
+
   static Term idTerm(int id) {
     return new Term(ID_FIELD, Integer.toString(id));
   }
@@ -315,7 +320,7 @@ abstract class DocValuesBulkFuzz {
         FixedBitSet preset = newPresetBitSet(range);
         FixedBitSet actual = preset.clone();
         iterator.intoBitSet(upTo, actual, range.offset());
-        assertMatches("intoBitSet", range, preset, actual, d -> true);
+        assertMatches("intoBitSet", range, preset, actual, DocValuesBulkFuzz::everyDoc);
         assertEquals("position after intoBitSet", firstDocWithValueFrom(upTo), iterator.docID());
       }
     }

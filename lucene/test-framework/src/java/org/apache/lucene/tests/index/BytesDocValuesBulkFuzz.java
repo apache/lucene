@@ -110,7 +110,8 @@ final class BytesDocValuesBulkFuzz extends DocValuesBulkFuzz {
         byte[] prefix = randomBytes(random.nextInt(1, 41)).bytes;
         yield () -> {
           byte[] suffix = randomBytes(random.nextInt(9)).bytes;
-          byte[] value = Arrays.copyOf(prefix, prefix.length + suffix.length);
+          byte[] value = new byte[prefix.length + suffix.length];
+          System.arraycopy(prefix, 0, value, 0, prefix.length);
           System.arraycopy(suffix, 0, value, prefix.length, suffix.length);
           return new BytesRef(value);
         };
@@ -161,6 +162,7 @@ final class BytesDocValuesBulkFuzz extends DocValuesBulkFuzz {
             doc.add(sortedSetField(value));
           }
         }
+        // $CASES-OMITTED$
         default -> throw new AssertionError(kind);
       }
     }
@@ -229,6 +231,7 @@ final class BytesDocValuesBulkFuzz extends DocValuesBulkFuzz {
           SortedSetDocValues sortedSet = reader.getSortedSetDocValues(FIELD);
           yield sortedSet == null ? null : DocValues.unwrapSingleton(sortedSet);
         }
+        // $CASES-OMITTED$
         default -> throw new AssertionError(kind);
       };
     }
@@ -242,6 +245,7 @@ final class BytesDocValuesBulkFuzz extends DocValuesBulkFuzz {
           SortedDocValues singleton = random().nextBoolean() ? newSorted() : null;
           yield singleton != null ? singleton : reader.getSortedSetDocValues(FIELD);
         }
+        // $CASES-OMITTED$
         default -> throw new AssertionError(kind);
       };
     }
@@ -252,6 +256,7 @@ final class BytesDocValuesBulkFuzz extends DocValuesBulkFuzz {
         case BINARY -> checkBulkValues();
         case SORTED -> checkOrdinalRangeIntoBitSet();
         case SORTED_SET -> checkOrdinalRangeIntoBitSet();
+        // $CASES-OMITTED$
         default -> throw new AssertionError(kind);
       }
     }

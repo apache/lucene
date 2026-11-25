@@ -87,6 +87,7 @@ final class NumericDocValuesBulkFuzz extends DocValuesBulkFuzz {
                 skipIndex
                     ? SortedNumericDocValuesField.indexedField(FIELD, value)
                     : new SortedNumericDocValuesField(FIELD, value);
+            // $CASES-OMITTED$
             default -> throw new AssertionError(kind);
           });
     }
@@ -138,6 +139,7 @@ final class NumericDocValuesBulkFuzz extends DocValuesBulkFuzz {
           SortedNumericDocValues sortedNumeric = reader.getSortedNumericDocValues(FIELD);
           yield sortedNumeric == null ? null : DocValues.unwrapSingleton(sortedNumeric);
         }
+        // $CASES-OMITTED$
         default -> throw new AssertionError(kind);
       };
     }
