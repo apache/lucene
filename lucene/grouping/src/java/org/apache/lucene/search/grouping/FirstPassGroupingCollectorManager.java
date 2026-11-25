@@ -64,7 +64,7 @@ public class FirstPassGroupingCollectorManager<T>
    * @param groupSelectorFactory factory to create group selectors for each collector
    * @param groupSort the sort to use for groups
    * @param groupOffset The offset in the collected groups
-   * @param topNGroups the number of top groups to collect
+   * @param topNGroups the maximum number of groups to return, starting at {@code groupOffset}
    */
   public FirstPassGroupingCollectorManager(
       Supplier<GroupSelector<T>> groupSelectorFactory,
@@ -80,7 +80,7 @@ public class FirstPassGroupingCollectorManager<T>
    * @param groupSelectorFactory factory to create group selectors for each collector
    * @param groupSort the sort to use for groups
    * @param groupOffset The offset in the collected groups
-   * @param topNGroups the number of top groups to collect
+   * @param topNGroups the maximum number of groups to return, starting at {@code groupOffset}
    * @param ignoreDocsWithoutGroupField whether to ignore documents without a group field
    */
   public FirstPassGroupingCollectorManager(
