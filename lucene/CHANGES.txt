@@ -515,6 +515,8 @@ Bug Fixes
 
 * GITHUB#17067: Fix PrefetchableUpdatableRandomVectorScorer to delegate bulkScore. (Shubham Chaudhary)
 
+* GITHUB#17019: Fix int overflow bugs when sizing FuzzySet. (Greg Miller)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
