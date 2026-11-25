@@ -37,6 +37,7 @@ import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
@@ -87,28 +88,20 @@ public class AssertingLeafReader extends FilterLeafReader {
 
     CacheHelper coreCacheHelper = in.getCoreCacheHelper();
     if (coreCacheHelper != null) {
-      coreCacheHelper.addClosedListener(
-          cacheKey -> {
-            final Object expectedKey = coreCacheHelper.getKey();
-            assert expectedKey == cacheKey
-                : "Core closed listener called on a different key "
-                    + expectedKey
-                    + " <> "
-                    + cacheKey;
-          });
+      coreCacheHelper.addClosedListener(cacheKey -> {
+        final Object expectedKey = coreCacheHelper.getKey();
+        assert expectedKey == cacheKey
+            : "Core closed listener called on a different key " + expectedKey + " <> " + cacheKey;
+      });
     }
 
     CacheHelper readerCacheHelper = in.getReaderCacheHelper();
     if (readerCacheHelper != null) {
-      readerCacheHelper.addClosedListener(
-          cacheKey -> {
-            final Object expectedKey = readerCacheHelper.getKey();
-            assert expectedKey == cacheKey
-                : "Core closed listener called on a different key "
-                    + expectedKey
-                    + " <> "
-                    + cacheKey;
-          });
+      readerCacheHelper.addClosedListener(cacheKey -> {
+        final Object expectedKey = readerCacheHelper.getKey();
+        assert expectedKey == cacheKey
+            : "Core closed listener called on a different key " + expectedKey + " <> " + cacheKey;
+      });
     }
   }
 
@@ -215,6 +208,16 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
+    public TermsEnum intersect(
+        CompiledAutomaton automaton, BytesRef bytes, QueryTimeout queryTimeout) throws IOException {
+      assertThread("Terms", creationThread);
+      TermsEnum termsEnum = in.intersect(automaton, bytes, queryTimeout);
+      assert termsEnum != null;
+      assert bytes == null || bytes.isValid();
+      return new AssertingTermsEnum(termsEnum, hasFreqs());
+    }
+
+    @Override
     public BytesRef getMin() throws IOException {
       assertThread("Terms", creationThread);
       BytesRef v = in.getMin();
@@ -282,7 +285,7 @@ public class AssertingLeafReader extends FilterLeafReader {
       POSITIONED,
       UNPOSITIONED,
       TWO_PHASE_SEEKING;
-    };
+    }
 
     private State state = State.INITIAL;
     private final boolean delegateOverridesSeekExact;
@@ -473,7 +476,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     START,
     ITERATING,
     FINISHED
-  };
+  }
 
   /** Wraps a docsenum with additional checks */
   public static class AssertingPostingsEnum extends FilterPostingsEnum {

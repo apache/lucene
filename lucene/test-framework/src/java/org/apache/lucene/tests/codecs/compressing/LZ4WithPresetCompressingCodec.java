@@ -18,7 +18,7 @@ package org.apache.lucene.tests.codecs.compressing;
 
 import org.apache.lucene.codecs.lucene90.LZ4WithPresetDictCompressionMode;
 
-/** CompressionCodec that uses {@link LZ4WithPresetDictCompressionMode}. */
+/** {@link CompressingCodec} that uses {@link LZ4WithPresetDictCompressionMode}. */
 public class LZ4WithPresetCompressingCodec extends CompressingCodec {
 
   /** Constructor that allows to configure the chunk size. */

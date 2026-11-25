@@ -231,11 +231,10 @@ class AssertingLeafCollector extends FilterLeafCollector {
     public void forEach(IOIntConsumer consumer) throws IOException {
       assertValid();
       assert lastUpTo != DocIdSetIterator.NO_MORE_DOCS : "exhausted";
-      stream.forEach(
-          doc -> {
-            onDoc(doc);
-            consumer.accept(doc);
-          });
+      stream.forEach(doc -> {
+        onDoc(doc);
+        consumer.accept(doc);
+      });
       lastUpTo = DocIdSetIterator.NO_MORE_DOCS;
       assert stream.mayHaveRemaining() == false;
     }

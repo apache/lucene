@@ -19,6 +19,10 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#16564: Speed up automaton intersection for PrefixQuery, TermRangeQuery and custom binary
+  automata by directly enumerating terms below accepting states with full-alphabet self-loops.
+  (Zhou Hui)
+
 * GITHUB#16806: HNSW searches track the visited nodes of a large graph in a hash set instead of a
   bit set sized to the graph, which makes merges into large segments faster. (Ankur Goel)
 
@@ -27,7 +31,7 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+* GITHUB#17030: Fix precision loss when reducing join scores. (Ke Wei)
 
 Other
 ---------------------
@@ -37,6 +41,9 @@ Other
 
 API Changes
 ---------------------
+* GITHUB#16997: Monitor's QueryTree subclasses now implement collectTerms(TermCollector), and
+  collectTerms(BiConsumer) is final. (Luke Kot-Zaniewski)
+
 * GITHUB#16985: Remove the deprecated TokenSources methods in the highlighter module
   (getAnyTokenStream, getTokenStreamWithOffsets and the getTokenStream overloads taking a Terms,
   IndexReader, Document or plain text). Use TokenSources#getTokenStream(String, Fields, String,
@@ -226,8 +233,31 @@ API Changes
 * GITHUB#16968: Remove deprecated RegExp.ASCII_CASE_INSENSITIVE flag, use
   RegExp.CASE_INSENSITIVE instead. (Christoph Büscher)
 
+* GITHUB#17075: Add DocIdStream#fork to get an independent stream over the same remaining doc IDs.
+  MultiCollector now uses it to pass DocIdStreams to all its collectors instead of collecting doc
+  IDs one by one. (Ankit Jain)
+
 New Features
 ---------------------
+* GITHUB#16957: Add Albanian analyzer (org.apache.lucene.analysis.sq): a normalizer that folds ë/ç and
+  in-word apostrophes, a light suffix-stripping stemmer covering standard and Gheg inflection,
+  and a stop word list. (Visar Uruqi)
+
+* GITHUB#16997: Monitor's QueryTree now merges each group of conjoined, negated leaf queries
+  (e.g. -x:a -x:b) into one "negative disjunct", which documents satisfy by containing none of its
+  terms. TermWeightor gains negate and withNegation to weigh the absence of a term, and
+  CustomQueryHandler gains handleNegatedQuery. (Luke Kot-Zaniewski)
+
+* GITHUB#16997: Monitor's TermFilteredPresearcher and MultipassTermFilteredPresearcher can now
+  filter on negated clauses. With a maximum number of negative disjuncts greater than 0, a query is
+  skipped for documents that contain at least one term of each of its negative disjuncts, so that,
+  for example, "*:* -flag:true" is only selected for documents without flag:true.
+  (Luke Kot-Zaniewski)
+
+* GITHUB#16571: A merge can write more than one segment. A merge policy returns document ranges
+  from MergePolicy.OneMerge#getDocRangePartitions and the merge writes one output segment per
+  range. (Jim Ferenczi)
+
 * GITHUB#16723: Support SIMD Faiss library variants with runtime fallback. (Abhinav Chinnala)
 
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
@@ -262,6 +292,9 @@ New Features
 
 Improvements
 ---------------------
+* GITHUB#16851: Use PriorityQueue#addAll for bulk heap construction in SynonymQuery,
+  LargeNumHitsTopDocsCollector and TermAutomatonScorer. (Zhou Hui)
+
 * GITHUB#15704: Replace LinkedList with more efficient data structure. (Renato Haeberli)
 
 * GITHUB#15682: Use ArrayDeque instead of LinkedList in CompoundWordTokenFilterBase.java. (Renato Haeberli)
@@ -297,8 +330,18 @@ Improvements
   through the new VectorColumn#values cursor and KnnFieldVectorsWriter#addDenseValues, instead of
   adding vectors one document at a time. (Mayya Sharipova)
 
+* GITHUB#17027: IntersectTermsEnum now checks the query timeout during long terms dictionary scans. (Prudhvi Godithi)
+
 Optimizations
 ---------------------
+* GITHUB#16145: Bound the prefetch backoff in MemorySegmentIndexInput. The gap between page-cache probes used to
+  grow without limit, so under memory pressure prefetch effectively stopped working. A file now probes on every
+  prefetch call until 1024 consecutive hits, then every 256th call; a miss goes back to probing on every call.
+  The first prefetch on a file always probes: a hit on a warm file switches to sampling immediately, a miss
+  makes the file earn the 1024 hits. (Michael Marshall)
+
+* GITHUB#16868: LongRangeFacetCutter: use the single-valued leaf cutter for single-valued segments,
+  with or without a doc-values skip index. (Jakub Slowinski)
 
 * GITHUB#16746: Speed up decoding long overlapping LZ4 matches using bulk copies
   of initialized bytes. (Andre Kurait)
@@ -364,10 +407,28 @@ Optimizations
   IOContext, allowing MMapDirectory to open them with confined areas and avoiding JVM-wide
   handshakes when the files are closed. (Alan Woodward)
 
+* GITHUB#17021: Skip computing the cardinality of a window in DenseConjunctionBulkScorer when
+  no clause is left to apply. (Asharam)
+
+* GITHUB#14397: Reuse the LZ4 preset dictionary when reading stored fields or term vectors
+  from the same compressed chunk. (Ke Wei)
+
+* GITHUB#16757: Speed up building cached bit sets in LRUQueryCache. (Ke Wei)
+
+* GITHUB#17045: LSBRadixSorter sorts values that are clustered in a small part of their range with
+  fewer radix passes. This speeds up DocIdSetBuilder, e.g. for range queries on fields whose values
+  follow doc ID order such as timestamps or index sort fields. (Asharam)
+
 Bug Fixes
 ---------------------
+* GITHUB#17020: Reduce CachingTokenFilter memory use by not copying stale term bytes in
+  CharTermAttributeImpl#clone. (Eugene Rizhkov)
+
 * GITHUB#16983: UnifiedHighlighter.Builder#withFlags is no longer ignored when building the
   highlighter. (Christoph Büscher)
+
+* GITHUB#17000: Fix ramBytesUsed of the hppc *ObjectHashMap classes to measure values rather than
+  cursors. (Chris Parrinello)
 
 * GITHUB#16867: Apply buffered soft-update/delete terms before the global delete buffer reaches the 2GB
   addressing limit of its ByteBlockPool, and stall indexing if the limit is hit during a full flush.
@@ -449,6 +510,15 @@ Bug Fixes
 
 * GITHUB#16971: Fix double DocValuesStats extrema initialization. (Simranjeet Singh)
 
+* GITHUB#16892: Escape '=', '<', '>' and '@' in the flexible query parser's QueryParserUtil.escape.
+  (Soma Aishwarya)
+
+* GITHUB#17018: Fix NPE when a span query searches over masked fields that don't have any indexed docs in them (Simon Cooper)
+
+* GITHUB#16896: Fix long overflow in GCD-encoded DocValues range transform. (Ke Wei)
+
+* GITHUB#17067: Fix PrefetchableUpdatableRandomVectorScorer to delegate bulkScore. (Shubham Chaudhary)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
@@ -486,8 +556,14 @@ Build
 
 * GITHUB#16036: Upgrade gradle to 9.5.0 (Dawid Weiss)
 
+* GITHUB#17035: Upgrade to a custom fork of JFlex (1.10.0); tokenizer regeneration is an order
+  of magnitude faster and needs far less memory. (Dawid Weiss)
+
 Other
 ---------------------
+
+* GITHUB#16901: Add direct unit tests for NeighborArray#addAndEnsureDiversity
+  in TestNeighborArray. (Luis Negrin)
 
 * GITHUB#16513: Add docIDRunEnd contract tests for DV formats to BaseDocValuesFormatTestCase. (Tim Allison)
 
@@ -570,10 +646,6 @@ API Changes
 * GITHUB#16647: Add KnnVectorsReader.getVectorCount to read vector counts from metadata (Chris Hegarty)
 
 * GITHUB#16813: Deprecate unused VectorValueSource and MultiValueSource. (Luca Cavanna)
-
-* GITHUB#XXXXX: Add DocIdStream#fork to get an independent stream over the same remaining doc IDs.
-  MultiCollector now uses it to pass DocIdStreams to all its collectors instead of collecting doc
-  IDs one by one. (Ankit Jain)
 
 New Features
 ---------------------

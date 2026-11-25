@@ -358,7 +358,6 @@ public class TestFloatArrayList extends LuceneTestCase {
 
   public void testEqualsSubClass() {
     class Sub extends FloatArrayList {}
-    ;
 
     FloatArrayList l1 = FloatArrayList.from(key1, key2, key3);
     FloatArrayList l2 = new Sub();

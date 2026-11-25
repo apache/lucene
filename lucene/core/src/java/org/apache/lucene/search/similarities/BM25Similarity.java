@@ -171,8 +171,8 @@ public class BM25Similarity extends Similarity {
    *
    * @param fieldStats field-level statistics
    * @param termStats term-level statistics for the term
-   * @return an Explain object that includes both an idf score factor and an explanation for the
-   *     term.
+   * @return an {@link Explanation} that includes both an idf score factor and an explanation for
+   *     the term.
    */
   public Explanation idfExplain(FieldStats fieldStats, TermStats termStats) {
     final long df = termStats.docFreq();
@@ -192,7 +192,7 @@ public class BM25Similarity extends Similarity {
    *
    * @param fieldStats field-level statistics
    * @param termStats term-level statistics for the terms in the phrase
-   * @return an Explain object that includes both an idf score factor for the phrase and an
+   * @return an {@link Explanation} that includes both an idf score factor for the phrase and an
    *     explanation for each term.
    */
   public Explanation idfExplain(FieldStats fieldStats, TermStats[] termStats) {

@@ -123,7 +123,7 @@ public final class HelpHeaderRenderer implements TableCellRenderer {
                   title,
                   600,
                   350,
-                  (factory) -> {
+                  factory -> {
                     factory.setDesc(desc);
                     factory.setContent(helpContent);
                   });
@@ -133,7 +133,7 @@ public final class HelpHeaderRenderer implements TableCellRenderer {
                   title,
                   600,
                   350,
-                  (factory) -> {
+                  factory -> {
                     factory.setDesc(desc);
                     factory.setContent(helpContent);
                   });

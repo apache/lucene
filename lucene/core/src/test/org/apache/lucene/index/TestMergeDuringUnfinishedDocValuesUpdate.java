@@ -106,13 +106,12 @@ public class TestMergeDuringUnfinishedDocValuesUpdate extends LuceneTestCase {
 
       // Give "a" a "tag" value: a field new to the two segments being merged.
       FutureTask<Void> lateUpdate =
-          new FutureTask<>(
-              () -> {
-                w.updateBinaryDocValue(new Term("id", "a"), "tag", new BytesRef("a"));
-                w.addDocument(new Document());
-                w.flushNextBuffer();
-                return null;
-              });
+          new FutureTask<>(() -> {
+            w.updateBinaryDocValue(new Term("id", "a"), "tag", new BytesRef("a"));
+            w.addDocument(new Document());
+            w.flushNextBuffer();
+            return null;
+          });
       Thread late = new Thread(lateUpdate, "late");
       late.start();
       assertTrue(held.await(60, TimeUnit.SECONDS));

@@ -286,9 +286,8 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
     int windowSize = windowMax - windowBase;
     int threshold = windowSize / DENSITY_THRESHOLD_INVERSE;
     int upTo = 1; // the leading clause at index 0 is already applied
-    for (int cardinality = windowMatches.cardinality();
-        upTo < iterators.size() && cardinality >= threshold;
-        upTo++, cardinality = windowMatches.cardinality()) {
+    // Only compute the cardinality of the window if there are clauses left to apply.
+    while (upTo < iterators.size() && windowMatches.cardinality() >= threshold) {
       DisiWrapper other = iterators.get(upTo);
       if (other.docID() < windowBase) {
         other.approximation().advance(windowBase);
@@ -306,6 +305,7 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
         windowMatches.and(clauseWindowMatches);
         clauseWindowMatches.clear();
       }
+      upTo++;
     }
 
     if (upTo < iterators.size()) {

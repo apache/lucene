@@ -970,7 +970,8 @@ public class TestTessellator extends LuceneTestCase {
             [-97.124922, 32.669464], [-97.124716, 32.669445], [-97.124739, 32.669128],
             [-97.124906, 32.669128], [-97.124922, 32.669464]
           ]
-        ]}""";
+        ]}\
+        """;
     Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
     checkMultiPolygon(polygons, 0.0);
   }

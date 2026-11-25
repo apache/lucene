@@ -1613,13 +1613,10 @@ public abstract sealed class LuceneTestCaseParent extends Assert
   /** Inspects stack trace to figure out if a method of a specific class called us. */
   public static boolean callStackContains(Class<?> clazz, String methodName) {
     final String className = clazz.getName();
-    return SW_WITH_METHODS.walk(
-        s ->
-            s.skip(1) // exclude this utility method
-                .anyMatch(
-                    f ->
-                        className.equals(f.getClassName())
-                            && methodName.equals(f.getMethodName())));
+    return SW_WITH_METHODS.walk(s ->
+        s.skip(1) // exclude this utility method
+            .anyMatch(
+                f -> className.equals(f.getClassName()) && methodName.equals(f.getMethodName())));
   }
 
   /**
@@ -1627,20 +1624,18 @@ public abstract sealed class LuceneTestCaseParent extends Assert
    * called us.
    */
   public static boolean callStackContainsAnyOf(String... methodNames) {
-    return SW_WITH_METHODS.walk(
-        s ->
-            s.skip(1) // exclude this utility method
-                .map(StackWalker.StackFrame::getMethodName)
-                .anyMatch(Set.of(methodNames)::contains));
+    return SW_WITH_METHODS.walk(s ->
+        s.skip(1) // exclude this utility method
+            .map(StackWalker.StackFrame::getMethodName)
+            .anyMatch(Set.of(methodNames)::contains));
   }
 
   /** Inspects stack trace if the given class called us. */
   public static boolean callStackContains(Class<?> clazz) {
-    return SW_NO_METHODS.walk(
-        s ->
-            s.skip(1) // exclude this utility method
-                .map(StackWalker.StackFrame::getClassName)
-                .anyMatch(clazz.getName()::equals));
+    return SW_NO_METHODS.walk(s ->
+        s.skip(1) // exclude this utility method
+            .map(StackWalker.StackFrame::getClassName)
+            .anyMatch(clazz.getName()::equals));
   }
 
   /**

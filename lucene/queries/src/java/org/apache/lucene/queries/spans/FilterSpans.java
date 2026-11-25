@@ -221,5 +221,5 @@ public abstract class FilterSpans extends Spans {
      * document.
      */
     NO_MORE_IN_CURRENT_DOC
-  };
+  }
 }

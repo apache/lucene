@@ -718,22 +718,21 @@ public class TestStressNRTReplication extends LuceneTestCase {
         // subprocess is terminated prior to the timeout.
         subprocessKiller =
             Optional.of(
-                new Thread(
-                    () -> {
-                      while (System.nanoTime() < deadline && p.isAlive()) {
-                        try {
-                          pause(250);
-                        } catch (InterruptedException _) {
-                          // If we do get interrupted, it's likely we're being cleaned up. Do
-                          // proceed immediately then.
-                          break;
-                        }
-                      }
-                      if (p.isAlive()) {
-                        message("now killing process " + p);
-                        p.destroyForcibly();
-                      }
-                    }));
+                new Thread(() -> {
+                  while (System.nanoTime() < deadline && p.isAlive()) {
+                    try {
+                      pause(250);
+                    } catch (InterruptedException _) {
+                      // If we do get interrupted, it's likely we're being cleaned up. Do
+                      // proceed immediately then.
+                      break;
+                    }
+                  }
+                  if (p.isAlive()) {
+                    message("now killing process " + p);
+                    p.destroyForcibly();
+                  }
+                }));
         subprocessKiller.get().start();
       } else if (l.startsWith("NODE STARTED")) {
         break;
