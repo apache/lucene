@@ -57,6 +57,7 @@ import org.apache.lucene.search.DocValuesRangeIterator;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.util.RandomLongValues;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
@@ -420,12 +421,13 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
   }
 
   private void doTestNumericDocValuesWithSkipper(int totalDocs) throws Exception {
+    RandomLongValues values = RandomLongValues.random(random());
     assertDocValuesWithSkipper(
         totalDocs,
         new TestDocValueSkipper() {
           @Override
           public void populateDoc(Document doc) {
-            doc.add(NumericDocValuesField.indexedField("test", random().nextLong()));
+            doc.add(NumericDocValuesField.indexedField("test", values.nextValue()));
           }
 
           @Override
@@ -486,13 +488,14 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
   }
 
   private void doTestSortedNumericDocValuesWithSkipper(int totalDocs) throws Exception {
+    RandomLongValues values = RandomLongValues.random(random());
     assertDocValuesWithSkipper(
         totalDocs,
         new TestDocValueSkipper() {
           @Override
           public void populateDoc(Document doc) {
             for (int j = 0; j < random().nextInt(1, 3); j++) {
-              doc.add(SortedNumericDocValuesField.indexedField("test", random().nextLong()));
+              doc.add(SortedNumericDocValuesField.indexedField("test", values.nextValue()));
             }
           }
 
@@ -872,6 +875,30 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
     int docID();
 
     int docValueCount();
+  }
+
+  public void testRandomNumericBulkFuzz() throws IOException {
+    doTestRandomBulkFuzz(DocValuesBulkFuzz.Kind.NUMERIC);
+  }
+
+  public void testRandomSortedNumericBulkFuzz() throws IOException {
+    doTestRandomBulkFuzz(DocValuesBulkFuzz.Kind.SORTED_NUMERIC);
+  }
+
+  public void testRandomBinaryBulkFuzz() throws IOException {
+    doTestRandomBulkFuzz(DocValuesBulkFuzz.Kind.BINARY);
+  }
+
+  public void testRandomSortedBulkFuzz() throws IOException {
+    doTestRandomBulkFuzz(DocValuesBulkFuzz.Kind.SORTED);
+  }
+
+  public void testRandomSortedSetBulkFuzz() throws IOException {
+    doTestRandomBulkFuzz(DocValuesBulkFuzz.Kind.SORTED_SET);
+  }
+
+  private void doTestRandomBulkFuzz(DocValuesBulkFuzz.Kind kind) throws IOException {
+    DocValuesBulkFuzz.runAll(kind, this::maybeWrapWithMergingReader);
   }
 
   public void testMismatchedFields() throws Exception {
