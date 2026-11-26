@@ -30,6 +30,7 @@ import org.apache.lucene.tests.index.RandomCodec;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LineFileDocs;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.RandomLongValues;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
@@ -100,6 +101,7 @@ public class TestDuelingCodecs extends LuceneTestCase {
   public static void createRandomIndex(int numdocs, RandomIndexWriter writer, long seed)
       throws IOException {
     Random random = new Random(seed);
+    RandomLongValues numericValues = RandomLongValues.random(random);
     // primary source for our data is from linefiledocs, it's realistic.
     LineFileDocs lineFileDocs = new LineFileDocs(random);
 
@@ -122,14 +124,15 @@ public class TestDuelingCodecs extends LuceneTestCase {
       // add a numeric dv field sometimes
       document.removeFields("sparsenumeric");
       if (random.nextInt(4) == 2) {
-        document.add(new NumericDocValuesField("sparsenumeric", random.nextInt()));
+        document.add(new NumericDocValuesField("sparsenumeric", numericValues.nextValue()));
       }
       // add sortednumeric sometimes
       document.removeFields("sparsesortednum");
       if (random.nextInt(5) == 1) {
-        document.add(new SortedNumericDocValuesField("sparsesortednum", random.nextLong()));
+        document.add(new SortedNumericDocValuesField("sparsesortednum", numericValues.nextValue()));
         if (random.nextBoolean()) {
-          document.add(new SortedNumericDocValuesField("sparsesortednum", random.nextLong()));
+          document.add(
+              new SortedNumericDocValuesField("sparsesortednum", numericValues.nextValue()));
         }
       }
       writer.addDocument(document);
