@@ -754,6 +754,92 @@ public class TestLiveDocs extends LuceneTestCase {
     }
   }
 
+  public void testPaddedBackingSetStaysWithinMaxDoc() throws IOException {
+    for (int iter = atLeast(5); iter > 0; iter--) {
+      for (int maxDoc : boundaryMaxDocs()) {
+        int padding = random().nextInt(256);
+        FixedBitSet deleted = randomBitSet(maxDoc, random().nextDouble());
+        List<Integer> expectedDeleted =
+            collectDocs(new BitSetIterator(deleted, deleted.cardinality()));
+        List<Integer> expectedLive = new ArrayList<>();
+        for (int doc = 0; doc < maxDoc; doc++) {
+          if (deleted.get(doc) == false) {
+            expectedLive.add(doc);
+          }
+        }
+
+        for (LiveDocs liveDocs : liveDocsViews(maxDoc, deleted, padding)) {
+          assertEquals(maxDoc, liveDocs.length());
+          assertEquals(expectedDeleted.size(), liveDocs.deletedCount());
+          assertEquals(expectedDeleted, collectDocs(liveDocs.deletedDocsIterator()));
+          assertEquals(expectedLive, collectDocs(liveDocs.liveDocsIterator()));
+        }
+      }
+    }
+  }
+
+  public void testBuilderRejectsBitsBeyondMaxDoc() {
+    for (int iter = atLeast(5); iter > 0; iter--) {
+      for (int maxDoc : boundaryMaxDocs()) {
+        for (int padding : new int[] {1, 2, TestUtil.nextInt(random(), 3, 256)}) {
+          int last = maxDoc + padding - 1;
+          assertRejectsBitBeyondMaxDoc(maxDoc, padding, maxDoc);
+          if (last > maxDoc) {
+            assertRejectsBitBeyondMaxDoc(maxDoc, padding, last);
+          }
+          if (last > maxDoc + 1) {
+            assertRejectsBitBeyondMaxDoc(
+                maxDoc, padding, TestUtil.nextInt(random(), maxDoc + 1, last - 1));
+          }
+        }
+      }
+    }
+  }
+
+  public void testBuilderRejectsNegativeMaxDoc() {
+    int maxDoc = -TestUtil.nextInt(random(), 1, 1000);
+    FixedBitSet live = new FixedBitSet(128);
+    SparseFixedBitSet deletedDocs = new SparseFixedBitSet(128);
+
+    assertEquals(
+        "maxDoc must not be negative: " + maxDoc,
+        expectThrows(
+                IllegalArgumentException.class, () -> DenseLiveDocs.builder(live, maxDoc).build())
+            .getMessage());
+    assertEquals(
+        "maxDoc must not be negative: " + maxDoc,
+        expectThrows(
+                IllegalArgumentException.class,
+                () -> SparseLiveDocs.builder(deletedDocs, maxDoc).build())
+            .getMessage());
+  }
+
+  private static void assertRejectsBitBeyondMaxDoc(int maxDoc, int padding, int beyond) {
+    FixedBitSet live = new FixedBitSet(maxDoc + padding);
+    live.set(0, maxDoc);
+    live.set(beyond);
+    assertEquals(
+        "liveDocs has bits set at or beyond maxDoc=" + maxDoc,
+        expectThrows(
+                IllegalArgumentException.class, () -> DenseLiveDocs.builder(live, maxDoc).build())
+            .getMessage());
+
+    SparseFixedBitSet deletedDocs = new SparseFixedBitSet(maxDoc + padding);
+    deletedDocs.set(beyond);
+    assertEquals(
+        "deletedDocs has bits set at or beyond maxDoc=" + maxDoc,
+        expectThrows(
+                IllegalArgumentException.class,
+                () -> SparseLiveDocs.builder(deletedDocs, maxDoc).build())
+            .getMessage());
+  }
+
+  private static int[] boundaryMaxDocs() {
+    return new int[] {
+      1, 2, 63, 64, 65, 127, 128, 129, 4095, 4096, 4097, TestUtil.nextInt(random(), 1, 8192)
+    };
+  }
+
   /**
    * Wraps a {@link Bits} instance so that {@link Bits#applyMask} resolves to the default
    * implementation, which is the specification that overrides must match.
