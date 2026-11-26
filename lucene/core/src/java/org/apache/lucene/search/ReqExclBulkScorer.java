@@ -74,7 +74,7 @@ final class ReqExclBulkScorer extends BulkScorer {
     double windowCost = exclFraction * (ReqExclScorer.ADVANCE_COST + matchCost * (1 - reqFraction));
     double switches = 2 * exclFraction * reqFraction / (exclFraction + reqFraction);
     double leapFrogCost = switches * 2 * ReqExclScorer.ADVANCE_COST;
-    return windowCost < leapFrogCost;
+    return (windowCost / 128) < leapFrogCost;
   }
 
   @Override
