@@ -385,6 +385,20 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     entry.denseRankPower = meta.readByte();
     entry.numValues = meta.readLong();
     int tableSize = meta.readInt();
+    if (version >= Lucene90DocValuesFormat.VERSION_BLOCKWISE_LINEAR
+        && tableSize == Lucene90DocValuesFormat.BLOCKWISE_LINEAR_TABLE_SIZE) {
+      entry.blockwiseLinear = true;
+      entry.bitsPerValue = meta.readByte();
+      entry.minValue = meta.readLong();
+      entry.gcd = meta.readLong();
+      entry.valuesOffset = meta.readLong();
+      entry.blockShift = meta.readVInt();
+      entry.blockwiseLinearMeta =
+          DirectMonotonicReader.loadMeta(meta, entry.numValues, entry.blockShift);
+      entry.valuesLength = meta.readLong();
+      entry.valueJumpTableOffset = meta.readLong();
+      return;
+    }
     if (tableSize > 256) {
       throw new CorruptIndexException("invalid table size: " + tableSize, meta);
     }
@@ -619,7 +633,10 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
   }
 
   private static boolean canBulkDecodeByteAligned(NumericEntry entry) {
-    return entry.blockShift < 0 && entry.bitsPerValue > 0 && (entry.bitsPerValue & 0x07) == 0;
+    return entry.blockwiseLinear == false
+        && entry.blockShift < 0
+        && entry.bitsPerValue > 0
+        && (entry.bitsPerValue & 0x07) == 0;
   }
 
   private static boolean isContiguous(int size, int[] docs, int docsOffset) {
@@ -699,6 +716,8 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     long valuesOffset;
     long valuesLength;
     long valueJumpTableOffset; // -1 if no jump-table
+    boolean blockwiseLinear;
+    DirectMonotonicReader.Meta blockwiseLinearMeta;
   }
 
   private static class BinaryEntry {
@@ -871,6 +890,9 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       return DocValues.emptyNumeric();
     } else if (entry.docsWithFieldOffset == -1) {
       // dense
+      if (entry.blockwiseLinear) {
+        return getBlockwiseLinearNumeric(entry, null);
+      }
       if (entry.bitsPerValue == 0) {
         return new DenseNumericDocValues(maxDoc) {
           @Override
@@ -1088,6 +1110,9 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
               entry.jumpTableEntryCount,
               entry.denseRankPower,
               entry.numValues);
+      if (entry.blockwiseLinear) {
+        return getBlockwiseLinearNumeric(entry, disi);
+      }
       if (entry.bitsPerValue == 0) {
         return new SparseNumericDocValues(disi) {
           @Override
@@ -1147,7 +1172,51 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     }
   }
 
+  private NumericDocValues getBlockwiseLinearNumeric(NumericEntry entry, IndexedDISI disi)
+      throws IOException {
+    final LongValues values = getBlockwiseLinearValues(entry);
+    final long mul = entry.gcd;
+    final long delta = entry.minValue;
+    if (disi == null) {
+      return new DenseNumericDocValues(maxDoc) {
+        @Override
+        public long longValue() throws IOException {
+          return values.get(doc) * mul + delta;
+        }
+      };
+    } else {
+      return new SparseNumericDocValues(disi) {
+        @Override
+        public long longValue() throws IOException {
+          return values.get(disi.index()) * mul + delta;
+        }
+      };
+    }
+  }
+
+  private LongValues getBlockwiseLinearValues(NumericEntry entry) throws IOException {
+    final RandomAccessInput slice = data.randomAccessSlice(entry.valuesOffset, entry.valuesLength);
+    if (slice.length() > 0) {
+      slice.prefetch(0, 1);
+    }
+    return DirectMonotonicReader.getInstance(entry.blockwiseLinearMeta, slice, merging);
+  }
+
   private LongValues getNumericValues(NumericEntry entry) throws IOException {
+    if (entry.blockwiseLinear) {
+      final LongValues values = getBlockwiseLinearValues(entry);
+      final long mul = entry.gcd;
+      final long delta = entry.minValue;
+      if (mul == 1 && delta == 0) {
+        return values;
+      }
+      return new LongValues() {
+        @Override
+        public long get(long index) {
+          return values.get(index) * mul + delta;
+        }
+      };
+    }
     if (entry.bitsPerValue == 0) {
       return new LongValues() {
         @Override

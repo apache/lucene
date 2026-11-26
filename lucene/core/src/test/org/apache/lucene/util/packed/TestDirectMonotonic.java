@@ -55,6 +55,56 @@ public class TestDirectMonotonic extends LuceneTestCase {
         e.getMessage());
   }
 
+  public void testNonMonotonicRoundtrip() throws IOException {
+    Directory dir = newDirectory();
+    final int blockShift = TestUtil.nextInt(random(), 2, 8);
+    final int numValues = TestUtil.nextInt(random(), 1, 10_000);
+    final long[] values = new long[numValues];
+    for (int i = 0; i < numValues; ++i) {
+      values[i] = (i * 1_000L) + random().nextInt(500) - 250;
+    }
+
+    final long dataLength;
+    try (IndexOutput metaOut = dir.createOutput("meta", IOContext.DEFAULT);
+        IndexOutput dataOut = dir.createOutput("data", IOContext.DEFAULT)) {
+      DirectMonotonicWriter w =
+          DirectMonotonicWriter.getInstance(metaOut, dataOut, numValues, blockShift, false);
+      for (long v : values) {
+        w.add(v);
+      }
+      w.finish();
+      dataLength = dataOut.getFilePointer();
+    }
+
+    try (IndexInput metaIn = dir.openInput("meta", IOContext.READONCE);
+        IndexInput dataIn = dir.openInput("data", IOContext.DEFAULT)) {
+      DirectMonotonicReader.Meta meta =
+          DirectMonotonicReader.loadMeta(metaIn, numValues, blockShift);
+      LongValues reader =
+          DirectMonotonicReader.getInstance(meta, dataIn.randomAccessSlice(0, dataLength));
+      for (int i = 0; i < numValues; ++i) {
+        assertEquals(values[i], reader.get(i));
+      }
+    }
+    dir.close();
+  }
+
+  public void testMonotonicStillEnforcedByDefault() {
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          Directory dir = newDirectory();
+          try (IndexOutput metaOut = dir.createOutput("meta", IOContext.DEFAULT);
+              IndexOutput dataOut = dir.createOutput("data", IOContext.DEFAULT)) {
+            DirectMonotonicWriter w = DirectMonotonicWriter.getInstance(metaOut, dataOut, 2, 4);
+            w.add(5);
+            w.add(4);
+          } finally {
+            dir.close();
+          }
+        });
+  }
+
   public void testEmpty() throws IOException {
     Directory dir = newDirectory();
     final int blockShift =

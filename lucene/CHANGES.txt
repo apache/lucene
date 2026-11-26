@@ -330,6 +330,11 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#17039: Numeric and SortedNumeric DocValues can now use blockwise linear prediction
+  (DirectMonotonic-style encoding on 512-value blocks, optionally after GCD) when it saves at least
+  10% over existing delta / per-block-min strategies. This particularly helps timestamps, counters
+  and other values correlated with document order. (Prithvi S)
+
 * GITHUB#16145: Bound the prefetch backoff in MemorySegmentIndexInput. The gap between page-cache probes used to
   grow without limit, so under memory pressure prefetch effectively stopped working. A file now probes on every
   prefetch call until 1024 consecutive hits, then every 256th call; a miss goes back to probing on every call.
