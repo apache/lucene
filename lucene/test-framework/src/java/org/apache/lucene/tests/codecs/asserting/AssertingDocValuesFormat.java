@@ -43,15 +43,20 @@ import org.apache.lucene.util.LongBitSet;
 
 /** Just like the default but with additional asserts. */
 public class AssertingDocValuesFormat extends DocValuesFormat {
-  private final DocValuesFormat in = TestUtil.getDefaultDocValuesFormat();
+  private final DocValuesFormat delegate;
 
   public AssertingDocValuesFormat() {
+    this(TestUtil.getDefaultDocValuesFormat());
+  }
+
+  public AssertingDocValuesFormat(DocValuesFormat delegate) {
     super("Asserting");
+    this.delegate = delegate;
   }
 
   @Override
   public DocValuesConsumer fieldsConsumer(SegmentWriteState state) throws IOException {
-    DocValuesConsumer consumer = in.fieldsConsumer(state);
+    DocValuesConsumer consumer = delegate.fieldsConsumer(state);
     assert consumer != null;
     return new AssertingDocValuesConsumer(consumer, state.segmentInfo.maxDoc());
   }
@@ -59,10 +64,15 @@ public class AssertingDocValuesFormat extends DocValuesFormat {
   @Override
   public DocValuesProducer fieldsProducer(SegmentReadState state) throws IOException {
     assert state.fieldInfos.hasDocValues();
-    DocValuesProducer producer = in.fieldsProducer(state);
+    DocValuesProducer producer = delegate.fieldsProducer(state);
     assert producer != null;
     return new AssertingDocValuesProducer(
         producer, state.fieldInfos, state.segmentInfo.maxDoc(), false);
+  }
+
+  @Override
+  public String toString() {
+    return "AssertingDocValuesFormat{" + "delegate=" + delegate + "}";
   }
 
   static class AssertingDocValuesConsumer extends DocValuesConsumer {

@@ -578,6 +578,8 @@ Other
 
 * GITHUB#16279: Add JMH benchmarks comparing read I/O strategies under memory pressure. (neoremind)
 
+* GITHUB#17080: Add delegate constructors to all Asserting*Format classes. (Simon Cooper)
+
 ======================= Lucene 10.6.0 =======================
 
 API Changes
