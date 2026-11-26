@@ -19,7 +19,9 @@ package org.apache.lucene.queries.intervals;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import org.apache.lucene.search.IndexSearcher;
 
@@ -73,24 +75,26 @@ final class Disjunctions {
   }
 
   // Separate out disjunctions into individual sources
-  // Clauses that have a minExtent of 1 are grouped together and treated as a single
-  // source, as any overlapping intervals of length 1 can be treated as identical,
-  // and we know that all combinatorial sources have a minExtent > 1
+  // Clauses that always match intervals of the same fixed width are grouped together by width
+  // and treated as a single source, as intervals of equal width can never strictly contain one
+  // another, so minimization cannot cause one to hide another. This covers single terms (width 1)
+  // and, for example, phrases of the same length. Variable-width clauses are kept separate.
   private static List<IntervalsSource> splitDisjunctions(IntervalsSource source) {
-    List<IntervalsSource> singletons = new ArrayList<>();
-    List<IntervalsSource> nonSingletons = new ArrayList<>();
+    Map<Integer, List<IntervalsSource>> fixedByWidth = new LinkedHashMap<>();
+    List<IntervalsSource> variableWidth = new ArrayList<>();
     for (IntervalsSource disj : source.pullUpDisjunctions()) {
-      if (disj.minExtent() == 1) {
-        singletons.add(disj);
+      int width = disj.minExtent();
+      if (width == disj.maxExtent()) {
+        fixedByWidth.computeIfAbsent(width, _ -> new ArrayList<>()).add(disj);
       } else {
-        nonSingletons.add(disj);
+        variableWidth.add(disj);
       }
     }
     List<IntervalsSource> split = new ArrayList<>();
-    if (singletons.size() > 0) {
-      split.add(Intervals.or(singletons.toArray(IntervalsSource[]::new)));
+    for (List<IntervalsSource> group : fixedByWidth.values()) {
+      split.add(group.size() == 1 ? group.get(0) : Intervals.or(group));
     }
-    split.addAll(nonSingletons);
+    split.addAll(variableWidth);
     return split;
   }
 }

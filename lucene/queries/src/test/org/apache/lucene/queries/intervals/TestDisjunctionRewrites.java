@@ -27,6 +27,7 @@ import static org.apache.lucene.queries.intervals.Intervals.notContaining;
 import static org.apache.lucene.queries.intervals.Intervals.or;
 import static org.apache.lucene.queries.intervals.Intervals.ordered;
 import static org.apache.lucene.queries.intervals.Intervals.phrase;
+import static org.apache.lucene.queries.intervals.Intervals.prefix;
 import static org.apache.lucene.queries.intervals.Intervals.term;
 
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -97,8 +98,9 @@ public class TestDisjunctionRewrites extends LuceneTestCase {
 
   public void testDisjunctionRewritePreservesFilters() {
 
+    // Both alternatives have the same fixed width, so no rewrite is needed
     // BLOCK(a, MAXGAPS/3(OR(BLOCK(a, b), BLOCK(c, d))), c)
-    // => or(BLOCK(a, MAXGAPS/3(BLOCK(a, b)), c), BLOCK(a, MAXGAPS/3(BLOCK(c, d)), c))
+    // => BLOCK(a, MAXGAPS/3(OR(BLOCK(a, b), BLOCK(c, d))), c)
 
     IntervalsSource actual =
         Intervals.phrase(
@@ -108,15 +110,11 @@ public class TestDisjunctionRewrites extends LuceneTestCase {
             Intervals.term("c"));
 
     IntervalsSource expected =
-        Intervals.or(
-            Intervals.phrase(
-                Intervals.term("a"),
-                Intervals.maxgaps(3, Intervals.phrase("a", "b")),
-                Intervals.term("c")),
-            Intervals.phrase(
-                Intervals.term("a"),
-                Intervals.maxgaps(3, Intervals.phrase("c", "d")),
-                Intervals.term("c")));
+        Intervals.phrase(
+            Intervals.term("a"),
+            Intervals.maxgaps(
+                3, Intervals.or(Intervals.phrase("a", "b"), Intervals.phrase("c", "d"))),
+            Intervals.term("c"));
 
     assertEquals(expected, actual);
   }
@@ -230,5 +228,56 @@ public class TestDisjunctionRewrites extends LuceneTestCase {
     IntervalsSource actual = phrase(term("a"), or(false, phrase("b", "c"), term("c")));
     IntervalsSource ifRewritten = or(phrase("a", "b", "c"), phrase("a", "c"));
     assertNotEquals(ifRewritten, actual);
+  }
+
+  public void testFixedWidthAlternativesAreGrouped() {
+    IntervalsSource source =
+        Intervals.unordered(
+            term("a"), or(phrase("b", "c"), phrase("d", "e"), term("f"), term("g")));
+    // one group of width 2, one of width 1
+    assertEquals(2, source.pullUpDisjunctions().size());
+  }
+
+  public void testFixedWidthGroupingShrinksCrossProduct() {
+    IntervalsSource left =
+        or(
+            term("a"),
+            prefix(new org.apache.lucene.util.BytesRef("b")),
+            phrase("c", "d"),
+            phrase("e", "f"),
+            phrase("g", "h", "i"));
+    IntervalsSource right =
+        or(phrase("j", "k"), phrase("l", "m"), term("n"), phrase("o", "p", "q"));
+    // 3 widths on each side
+    assertEquals(9, Intervals.unordered(left, right).pullUpDisjunctions().size());
+    assertEquals(9, maxgaps(3, Intervals.unordered(left, right)).pullUpDisjunctions().size());
+  }
+
+  public void testFixedWidthIsCarriedThroughWrappers() {
+    IntervalsSource wrapped =
+        or(maxgaps(0, phrase("a", "b")), containing(phrase("c", "d"), term("c")), phrase("e", "f"));
+    assertEquals(1, Intervals.unordered(term("x"), wrapped).pullUpDisjunctions().size());
+  }
+
+  public void testVariableWidthAlternativesAreNotGrouped() {
+    IntervalsSource variable = or(maxwidth(5, Intervals.ordered(term("a"), term("b"))), term("c"));
+    IntervalsSource variable2 = Intervals.ordered(term("d"), term("e"));
+    assertEquals(
+        4,
+        Intervals.unordered(term("x"), or(variable, variable2, phrase("f", "g")))
+            .pullUpDisjunctions()
+            .size());
+  }
+
+  public void testMaxExtent() {
+    assertEquals(1, term("a").maxExtent());
+    assertEquals(2, phrase("a", "b").maxExtent());
+    assertEquals(3, or(term("a"), phrase("a", "b", "c")).maxExtent());
+    assertEquals(Integer.MAX_VALUE, Intervals.ordered(term("a"), term("b")).maxExtent());
+    assertEquals(4, maxwidth(4, Intervals.ordered(term("a"), term("b"))).maxExtent());
+    assertEquals(2, containing(phrase("a", "b"), term("a")).maxExtent());
+    assertEquals(
+        Integer.MAX_VALUE,
+        Intervals.extend(Intervals.ordered(term("a"), term("b")), 1, 1).maxExtent());
   }
 }

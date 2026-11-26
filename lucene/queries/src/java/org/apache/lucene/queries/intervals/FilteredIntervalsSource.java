@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Objects;
-import java.util.stream.Collectors;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.QueryVisitor;
 
@@ -29,10 +28,7 @@ import org.apache.lucene.search.QueryVisitor;
 public abstract class FilteredIntervalsSource extends IntervalsSource {
 
   public static IntervalsSource maxGaps(IntervalsSource in, int maxGaps) {
-    return Intervals.or(
-        in.pullUpDisjunctions().stream()
-            .map(s -> new MaxGaps(s, maxGaps))
-            .collect(Collectors.toList()));
+    return Intervals.or(Disjunctions.pullUp(in, s -> new MaxGaps(s, maxGaps)));
   }
 
   private static class MaxGaps extends FilteredIntervalsSource {
@@ -66,6 +62,11 @@ public abstract class FilteredIntervalsSource extends IntervalsSource {
     @Override
     protected boolean accept(IntervalIterator it) {
       return (it.end() - it.start()) + 1 <= maxWidth;
+    }
+
+    @Override
+    public int maxExtent() {
+      return Math.min(in.maxExtent(), maxWidth);
     }
 
     @Override
@@ -127,6 +128,10 @@ public abstract class FilteredIntervalsSource extends IntervalsSource {
   @Override
   public int minExtent() {
     return in.minExtent();
+  }
+
+  public int maxExtent() {
+    return in.maxExtent();
   }
 
   @Override

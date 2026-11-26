@@ -56,6 +56,10 @@ class FixedFieldIntervalsSource extends IntervalsSource {
     return source.minExtent();
   }
 
+  public int maxExtent() {
+    return source.maxExtent();
+  }
+
   @Override
   public Collection<IntervalsSource> pullUpDisjunctions() {
     Collection<IntervalsSource> inner = source.pullUpDisjunctions();

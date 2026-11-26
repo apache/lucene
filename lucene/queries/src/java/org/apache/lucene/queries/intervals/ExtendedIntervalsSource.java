@@ -131,6 +131,11 @@ class ExtendedIntervalsSource extends IntervalsSource {
     return minExtent;
   }
 
+  public int maxExtent() {
+    long maxExtent = (long) before + source.maxExtent() + after;
+    return (int) Math.max(0, Math.min(maxExtent, Integer.MAX_VALUE));
+  }
+
   @Override
   public Collection<IntervalsSource> pullUpDisjunctions() {
     Collection<IntervalsSource> inner = source.pullUpDisjunctions();
