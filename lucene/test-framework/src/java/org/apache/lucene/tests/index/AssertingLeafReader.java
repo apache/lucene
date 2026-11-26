@@ -827,6 +827,17 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
+    public void rangeIntoBitSet(
+        int fromDoc, int toDoc, long minValue, long maxValue, FixedBitSet bitSet, int offset)
+        throws IOException {
+      assertThread("Numeric doc values", creationThread);
+      assert fromDoc >= 0;
+      assert fromDoc <= toDoc;
+      assert toDoc <= maxDoc;
+      super.rangeIntoBitSet(fromDoc, toDoc, minValue, maxValue, bitSet, offset);
+    }
+
+    @Override
     public int docIDRunEnd() throws IOException {
       assertThread("Numeric doc values", creationThread);
       assert docID() != -1;
@@ -1199,6 +1210,17 @@ public class AssertingLeafReader extends FilterLeafReader {
       assert docID() >= upTo;
       lastDocID = docID();
       valueUpto = 0;
+    }
+
+    @Override
+    public void rangeIntoBitSet(
+        int fromDoc, int toDoc, long minValue, long maxValue, FixedBitSet bitSet, int offset)
+        throws IOException {
+      assertThread("Sorted numeric doc values", creationThread);
+      assert fromDoc >= 0;
+      assert fromDoc <= toDoc;
+      assert toDoc <= maxDoc;
+      super.rangeIntoBitSet(fromDoc, toDoc, minValue, maxValue, bitSet, offset);
     }
 
     @Override

@@ -34,6 +34,10 @@ public interface DocValuesRangeSupport {
    * Fills {@code bitSet} with the doc IDs in {@code [fromDoc, toDoc)} whose values (read via {@code
    * values}) are in {@code [minValue, maxValue]}.
    *
+   * <p>Callers must ensure that {@code 0 <= fromDoc <= toDoc} and that every index in {@code
+   * [fromDoc, toDoc)} is valid for {@code values}. Otherwise, the behavior is undefined and
+   * implementations may throw exceptions.
+   *
    * @param values random-access reader for the doc values
    * @param fromDoc first doc ID to evaluate (inclusive)
    * @param toDoc last doc ID to evaluate (exclusive)
@@ -57,6 +61,10 @@ public interface DocValuesRangeSupport {
    *
    * <p>This method only supports <b>fixed-cardinality</b> fields where every document has exactly
    * {@code cardinality} values stored contiguously starting at index {@code doc * cardinality}.
+   *
+   * <p>Callers must ensure that {@code 0 <= fromDoc <= toDoc} and that every index in {@code
+   * [(long) fromDoc * cardinality, (long) toDoc * cardinality)} is valid for {@code values}.
+   * Otherwise, the behavior is undefined and implementations may throw exceptions.
    *
    * @param cardinality number of values per document (must be &gt; 0)
    */
