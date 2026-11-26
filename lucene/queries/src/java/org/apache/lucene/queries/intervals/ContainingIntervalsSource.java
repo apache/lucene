@@ -70,6 +70,7 @@ class ContainingIntervalsSource extends ConjunctionIntervalsSource {
     return big.minExtent();
   }
 
+  @Override
   public int maxExtent() {
     return big.maxExtent();
   }

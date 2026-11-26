@@ -65,6 +65,7 @@ class BlockIntervalsSource extends ConjunctionIntervalsSource {
     return minExtent;
   }
 
+  @Override
   public int maxExtent() {
     long maxExtent = 0;
     for (IntervalsSource subSource : subSources) {

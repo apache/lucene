@@ -79,6 +79,7 @@ class ContainedByIntervalsSource extends ConjunctionIntervalsSource {
     return small.minExtent();
   }
 
+  @Override
   public int maxExtent() {
     return small.maxExtent();
   }

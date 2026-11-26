@@ -131,6 +131,7 @@ class ExtendedIntervalsSource extends IntervalsSource {
     return minExtent;
   }
 
+  @Override
   public int maxExtent() {
     long maxExtent = (long) before + source.maxExtent() + after;
     return (int) Math.max(0, Math.min(maxExtent, Integer.MAX_VALUE));

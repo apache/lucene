@@ -75,6 +75,7 @@ class OverlappingIntervalsSource extends ConjunctionIntervalsSource {
     return source.minExtent();
   }
 
+  @Override
   public int maxExtent() {
     return source.maxExtent();
   }

@@ -248,6 +248,7 @@ class PayloadFilteredTermIntervalsSource extends IntervalsSource {
     return 1;
   }
 
+  @Override
   public int maxExtent() {
     return 1;
   }

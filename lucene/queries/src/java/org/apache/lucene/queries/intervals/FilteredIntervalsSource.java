@@ -130,6 +130,7 @@ public abstract class FilteredIntervalsSource extends IntervalsSource {
     return in.minExtent();
   }
 
+  @Override
   public int maxExtent() {
     return in.maxExtent();
   }

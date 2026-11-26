@@ -76,6 +76,7 @@ abstract class DifferenceIntervalsSource extends IntervalsSource {
     return minuend.minExtent();
   }
 
+  @Override
   public int maxExtent() {
     return minuend.maxExtent();
   }

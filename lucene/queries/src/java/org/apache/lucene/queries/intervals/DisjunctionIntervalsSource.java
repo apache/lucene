@@ -143,6 +143,7 @@ class DisjunctionIntervalsSource extends IntervalsSource {
     return minExtent;
   }
 
+  @Override
   public int maxExtent() {
     int maxExtent = 0;
     for (IntervalsSource subSource : subSources) {

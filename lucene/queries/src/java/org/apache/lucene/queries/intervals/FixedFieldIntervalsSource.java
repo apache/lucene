@@ -56,6 +56,7 @@ class FixedFieldIntervalsSource extends IntervalsSource {
     return source.minExtent();
   }
 
+  @Override
   public int maxExtent() {
     return source.maxExtent();
   }
