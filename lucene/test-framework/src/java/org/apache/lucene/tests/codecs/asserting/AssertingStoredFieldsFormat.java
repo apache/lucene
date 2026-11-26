@@ -58,6 +58,11 @@ public class AssertingStoredFieldsFormat extends StoredFieldsFormat {
     return new AssertingStoredFieldsWriter(delegate.fieldsWriter(directory, si, context));
   }
 
+  @Override
+  public String toString() {
+    return "AssertingStoredFieldsFormat{" + "delegate=" + delegate + "}";
+  }
+
   static class AssertingStoredFieldsReader extends StoredFieldsReader {
     private final StoredFieldsReader in;
     private final int maxDoc;

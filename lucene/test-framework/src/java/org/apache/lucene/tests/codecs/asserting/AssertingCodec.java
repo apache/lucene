@@ -17,7 +17,7 @@
 package org.apache.lucene.tests.codecs.asserting;
 
 import com.carrotsearch.randomizedtesting.RandomizedContext;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.stream.Collectors;
 import org.apache.lucene.codecs.DocValuesFormat;
@@ -40,8 +40,10 @@ public class AssertingCodec extends FilterCodec {
 
   /** Enum representing asserting format types that can be suppressed. */
   public enum Format {
+    POSTINGS,
     STORED_FIELDS,
     TERM_VECTORS,
+    DOC_VALUES,
     NORMS,
     LIVE_DOCS,
     POINTS,
@@ -112,11 +114,11 @@ public class AssertingCodec extends FilterCodec {
       targetClass = null;
     }
 
+    LuceneTestCase.SuppressAssertingFormats suppressions;
     if (targetClass != null
-        && targetClass.isAnnotationPresent(LuceneTestCase.SuppressAssertingFormats.class)) {
-      suppressedFormats.addAll(
-          Arrays.asList(
-              targetClass.getAnnotation(LuceneTestCase.SuppressAssertingFormats.class).value()));
+        && (suppressions = targetClass.getAnnotation(LuceneTestCase.SuppressAssertingFormats.class))
+            != null) {
+      Collections.addAll(suppressedFormats, suppressions.value());
     }
 
     this.suppressedFormats = suppressedFormats;
@@ -124,7 +126,7 @@ public class AssertingCodec extends FilterCodec {
 
   @Override
   public PostingsFormat postingsFormat() {
-    return postings;
+    return isSuppressed(Format.POSTINGS) ? delegate.postingsFormat() : postings;
   }
 
   @Override
@@ -139,7 +141,7 @@ public class AssertingCodec extends FilterCodec {
 
   @Override
   public DocValuesFormat docValuesFormat() {
-    return docValues;
+    return isSuppressed(Format.DOC_VALUES) ? delegate.docValuesFormat() : docValues;
   }
 
   @Override

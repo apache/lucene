@@ -76,7 +76,7 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
 
   @Override
   public String toString() {
-    return "AssertingKnnVectorsFormat{" + "delegate=" + delegate + '}';
+    return "AssertingKnnVectorsFormat{" + "delegate=" + delegate + "}";
   }
 
   static class AssertingKnnVectorsWriter extends KnnVectorsWriter {

@@ -55,6 +55,11 @@ public final class AssertingPointsFormat extends PointsFormat {
         state.segmentInfo.maxDoc(), delegate.fieldsReader(state), state.fieldInfos, false);
   }
 
+  @Override
+  public String toString() {
+    return "AssertingPointsFormat{" + "delegate=" + delegate + "}";
+  }
+
   static class AssertingPointsReader extends PointsReader {
     private final PointsReader in;
     private final int maxDoc;

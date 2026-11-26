@@ -70,6 +70,11 @@ public class AssertingDocValuesFormat extends DocValuesFormat {
         producer, state.fieldInfos, state.segmentInfo.maxDoc(), false);
   }
 
+  @Override
+  public String toString() {
+    return "AssertingDocValuesFormat{" + "delegate=" + delegate + "}";
+  }
+
   static class AssertingDocValuesConsumer extends DocValuesConsumer {
     private final DocValuesConsumer in;
     private final int maxDoc;

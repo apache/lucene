@@ -60,6 +60,11 @@ public class AssertingTermVectorsFormat extends TermVectorsFormat {
     return new AssertingTermVectorsWriter(delegate.vectorsWriter(directory, segmentInfo, context));
   }
 
+  @Override
+  public String toString() {
+    return "AssertingTermVectorsFormat{" + "delegate=" + delegate + "}";
+  }
+
   static class AssertingTermVectorsReader extends TermVectorsReader {
     private final TermVectorsReader in;
 

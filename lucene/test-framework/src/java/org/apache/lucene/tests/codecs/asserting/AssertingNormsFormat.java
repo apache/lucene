@@ -57,6 +57,11 @@ public class AssertingNormsFormat extends NormsFormat {
     return new AssertingNormsProducer(producer, state.segmentInfo.maxDoc(), false);
   }
 
+  @Override
+  public String toString() {
+    return "AssertingNormsFormat{" + "delegate=" + delegate + "}";
+  }
+
   static class AssertingNormsConsumer extends NormsConsumer {
     private final NormsConsumer in;
     private final int maxDoc;

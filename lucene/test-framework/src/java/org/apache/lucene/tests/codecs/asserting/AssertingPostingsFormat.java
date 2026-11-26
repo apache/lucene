@@ -60,6 +60,11 @@ public final class AssertingPostingsFormat extends PostingsFormat {
     return new AssertingFieldsProducer(delegate.fieldsProducer(state));
   }
 
+  @Override
+  public String toString() {
+    return "AssertingPostingsFormat{" + "delegate=" + delegate + "}";
+  }
+
   static class AssertingFieldsProducer extends FieldsProducer {
     private final FieldsProducer in;
 

@@ -79,7 +79,7 @@ public class AssertingLiveDocsFormat extends LiveDocsFormat {
 
   @Override
   public String toString() {
-    return "Asserting(" + delegate + ")";
+    return "AssertingLiveDocsFormat{" + "delegate=" + delegate + "}";
   }
 
   static class AssertingBits implements Bits {
