@@ -52,6 +52,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
@@ -118,9 +119,13 @@ public class TestDocValuesQueries extends LuceneTestCaseJupiter {
     RandomIndexWriter iw = new RandomIndexWriter(random, dir, config);
     final int numDocs = atLeast(1000);
     final RandomLongValues values = RandomLongValues.random(random);
+    final long[] inputValues = new long[numDocs];
+    final int[] valueCounts = new int[numDocs];
     for (int i = 0; i < numDocs; ++i) {
       Document doc = new Document();
-      final long value = values.nextValue();
+      final long value = inputValues[i] = values.nextValue();
+      valueCounts[i] = 1;
+      doc.add(new NumericDocValuesField("id", i));
       doc.add(NumericDocValuesField.indexedField("dv", value));
       doc.add(new LongPoint("idx", value));
       iw.addDocument(doc);
@@ -136,7 +141,9 @@ public class TestDocValuesQueries extends LuceneTestCaseJupiter {
       final long max = bounds.max();
       final Query q1 = LongPoint.newRangeQuery("idx", min, max);
       final Query q2 = NumericDocValuesField.newSlowRangeQuery("dv", min, max);
-      assertSameMatches(searcher, q1, q2, false);
+      Set<Integer> expected =
+          matchesFromArray(reader, inputValues, valueCounts, min, max, true, true);
+      assertSameMatches(searcher, q1, q2, false, expected);
     }
     reader.close();
     dir.close();
@@ -160,11 +167,16 @@ public class TestDocValuesQueries extends LuceneTestCaseJupiter {
       final int numDocs = atLeast(500);
       final RandomLongValues values = RandomLongValues.random(random);
       final int minValuesPerDoc = random.nextBoolean() ? 1 : 0;
+      final long[] inputValues = new long[numDocs * maxValuesPerDoc];
+      final int[] valueCounts = new int[numDocs];
       for (int i = 0; i < numDocs; ++i) {
         Document doc = new Document();
         final int numValues = TestUtil.nextInt(random, minValuesPerDoc, maxValuesPerDoc);
+        valueCounts[i] = numValues;
+        doc.add(new NumericDocValuesField("id", i));
         for (int j = 0; j < numValues; ++j) {
           final long value = values.nextValue();
+          inputValues[i * maxValuesPerDoc + j] = value;
           if (sortedNumeric) {
             if (skypper) {
               doc.add(SortedNumericDocValuesField.indexedField("dv", value));
@@ -200,7 +212,9 @@ public class TestDocValuesQueries extends LuceneTestCaseJupiter {
         } else {
           q2 = NumericDocValuesField.newSlowRangeQuery("dv", min, max);
         }
-        assertSameMatches(searcher, q1, q2, false);
+        Set<Integer> expected =
+            matchesFromArray(reader, inputValues, valueCounts, min, max, true, true);
+        assertSameMatches(searcher, q1, q2, false, expected);
       }
 
       reader.close();
@@ -224,11 +238,16 @@ public class TestDocValuesQueries extends LuceneTestCaseJupiter {
       }
       final int numDocs = atLeast(100);
       final RandomLongValues values = RandomLongValues.random(random);
+      final long[] inputValues = new long[numDocs * maxValuesPerDoc];
+      final int[] valueCounts = new int[numDocs];
       for (int i = 0; i < numDocs; ++i) {
         Document doc = new Document();
         final int numValues = TestUtil.nextInt(random, 0, maxValuesPerDoc);
+        valueCounts[i] = numValues;
+        doc.add(new NumericDocValuesField("id", i));
         for (int j = 0; j < numValues; ++j) {
           final long value = values.nextValue();
+          inputValues[i * maxValuesPerDoc + j] = value;
           byte[] encoded = new byte[Long.BYTES];
           LongPoint.encodeDimension(value, encoded, 0);
           if (sortedSet) {
@@ -292,7 +311,9 @@ public class TestDocValuesQueries extends LuceneTestCaseJupiter {
                   includeMin,
                   includeMax);
         }
-        assertSameMatches(searcher, q1, q2, false);
+        Set<Integer> expected =
+            matchesFromArray(reader, inputValues, valueCounts, min, max, true, true);
+        assertSameMatches(searcher, q1, q2, false, expected);
       }
 
       reader.close();
@@ -403,9 +424,13 @@ public class TestDocValuesQueries extends LuceneTestCaseJupiter {
     RandomIndexWriter iw = new RandomIndexWriter(random, dir, config);
     final int numDocs = atLeast(1000);
     final RandomLongValues values = RandomLongValues.random(random);
+    final long[] inputValues = new long[numDocs];
+    final int[] valueCounts = new int[numDocs];
     for (int i = 0; i < numDocs; ++i) {
       Document doc = new Document();
-      final long value = values.nextValue();
+      final long value = inputValues[i] = values.nextValue();
+      valueCounts[i] = 1;
+      doc.add(new NumericDocValuesField("id", i));
       byte[] encoded = new byte[Long.BYTES];
       LongPoint.encodeDimension(value, encoded, 0);
       doc.add(SortedDocValuesField.indexedField("dv", newBytesRef(encoded)));
@@ -443,7 +468,9 @@ public class TestDocValuesQueries extends LuceneTestCaseJupiter {
               max == Long.MAX_VALUE && random.nextBoolean() ? null : newBytesRef(encodedMax),
               includeMin,
               includeMax);
-      assertSameMatches(searcher, q1, q2, false);
+      Set<Integer> expected =
+          matchesFromArray(reader, inputValues, valueCounts, min, max, true, true);
+      assertSameMatches(searcher, q1, q2, false, expected);
     }
     reader.close();
     dir.close();
@@ -451,23 +478,78 @@ public class TestDocValuesQueries extends LuceneTestCaseJupiter {
 
   private void assertSameMatches(IndexSearcher searcher, Query q1, Query q2, boolean scores)
       throws IOException {
-    assertSameMatchesWithoutScores(searcher, q1, q2);
+    assertSameMatches(searcher, q1, q2, scores, null);
+  }
+
+  private void assertSameMatches(
+      IndexSearcher searcher, Query q1, Query q2, boolean scores, Set<Integer> expected)
+      throws IOException {
+    assertSameMatchesWithoutScores(searcher, q1, q2, expected);
     final int maxDoc = Math.max(1, searcher.getIndexReader().maxDoc());
     final TopDocs td1 = searcher.search(q1, maxDoc, scores ? Sort.RELEVANCE : Sort.INDEXORDER);
     final TopDocs td2 = searcher.search(q2, maxDoc, scores ? Sort.RELEVANCE : Sort.INDEXORDER);
     assertEquals(td1.totalHits.value(), td2.totalHits.value());
+    if (expected != null) {
+      assertEquals(q1.toString(), expected.size(), td1.scoreDocs.length);
+    }
     for (int i = 0; i < td1.scoreDocs.length; ++i) {
+      if (expected != null) {
+        assertTrue(q1.toString(), expected.contains(td1.scoreDocs[i].doc));
+      }
       assertEquals(td1.scoreDocs[i].doc, td2.scoreDocs[i].doc);
       if (scores) {
         assertEquals(td1.scoreDocs[i].score, td2.scoreDocs[i].score, 10e-7);
       }
     }
+    if (expected != null) {
+      assertEquals(q1.toString(), expected.size(), searcher.count(q1));
+      assertEquals(q2.toString(), expected.size(), searcher.count(q2));
+    }
   }
 
   // Collecting without scores makes bulk scorers use DocIdSetIterator#intoBitSet
-  private void assertSameMatchesWithoutScores(IndexSearcher searcher, Query q1, Query q2)
+  private void assertSameMatchesWithoutScores(
+      IndexSearcher searcher, Query q1, Query q2, Set<Integer> expected) throws IOException {
+    Set<Integer> docs1 = collectWithoutScores(searcher, q1);
+    Set<Integer> docs2 = collectWithoutScores(searcher, q2);
+    assertEquals(docs1, docs2);
+    if (expected != null) {
+      assertEquals(q1.toString(), expected, docs1);
+      assertEquals(q2.toString(), expected, docs2);
+    }
+  }
+
+  private static Set<Integer> matchesFromArray(
+      IndexReader reader,
+      long[] values,
+      int[] valueCounts,
+      long min,
+      long max,
+      boolean includeMin,
+      boolean includeMax)
       throws IOException {
-    assertEquals(collectWithoutScores(searcher, q1), collectWithoutScores(searcher, q2));
+    Set<Integer> matches = new HashSet<>();
+    int maxValuesPerDoc = values.length / valueCounts.length;
+    for (LeafReaderContext context : reader.leaves()) {
+      // The id field only maps sorted/merged doc IDs back to the original input array.
+      NumericDocValues ids = DocValues.getNumeric(context.reader(), "id");
+      for (int doc = ids.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = ids.nextDoc()) {
+        if (context.reader().getLiveDocs() != null
+            && context.reader().getLiveDocs().get(doc) == false) {
+          continue;
+        }
+        int id = Math.toIntExact(ids.longValue());
+        for (int i = 0; i < valueCounts[id]; i++) {
+          long value = values[id * maxValuesPerDoc + i];
+          if ((value > min || (includeMin && value == min))
+              && (value < max || (includeMax && value == max))) {
+            matches.add(context.docBase + doc);
+            break;
+          }
+        }
+      }
+    }
+    return matches;
   }
 
   private static Set<Integer> collectWithoutScores(IndexSearcher searcher, Query query)
