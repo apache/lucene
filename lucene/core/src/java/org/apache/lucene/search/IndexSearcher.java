@@ -828,7 +828,8 @@ public class IndexSearcher {
       try {
         // Optimize for the case when live docs are stored in a FixedBitSet.
         Bits acceptDocs = ScorerUtil.likelyLiveDocs(ctx.reader().getLiveDocs());
-        scorer.score(leafCollector, acceptDocs, minDocId, maxDocId);
+        scorer.score(
+            leafCollector, acceptDocs, minDocId, Math.min(maxDocId, ctx.reader().maxDoc()));
       } catch (CollectionTerminatedException _) {
         // collection was terminated prematurely
         // continue with the following leaf
@@ -1040,8 +1041,7 @@ public class IndexSearcher {
     public final int minDocId;
     public final int maxDocId;
     public final LeafReaderContext ctx;
-    // we keep track of maxDocs separately because we use NO_MORE_DOCS as upper bound when targeting
-    // the entire segment. We use this only in tests.
+    // Number of documents targeted by this partition. We use this only in tests.
     private final int maxDocs;
 
     private LeafReaderContextPartition(
@@ -1074,8 +1074,7 @@ public class IndexSearcher {
 
     /** Creates a partition of the provided leaf context that targets the entire segment */
     public static LeafReaderContextPartition createForEntireSegment(LeafReaderContext ctx) {
-      return new LeafReaderContextPartition(
-          ctx, 0, DocIdSetIterator.NO_MORE_DOCS, ctx.reader().maxDoc());
+      return new LeafReaderContextPartition(ctx, 0, ctx.reader().maxDoc(), ctx.reader().maxDoc());
     }
 
     /**

@@ -212,7 +212,7 @@ public class TestScorerPerf extends LuceneTestCase {
         IndexSearcher s = newSearcher(r);
         s.setQueryCache(null);
 
-        FixedBitSet[] sets = randBitSets(atLeast(1000), atLeast(10));
+        FixedBitSet[] sets = randBitSets(atLeast(1000), r.maxDoc());
 
         int iterations = TEST_NIGHTLY ? atLeast(10000) : atLeast(500);
         doConjunctions(s, sets, iterations, atLeast(5));
