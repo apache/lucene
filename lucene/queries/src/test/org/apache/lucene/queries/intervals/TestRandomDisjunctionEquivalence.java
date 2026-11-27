@@ -33,6 +33,7 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.BytesRef;
 
 /**
  * Checks that combining fixed-width disjunction alternatives into a single source gives the same
@@ -51,7 +52,7 @@ public class TestRandomDisjunctionEquivalence extends LuceneTestCase {
     try (Directory dir = newDirectory()) {
       indexRandomDocs(dir);
       try (DirectoryReader reader = DirectoryReader.open(dir)) {
-        int iters = atLeast(200);
+        int iters = atLeast(300);
         for (int i = 0; i < iters; i++) {
           boolean ordered = random().nextBoolean();
           int clauseCount = org.apache.lucene.tests.util.TestUtil.nextInt(random(), 2, 3);
@@ -59,12 +60,17 @@ public class TestRandomDisjunctionEquivalence extends LuceneTestCase {
           for (int c = 0; c < clauseCount; c++) {
             alternatives.add(randomAlternatives(c));
           }
-          int maxGaps = random().nextInt(6);
+          // -1 means no gap limit
+          int maxGaps = random().nextInt(7) - 1;
           IntervalsSource actual = combine(ordered, maxGaps, toDisjunctions(alternatives));
           IntervalsSource expected = expand(ordered, maxGaps, alternatives);
           for (LeafReaderContext ctx : reader.leaves()) {
             assertEquals(
-                actual + " vs " + expected,
+                (ordered ? "ordered" : "unordered")
+                    + " maxGaps="
+                    + maxGaps
+                    + " clauses="
+                    + alternatives,
                 minimalMatches(expected, ctx),
                 minimalMatches(actual, ctx));
           }
@@ -85,7 +91,7 @@ public class TestRandomDisjunctionEquivalence extends LuceneTestCase {
       boolean ordered, int maxGaps, List<IntervalsSource> clauses) {
     IntervalsSource[] array = clauses.toArray(IntervalsSource[]::new);
     IntervalsSource combined = ordered ? Intervals.ordered(array) : Intervals.unordered(array);
-    return Intervals.maxgaps(maxGaps, combined);
+    return maxGaps < 0 ? combined : Intervals.maxgaps(maxGaps, combined);
   }
 
   // Reference: one source per element of the cross product of the alternatives, with no grouping
@@ -112,7 +118,7 @@ public class TestRandomDisjunctionEquivalence extends LuceneTestCase {
   }
 
   private static List<IntervalsSource> randomAlternatives(int clause) {
-    int count = org.apache.lucene.tests.util.TestUtil.nextInt(random(), 1, 5);
+    int count = org.apache.lucene.tests.util.TestUtil.nextInt(random(), 1, 3);
     List<IntervalsSource> alts = new ArrayList<>();
     for (int i = 0; i < count; i++) {
       alts.add(randomAlternative(clause));
@@ -127,11 +133,17 @@ public class TestRandomDisjunctionEquivalence extends LuceneTestCase {
       terms[i] = VOCAB[clause * TERMS_PER_CLAUSE + random().nextInt(TERMS_PER_CLAUSE)];
     }
     IntervalsSource source = length == 1 ? Intervals.term(terms[0]) : Intervals.phrase(terms);
-    switch (random().nextInt(6)) {
+    switch (random().nextInt(9)) {
       case 0:
         return Intervals.maxgaps(0, source);
       case 1:
         return Intervals.containing(source, Intervals.term(terms[0]));
+      case 2:
+        return Intervals.extend(source, random().nextInt(2), random().nextInt(3));
+      case 3:
+        return Intervals.extend(source, 1, random().nextInt(2));
+      case 4:
+        return Intervals.prefix(new BytesRef(terms[0]));
       default:
         return source;
     }
@@ -174,10 +186,10 @@ public class TestRandomDisjunctionEquivalence extends LuceneTestCase {
             random(),
             dir,
             newIndexWriterConfig(new MockAnalyzer(random(), MockTokenizer.WHITESPACE, false)))) {
-      int docs = atLeast(100);
+      int docs = atLeast(50);
       for (int d = 0; d < docs; d++) {
         StringBuilder text = new StringBuilder();
-        int length = org.apache.lucene.tests.util.TestUtil.nextInt(random(), 10, 40);
+        int length = org.apache.lucene.tests.util.TestUtil.nextInt(random(), 4, 20);
         for (int i = 0; i < length; i++) {
           text.append(VOCAB[random().nextInt(VOCAB.length)]).append(' ');
         }

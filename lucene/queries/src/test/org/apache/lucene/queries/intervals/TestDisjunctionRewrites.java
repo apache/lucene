@@ -280,4 +280,13 @@ public class TestDisjunctionRewrites extends LuceneTestCase {
         Integer.MAX_VALUE,
         Intervals.extend(Intervals.ordered(term("a"), term("b")), 1, 1).maxExtent());
   }
+
+  public void testExtendedBeforeIsNotFixedWidth() {
+    // extend(court, 1, 0) is clamped at the start of a document, so it must not be grouped with
+    // the fixed-width phrase(court, order)
+    IntervalsSource disjunction =
+        or(Intervals.extend(term("court"), 1, 0), phrase("court", "order"));
+    IntervalsSource source = Intervals.unordered(disjunction, term("ruling"));
+    assertEquals(2, source.pullUpDisjunctions().size());
+  }
 }
