@@ -38,6 +38,7 @@ public class TermGroupSelector extends GroupSelector<BytesRef> {
   private int groupId;
 
   private boolean secondPass;
+  private boolean needsGroupLookup;
   private boolean includeEmpty;
 
   /**
@@ -52,7 +53,16 @@ public class TermGroupSelector extends GroupSelector<BytesRef> {
   @Override
   public void setNextReader(LeafReaderContext readerContext) throws IOException {
     this.docValues = DocValues.getSorted(readerContext.reader(), field);
-    this.ordsToGroupIds.clear();
+    if (secondPass) {
+      needsGroupLookup = true;
+    } else {
+      ordsToGroupIds.clear();
+    }
+  }
+
+  // Only a restricted selector needs to resolve a list of groups against this leaf.
+  private void lookupGroupOrdinals() throws IOException {
+    ordsToGroupIds.clear();
     BytesRef scratch = new BytesRef();
     for (int i = 0; i < values.size(); i++) {
       values.get(i, scratch);
@@ -61,6 +71,7 @@ public class TermGroupSelector extends GroupSelector<BytesRef> {
         ordsToGroupIds.put(ord, i);
       }
     }
+    needsGroupLookup = false;
   }
 
   @Override
@@ -73,6 +84,9 @@ public class TermGroupSelector extends GroupSelector<BytesRef> {
       return includeEmpty ? State.ACCEPT : State.SKIP;
     }
     int ord = docValues.ordValue();
+    if (needsGroupLookup) {
+      lookupGroupOrdinals();
+    }
     if (ordsToGroupIds.containsKey(ord)) {
       groupId = ordsToGroupIds.get(ord);
       return State.ACCEPT;
@@ -80,7 +94,11 @@ public class TermGroupSelector extends GroupSelector<BytesRef> {
     if (secondPass) {
       return State.SKIP;
     }
-    groupId = values.add(docValues.lookupOrd(docValues.ordValue()));
+    groupId = values.add(docValues.lookupOrd(ord));
+    if (groupId < 0) {
+      // Another leaf has already contributed this group.
+      groupId = -groupId - 1;
+    }
     ordsToGroupIds.put(ord, groupId);
     return State.ACCEPT;
   }
@@ -116,5 +134,6 @@ public class TermGroupSelector extends GroupSelector<BytesRef> {
       }
     }
     this.secondPass = true;
+    needsGroupLookup = true;
   }
 }

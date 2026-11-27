@@ -17,10 +17,17 @@
 
 package org.apache.lucene.search.grouping;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.TextField;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
@@ -28,9 +35,68 @@ import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.BytesRef;
 
 public class TestTermGroupSelector extends BaseGroupSelectorTestCase<BytesRef> {
+
+  public void testRediscoverGroupsAcrossLeaves() throws IOException {
+    List<BytesRef> expected = new ArrayList<>();
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter writer =
+          new IndexWriter(dir, new IndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE))) {
+        for (int leaf = 0; leaf < 5; leaf++) {
+          for (int i = 0; i < 30; i++) {
+            // Shared values can have different ordinals in different leaves.
+            BytesRef group =
+                switch (i % 4) {
+                  case 0 -> null;
+                  case 1 -> new BytesRef("shared");
+                  case 2 -> new BytesRef("leaf" + leaf);
+                  default -> new BytesRef("rand" + random().nextInt(8));
+                };
+            Document doc = new Document();
+            if (group != null) {
+              doc.add(new SortedDocValuesField("group", group));
+            }
+            expected.add(group);
+            writer.addDocument(doc);
+          }
+          writer.commit();
+        }
+      }
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        TermGroupSelector selector = new TermGroupSelector("group");
+        SearchGroup<BytesRef> shared = new SearchGroup<>();
+        shared.groupValue = new BytesRef("shared");
+        for (int pass = 0; pass < 4; pass++) {
+          boolean restricted = pass >= 2;
+          if (pass == 3) {
+            selector.setGroups(List.of(shared, new SearchGroup<>()));
+          }
+          for (var leaf : reader.leaves()) {
+            selector.setNextReader(leaf);
+            if (pass == 2 && leaf.ord == 0) {
+              selector.setGroups(List.of(shared, new SearchGroup<>()));
+            }
+            for (int doc = 0; doc < leaf.reader().maxDoc(); doc++) {
+              BytesRef group = expected.get(leaf.docBase + doc);
+              boolean accept =
+                  restricted ? group == null || shared.groupValue.equals(group) : group != null;
+              assertEquals(
+                  accept ? GroupSelector.State.ACCEPT : GroupSelector.State.SKIP,
+                  selector.advanceTo(doc));
+              if (accept || group == null) {
+                assertEquals(group, selector.currentValue());
+                assertEquals(group, selector.copyValue());
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 
   @Override
   protected void addGroupField(Document document, int id) {
