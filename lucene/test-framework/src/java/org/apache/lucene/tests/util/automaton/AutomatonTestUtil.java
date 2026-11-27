@@ -314,6 +314,18 @@ public class AutomatonTestUtil extends Assert {
     }
   }
 
+  /** return a random DFA for testing */
+  public static Automaton randomDeterminizedAutomaton(Random random) {
+    while (true) {
+      try {
+        return Operations.determinize(
+            randomAutomaton(random), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
+      } catch (TooComplexToDeterminizeException _) {
+        // This can (rarely) happen if the random automaton is too hard; just try again...
+      }
+    }
+  }
+
   /*
    * below are original, unoptimized implementations of DFA operations for testing. These are from
    * brics automaton, full license (BSD) below:
