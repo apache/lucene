@@ -344,6 +344,13 @@ Optimizations
   The first prefetch on a file always probes: a hit on a warm file switches to sampling immediately, a miss
   makes the file earn the 1024 hits. (Michael Marshall)
 
+* GITHUB#16871: Lucene104HnswScalarQuantizedVectorsFormat now computes the centroid of merged vectors
+  and quantizes them on its merge workers, as it already builds the merged graph, instead of on the
+  merging thread alone. The centroid is summed in doubles, so it can differ slightly from before, but
+  it is the same for any number of workers. With more than one merge worker, merges read the vectors
+  of the merged segments through KnnVectorValues#copy(), so readers that wrap vector values must
+  support it. (Ankur Goel)
+
 * GITHUB#16868: LongRangeFacetCutter: use the single-valued leaf cutter for single-valued segments,
   with or without a doc-values skip index. (Jakub Slowinski)
 

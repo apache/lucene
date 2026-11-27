@@ -25,6 +25,9 @@ import static org.hamcrest.Matchers.oneOf;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Locale;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.IntPredicate;
 import org.apache.lucene.codecs.Codec;
@@ -73,6 +76,7 @@ import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.InfoStream;
+import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.SameThreadExecutorService;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
@@ -86,20 +90,39 @@ public class TestLucene104HnswScalarQuantizedVectorsFormat extends BaseKnnVector
 
   private KnnVectorsFormat format;
   private ScalarEncoding encoding;
+  private ExecutorService mergeExec;
 
   @Before
   @Override
   public void setUp() throws Exception {
     var encodingValues = ScalarEncoding.values();
     encoding = encodingValues[random().nextInt(encodingValues.length)];
+    // with 2 to 4 workers, merges of more than MergedRecordWriter.CHUNK_SIZE vectors quantize on
+    // several workers
+    int numMergeWorkers = 1;
+    if (random().nextBoolean()) {
+      numMergeWorkers = 2 + random().nextInt(3);
+      mergeExec =
+          Executors.newFixedThreadPool(numMergeWorkers, new NamedThreadFactory("merge-workers"));
+    }
     format =
         new Lucene104HnswScalarQuantizedVectorsFormat(
             encoding,
             Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
             Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH,
-            1,
-            null);
+            numMergeWorkers,
+            mergeExec);
     super.setUp();
+  }
+
+  @Override
+  public void tearDown() throws Exception {
+    if (mergeExec != null) {
+      mergeExec.shutdown();
+      assertTrue(mergeExec.awaitTermination(1, TimeUnit.MINUTES));
+      mergeExec = null;
+    }
+    super.tearDown();
   }
 
   @Override
