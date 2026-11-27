@@ -25,3 +25,56 @@ dependencies {
   moduleApi project(':lucene:facet')
   moduleTestImplementation project(':lucene:test-framework')
 }
+
+// The SegmentIVF codec's SIMD kernels use jdk.incubator.vector, but the module descriptor does not
+// require it (see src/java/module-info.java): any `requires` edge, even `static`, makes javac warn
+// "[incubating] using incubating module(s)" in every module compiled against sandbox, which -Werror
+// turns into a build failure (seen on JDK 27). So the incubator module is added here, for compiling
+// this module only, and Kernels adds the read edge at runtime. Using the incubator is deliberate in
+// this module, so its own incubating lint is turned off; every other warning still fails the build.
+tasks.withType(JavaCompile).configureEach {
+  options.compilerArgs.addAll(['--add-modules', 'jdk.incubator.vector'])
+  options.compilerArgs.remove("-Xlint:incubating")
+  options.compilerArgs.add("-Xlint:-incubating")
+}
+// Only the main sources are compiled as the named module; tests are compiled on the classpath and
+// read every resolved module anyway.
+tasks.named('compileJava', JavaCompile).configure {
+  options.compilerArgs.addAll(['--add-reads', 'org.apache.lucene.sandbox=jdk.incubator.vector'])
+}
+
+// Because the descriptor has no edge to jdk.incubator.vector, the module is NOT on the compile
+// classpath forbidden-apis resolves against, and scanning Kernels.Panama fails outright with
+// "ClassNotFoundException: jdk.incubator.vector.VectorSpecies" rather than reporting a violation.
+//
+// Same remedy lucene:core already uses for its own Panama sources: hand forbidden-apis the stub API
+// jar that ExtractJdkApis generates, which carries jdk/incubator/vector/* signatures and nothing
+// else. This only lets the scanner RESOLVE those classes; it does not exempt anything from the
+// checks, so every forbidden-apis signature still applies to this module.
+// The same add-then-suppress dance lucene:core does for its MR-JAR vector sources: the stub jar's
+// Vector signatures reference jdk.internal.vm.vector.VectorSupport$Vector, which the jdk-nonportable
+// rule flags, and forbidden-apis will only suppress a signature it has also been given.
+// See https://github.com/policeman-tools/forbidden-apis/issues/267
+
+def jdkApiJar = project(':lucene:core').file('src/generated/jdk/jdk25-api.jar')
+def vectorExclusions = ['jdk.internal.vm.vector.VectorSupport$Vector']
+def incubatorVectorSignatures =
+    rootProject.file('gradle/validation/forbidden-apis/non-standard/incubator-vector.txt')
+
+tasks.withType(de.thetaphi.forbiddenapis.gradle.CheckForbiddenApis).configureEach {
+  classpath += files(jdkApiJar)
+  signatures.addAll(vectorExclusions)
+  signaturesWithSeveritySuppress.addAll(vectorExclusions)
+  // The incubator's own trap list, so this module is held to the same bar as core's vector code.
+  signaturesFiles = signaturesFiles.plus(files(incubatorVectorSignatures))
+}
+
+// Javadoc parses Kernels too, so it needs the same incubator module and read edge as compileJava.
+tasks.withType(org.apache.lucene.gradle.plugins.java.RenderJavadocTaskBase).configureEach {
+  extraOpts.addAll([
+    '--add-modules',
+    'jdk.incubator.vector',
+    '--add-reads',
+    'org.apache.lucene.sandbox=jdk.incubator.vector'
+  ])
+}

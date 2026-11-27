@@ -17,6 +17,10 @@
 
 /** Various third party contributions and new ideas */
 module org.apache.lucene.sandbox {
+  // The SegmentIVF SIMD kernels use jdk.incubator.vector, but this descriptor does not declare it:
+  // even a `requires static` edge makes javac warn about the incubator module (an error under
+  // -Werror) in every module compiled against this one. The build adds the module for compiling
+  // this module only, and Kernels adds the read edge at runtime when the module is present.
   requires org.apache.lucene.core;
   requires org.apache.lucene.queries;
   requires org.apache.lucene.facet;
@@ -27,6 +31,7 @@ module org.apache.lucene.sandbox {
   exports org.apache.lucene.sandbox.codecs.faiss;
   exports org.apache.lucene.sandbox.codecs.idversion;
   exports org.apache.lucene.sandbox.codecs.quantization;
+  exports org.apache.lucene.sandbox.codecs.segmentivf;
   exports org.apache.lucene.sandbox.document;
   exports org.apache.lucene.sandbox.queries;
   exports org.apache.lucene.sandbox.search;
@@ -45,5 +50,6 @@ module org.apache.lucene.sandbox {
   provides org.apache.lucene.codecs.KnnVectorsFormat with
       org.apache.lucene.sandbox.codecs.faiss.FaissKnnVectorsFormat,
       org.apache.lucene.sandbox.codecs.dedup.DedupHnswVectorsFormat,
-      org.apache.lucene.sandbox.codecs.dedup.DedupHnswScalarQuantizedVectorsFormat;
+      org.apache.lucene.sandbox.codecs.dedup.DedupHnswScalarQuantizedVectorsFormat,
+      org.apache.lucene.sandbox.codecs.segmentivf.SegmentIVFVectorsFormat;
 }
