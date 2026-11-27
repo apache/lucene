@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.TermStates;
@@ -155,7 +156,15 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
         throws IOException;
 
     private WeightOrDocIdSetIterator rewriteAsBooleanQuery(
-        LeafReaderContext context, List<TermAndState> collectedTerms) throws IOException {
+        LeafReaderContext context, Terms terms, List<TermAndState> collectedTerms)
+        throws IOException {
+      if (collectedTerms.size() == 1) {
+        // A single term: iterate its postings directly instead of building a BooleanQuery
+        TermAndState t = collectedTerms.get(0);
+        TermsEnum termsEnum = terms.iterator();
+        termsEnum.seekExact(t.term, t.state);
+        return new WeightOrDocIdSetIterator(termsEnum.postings(null, PostingsEnum.NONE));
+      }
       BooleanQuery.Builder bq = new BooleanQuery.Builder();
       for (TermAndState t : collectedTerms) {
         final TermStates termStates = new TermStates(searcher.getTopReaderContext());
@@ -264,7 +273,7 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
         weightOrIteratorSupplier =
             leadCost -> {
               if (collectResult) {
-                return rewriteAsBooleanQuery(context, collectedTerms);
+                return rewriteAsBooleanQuery(context, terms, collectedTerms);
               } else {
                 // Too many terms to rewrite as a simple bq.
                 // Invoke rewriteInner logic to handle rewriting:
@@ -278,7 +287,7 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
             leadCost -> {
               List<TermAndState> collectedTerms = new ArrayList<>();
               if (collectTerms(fieldDocCount, termsEnum, collectedTerms)) {
-                return rewriteAsBooleanQuery(context, collectedTerms);
+                return rewriteAsBooleanQuery(context, terms, collectedTerms);
               } else {
                 // Too many terms to rewrite as a simple bq.
                 // Invoke rewriteInner logic to handle rewriting:
