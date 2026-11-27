@@ -602,7 +602,7 @@ public final class Lucene104PostingsReader extends PostingsReaderBase {
         int numLongs;
         if (bitsPerValue == 0) {
           // 0 is used to record that all 256 docs in the block are consecutive
-          numLongs = BLOCK_SIZE / Long.SIZE; // 2
+          numLongs = BLOCK_SIZE / Long.SIZE; // 4
           docBitSet.set(0, BLOCK_SIZE);
         } else {
           numLongs = -bitsPerValue;

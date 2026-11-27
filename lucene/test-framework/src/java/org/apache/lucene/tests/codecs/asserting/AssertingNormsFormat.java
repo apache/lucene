@@ -32,11 +32,19 @@ import org.apache.lucene.tests.util.TestUtil;
 
 /** Just like the default but with additional asserts. */
 public class AssertingNormsFormat extends NormsFormat {
-  private final NormsFormat in = TestUtil.getDefaultCodec().normsFormat();
+  private final NormsFormat delegate;
+
+  public AssertingNormsFormat() {
+    this(TestUtil.getDefaultCodec().normsFormat());
+  }
+
+  public AssertingNormsFormat(NormsFormat delegate) {
+    this.delegate = delegate;
+  }
 
   @Override
   public NormsConsumer normsConsumer(SegmentWriteState state) throws IOException {
-    NormsConsumer consumer = in.normsConsumer(state);
+    NormsConsumer consumer = delegate.normsConsumer(state);
     assert consumer != null;
     return new AssertingNormsConsumer(consumer, state.segmentInfo.maxDoc());
   }
@@ -44,9 +52,14 @@ public class AssertingNormsFormat extends NormsFormat {
   @Override
   public NormsProducer normsProducer(SegmentReadState state) throws IOException {
     assert state.fieldInfos.hasNorms();
-    NormsProducer producer = in.normsProducer(state);
+    NormsProducer producer = delegate.normsProducer(state);
     assert producer != null;
     return new AssertingNormsProducer(producer, state.segmentInfo.maxDoc(), false);
+  }
+
+  @Override
+  public String toString() {
+    return "AssertingNormsFormat{" + "delegate=" + delegate + "}";
   }
 
   static class AssertingNormsConsumer extends NormsConsumer {

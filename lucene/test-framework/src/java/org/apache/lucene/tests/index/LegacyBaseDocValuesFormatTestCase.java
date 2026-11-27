@@ -81,6 +81,7 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.util.RandomLongValues;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BytesRef;
@@ -1625,14 +1626,15 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
   public void testLongNumericsVsStoredFields() throws Exception {
     int numIterations = atLeast(1);
     for (int i = 0; i < numIterations; i++) {
-      doTestNumericsVsStoredFields(1, random()::nextLong);
+      doTestNumericsVsStoredFields(1, RandomLongValues.random(random())::nextValue);
     }
   }
 
   public void testSparseLongNumericsVsStoredFields() throws Exception {
     int numIterations = atLeast(1);
     for (int i = 0; i < numIterations; i++) {
-      doTestNumericsVsStoredFields(random().nextDouble(), random()::nextLong);
+      doTestNumericsVsStoredFields(
+          random().nextDouble(), RandomLongValues.random(random())::nextValue);
     }
   }
 
@@ -2512,14 +2514,15 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
   public void testSortedNumericsSingleValuedVsStoredFields() throws Exception {
     int numIterations = atLeast(1);
     for (int i = 0; i < numIterations; i++) {
-      doTestSortedNumericsVsStoredFields(() -> 1, random()::nextLong);
+      doTestSortedNumericsVsStoredFields(() -> 1, RandomLongValues.random(random())::nextValue);
     }
   }
 
   public void testSortedNumericsSingleValuedMissingVsStoredFields() throws Exception {
     int numIterations = atLeast(1);
     for (int i = 0; i < numIterations; i++) {
-      doTestSortedNumericsVsStoredFields(() -> random().nextBoolean() ? 0 : 1, random()::nextLong);
+      doTestSortedNumericsVsStoredFields(
+          () -> random().nextBoolean() ? 0 : 1, RandomLongValues.random(random())::nextValue);
     }
   }
 
@@ -2529,14 +2532,15 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
     int numIterations = atLeast(1);
     for (int i = 0; i < numIterations; i++) {
       doTestSortedNumericsVsStoredFields(
-          () -> TestUtil.nextLong(random(), 0, 50), random()::nextLong);
+          () -> TestUtil.nextLong(random(), 0, 50), RandomLongValues.random(random())::nextValue);
     }
   }
 
   public void testSortedNumericsFewUniqueSetsVsStoredFields() throws Exception {
+    final RandomLongValues distribution = RandomLongValues.random(random());
     final long[] values = new long[TestUtil.nextInt(random(), 2, 6)];
     for (int i = 0; i < values.length; ++i) {
-      values[i] = random().nextLong();
+      values[i] = distribution.nextValue();
     }
     int numIterations = atLeast(1);
     for (int i = 0; i < numIterations; i++) {

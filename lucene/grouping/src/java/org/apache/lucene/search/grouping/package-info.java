@@ -34,16 +34,29 @@
  *       it. For example, if you specify "price" (ascending) then the first group is the one with
  *       the lowest price book within it. Or if you specify relevance group sort, then the first
  *       group is the one containing the highest scoring book.
- *   <li><code>topNGroups</code>: how many top groups to keep. For example, 10 means the top 10
- *       groups are computed.
- *   <li><code>groupOffset</code>: which "slice" of top groups you want to retrieve. For example, 3
- *       means you'll get 7 groups back (assuming <code>topNGroups</code> is 10). This is useful for
- *       paging, where you might show 5 groups per page.
+ *   <li><code>groupOffset</code>: how many top groups to skip, in <code>groupSort</code> order.
+ *       This is the group-level paging offset.
+ *   <li><code>groupLimit</code>: the maximum number of groups to return, starting at the offset.
+ *       The collector managers ({@link
+ *       org.apache.lucene.search.grouping.FirstPassGroupingCollectorManager}, {@link
+ *       org.apache.lucene.search.grouping.BlockGroupingCollectorManager}) name this parameter
+ *       <code>topNGroups</code>. The underlying collectors' own <code>topNGroups</code> counts from
+ *       the top, so the managers pass the offset plus the limit to them. For example, with five
+ *       groups per page, the second page uses a group offset of 5 and a group limit of 5: it skips
+ *       the first five groups and returns up to the next five. The last page can be shorter when
+ *       fewer groups match.
  *   <li><code>withinGroupSort</code>: how the documents within each group are sorted. This can be
  *       different from the group sort.
- *   <li><code>maxDocsPerGroup</code>: how many top documents within each group to keep.
- *   <li><code>withinGroupOffset</code>: which "slice" of top documents you want to retrieve from
- *       each group.
+ *   <li><code>withinGroupOffset</code>: how many top documents to skip within each returned group
+ *       ({@link org.apache.lucene.search.grouping.GroupingSearch#setGroupDocsOffset}). This pages
+ *       the documents inside a group, not the groups.
+ *   <li><code>maxDocsPerGroup</code>: the maximum number of documents to return per group, starting
+ *       at <code>withinGroupOffset</code> ({@link
+ *       org.apache.lucene.search.grouping.GroupingSearch#setGroupDocsLimit}, {@link
+ *       org.apache.lucene.search.grouping.TopGroupsCollectorManager}). {@link
+ *       org.apache.lucene.search.grouping.BlockGroupingCollectorManager} is the exception: its
+ *       <code>maxDocsPerGroup</code> counts from the top of the group, so pass the offset plus the
+ *       number of documents wanted.
  * </ul>
  *
  * <p>The implementation is two-pass: the first pass ({@link
@@ -77,12 +90,22 @@
  *       groups and top documents per group yourself.
  * </ul>
  *
+ * <p>To group by a field with <code>GroupingSearch(String)</code> or {@link
+ * org.apache.lucene.search.grouping.TermGroupSelector}, index it as a single-valued {@link
+ * org.apache.lucene.document.SortedDocValuesField}:
+ *
+ * <pre><code class="language-java">
+ *   doc.add(new SortedDocValuesField("author", new BytesRef(author)));
+ * </code></pre>
+ *
  * <p>Typical usage for the generic two-pass grouping search looks like this using the grouping
  * convenience utility (optionally using caching for the second pass search):
  *
  * <pre><code class="language-java">
  *   GroupingSearch groupingSearch = new GroupingSearch("author");
  *   groupingSearch.setGroupSort(groupSort);
+ *   // Documents to return within each group (defaults: offset 0, limit 1):
+ *   groupingSearch.setGroupDocsLimit(docsPerGroup);
  *
  *   if (useCache) {
  *     // Sets cache in MB
@@ -94,9 +117,12 @@
  *   }
  *
  *   TermQuery query = new TermQuery(new Term("content", searchTerm));
+ *   // Second page of five groups: skip the first five groups and return up to five more.
+ *   int groupOffset = 5;
+ *   int groupLimit = 5;
  *   TopGroups&lt;BytesRef&gt; result = groupingSearch.search(indexSearcher, query, groupOffset, groupLimit);
  *
- *   // Render groupsResult...
+ *   // Render result...
  *   if (requiredTotalGroupCount) {
  *     int totalGroupCount = result.totalGroupCount;
  *   }
@@ -120,7 +146,9 @@
  *   writer.addDocuments(oneGroup);
  * </code></pre>
  *
- * Then, at search time:
+ * At search time, <code>groupOffset</code> and <code>topNGroups</code> page the groups as described
+ * above, while the last argument, <code>maxDocsPerGroup</code>, counts documents from the top of
+ * each group, including the ones skipped by <code>docOffset</code>:
  *
  * <pre><code class="language-java">
  *   Query groupEndDocs = new TermQuery(new Term("groupEnd", "x"));
@@ -134,7 +162,7 @@
  *       lastDocPerGroup,
  *       withinGroupSort,
  *       docOffset,
- *       docsPerGroup);
+ *       docOffset + docsPerGroup);
  *   TopGroups groupsResult = indexSearcher.search(new TermQuery(new Term("content", searchTerm)), manager);
  *
  *   // Render groupsResult...
@@ -175,6 +203,22 @@
  *   // Return all group heads as FixedBitSet.
  *   int maxDoc = indexSearcher.getIndexReader().maxDoc();
  *   Bits groupHeadsBitSet = result.retrieveGroupHeads(maxDoc);
+ * </code></pre>
+ *
+ * <p>Grouped faceting is handled by {@link
+ * org.apache.lucene.search.grouping.TermGroupFacetCollectorManager}. For each facet value it counts
+ * how many distinct groups have at least one matching document with that value. The manager
+ * supports concurrent collection; groups that span multiple search slices are counted once.
+ *
+ * <pre><code class="language-java">
+ *   TermGroupFacetCollectorManager manager =
+ *       new TermGroupFacetCollectorManager(
+ *           "author", "category", false, null, offset + limit, minCount, orderByCount);
+ *   GroupedFacetResult facetResult =
+ *       indexSearcher.search(new TermQuery(new Term("content", searchTerm)), manager);
+ *   int totalCount = facetResult.getTotalCount();
+ *   int missingCount = facetResult.getTotalMissingCount();
+ *   List&lt;GroupedFacetResult.FacetEntry&gt; entries = facetResult.getFacetEntries(offset, limit);
  * </code></pre>
  */
 package org.apache.lucene.search.grouping;

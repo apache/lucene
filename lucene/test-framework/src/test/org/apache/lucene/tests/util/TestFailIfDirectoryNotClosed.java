@@ -42,9 +42,8 @@ public class TestFailIfDirectoryNotClosed extends WithNestedTests {
         "Ignoring nested test, very likely zombie threads present.", r.getIgnoreCount() == 0);
     assertFailureCount(1, r);
     Assertions.assertThat(r.getFailures())
-        .anyMatch(
-            failure -> {
-              return failure.toString().contains(AssertDirectoryClosed.MSG_PREFIX);
-            });
+        .anyMatch(failure -> {
+          return failure.toString().contains(AssertDirectoryClosed.MSG_PREFIX);
+        });
   }
 }

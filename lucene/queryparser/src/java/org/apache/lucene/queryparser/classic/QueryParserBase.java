@@ -47,7 +47,6 @@ import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.PrefixQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.RegexpQuery;
-import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TermRangeQuery;
 import org.apache.lucene.search.WildcardQuery;
 import org.apache.lucene.util.BytesRef;
@@ -388,46 +387,6 @@ public abstract class QueryParserBase extends QueryBuilder
     else if (!required && prohibited)
       clauses.add(newBooleanClause(q, BooleanClause.Occur.MUST_NOT));
     else throw new RuntimeException("Clause cannot be both required and prohibited");
-  }
-
-  /**
-   * Adds clauses generated from analysis over text containing whitespace. There are no operators,
-   * so the query's clauses can either be MUST (if the default operator is AND) or SHOULD (default
-   * OR).
-   *
-   * <p>If all of the clauses in the given Query are TermQuery-s, this method flattens the result by
-   * adding the TermQuery-s individually to the output clause list; otherwise, the given Query is
-   * added as a single clause including its nested clauses.
-   */
-  protected void addMultiTermClauses(List<BooleanClause> clauses, Query q) {
-    // We might have been passed a null query; the term might have been
-    // filtered away by the analyzer.
-    if (q == null) {
-      return;
-    }
-    boolean allNestedTermQueries = false;
-    if (q instanceof BooleanQuery bq) {
-      allNestedTermQueries = true;
-      for (BooleanClause clause : bq.clauses()) {
-        if (!(clause.query() instanceof TermQuery)) {
-          allNestedTermQueries = false;
-          break;
-        }
-      }
-    }
-    if (allNestedTermQueries) {
-      clauses.addAll(((BooleanQuery) q).clauses());
-    } else {
-      BooleanClause.Occur occur =
-          operator == OR_OPERATOR ? BooleanClause.Occur.SHOULD : BooleanClause.Occur.MUST;
-      if (q instanceof BooleanQuery bq) {
-        for (BooleanClause clause : bq.clauses()) {
-          clauses.add(newBooleanClause(clause.query(), occur));
-        }
-      } else {
-        clauses.add(newBooleanClause(q, occur));
-      }
-    }
   }
 
   /**

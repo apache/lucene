@@ -43,6 +43,7 @@ import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.internal.hppc.ObjectCursor;
 import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.hnsw.HnswGraph;
@@ -286,6 +287,17 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
+    public FloatVectorValues getFloatVectorValues(String field, DataAccessHint access)
+        throws IOException {
+      final FieldInfo info = fieldInfos.fieldInfo(field);
+      final KnnVectorsReader reader;
+      if (info == null || (reader = fields.get(info.number)) == null) {
+        return null;
+      }
+      return reader.getFloatVectorValues(field, access);
+    }
+
+    @Override
     public ByteVectorValues getByteVectorValues(String field) throws IOException {
       final FieldInfo info = fieldInfos.fieldInfo(field);
       final KnnVectorsReader reader;
@@ -360,6 +372,15 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
       KnnVectorsReader knnVectorsReader = fields.get(fieldInfo.number);
       return knnVectorsReader.getOffHeapByteSize(fieldInfo);
+    }
+
+    @Override
+    public int getVectorCount(FieldInfo fieldInfo) throws IOException {
+      KnnVectorsReader knnVectorsReader = fields.get(fieldInfo.number);
+      if (knnVectorsReader == null) {
+        throw new IllegalArgumentException("field=\"" + fieldInfo.name + "\" not found");
+      }
+      return knnVectorsReader.getVectorCount(fieldInfo);
     }
 
     @Override

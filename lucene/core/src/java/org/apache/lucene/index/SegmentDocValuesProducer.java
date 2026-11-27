@@ -17,6 +17,7 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
@@ -33,9 +34,11 @@ import org.apache.lucene.store.Directory;
 // producer?
 class SegmentDocValuesProducer extends DocValuesProducer {
 
-  // one entry per field: the producers for that field, newest generation first, authoritative base
-  // last
+  // one entry per updated field: the producers for that field, newest generation first,
+  // authoritative base last. Fields that were never updated have no entry and use baseProducers.
   final IntObjectHashMap<DocValuesProducer[]> dvProducersByField = new IntObjectHashMap<>();
+  // the core producer, shared by every field that was never updated; null if there is none
+  private final DocValuesProducer[] baseProducers;
   final Set<DocValuesProducer> dvProducers =
       Collections.newSetFromMap(new IdentityHashMap<DocValuesProducer, Boolean>());
   final LongArrayList dvGens = new LongArrayList();
@@ -68,6 +71,7 @@ class SegmentDocValuesProducer extends DocValuesProducer {
     this.dir = dir;
     this.coreInfos = coreInfos;
     this.segDocValues = segDocValues;
+    DocValuesProducer[] base = null;
     try {
       for (FieldInfo fi : allInfos) {
         if (fi.getDocValuesType() == DocValuesType.NONE) {
@@ -82,7 +86,9 @@ class SegmentDocValuesProducer extends DocValuesProducer {
         long docValuesGen = fi.getDocValuesGen();
         if (docValuesGen == -1) {
           // the base producer gets the original fieldinfos it wrote (shared across all base fields)
-          dvProducersByField.put(fi.number, new DocValuesProducer[] {getProducer(-1, coreInfos)});
+          if (base == null) {
+            base = new DocValuesProducer[] {getProducer(-1, coreInfos)};
+          }
         } else {
           // otherwise, producer sees only the one fieldinfo it wrote
           dvProducersByField.put(
@@ -100,6 +106,22 @@ class SegmentDocValuesProducer extends DocValuesProducer {
       }
       throw t;
     }
+    this.baseProducers = base;
+  }
+
+  private DocValuesProducer[] producers(FieldInfo field) {
+    DocValuesProducer[] producers = dvProducersByField.get(field.number);
+    if (producers == null) {
+      assert isBaseField(field) : "no doc values producer for field: " + field.name;
+      return baseProducers;
+    }
+    return producers;
+  }
+
+  private boolean isBaseField(FieldInfo field) {
+    return baseProducers != null
+        && field.getDocValuesGen() == -1
+        && field.getDocValuesType() != DocValuesType.NONE;
   }
 
   /**
@@ -173,7 +195,7 @@ class SegmentDocValuesProducer extends DocValuesProducer {
 
   @Override
   public NumericDocValues getNumeric(FieldInfo field) throws IOException {
-    DocValuesProducer[] producers = dvProducersByField.get(field.number);
+    DocValuesProducer[] producers = producers(field);
     assert producers != null;
     if (producers.length == 1) {
       return producers[0].getNumeric(field);
@@ -187,7 +209,7 @@ class SegmentDocValuesProducer extends DocValuesProducer {
 
   @Override
   public BinaryDocValues getBinary(FieldInfo field) throws IOException {
-    DocValuesProducer[] producers = dvProducersByField.get(field.number);
+    DocValuesProducer[] producers = producers(field);
     assert producers != null;
     if (producers.length == 1) {
       return producers[0].getBinary(field);
@@ -199,11 +221,10 @@ class SegmentDocValuesProducer extends DocValuesProducer {
     return new OverlayBinaryDocValues(layers);
   }
 
-  // sorted/sorted-set/sorted-numeric and skippers are never overlaid: only numeric/binary values
-  // can be updated in
-  // place, so these always have a single producer.
+  // sorted/sorted-set and skippers are never overlaid: only numeric/binary/sorted-numeric values
+  // can be updated in place, so these always have a single producer.
   private DocValuesProducer single(FieldInfo field) {
-    DocValuesProducer[] producers = dvProducersByField.get(field.number);
+    DocValuesProducer[] producers = producers(field);
     assert producers != null && producers.length == 1
         : "field is not a single-generation field: " + field.name;
     return producers[0];
@@ -216,7 +237,12 @@ class SegmentDocValuesProducer extends DocValuesProducer {
 
   @Override
   public SortedNumericDocValues getSortedNumeric(FieldInfo field) throws IOException {
-    return single(field).getSortedNumeric(field);
+    DocValuesProducer[] producers = producers(field);
+    assert producers != null;
+    if (producers.length == 1) {
+      return producers[0].getSortedNumeric(field);
+    }
+    return OverlaySortedNumericDocValues.from(field, Arrays.asList(producers));
   }
 
   @Override

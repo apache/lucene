@@ -1,0 +1,176 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.apache.lucene.search.join;
+
+import static org.apache.lucene.search.knn.KnnSearchStrategy.Hnsw.DEFAULT;
+
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Objects;
+import org.apache.lucene.index.Float16VectorValues;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.QueryTimeout;
+import org.apache.lucene.search.AcceptDocs;
+import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.search.KnnFloat16VectorQuery;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TopDocsCollector;
+import org.apache.lucene.search.VectorScorer;
+import org.apache.lucene.search.knn.KnnCollectorManager;
+import org.apache.lucene.search.knn.KnnSearchStrategy;
+import org.apache.lucene.util.BitSet;
+
+/**
+ * kNN float16 vector query that joins matching children vector documents with their parent doc id.
+ * The top documents returned are the child document ids and the calculated scores. Here is how to
+ * use this in conjunction with {@link ToParentBlockJoinQuery}.
+ *
+ * <pre><code class="language-java">
+ *   Query knnQuery = new DiversifyingChildrenFloat16KnnVectorQuery(fieldName, queryVector, ...);
+ *   // Rewrite executes kNN search and collects nearest children docIds and their scores
+ *   Query rewrittenKnnQuery = searcher.rewrite(knnQuery);
+ *   // Join the scored children docs with their parents and score the parents
+ *   Query childrenToParents = new ToParentBlockJoinQuery(rewrittenKnnQuery, parentsFilter, ScoreMode.MAX);
+ * </code></pre>
+ */
+public class DiversifyingChildrenFloat16KnnVectorQuery extends KnnFloat16VectorQuery {
+  private static final TopDocs NO_RESULTS = TopDocsCollector.EMPTY_TOPDOCS;
+
+  private final BitSetProducer parentsFilter;
+  private final Query childFilter;
+  private final int k;
+  private final short[] query;
+
+  /**
+   * Create a DiversifyingChildrenFloat16KnnVectorQuery.
+   *
+   * @param field the query field
+   * @param query the vector query
+   * @param childFilter the child filter
+   * @param k how many parent documents to return given the matching children
+   * @param parentsFilter Filter identifying the parent documents.
+   */
+  public DiversifyingChildrenFloat16KnnVectorQuery(
+      String field, short[] query, Query childFilter, int k, BitSetProducer parentsFilter) {
+    this(field, query, childFilter, k, parentsFilter, DEFAULT);
+  }
+
+  /**
+   * Create a DiversifyingChildrenFloat16KnnVectorQuery.
+   *
+   * @param field the query field
+   * @param query the vector query
+   * @param childFilter the child filter
+   * @param k how many parent documents to return given the matching children
+   * @param parentsFilter Filter identifying the parent documents.
+   * @param searchStrategy the search strategy to use. If null, the default strategy will be used.
+   *     The underlying format may not support all strategies and is free to ignore the requested
+   *     strategy.
+   * @lucene.experimental
+   */
+  public DiversifyingChildrenFloat16KnnVectorQuery(
+      String field,
+      short[] query,
+      Query childFilter,
+      int k,
+      BitSetProducer parentsFilter,
+      KnnSearchStrategy searchStrategy) {
+    super(field, query, k, childFilter, searchStrategy);
+    this.childFilter = childFilter;
+    this.parentsFilter = parentsFilter;
+    this.k = k;
+    this.query = query;
+  }
+
+  @Override
+  protected TopDocs exactSearch(
+      LeafReaderContext context, DocIdSetIterator acceptIterator, QueryTimeout queryTimeout)
+      throws IOException {
+    Float16VectorValues float16VectorValues = context.reader().getFloat16VectorValues(field);
+    if (float16VectorValues == null) {
+      Float16VectorValues.checkField(context.reader(), field);
+      return NO_RESULTS;
+    }
+
+    BitSet parentBitSet = parentsFilter.getBitSet(context);
+    if (parentBitSet == null) {
+      return NO_RESULTS;
+    }
+    VectorScorer float16VectorScorer = float16VectorValues.scorer(query);
+    if (float16VectorScorer == null) {
+      return NO_RESULTS;
+    }
+    return new DiversifyingChildrenVectorScorer(acceptIterator, parentBitSet, float16VectorScorer)
+        .collect(k, queryTimeout);
+  }
+
+  @Override
+  protected KnnCollectorManager getKnnCollectorManager(int k, IndexSearcher searcher) {
+    return new DiversifyingNearestChildrenKnnCollectorManager(k, parentsFilter, searcher);
+  }
+
+  @Override
+  protected TopDocs approximateSearch(
+      LeafReaderContext context,
+      AcceptDocs acceptDocs,
+      int visitedLimit,
+      KnnCollectorManager knnCollectorManager)
+      throws IOException {
+    Float16VectorValues.checkField(context.reader(), field);
+    KnnCollector collector =
+        knnCollectorManager.newCollector(visitedLimit, searchStrategy, context);
+    if (collector == null) {
+      return NO_RESULTS;
+    }
+    context.reader().searchNearestVectors(field, query, collector, acceptDocs);
+    return collector.topDocs();
+  }
+
+  @Override
+  public String toString(String field) {
+    StringBuilder buffer = new StringBuilder();
+    buffer.append(getClass().getSimpleName() + ":");
+    buffer.append(this.field + "[" + query[0] + ",...]");
+    buffer.append("[" + k + "]");
+    if (this.filter != null) {
+      buffer.append("[" + this.filter + "]");
+    }
+    return buffer.toString();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    DiversifyingChildrenFloat16KnnVectorQuery that = (DiversifyingChildrenFloat16KnnVectorQuery) o;
+    return k == that.k
+        && Objects.equals(parentsFilter, that.parentsFilter)
+        && Objects.equals(childFilter, that.childFilter)
+        && Arrays.equals(query, that.query);
+  }
+
+  @Override
+  public int hashCode() {
+    int result = Objects.hash(super.hashCode(), parentsFilter, childFilter, k);
+    result = 31 * result + Arrays.hashCode(query);
+    return result;
+  }
+}

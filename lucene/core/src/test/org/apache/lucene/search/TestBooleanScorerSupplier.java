@@ -432,6 +432,9 @@ public class TestBooleanScorerSupplier extends LuceneTestCase {
     new BooleanScorerSupplier(
             new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 0, 100)
         .get(100); // triggers assertions as a side-effect
+    subs.get(Occur.MUST_NOT).clear();
+    // MUST_NOT clauses must use an unbounded lead cost for bulk scoring.
+    subs.get(Occur.MUST_NOT).add(new FakeScorerSupplier(80, Long.MAX_VALUE));
     new BooleanScorerSupplier(
             new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 0, 100)
         .bulkScorer(); // triggers assertions as a side-effect

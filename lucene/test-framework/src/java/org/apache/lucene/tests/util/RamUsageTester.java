@@ -160,7 +160,7 @@ public final class RamUsageTester {
 
     // Ignore JDK objects we can't access or handle properly.
     Predicate<Object> isIgnorable =
-        (clazz) ->
+        clazz ->
             (clazz instanceof CharsetEncoder)
                 || (clazz instanceof CharsetDecoder)
                 || (clazz instanceof ReentrantReadWriteLock)
@@ -176,7 +176,7 @@ public final class RamUsageTester {
     try {
       long alignedShallowInstanceSize = RamUsageEstimator.shallowSizeOf(ob);
 
-      Predicate<Class<?>> isJavaModule = (clazz) -> clazz.getName().startsWith("java.");
+      Predicate<Class<?>> isJavaModule = clazz -> clazz.getName().startsWith("java.");
 
       // Java 9+: Best guess for some known types, as we cannot precisely look into runtime
       // classes:

@@ -32,6 +32,7 @@ import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
+import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Bits;
 
@@ -66,6 +67,17 @@ public abstract class KnnVectorsReader implements Closeable {
    * never {@code null}.
    */
   public abstract FloatVectorValues getFloatVectorValues(String field) throws IOException;
+
+  /**
+   * Returns the {@link FloatVectorValues} for the given {@code field}, to be read with the given
+   * access pattern, such as {@link DataAccessHint#SEQUENTIAL} to read all vectors in order.
+   *
+   * <p>The default implementation ignores {@code access}.
+   */
+  public FloatVectorValues getFloatVectorValues(String field, DataAccessHint access)
+      throws IOException {
+    return getFloatVectorValues(field);
+  }
 
   /**
    * Returns the {@link ByteVectorValues} for the given {@code field}. The behavior is undefined if
@@ -184,6 +196,36 @@ public abstract class KnnVectorsReader implements Closeable {
    * <p>The default implementation is empty
    */
   public void finishMerge() throws IOException {}
+
+  /**
+   * Returns the number of indexed vectors for the given field in this segment.
+   *
+   * <p>This has the same meaning as {@code get*VectorValues(field).size()}: the number of vector
+   * ordinals stored for {@code fieldInfo} in this segment.
+   *
+   * <p>Standard vector formats read this from segment metadata without opening vector values. The
+   * default implementation opens vector values as a fallback; callers that need to avoid that I/O
+   * should use a reader that overrides this method.
+   *
+   * <p>Opening vector values may read index data from storage and prefetch into memory, especially
+   * for sparse fields. That cost is why this metadata-only path exists, analogous to how doc values
+   * expose counts through {@link org.apache.lucene.index.DocValuesSkipper#docCount()} rather than
+   * iterating values.
+   *
+   * @param fieldInfo the fieldInfo
+   * @return the number of indexed vectors for the field
+   * @throws IllegalArgumentException if the field is not vector-indexed in this segment
+   */
+  public int getVectorCount(FieldInfo fieldInfo) throws IOException {
+    if (fieldInfo.getVectorDimension() <= 0) {
+      throw new IllegalArgumentException("field=\"" + fieldInfo.name + "\" not found");
+    }
+    return switch (fieldInfo.getVectorEncoding()) {
+      case FLOAT32 -> getFloatVectorValues(fieldInfo.name).size();
+      case BYTE -> getByteVectorValues(fieldInfo.name).size();
+      case FLOAT16 -> getFloat16VectorValues(fieldInfo.name).size();
+    };
+  }
 
   /**
    * Returns the desired size of off-heap memory for the given field. This size can be used to help

@@ -653,15 +653,14 @@ public final class DocumentsPanelProvider implements DocumentsTabOperator {
     int docNum = (int) docNumSpnr.getValue();
     operatorRegistry
         .get(SearchTabOperator.class)
-        .ifPresent(
-            operator -> {
-              operator.mltSearch(docNum);
-              tabSwitcher.switchTab(TabbedPaneProvider.Tab.SEARCH);
-            });
+        .ifPresent(operator -> {
+          operator.mltSearch(docNum);
+          tabSwitcher.switchTab(TabbedPaneProvider.Tab.SEARCH);
+        });
   }
 
   private void showAddDocumentDialog() {
-    new DialogOpener<>(addDocDialogFactory).open("Add document", 600, 500, (_) -> {});
+    new DialogOpener<>(addDocDialogFactory).open("Add document", 600, 500, _ -> {});
   }
 
   private void showTermVectorDialog() {
@@ -685,7 +684,7 @@ public final class DocumentsPanelProvider implements DocumentsTabOperator {
             "Term Vector",
             600,
             400,
-            (factory) -> {
+            factory -> {
               factory.setField(field);
               factory.setTvEntries(tvEntries);
             });
@@ -707,7 +706,7 @@ public final class DocumentsPanelProvider implements DocumentsTabOperator {
               "Doc Values",
               400,
               300,
-              (factory) -> {
+              factory -> {
                 factory.setValue(field, docValues.get());
               });
       messageBroker.clearStatusMessage();
@@ -742,7 +741,7 @@ public final class DocumentsPanelProvider implements DocumentsTabOperator {
             "Stored Value",
             400,
             300,
-            (factory) -> {
+            factory -> {
               factory.setField(field);
               factory.setValue(value);
             });

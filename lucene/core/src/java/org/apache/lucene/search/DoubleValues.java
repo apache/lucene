@@ -32,6 +32,42 @@ public abstract class DoubleValues {
    */
   public abstract boolean advanceExact(int doc) throws IOException;
 
+  /**
+   * Advance this instance to the given target document id to compute block-level upper bounds.
+   * Default implementation returns {@link DocIdSetIterator#NO_MORE_DOCS}.
+   */
+  public int advanceShallow(int target) throws IOException {
+    return DocIdSetIterator.NO_MORE_DOCS;
+  }
+
+  /**
+   * Optionally start loading whatever is needed to compute the value of the given document, without
+   * waiting for it to become available. This lets a caller that knows several upcoming documents
+   * keep more than one load in flight, which matters when the values live on slow storage. Callers
+   * must still call {@link #advanceExact} before {@link #doubleValue()}; documents must be
+   * prefetched in the same order in which they are later advanced to. The default is a no-op.
+   *
+   * @param doc the document whose value will be needed later
+   * @lucene.experimental
+   */
+  public void prefetch(int doc) throws IOException {}
+
+  /**
+   * Return the maximum score that documents between the current position and {@code upTo} can
+   * produce. Default implementation returns {@link Float#POSITIVE_INFINITY}.
+   */
+  public float getMaxScore(int upTo) throws IOException {
+    return Float.POSITIVE_INFINITY;
+  }
+
+  /**
+   * Return the minimum score that documents between the current position and {@code upTo} can
+   * produce. Default implementation returns {@link Float#NEGATIVE_INFINITY}.
+   */
+  public float getMinScore(int upTo) throws IOException {
+    return Float.NEGATIVE_INFINITY;
+  }
+
   /** Wrap a DoubleValues instance, returning a default if the wrapped instance has no value */
   public static DoubleValues withDefault(DoubleValues in, double missingValue) {
     return new DoubleValues() {
@@ -47,6 +83,16 @@ public abstract class DoubleValues {
       public boolean advanceExact(int doc) throws IOException {
         hasValue = in.advanceExact(doc);
         return true;
+      }
+
+      @Override
+      public int advanceShallow(int target) throws IOException {
+        return in.advanceShallow(target);
+      }
+
+      @Override
+      public float getMaxScore(int upTo) throws IOException {
+        return in.getMaxScore(upTo);
       }
     };
   }

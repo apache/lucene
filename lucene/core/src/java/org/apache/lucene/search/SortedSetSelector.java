@@ -134,6 +134,7 @@ public class SortedSetSelector {
     @Override
     public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
       in.intoBitSet(upTo, bitSet, offset);
+      setOrd();
     }
 
     @Override
@@ -213,6 +214,7 @@ public class SortedSetSelector {
     @Override
     public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
       in.intoBitSet(upTo, bitSet, offset);
+      setOrd();
     }
 
     @Override
@@ -296,6 +298,7 @@ public class SortedSetSelector {
     @Override
     public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
       in.intoBitSet(upTo, bitSet, offset);
+      setOrd();
     }
 
     @Override
@@ -380,6 +383,7 @@ public class SortedSetSelector {
     @Override
     public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
       in.intoBitSet(upTo, bitSet, offset);
+      setOrd();
     }
 
     @Override

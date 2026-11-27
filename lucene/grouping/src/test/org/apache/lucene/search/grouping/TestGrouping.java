@@ -68,6 +68,7 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.mutable.MutableValue;
 import org.apache.lucene.util.mutable.MutableValueStr;
@@ -947,8 +948,7 @@ public class TestGrouping extends LuceneTestCase {
         }
       }
 
-      final GroupDoc[] groupDocsByID = new GroupDoc[groupDocs.length];
-      System.arraycopy(groupDocs, 0, groupDocsByID, 0, groupDocs.length);
+      final GroupDoc[] groupDocsByID = ArrayUtil.copyOfSubArray(groupDocs, 0, groupDocs.length);
 
       final DirectoryReader r = w.getReader();
       w.close();
@@ -1663,11 +1663,6 @@ public class TestGrouping extends LuceneTestCase {
       final Weight weight = createWeight(rewrite(query), collector.scoreMode(), 1);
       searchLeaf(ctx, 0, DocIdSetIterator.NO_MORE_DOCS, weight, collector);
       return collectorManager.reduce(Collections.singletonList(collector));
-    }
-
-    @Override
-    public void search(Query query, Collector collector) {
-      throw new UnsupportedOperationException("Use search(Weight, CollectorManager) instead");
     }
 
     @Override

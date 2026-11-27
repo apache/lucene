@@ -982,14 +982,18 @@ public class TestIntervals extends LuceneTestCase {
     checkIntervals(noSuch, "field1", 0, new int[][] {});
 
     IntervalsSource s = Intervals.prefix(new BytesRef("p"), 1);
-    IllegalStateException e =
+    IndexSearcher.TooManyClauses e =
         expectThrows(
-            IllegalStateException.class,
+            IndexSearcher.TooManyClauses.class,
             () -> {
               for (LeafReaderContext ctx : searcher.getIndexReader().leaves()) {
                 s.intervals("field1", ctx);
               }
             });
+    assertEquals("Automaton [p*] expanded to too many terms (limit 1)", e.getMessage());
+
+    // doc 1 contains the terms "pease", "porridge" and "pot"
+    e = expectThrows(IndexSearcher.TooManyClauses.class, () -> getMatches(s, 1, "field1"));
     assertEquals("Automaton [p*] expanded to too many terms (limit 1)", e.getMessage());
 
     checkVisits(Intervals.prefix(new BytesRef("p")), 1);
@@ -1015,9 +1019,9 @@ public class TestIntervals extends LuceneTestCase {
     assertMatch(mi, 10, 10, 63, 66);
     assertMatch(mi, 17, 17, 97, 100);
 
-    IllegalStateException e =
+    IndexSearcher.TooManyClauses e =
         expectThrows(
-            IllegalStateException.class,
+            IndexSearcher.TooManyClauses.class,
             () -> {
               IntervalsSource s = Intervals.wildcard(new BytesRef("?ot"), 1);
               for (LeafReaderContext ctx : searcher.getIndexReader().leaves()) {
@@ -1049,9 +1053,9 @@ public class TestIntervals extends LuceneTestCase {
     assertMatch(mi, 10, 10, 63, 66);
     assertMatch(mi, 17, 17, 97, 100);
 
-    IllegalStateException e =
+    IndexSearcher.TooManyClauses e =
         expectThrows(
-            IllegalStateException.class,
+            IndexSearcher.TooManyClauses.class,
             () -> {
               IntervalsSource s = Intervals.regexp(new BytesRef(".ot"), 1);
               for (LeafReaderContext ctx : searcher.getIndexReader().leaves()) {
@@ -1084,9 +1088,9 @@ public class TestIntervals extends LuceneTestCase {
     assertMatch(mi, 17, 17, 97, 100);
 
     // Check limits.
-    IllegalStateException e =
+    IndexSearcher.TooManyClauses e =
         expectThrows(
-            IllegalStateException.class,
+            IndexSearcher.TooManyClauses.class,
             () -> {
               IntervalsSource s =
                   Intervals.fuzzyTerm(
@@ -1124,9 +1128,9 @@ public class TestIntervals extends LuceneTestCase {
     assertMatch(mi, 3, 3, 15, 18);
     assertMatch(mi, 4, 4, 19, 24);
 
-    IllegalStateException e =
+    IndexSearcher.TooManyClauses e =
         expectThrows(
-            IllegalStateException.class,
+            IndexSearcher.TooManyClauses.class,
             () -> {
               IntervalsSource s =
                   Intervals.range(new BytesRef("cold"), new BytesRef("hot"), true, true, 1);
@@ -1214,9 +1218,9 @@ public class TestIntervals extends LuceneTestCase {
           {0, 0}
         });
 
-    IllegalStateException e =
+    IndexSearcher.TooManyClauses e =
         expectThrows(
-            IllegalStateException.class,
+            IndexSearcher.TooManyClauses.class,
             () -> {
               IntervalsSource s =
                   Intervals.multiterm(new CompiledAutomaton(automaton), 1, re.toString());

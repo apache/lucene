@@ -35,19 +35,32 @@ import org.apache.lucene.util.BytesRef;
 
 /** Just like the default stored fields format but with additional asserts. */
 public class AssertingStoredFieldsFormat extends StoredFieldsFormat {
-  private final StoredFieldsFormat in = TestUtil.getDefaultCodec().storedFieldsFormat();
+  private final StoredFieldsFormat delegate;
+
+  public AssertingStoredFieldsFormat() {
+    this(TestUtil.getDefaultCodec().storedFieldsFormat());
+  }
+
+  public AssertingStoredFieldsFormat(StoredFieldsFormat delegate) {
+    this.delegate = delegate;
+  }
 
   @Override
   public StoredFieldsReader fieldsReader(
       Directory directory, SegmentInfo si, FieldInfos fn, IOContext context) throws IOException {
     return new AssertingStoredFieldsReader(
-        in.fieldsReader(directory, si, fn, context), si.maxDoc(), false);
+        delegate.fieldsReader(directory, si, fn, context), si.maxDoc(), false);
   }
 
   @Override
   public StoredFieldsWriter fieldsWriter(Directory directory, SegmentInfo si, IOContext context)
       throws IOException {
-    return new AssertingStoredFieldsWriter(in.fieldsWriter(directory, si, context));
+    return new AssertingStoredFieldsWriter(delegate.fieldsWriter(directory, si, context));
+  }
+
+  @Override
+  public String toString() {
+    return "AssertingStoredFieldsFormat{" + "delegate=" + delegate + "}";
   }
 
   static class AssertingStoredFieldsReader extends StoredFieldsReader {
@@ -90,8 +103,13 @@ public class AssertingStoredFieldsFormat extends StoredFieldsFormat {
     }
 
     @Override
-    public StoredFieldsReader getMergeInstance() {
+    public StoredFieldsReader getMergeInstance() throws IOException {
       return new AssertingStoredFieldsReader(in.getMergeInstance(), maxDoc, true);
+    }
+
+    @Override
+    public void finishMerge() throws IOException {
+      in.finishMerge();
     }
 
     @Override

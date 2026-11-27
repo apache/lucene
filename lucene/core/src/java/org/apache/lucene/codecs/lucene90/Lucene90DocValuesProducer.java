@@ -69,6 +69,9 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
   private final IntObjectHashMap<DocValuesSkipperEntry> skippers;
   private final IndexInput data;
   private final IndexInput skipIndexData;
+  // Sparse-field presence (IndexedDISI) file. Null for pre-VERSION_DISI_SEPARATE_FILE segments,
+  // which still keep the IndexedDISI in .dvd.
+  private final IndexInput disiData;
   private final int maxDoc;
   private int version = -1;
   private final boolean merging;
@@ -81,7 +84,9 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       String metaCodec,
       String metaExtension,
       String skipIndexCodec,
-      String skipIndexExtension)
+      String skipIndexExtension,
+      String disiCodec,
+      String disiExtension)
       throws IOException {
     String metaName =
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, metaExtension);
@@ -178,6 +183,35 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     } else {
       this.skipIndexData = null;
     }
+
+    if (version >= Lucene90DocValuesFormat.VERSION_DISI_SEPARATE_FILE) {
+      IndexInput disiIn = null;
+      try {
+        String disiName =
+            IndexFileNames.segmentFileName(
+                state.segmentInfo.name, state.segmentSuffix, disiExtension);
+        disiIn = state.directory.openInput(disiName, state.context.withHints(FileTypeHint.INDEX));
+        final int disiVersion =
+            CodecUtil.checkIndexHeader(
+                disiIn,
+                disiCodec,
+                Lucene90DocValuesFormat.VERSION_DISI_SEPARATE_FILE,
+                Lucene90DocValuesFormat.VERSION_CURRENT,
+                state.segmentInfo.getId(),
+                state.segmentSuffix);
+        if (version != disiVersion) {
+          throw new CorruptIndexException(
+              "Format versions mismatch: meta=" + version + ", disi=" + disiVersion, disiIn);
+        }
+        CodecUtil.retrieveChecksum(disiIn);
+      } catch (Throwable t) {
+        IOUtils.closeWhileSuppressingExceptions(t, data, skipIndexData, disiIn);
+        throw t;
+      }
+      this.disiData = disiIn;
+    } else {
+      this.disiData = null;
+    }
   }
 
   // Used for cloning
@@ -190,6 +224,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       IntObjectHashMap<DocValuesSkipperEntry> skippers,
       IndexInput data,
       IndexInput skipIndexData,
+      IndexInput disiData,
       int maxDoc,
       int version,
       boolean merging) {
@@ -201,6 +236,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     this.skippers = skippers;
     this.data = data.clone();
     this.skipIndexData = skipIndexData != null ? skipIndexData.clone() : null;
+    this.disiData = disiData != null ? disiData.clone() : null;
     this.maxDoc = maxDoc;
     this.version = version;
     this.merging = merging;
@@ -217,9 +253,34 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         skippers,
         data,
         skipIndexData,
+        disiData,
         maxDoc,
         version,
         true);
+  }
+
+  /**
+   * Builds a sparse field's {@link IndexedDISI}.
+   *
+   * <p>Since {@link Lucene90DocValuesFormat#VERSION_DISI_SEPARATE_FILE} the bytes live in the
+   * {@code .dvp} file; for older segments they are inline in {@code .dvd}. The offset, length and
+   * shape are read from the metadata in both cases.
+   */
+  private IndexedDISI newIndexedDISI(
+      long docsWithFieldOffset,
+      long docsWithFieldLength,
+      short jumpTableEntryCount,
+      byte denseRankPower,
+      long numValues)
+      throws IOException {
+    final IndexInput in = disiData != null ? disiData : data;
+    return new IndexedDISI(
+        in,
+        docsWithFieldOffset,
+        docsWithFieldLength,
+        jumpTableEntryCount,
+        denseRankPower,
+        numValues);
   }
 
   private void inferMaxValueCounts(FieldInfos fieldInfos) {
@@ -281,18 +342,14 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       if (info.docValuesSkipIndexType() != DocValuesSkipIndexType.NONE) {
         skippers.put(info.number, readDocValueSkipperMeta(meta));
       }
-      if (type == Lucene90DocValuesFormat.NUMERIC) {
-        numerics.put(info.number, readNumeric(meta));
-      } else if (type == Lucene90DocValuesFormat.BINARY) {
-        binaries.put(info.number, readBinary(meta));
-      } else if (type == Lucene90DocValuesFormat.SORTED) {
-        sorted.put(info.number, readSorted(meta));
-      } else if (type == Lucene90DocValuesFormat.SORTED_SET) {
-        sortedSets.put(info.number, readSortedSet(meta));
-      } else if (type == Lucene90DocValuesFormat.SORTED_NUMERIC) {
-        sortedNumerics.put(info.number, readSortedNumeric(meta));
-      } else {
-        throw new CorruptIndexException("invalid type: " + type, meta);
+      switch (type) {
+        case Lucene90DocValuesFormat.NUMERIC -> numerics.put(info.number, readNumeric(meta));
+        case Lucene90DocValuesFormat.BINARY -> binaries.put(info.number, readBinary(meta));
+        case Lucene90DocValuesFormat.SORTED -> sorted.put(info.number, readSorted(meta));
+        case Lucene90DocValuesFormat.SORTED_SET -> sortedSets.put(info.number, readSortedSet(meta));
+        case Lucene90DocValuesFormat.SORTED_NUMERIC ->
+            sortedNumerics.put(info.number, readSortedNumeric(meta));
+        default -> throw new CorruptIndexException("invalid type: " + type, meta);
       }
     }
   }
@@ -447,7 +504,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
   @Override
   public void close() throws IOException {
-    IOUtils.close(data, skipIndexData);
+    IOUtils.close(data, skipIndexData, disiData);
   }
 
   private record DocValuesSkipperEntry(
@@ -486,19 +543,32 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
    * values satisfy {@code stored = raw * mul + delta}. Returns {@code {encodedMin, encodedMax}} or
    * {@code null} if the range is empty (no raw value can match).
    */
-  private static long[] transformGcdBounds(long minValue, long maxValue, long mul, long delta) {
+  static long[] transformGcdBounds(
+      long minValue, long maxValue, long mul, long delta, int bitsPerValue) {
     assert mul > 0;
-    long encodedMin = saturatingShiftLower(minValue, delta);
-    long encodedMax = saturatingShiftUpper(maxValue, delta);
-    if (mul != 1) {
-      encodedMin = Math.ceilDiv(encodedMin, mul);
-      encodedMax = Math.floorDiv(encodedMax, mul);
+    if (maxValue < delta) {
+      return null;
     }
-    encodedMin = Math.max(0, encodedMin);
+    assert canTransformGcdBounds(minValue, maxValue, delta, bitsPerValue);
+    long encodedMin = minValue <= delta ? 0 : Math.ceilDiv(minValue - delta, mul);
+    long encodedMax =
+        maxValue == Long.MAX_VALUE ? Long.MAX_VALUE : Math.floorDiv(maxValue - delta, mul);
     if (encodedMin > encodedMax) {
       return null;
     }
     return new long[] {encodedMin, encodedMax};
+  }
+
+  /** Checks whether query bounds can be safely transformed to encoded bounds. */
+  static boolean canTransformGcdBounds(long minValue, long maxValue, long delta, int bitsPerValue) {
+    if (maxValue < delta || delta >= 0) {
+      return true;
+    }
+    long highestSafeBound = Long.MAX_VALUE + delta;
+    boolean lowerSafe = minValue <= delta || minValue <= highestSafeBound;
+    boolean upperSafe =
+        maxValue <= highestSafeBound || (maxValue == Long.MAX_VALUE && bitsPerValue < Long.SIZE);
+    return lowerSafe && upperSafe;
   }
 
   /**
@@ -513,44 +583,12 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       long maxValue,
       long mul,
       long delta,
+      int bitsPerValue,
       FixedBitSet bitSet,
       int offset) {
-    long[] bounds = transformGcdBounds(minValue, maxValue, mul, delta);
+    long[] bounds = transformGcdBounds(minValue, maxValue, mul, delta, bitsPerValue);
     if (bounds != null) {
       rangeIntoBitSet(values, fromDoc, toDoc, bounds[0], bounds[1], bitSet, offset);
-    }
-  }
-
-  /**
-   * Returns {@code minValue - delta}, saturating to {@code Long.MIN_VALUE} when the real value
-   * would underflow (every non-negative stored value satisfies the lower bound) or to {@code
-   * Long.MAX_VALUE} when it would overflow (no stored value can satisfy the lower bound). Stored
-   * values are non-negative, so the caller can keep using the SIMD path with these saturated
-   * sentinels.
-   */
-  private static long saturatingShiftLower(long minValue, long delta) {
-    try {
-      return Math.subtractExact(minValue, delta);
-    } catch (
-        @SuppressWarnings("unused")
-        ArithmeticException overflow) {
-      return delta > 0 ? Long.MIN_VALUE : Long.MAX_VALUE;
-    }
-  }
-
-  /**
-   * Symmetric counterpart of {@link #saturatingShiftLower}: returns {@code maxValue - delta},
-   * saturating to {@code Long.MAX_VALUE} when the real value would overflow (every stored value
-   * satisfies the upper bound) or to {@code Long.MIN_VALUE} when it would underflow (no stored
-   * value can satisfy the upper bound).
-   */
-  private static long saturatingShiftUpper(long maxValue, long delta) {
-    try {
-      return Math.subtractExact(maxValue, delta);
-    } catch (
-        @SuppressWarnings("unused")
-        ArithmeticException overflow) {
-      return delta < 0 ? Long.MAX_VALUE : Long.MIN_VALUE;
     }
   }
 
@@ -973,6 +1011,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
             final long delta = entry.minValue;
             return new DenseNumericDocValues(maxDoc) {
               private byte[] bulkBytes = new byte[0];
+              private LongValues decodedValues;
 
               @Override
               public long longValue() throws IOException {
@@ -1010,8 +1049,31 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
                   long maxValue,
                   FixedBitSet bitSet,
                   int offset) {
-                Lucene90DocValuesProducer.rangeGcdDeltaIntoBitSet(
-                    values, fromDoc, toDoc, minValue, maxValue, mul, delta, bitSet, offset);
+                if (canTransformGcdBounds(minValue, maxValue, delta, entry.bitsPerValue)) {
+                  Lucene90DocValuesProducer.rangeGcdDeltaIntoBitSet(
+                      values,
+                      fromDoc,
+                      toDoc,
+                      minValue,
+                      maxValue,
+                      mul,
+                      delta,
+                      entry.bitsPerValue,
+                      bitSet,
+                      offset);
+                } else {
+                  if (decodedValues == null) {
+                    decodedValues =
+                        new LongValues() {
+                          @Override
+                          public long get(long index) {
+                            return mul * values.get(index) + delta;
+                          }
+                        };
+                  }
+                  Lucene90DocValuesProducer.rangeIntoBitSet(
+                      decodedValues, fromDoc, toDoc, minValue, maxValue, bitSet, offset);
+                }
               }
             };
           }
@@ -1020,8 +1082,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     } else {
       // sparse
       final IndexedDISI disi =
-          new IndexedDISI(
-              data,
+          newIndexedDISI(
               entry.docsWithFieldOffset,
               entry.docsWithFieldLength,
               entry.jumpTableEntryCount,
@@ -1359,8 +1420,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     } else {
       // sparse
       final IndexedDISI disi =
-          new IndexedDISI(
-              data,
+          newIndexedDISI(
               entry.docsWithFieldOffset,
               entry.docsWithFieldLength,
               entry.jumpTableEntryCount,
@@ -1497,8 +1557,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         };
       } else if (ordsEntry.docsWithFieldOffset >= 0) { // sparse but non-empty
         final IndexedDISI disi =
-            new IndexedDISI(
-                data,
+            newIndexedDISI(
                 ordsEntry.docsWithFieldOffset,
                 ordsEntry.docsWithFieldLength,
                 ordsEntry.jumpTableEntryCount,
@@ -2034,8 +2093,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           }
           LongValues v;
           long lo, hi;
-          if (hasGcdEncoding) {
-            long[] bounds = transformGcdBounds(minValue, maxValue, entry.gcd, entry.minValue);
+          if (hasGcdEncoding
+              && canTransformGcdBounds(minValue, maxValue, entry.minValue, entry.bitsPerValue)) {
+            long[] bounds =
+                transformGcdBounds(
+                    minValue, maxValue, entry.gcd, entry.minValue, entry.bitsPerValue);
             if (bounds == null) {
               return;
             }
@@ -2059,12 +2121,13 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
                 v, fromDoc, endDoc, cardinality, lo, hi, bitSet, offset);
             return;
           }
+          long startOffset = addresses.get(fromDoc);
           for (int currentDoc = fromDoc; currentDoc < endDoc; currentDoc++) {
-            long startOffset = addresses.get(currentDoc);
             long endOffset = addresses.get(currentDoc + 1L);
             if (sortedNumericMatchesRange(v, startOffset, endOffset, lo, hi)) {
               bitSet.set(currentDoc - offset);
             }
+            startOffset = endOffset;
           }
         }
 
@@ -2086,8 +2149,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     } else {
       // sparse
       final IndexedDISI disi =
-          new IndexedDISI(
-              data,
+          newIndexedDISI(
               entry.docsWithFieldOffset,
               entry.docsWithFieldLength,
               entry.jumpTableEntryCount,
@@ -2165,8 +2227,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           }
           LongValues v;
           long lo, hi;
-          if (hasGcdEncoding) {
-            long[] bounds = transformGcdBounds(minValue, maxValue, entry.gcd, entry.minValue);
+          if (hasGcdEncoding
+              && canTransformGcdBounds(minValue, maxValue, entry.minValue, entry.bitsPerValue)) {
+            long[] bounds =
+                transformGcdBounds(
+                    minValue, maxValue, entry.gcd, entry.minValue, entry.bitsPerValue);
             if (bounds == null) {
               set = false;
               return;
@@ -2323,8 +2388,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         };
       } else if (ordsEntry.docsWithFieldOffset >= 0) { // sparse but non-empty
         final IndexedDISI disi =
-            new IndexedDISI(
-                data,
+            newIndexedDISI(
                 ordsEntry.docsWithFieldOffset,
                 ordsEntry.docsWithFieldLength,
                 ordsEntry.jumpTableEntryCount,
@@ -2456,6 +2520,9 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     CodecUtil.checksumEntireFile(data, merge);
     if (skipIndexData != null) {
       CodecUtil.checksumEntireFile(skipIndexData, merge);
+    }
+    if (disiData != null) {
+      CodecUtil.checksumEntireFile(disiData, merge);
     }
   }
 

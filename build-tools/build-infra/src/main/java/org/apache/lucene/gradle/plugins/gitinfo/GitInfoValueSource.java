@@ -49,17 +49,16 @@ public abstract class GitInfoValueSource
         var out = new BufferedOutputStream(baos)) {
       var result =
           getExecOps()
-              .exec(
-                  spec -> {
-                    spec.setStandardOutput(out);
-                    spec.setErrorOutput(out);
-                    spec.setIgnoreExitValue(true);
+              .exec(spec -> {
+                spec.setStandardOutput(out);
+                spec.setErrorOutput(out);
+                spec.setIgnoreExitValue(true);
 
-                    getParameters().configure(spec);
+                getParameters().configure(spec);
 
-                    spec.setExecutable(getParameters().getGitExec().get());
-                    spec.args("status", "--porcelain=v2", "--branch");
-                  });
+                spec.setExecutable(getParameters().getGitExec().get());
+                spec.args("status", "--porcelain=v2", "--branch");
+              });
       out.flush();
 
       // Just assume it's UTF-8. I don't know if this can break anyhow.

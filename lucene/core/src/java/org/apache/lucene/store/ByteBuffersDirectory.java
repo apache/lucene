@@ -261,7 +261,7 @@ public final class ByteBuffersDirectory extends BaseDirectory {
           outputName,
           fileName,
           new CRC32(),
-          (output) -> {
+          output -> {
             content = outputToInput.apply(fileName, output);
             cachedLength = output.size();
           });

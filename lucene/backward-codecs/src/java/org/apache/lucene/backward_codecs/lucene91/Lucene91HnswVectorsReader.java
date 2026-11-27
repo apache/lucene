@@ -323,6 +323,11 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
+  public int getVectorCount(FieldInfo fieldInfo) {
+    return getFieldEntry(fieldInfo.name).size();
+  }
+
+  @Override
   public void close() throws IOException {
     IOUtils.close(vectorData, vectorIndex);
   }
@@ -368,7 +373,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
         }
       }
       final IntUnaryOperator ordToDocOperator =
-          ordToDoc == null ? IntUnaryOperator.identity() : (ord) -> ordToDoc[ord];
+          ordToDoc == null ? IntUnaryOperator.identity() : ord -> ordToDoc[ord];
 
       // read nodes by level
       final var maxConn = input.readInt();
@@ -447,7 +452,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
       this.dimension = dimension;
       this.size = size;
       this.ordToDoc = ordToDoc;
-      ordToDocOperator = ordToDoc == null ? IntUnaryOperator.identity() : (ord) -> ordToDoc[ord];
+      ordToDocOperator = ordToDoc == null ? IntUnaryOperator.identity() : ord -> ordToDoc[ord];
       this.dataIn = dataIn;
       this.similarityFunction = similarityFunction;
       byteSize = Float.BYTES * dimension;

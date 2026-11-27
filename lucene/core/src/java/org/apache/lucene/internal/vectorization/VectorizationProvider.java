@@ -65,7 +65,7 @@ public abstract class VectorizationProvider {
 
   private static final String UPPER_JAVA_FEATURE_VERSION_SYSPROP =
       "org.apache.lucene.vectorization.upperJavaFeatureVersion";
-  private static final int DEFAULT_UPPER_JAVA_FEATURE_VERSION = 26;
+  private static final int DEFAULT_UPPER_JAVA_FEATURE_VERSION = 27;
 
   private static int getUpperJavaFeatureVersion() {
     int runtimeVersion = DEFAULT_UPPER_JAVA_FEATURE_VERSION;
@@ -229,9 +229,8 @@ public abstract class VectorizationProvider {
 
   private static void ensureCaller() {
     final boolean validCaller =
-        STACKWALKER.walk(
-            s ->
-                s.skip(2).limit(1).map(StackFrame::getClassName).anyMatch(VALID_CALLERS::contains));
+        STACKWALKER.walk(s ->
+            s.skip(2).limit(1).map(StackFrame::getClassName).anyMatch(VALID_CALLERS::contains));
     if (!validCaller) {
       throw new IllegalCallerException(
           "VectorizationProvider is internal and can only be used by known Lucene classes.");

@@ -17,7 +17,7 @@
 package org.apache.lucene.sandbox.codecs.dedup;
 
 import static java.nio.ByteOrder.LITTLE_ENDIAN;
-import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.alignBytes;
+import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.alignRawVectorData;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.hashBytes;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.writeEndMarker;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.writeFieldInfo;
@@ -28,9 +28,11 @@ import java.nio.FloatBuffer;
 import java.nio.ShortBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatFieldVectorsWriter;
 import org.apache.lucene.index.DocsWithFieldSet;
@@ -94,10 +96,34 @@ final class DedupFlushContext implements Accountable {
     return fieldVectorsWriter;
   }
 
-  void flush(IndexOutput meta, IndexOutput vectorData, int maxDoc, Sorter.DocMap sortMap)
+  /**
+   * Writes each group's distinct vectors once, followed by per-field metadata. When {@code
+   * quantizer} is non-null, a quantized copy of each applicable group is also written and its block
+   * location appended to the group metadata.
+   */
+  void flush(
+      IndexOutput meta,
+      IndexOutput vectorData,
+      IndexOutput quantizedVectorData,
+      int maxDoc,
+      Sorter.DocMap sortMap,
+      DedupQuantizer quantizer)
       throws IOException {
 
     Map<GroupKey, Integer> groupOrds = new HashMap<>();
+
+    // quantization flavors referencing each group, derived from its fields' similarity functions
+    Map<GroupKey, Set<DedupQuantizer.Flavor>> groupFlavors = new HashMap<>();
+    if (quantizer != null) {
+      for (FieldData fieldData : fieldDataList) {
+        VectorEncoding fieldEncoding = fieldData.fieldInfo.getVectorEncoding();
+        if (fieldEncoding.isFloatingPoint()) {
+          groupFlavors
+              .computeIfAbsent(fieldData.groupKey, _ -> EnumSet.noneOf(DedupQuantizer.Flavor.class))
+              .add(DedupQuantizer.Flavor.of(fieldData.fieldInfo.getVectorSimilarityFunction()));
+        }
+      }
+    }
 
     int groupOrd = 0;
     for (Map.Entry<GroupKey, DedupGroup<?>> entry : groups.entrySet()) {
@@ -107,7 +133,7 @@ final class DedupFlushContext implements Accountable {
 
       DedupGroup<?> group = entry.getValue();
       int groupNumVectors = group.numVectors();
-      long vectorDataOffset = alignBytes(vectorData, encoding);
+      long vectorDataOffset = alignRawVectorData(vectorData);
 
       // TODO: Write in sorted order for faster merge? (with sequential IO)
       for (int ord = 0; ord < groupNumVectors; ord++) {
@@ -120,6 +146,36 @@ final class DedupFlushContext implements Accountable {
           new GroupInfo(
               groupOrd, dimension, encoding, groupNumVectors, vectorDataOffset, vectorDataSize);
       groupInfo.write(meta);
+
+      if (quantizer != null) {
+        if (group instanceof FloatGroup floatGroup) {
+          quantizer.writeGroup(
+              meta,
+              quantizedVectorData,
+              encoding,
+              dimension,
+              groupNumVectors,
+              groupFlavors.get(groupKey),
+              floatGroup::get,
+              null);
+        } else if (group instanceof Float16Group float16Group) {
+          // FLOAT16 is stored raw as short[]; inflate to float[] for data-blind quantization. The
+          // quantized record is a pure function of the float values and flavor, so it matches the
+          // record a FLOAT32 vector of the same values would produce.
+          float[] inflated = new float[dimension];
+          quantizer.writeGroup(
+              meta,
+              quantizedVectorData,
+              encoding,
+              dimension,
+              groupNumVectors,
+              groupFlavors.get(groupKey),
+              ord -> DedupUtil.inflateFloat16(float16Group.get(ord), inflated),
+              null);
+        } else {
+          DedupQuantizer.writeEmptyGroup(meta);
+        }
+      }
 
       groupOrds.put(groupKey, groupOrd);
       groupOrd++;
@@ -157,6 +213,7 @@ final class DedupFlushContext implements Accountable {
           groupOrds.get(fieldData.groupKey),
           vectorCount,
           maxDoc,
+          fieldData.fieldWriter.getMaxGroupOrd(),
           docs,
           fieldOrdToGroupOrdFinal);
     }

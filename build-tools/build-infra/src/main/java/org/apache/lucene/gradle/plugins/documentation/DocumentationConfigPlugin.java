@@ -72,17 +72,16 @@ public class DocumentationConfigPlugin extends LuceneGradlePlugin {
             "External Javadoc URL for documentation generator.",
             project
                 .getProviders()
-                .provider(
-                    () -> {
-                      if (buildGlobals.snapshotBuild) {
-                        // non-release build does not cross-link between modules.
-                        return null;
-                      } else {
-                        // release build
-                        var urlVersion = buildGlobals.baseVersion.replace('.', '_');
-                        return "https://lucene.apache.org/core/" + urlVersion;
-                      }
-                    }));
+                .provider(() -> {
+                  if (buildGlobals.snapshotBuild) {
+                    // non-release build does not cross-link between modules.
+                    return null;
+                  } else {
+                    // release build
+                    var urlVersion = buildGlobals.baseVersion.replace('.', '_');
+                    return "https://lucene.apache.org/core/" + urlVersion;
+                  }
+                }));
 
     TaskContainer tasks = project.getTasks();
     var documentationTask =
@@ -130,17 +129,14 @@ public class DocumentationConfigPlugin extends LuceneGradlePlugin {
               task.dependsOn(
                   project
                       .getProviders()
-                      .provider(
-                          () ->
-                              project.project(":lucene").getSubprojects().stream()
-                                  .flatMap(
-                                      prj ->
-                                          prj
-                                              .getTasks()
-                                              .matching(
-                                                  t -> t.getName().equals("renderSiteJavadoc"))
-                                              .stream())
-                                  .toList()));
+                      .provider(() ->
+                          project.project(":lucene").getSubprojects().stream()
+                              .flatMap(prj ->
+                                  prj
+                                      .getTasks()
+                                      .matching(t -> t.getName().equals("renderSiteJavadoc"))
+                                      .stream())
+                              .toList()));
 
               task.dependsOn(
                   copyDocumentationAssets,
@@ -237,19 +233,19 @@ public class DocumentationConfigPlugin extends LuceneGradlePlugin {
                   "defaultCodecPackage",
                   project
                       .getProviders()
-                      .provider(
-                          () -> {
-                            var regex =
-                                Pattern.compile(
-                                    "Codec defaultCodec = LOADER\\.lookup\\((?<codec>\"([^\"]+)\")\\);");
-                            var matcher =
-                                regex.matcher(Files.readString(defaultCodecFile.toPath()));
-                            if (!matcher.find()) {
-                              throw new GradleException(
-                                  "Cannot determine default codec from file: " + defaultCodecFile);
-                            }
-                            return matcher.group("codec").toLowerCase(Locale.ROOT);
-                          }));
+                      .provider(() -> {
+                        var regex =
+                            Pattern.compile(
+                                Pattern.quote("Codec defaultCodec = LOADER.lookup(\"")
+                                    + "(?<codec>\\w+)"
+                                    + Pattern.quote("\");"));
+                        var matcher = regex.matcher(Files.readString(defaultCodecFile.toPath()));
+                        if (!matcher.find()) {
+                          throw new GradleException(
+                              "Cannot determine default codec from file: " + defaultCodecFile);
+                        }
+                        return matcher.group("codec").toLowerCase(Locale.ROOT);
+                      }));
 
           task.withProjectList();
         });
@@ -347,41 +343,38 @@ public class DocumentationConfigPlugin extends LuceneGradlePlugin {
       var projectListProvider =
           getProject()
               .getProviders()
-              .provider(
-                  () -> {
-                    var projectList =
-                        getProject().project(":lucene").getSubprojects().stream()
-                            .filter(
-                                p ->
-                                    p
-                                        .getTasks()
-                                        .matching(t -> t.getName().equals("renderSiteJavadoc"))
-                                        .stream()
-                                        .findAny()
-                                        .isPresent())
-                            .sorted(
-                                Comparator.comparing((Project t) -> !t.getName().equals("core"))
-                                    .thenComparing(t -> t.getName().equals("test-framework"))
-                                    .thenComparing(Project::getPath))
-                            .toList();
+              .provider(() -> {
+                var projectList =
+                    getProject().project(":lucene").getSubprojects().stream()
+                        .filter(p ->
+                            p
+                                .getTasks()
+                                .matching(t -> t.getName().equals("renderSiteJavadoc"))
+                                .stream()
+                                .findAny()
+                                .isPresent())
+                        .sorted(
+                            Comparator.comparing((Project t) -> !t.getName().equals("core"))
+                                .thenComparing(t -> t.getName().equals("test-framework"))
+                                .thenComparing(Project::getPath))
+                        .toList();
 
-                    return projectList.stream()
-                        .map(
-                            project -> {
-                              var text =
-                                  String.format(
-                                      Locale.ROOT,
-                                      "**[%s](%s/index.html):** %s",
-                                      relativeDocPath(project).replace('/', '-'),
-                                      relativeDocPath(project),
-                                      project.getDescription());
-                              if (project.getName().equals("core")) {
-                                text = text + " {style='font-size:larger; margin-bottom:.5em'}";
-                              }
-                              return "* " + text;
-                            })
-                        .collect(Collectors.joining("\n"));
-                  });
+                return projectList.stream()
+                    .map(project -> {
+                      var text =
+                          String.format(
+                              Locale.ROOT,
+                              "**[%s](%s/index.html):** %s",
+                              relativeDocPath(project).replace('/', '-'),
+                              relativeDocPath(project),
+                              project.getDescription());
+                      if (project.getName().equals("core")) {
+                        text = text + " {style='font-size:larger; margin-bottom:.5em'}";
+                      }
+                      return "* " + text;
+                    })
+                    .collect(Collectors.joining("\n"));
+              });
 
       getBinding().put("projectList", projectListProvider);
     }

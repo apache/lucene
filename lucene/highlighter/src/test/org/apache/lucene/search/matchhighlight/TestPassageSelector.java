@@ -340,14 +340,12 @@ public class TestPassageSelector extends LuceneTestCase {
           selector.pickBest(value, highlights, charWindow, maxPassages, permittedRanges);
 
       // Make sure no empty ranges are returned.
-      passages.forEach(
-          p -> {
-            assertNotEquals(p.from, p.to);
-            p.markers.forEach(
-                _ -> {
-                  assertNotEquals(p.from, p.to);
-                });
-          });
+      passages.forEach(p -> {
+        assertNotEquals(p.from, p.to);
+        p.markers.forEach(_ -> {
+          assertNotEquals(p.from, p.to);
+        });
+      });
 
       List<String> format = formatter.format(value, passages, permittedRanges);
 

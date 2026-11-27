@@ -52,9 +52,10 @@ def add_constant(new_version: Version, deprecate: bool) -> None:
   matcher = re.compile(constant_prefix)
   prev_matcher = new_version.make_previous_matcher(prefix=constant_prefix, sep="_")
 
-  def ensure_deprecated(buffer: list[str]) -> None:
+  def ensure_deprecated(buffer: list[str], decl: str) -> None:
     last = buffer[-1]
-    if last.strip() != "@Deprecated":
+    # The annotation is either on its own line before the declaration, or inline on the declaration line
+    if last.strip() != "@Deprecated" and "@Deprecated" not in decl:
       spaces = " " * (len(last) - len(last.lstrip()) - 1)
       del buffer[-1]  # Remove comment closer line
       if len(buffer) >= 4 and re.search(r"for Lucene.\s*$", buffer[-1]) is not None:
@@ -82,7 +83,7 @@ def add_constant(new_version: Version, deprecate: bool) -> None:
       # outer match is just to find lines declaring version constants
       match = prev_matcher.search(line)
       if match is not None:
-        ensure_deprecated(buffer)  # old version should be deprecated
+        ensure_deprecated(buffer, line)  # old version should be deprecated
         self.found = len(buffer) + 1  # extra 1 for buffering current line below
       elif self.found != -1:
         # we didn't match, but we previously had a match, so insert new version here

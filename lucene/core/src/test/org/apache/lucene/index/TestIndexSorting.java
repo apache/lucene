@@ -242,28 +242,28 @@ public class TestIndexSorting extends LuceneTestCase {
   public void testNumericAlreadySorted() throws Exception {
     assertNeedsIndexSortMerge(
         new SortField("foo", SortField.Type.INT),
-        (doc) -> doc.add(new NumericDocValuesField("foo", 0)),
-        (doc) -> doc.add(new NumericDocValuesField("foo", random().nextInt())));
+        doc -> doc.add(new NumericDocValuesField("foo", 0)),
+        doc -> doc.add(new NumericDocValuesField("foo", random().nextInt())));
   }
 
   public void testStringAlreadySorted() throws Exception {
     assertNeedsIndexSortMerge(
         new SortField("foo", SortField.Type.STRING),
-        (doc) -> doc.add(new SortedDocValuesField("foo", newBytesRef("default"))),
-        (doc) -> doc.add(new SortedDocValuesField("foo", TestUtil.randomBinaryTerm(random()))));
+        doc -> doc.add(new SortedDocValuesField("foo", newBytesRef("default"))),
+        doc -> doc.add(new SortedDocValuesField("foo", TestUtil.randomBinaryTerm(random()))));
   }
 
   public void testMultiValuedNumericAlreadySorted() throws Exception {
     assertNeedsIndexSortMerge(
         new SortedNumericSortField("foo", SortField.Type.INT),
-        (doc) -> {
+        doc -> {
           doc.add(new SortedNumericDocValuesField("foo", Integer.MIN_VALUE));
           int num = random().nextInt(5);
           for (int j = 0; j < num; j++) {
             doc.add(new SortedNumericDocValuesField("foo", random().nextInt()));
           }
         },
-        (doc) -> {
+        doc -> {
           int num = random().nextInt(5);
           for (int j = 0; j < num; j++) {
             doc.add(new SortedNumericDocValuesField("foo", random().nextInt()));
@@ -274,14 +274,14 @@ public class TestIndexSorting extends LuceneTestCase {
   public void testMultiValuedStringAlreadySorted() throws Exception {
     assertNeedsIndexSortMerge(
         new SortedSetSortField("foo", false),
-        (doc) -> {
+        doc -> {
           doc.add(new SortedSetDocValuesField("foo", newBytesRef("")));
           int num = random().nextInt(5);
           for (int j = 0; j < num; j++) {
             doc.add(new SortedSetDocValuesField("foo", TestUtil.randomBinaryTerm(random())));
           }
         },
-        (doc) -> {
+        doc -> {
           int num = random().nextInt(5);
           for (int j = 0; j < num; j++) {
             doc.add(new SortedSetDocValuesField("foo", TestUtil.randomBinaryTerm(random())));
@@ -2007,6 +2007,20 @@ public class TestIndexSorting extends LuceneTestCase {
         expectThrows(
             IllegalArgumentException.class,
             () -> w.updateNumericDocValue(new Term("id", "0"), "foo", -1));
+    assertEquals(
+        exc.getMessage(),
+        "cannot update docvalues field involved in the index sort, field=foo, sort=<long: \"foo\">");
+    exc =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> w.updateBinaryDocValue(new Term("id", "0"), "foo", newBytesRef("bar")));
+    assertEquals(
+        exc.getMessage(),
+        "cannot update docvalues field involved in the index sort, field=foo, sort=<long: \"foo\">");
+    exc =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> w.updateSortedNumericDocValue(new Term("id", "0"), "foo", -1));
     assertEquals(
         exc.getMessage(),
         "cannot update docvalues field involved in the index sort, field=foo, sort=<long: \"foo\">");

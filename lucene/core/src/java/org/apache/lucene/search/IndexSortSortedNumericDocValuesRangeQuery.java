@@ -133,8 +133,13 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesR
     }
 
     Query rewrittenFallback = fallbackQuery.rewrite(indexSearcher);
-    if (rewrittenFallback.getClass() == MatchAllDocsQuery.class) {
-      return MatchAllDocsQuery.INSTANCE;
+    // This query matches the same documents as its fallback, so if the fallback simplifies to a
+    // terminal query - match-all, match-none, or field-exists (e.g. a range covering every value of
+    // a sparse field) - the index-sort optimization adds nothing and we return it directly.
+    if (rewrittenFallback.getClass() == MatchAllDocsQuery.class
+        || rewrittenFallback.getClass() == MatchNoDocsQuery.class
+        || rewrittenFallback.getClass() == FieldExistsQuery.class) {
+      return rewrittenFallback;
     }
     if (rewrittenFallback == fallbackQuery) {
       return this;
@@ -171,7 +176,10 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesR
 
       @Override
       public int count(LeafReaderContext context) throws IOException {
-        if (context.reader().hasDeletions() == false) {
+        // With blocks only the parent documents are sorted, so neither the doc values nor the
+        // points follow the doc-ID order and the shortcuts below don't apply.
+        if (context.reader().hasDeletions() == false
+            && context.reader().getMetaData().hasBlocks() == false) {
           if (lowerValue > upperValue) {
             return 0;
           }
@@ -191,7 +199,11 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesR
 
           // use index sort optimization if possible
           SortField primarySortField = Sort.getPrimarySortField(reader);
-          if (primarySortField != null && primarySortField.getField().equals(field)) {
+          // The index sort only reflects one value per document, so it can't be used for count
+          // when a document has several values.
+          if (numericValues != null
+              && primarySortField != null
+              && primarySortField.getField().equals(field)) {
             final SortField.Type sortFieldType = getSortFieldType(primarySortField);
             // The index sort optimization is only supported for Type.INT and Type.LONG
             if (sortFieldType == Type.INT || sortFieldType == Type.LONG) {
@@ -505,6 +517,11 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesR
   private IteratorAndCount getDocIdSetIteratorOrNull(LeafReaderContext context) throws IOException {
     if (lowerValue > upperValue) {
       return IteratorAndCount.empty();
+    }
+    if (context.reader().getMetaData().hasBlocks()) {
+      // With blocks only the parent documents are sorted, so neither the doc values nor the
+      // points follow the doc-ID order and the shortcuts below don't apply.
+      return null;
     }
 
     SortedNumericDocValues sortedNumericValues =

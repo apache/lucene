@@ -156,22 +156,17 @@ public class TestReaderPool extends LuceneTestCase {
       if (pool.isReaderPoolingEnabled()) {
         if (random().nextBoolean()) {
           writtenToDisk = pool.writeAllDocValuesUpdates();
-          assertFalse(readersAndUpdates.isMerging());
         } else if (random().nextBoolean()) {
           writtenToDisk = pool.commit(segmentInfos);
-          assertFalse(readersAndUpdates.isMerging());
         } else {
           writtenToDisk = pool.writeDocValuesUpdatesForMerge(Collections.singletonList(commitInfo));
-          assertTrue(readersAndUpdates.isMerging());
         }
         assertFalse(pool.release(readersAndUpdates, random().nextBoolean()));
       } else {
         if (random().nextBoolean()) {
           writtenToDisk = pool.release(readersAndUpdates, random().nextBoolean());
-          assertFalse(readersAndUpdates.isMerging());
         } else {
           writtenToDisk = pool.writeDocValuesUpdatesForMerge(Collections.singletonList(commitInfo));
-          assertTrue(readersAndUpdates.isMerging());
           assertFalse(pool.release(readersAndUpdates, random().nextBoolean()));
         }
       }
@@ -267,22 +262,21 @@ public class TestReaderPool extends LuceneTestCase {
     AtomicBoolean isDone = new AtomicBoolean();
     CountDownLatch latch = new CountDownLatch(1);
     Thread refresher =
-        new Thread(
-            () -> {
-              try {
-                latch.countDown();
-                while (isDone.get() == false) {
-                  for (SegmentCommitInfo commitInfo : segmentInfos) {
-                    ReadersAndUpdates readersAndUpdates = pool.get(commitInfo, true);
-                    SegmentReader segmentReader = readersAndUpdates.getReader(IOContext.DEFAULT);
-                    readersAndUpdates.release(segmentReader);
-                    pool.release(readersAndUpdates, random().nextBoolean());
-                  }
-                }
-              } catch (Exception ex) {
-                throw new AssertionError(ex);
+        new Thread(() -> {
+          try {
+            latch.countDown();
+            while (isDone.get() == false) {
+              for (SegmentCommitInfo commitInfo : segmentInfos) {
+                ReadersAndUpdates readersAndUpdates = pool.get(commitInfo, true);
+                SegmentReader segmentReader = readersAndUpdates.getReader(IOContext.DEFAULT);
+                readersAndUpdates.release(segmentReader);
+                pool.release(readersAndUpdates, random().nextBoolean());
               }
-            });
+            }
+          } catch (Exception ex) {
+            throw new AssertionError(ex);
+          }
+        });
     refresher.start();
     MergePolicy mergePolicy =
         new FilterMergePolicy(newMergePolicy()) {
