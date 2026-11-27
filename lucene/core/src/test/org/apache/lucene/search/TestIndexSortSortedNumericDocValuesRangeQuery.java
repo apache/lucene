@@ -56,6 +56,7 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     final int iters = atLeast(10);
     for (int iter = 0; iter < iters; ++iter) {
       Directory dir = newDirectory();
+      final RandomLongValues randomValues = RandomLongValues.random(random());
 
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
       boolean reverse = random().nextBoolean();
@@ -64,7 +65,7 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
       if (enableMissingValue) {
         missingValue =
             random().nextBoolean()
-                ? TestUtil.nextLong(random(), -100, 10000)
+                ? randomValues.nextValue()
                 : (random().nextBoolean() ? Long.MIN_VALUE : Long.MAX_VALUE);
       }
       SortField sortField =
@@ -75,7 +76,6 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
       RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);
 
       final int numDocs = atLeast(100);
-      final RandomLongValues randomValues = RandomLongValues.random(random());
       final long[] inputValues = new long[numDocs];
       final boolean[] hasValue = new boolean[numDocs];
       for (int i = 0; i < numDocs; ++i) {
@@ -781,13 +781,14 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     final int iters = atLeast(10);
     for (int iter = 0; iter < iters; ++iter) {
       Directory dir = newDirectory();
+      final RandomLongValues randomValues = RandomLongValues.random(random());
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
       boolean enableMissingValue = random().nextBoolean();
       Long missingValue = null;
       if (enableMissingValue) {
         missingValue =
             random().nextBoolean()
-                ? TestUtil.nextLong(random(), -100, 10000)
+                ? randomValues.nextValue()
                 : (random().nextBoolean() ? Long.MIN_VALUE : Long.MAX_VALUE);
       }
       SortField sortField =
@@ -802,7 +803,7 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
         Document doc = new Document();
         final int numValues = TestUtil.nextInt(random(), 0, 1);
         for (int j = 0; j < numValues; ++j) {
-          final long value = TestUtil.nextLong(random(), -100, 10000);
+          final long value = randomValues.nextValue();
           doc = createSNDVAndPointDocument("field", value);
         }
         writer.addDocument(doc);
@@ -817,10 +818,9 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
       writer.close();
 
       for (int i = 0; i < 100; ++i) {
-        final long min =
-            random().nextBoolean() ? Long.MIN_VALUE : TestUtil.nextLong(random(), -100, 10000);
-        final long max =
-            random().nextBoolean() ? Long.MAX_VALUE : TestUtil.nextLong(random(), -100, 10000);
+        final Bounds bounds = randomValues.nextBound();
+        final long min = bounds.min();
+        final long max = bounds.max();
         final Query q1 = LongPoint.newRangeQuery("field", min, max);
 
         final Query fallbackQuery = LongPoint.newRangeQuery("field", min, max);

@@ -30,6 +30,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.RandomLongValues;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 
@@ -47,8 +48,9 @@ public class TestMultiDocValues extends LuceneTestCase {
     RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);
 
     int numDocs = TEST_NIGHTLY ? atLeast(500) : atLeast(50);
+    RandomLongValues values = RandomLongValues.random(random());
     for (int i = 0; i < numDocs; i++) {
-      field.setLongValue(random().nextLong());
+      field.setLongValue(values.nextValue());
       iw.addDocument(doc);
       if (random().nextInt(17) == 0) {
         iw.commit();
@@ -371,13 +373,12 @@ public class TestMultiDocValues extends LuceneTestCase {
     RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);
 
     int numDocs = TEST_NIGHTLY ? atLeast(500) : atLeast(50);
+    RandomLongValues values = RandomLongValues.random(random());
     for (int i = 0; i < numDocs; i++) {
       Document doc = new Document();
       int numValues = random().nextInt(5);
       for (int j = 0; j < numValues; j++) {
-        doc.add(
-            new SortedNumericDocValuesField(
-                "nums", TestUtil.nextLong(random(), Long.MIN_VALUE, Long.MAX_VALUE)));
+        doc.add(new SortedNumericDocValuesField("nums", values.nextValue()));
       }
       iw.addDocument(doc);
       if (random().nextInt(17) == 0) {

@@ -73,6 +73,7 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
 import org.apache.lucene.tests.index.BaseCompressingDocValuesFormatTestCase;
 import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.RandomLongValues;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
@@ -499,8 +500,9 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
 
   private void doTestSparseDocValuesVsStoredFields() throws Exception {
     final long[] values = new long[TestUtil.nextInt(random(), 1, 500)];
+    final RandomLongValues distribution = RandomLongValues.random(random());
     for (int i = 0; i < values.length; ++i) {
-      values[i] = random().nextLong();
+      values[i] = distribution.nextValue();
     }
 
     Directory dir = newFSDirectory(createTempDir());
