@@ -68,6 +68,8 @@ import org.apache.lucene.util.hnsw.HnswGraphMerger;
 import org.apache.lucene.util.hnsw.IncrementalHnswGraphMerger;
 import org.apache.lucene.util.hnsw.NeighborArray;
 import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
+import org.apache.lucene.util.hnsw.PipnnHnswGraphMerger;
+import org.apache.lucene.util.hnsw.PipnnParams;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.packed.DirectMonotonicWriter;
 import org.apache.lucene.util.quantization.QuantizedVectorsReader;
@@ -92,6 +94,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   private final int numMergeWorkers;
   private final TaskExecutor mergeExec;
   private final int tinySegmentsThreshold;
+  private final PipnnParams pipnnParams;
   private final int version;
 
   private final List<FieldWriter<?>> fields = new ArrayList<>();
@@ -122,6 +125,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         numMergeWorkers,
         mergeExec,
         HNSW_GRAPH_THRESHOLD,
+        null,
         VERSION_CURRENT);
   }
 
@@ -144,6 +148,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         numMergeWorkers,
         mergeExec,
         tinySegmentsThreshold,
+        null,
         VERSION_CURRENT);
   }
 
@@ -156,6 +161,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       int numMergeWorkers,
       TaskExecutor mergeExec,
       int tinySegmentsThreshold,
+      PipnnParams pipnnParams,
       int version)
       throws IOException {
     this.M = M;
@@ -165,6 +171,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     this.numMergeWorkers = numMergeWorkers;
     this.mergeExec = mergeExec;
     this.tinySegmentsThreshold = tinySegmentsThreshold;
+    this.pipnnParams = pipnnParams;
     this.version = version;
     segmentWriteState = state;
     String metaFileName =
@@ -671,6 +678,19 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       TaskExecutor parallelMergeTaskExecutor,
       int numParallelMergeWorkers,
       IORunnable abortCheck) {
+    if (pipnnParams != null) {
+      TaskExecutor executor = mergeExec != null ? mergeExec : parallelMergeTaskExecutor;
+      int workers = mergeExec != null ? numMergeWorkers : numParallelMergeWorkers;
+      return new PipnnHnswGraphMerger(
+          fieldInfo,
+          scorerSupplier,
+          M,
+          beamWidth,
+          pipnnParams,
+          executor != null && workers > 1 ? executor : null,
+          workers,
+          abortCheck);
+    }
     if (mergeExec != null) {
       return new ConcurrentHnswMerger(
           fieldInfo, scorerSupplier, M, beamWidth, mergeExec, numMergeWorkers, abortCheck);

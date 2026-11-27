@@ -41,6 +41,28 @@ public interface VectorUtilSupport {
   /** Returns the sum of squared differences of the two vectors. */
   float squareDistance(float[] a, float[] b);
 
+  /**
+   * Computes the dot products between every one of {@code aCount} vectors and every one of {@code
+   * bCount} vectors. The vectors have {@code dim} floats each and consecutive vectors start {@code
+   * stride} floats apart, the first ones at {@code a[aOffset]} and {@code b[bOffset]}. The dot
+   * product of the i-th a vector and the j-th b vector is written to {@code out[i * bCount + j]}.
+   * Implementations may reuse loaded vector data across several products, which is what makes this
+   * faster than {@code aCount * bCount} calls to {@link #dotProduct(float[], float[])}.
+   *
+   * <p>A {@code stride} that is a multiple of 1024 floats (4 KB) makes the rows that are scanned
+   * together map to the same cache sets and evict each other; pad such a stride by a few floats.
+   */
+  void dotProducts(
+      float[] a,
+      int aOffset,
+      int aCount,
+      float[] b,
+      int bOffset,
+      int bCount,
+      int dim,
+      int stride,
+      float[] out);
+
   /** Returns the sum of squared differences of the two vectors. */
   float squareDistance(short[] a, short[] b);
 
