@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
@@ -33,6 +34,7 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.index.SlowCompositeCodecReaderWrapper.SlowCompositeKnnVectorsReaderWrapper;
 import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
@@ -620,61 +622,100 @@ public final class SortingCodecReader extends FilterCodecReader {
     if (delegate == null) {
       return null;
     }
-    return new KnnVectorsReader() {
-      @Override
-      public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
-        delegate.checkIntegrity(merge);
-      }
+    return new SortingKnnVectorsReader(delegate, docMap);
+  }
 
-      @Override
-      public FloatVectorValues getFloatVectorValues(String field) throws IOException {
-        return new SortingFloatVectorValues(delegate.getFloatVectorValues(field), docMap);
-      }
+  /**
+   * The vectors reader of a {@link SortingCodecReader}. Its vector values keep the ordinals of the
+   * reader it wraps, so the HNSW graphs of the segments behind it remain valid, and a merge can
+   * reuse them through {@link #getMergeSources}.
+   *
+   * @lucene.internal
+   */
+  public static final class SortingKnnVectorsReader extends KnnVectorsReader {
 
-      @Override
-      public ByteVectorValues getByteVectorValues(String field) throws IOException {
-        return new SortingByteVectorValues(delegate.getByteVectorValues(field), docMap);
-      }
+    /**
+     * A segment whose vectors a {@link SortingKnnVectorsReader} exposes.
+     *
+     * @param reader the vectors reader of the segment
+     * @param docMap maps every doc ID of the segment to the corresponding doc ID of the sorted view
+     * @param maxDoc the number of documents of the segment
+     */
+    public record MergeSource(KnnVectorsReader reader, MergeState.DocMap docMap, int maxDoc) {}
 
-      @Override
-      public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
-        return new SortingFloat16VectorValues(delegate.getFloat16VectorValues(field), docMap);
-      }
+    private final KnnVectorsReader delegate;
+    private final Sorter.DocMap docMap;
 
-      @Override
-      public void search(
-          String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs) {
-        throw new UnsupportedOperationException();
-      }
+    private SortingKnnVectorsReader(KnnVectorsReader delegate, Sorter.DocMap docMap) {
+      this.delegate = delegate;
+      this.docMap = docMap;
+    }
 
-      @Override
-      public void search(
-          String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs) {
-        throw new UnsupportedOperationException();
+    /**
+     * Return the segments that hold the vectors of the given field, with the mapping of their doc
+     * IDs to the doc IDs of the sorted view. Together they cover every vector of the field exactly
+     * once.
+     */
+    public List<MergeSource> getMergeSources(String field) {
+      if (delegate instanceof SlowCompositeKnnVectorsReaderWrapper composite) {
+        return composite.getMergeSources(field, docMap);
       }
+      return List.of(new MergeSource(delegate, docMap::oldToNew, docMap.size()));
+    }
 
-      @Override
-      public void search(
-          String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
-          throws IOException {
-        throw new UnsupportedOperationException();
-      }
+    @Override
+    public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+      delegate.checkIntegrity(merge);
+    }
 
-      @Override
-      public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
-        return delegate.getOffHeapByteSize(fieldInfo);
-      }
+    @Override
+    public FloatVectorValues getFloatVectorValues(String field) throws IOException {
+      return new SortingFloatVectorValues(delegate.getFloatVectorValues(field), docMap);
+    }
 
-      @Override
-      public int getVectorCount(FieldInfo fieldInfo) throws IOException {
-        return delegate.getVectorCount(fieldInfo);
-      }
+    @Override
+    public ByteVectorValues getByteVectorValues(String field) throws IOException {
+      return new SortingByteVectorValues(delegate.getByteVectorValues(field), docMap);
+    }
 
-      @Override
-      public void close() throws IOException {
-        delegate.close();
-      }
-    };
+    @Override
+    public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+      return new SortingFloat16VectorValues(delegate.getFloat16VectorValues(field), docMap);
+    }
+
+    @Override
+    public void search(
+        String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void search(
+        String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void search(
+        String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+        throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
+      return delegate.getOffHeapByteSize(fieldInfo);
+    }
+
+    @Override
+    public int getVectorCount(FieldInfo fieldInfo) throws IOException {
+      return delegate.getVectorCount(fieldInfo);
+    }
+
+    @Override
+    public void close() throws IOException {
+      delegate.close();
+    }
   }
 
   @Override

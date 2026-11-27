@@ -28,6 +28,9 @@ import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.MergeState;
+import org.apache.lucene.index.SortingCodecReader;
+import org.apache.lucene.index.SortingCodecReader.SortingKnnVectorsReader;
+import org.apache.lucene.index.SortingCodecReader.SortingKnnVectorsReader.MergeSource;
 import org.apache.lucene.internal.hppc.IntIntHashMap;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BitSet;
@@ -105,10 +108,34 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
   /**
    * Adds a reader to the graph merger if it meets the following criteria: 1. does not contain any
    * deleted vector 2. is a HnswGraphProvider
+   *
+   * <p>The vectors reader of a {@link SortingCodecReader} is replaced by the segments it wraps, so
+   * that their graphs can be reused. Their live docs are those of the sorted view, mapped back.
    */
   @Override
   public IncrementalHnswGraphMerger addReader(
       KnnVectorsReader reader, MergeState.DocMap docMap, Bits liveDocs) throws IOException {
+    if (reader instanceof SortingKnnVectorsReader sorted) {
+      for (MergeSource source : sorted.getMergeSources(fieldInfo.name)) {
+        MergeState.DocMap sourceDocMap = source.docMap();
+        Bits sourceLiveDocs =
+            liveDocs == null
+                ? null
+                : new Bits() {
+                  @Override
+                  public boolean get(int index) {
+                    return liveDocs.get(sourceDocMap.get(index));
+                  }
+
+                  @Override
+                  public int length() {
+                    return source.maxDoc();
+                  }
+                };
+        addReader(source.reader(), doc -> docMap.get(sourceDocMap.get(doc)), sourceLiveDocs);
+      }
+      return this;
+    }
     numReaders++;
     if (!(reader instanceof HnswGraphProvider hgp)) {
       return this;
