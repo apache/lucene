@@ -16,14 +16,17 @@
  */
 package org.apache.lucene.index;
 
+import static org.apache.lucene.tests.util.TestUtil.alwaysPostingsFormat;
+import static org.apache.lucene.tests.util.TestUtil.getDefaultPostingsFormat;
+
 import java.io.IOException;
+import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 
 public class TestSegmentTermEnum extends LuceneTestCase {
@@ -76,7 +79,7 @@ public class TestSegmentTermEnum extends LuceneTestCase {
         new IndexWriter(
             dir,
             newIndexWriterConfig(new MockAnalyzer(random()))
-                .setCodec(TestUtil.alwaysPostingsFormat(TestUtil.getDefaultPostingsFormat())));
+                .setCodec(alwaysPostingsFormat(getDefaultPostingsFormat())));
     addDoc(writer, "aaa bbb");
     writer.close();
     LeafReader reader = getOnlyLeafReader(DirectoryReader.open(dir));
@@ -134,5 +137,59 @@ public class TestSegmentTermEnum extends LuceneTestCase {
     Document doc = new Document();
     doc.add(newTextField("content", value, Field.Store.NO));
     writer.addDocument(doc);
+  }
+
+  // TODO: for debug, will be removed.
+  public void testDeepSubBlock() throws Exception {
+    Directory dir = newDirectory();
+    // Set minTermBlockSize to 2, maxTermBlockSize to 3, to generate deep subBlock.
+    PostingsFormat postingsFormat = getDefaultPostingsFormat(20, 40);
+
+    IndexWriter writer =
+        new IndexWriter(dir, newIndexWriterConfig().setCodec(alwaysPostingsFormat(postingsFormat)));
+    String[] categories =
+        new String[] {
+          "request0",
+          "request01",
+          "request002",
+          "request0003",
+          "request00004",
+          "request000005",
+          "request0000006",
+          "request00000007",
+          "request000000008",
+          "request0000000009",
+          "request00000000010",
+          "request000000000011",
+          "request0000000000012",
+          "request00000000000013",
+          "request000000000000014",
+          "request0000000000000015",
+          "request00000000000000016",
+          "request000000000000000017",
+          "request0000000000000000018",
+          "request00000000000000000019"
+        };
+
+    for (String category : categories) {
+      Document doc = new Document();
+      doc.add(newStringField("category", category, Field.Store.YES));
+      writer.addDocument(doc);
+    }
+
+    writer.commit();
+    writer.forceMerge(1);
+
+    DirectoryReader reader = DirectoryReader.open(writer);
+    TermsEnum termsEnum = getOnlyLeafReader(reader).terms("category").iterator();
+    // test seekExact
+
+    for (String category : categories) {
+      BytesRef target = new BytesRef(category);
+      assertTrue(termsEnum.seekExact(target));
+    }
+    writer.close();
+    reader.close();
+    dir.close();
   }
 }
