@@ -21,7 +21,6 @@ import java.util.Map;
 import org.apache.lucene.analysis.TokenizerFactory;
 import org.apache.lucene.util.AttributeFactory;
 import org.apache.lucene.util.automaton.Automaton;
-import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
 
 /**
@@ -29,13 +28,11 @@ import org.apache.lucene.util.automaton.RegExp;
  *
  * <p>This tokenizer uses Lucene {@link RegExp} pattern matching to construct distinct tokens for
  * the input stream. The syntax is more limited than {@link PatternTokenizer}, but the tokenization
- * is quite a bit faster. It takes two arguments: <br>
+ * is quite a bit faster. It takes one argument: <br>
  *
  * <ul>
  *   <li>"pattern" (required) is the regular expression, according to the syntax described at {@link
  *       RegExp}
- *   <li>"determinizeWorkLimit" (optional, default 10000) the limit on total effort spent to
- *       determinize the automaton computed from the regexp
  * </ul>
  *
  * <p>The pattern matches the characters to include in a token (not the split characters), and the
@@ -62,17 +59,12 @@ public class SimplePatternTokenizerFactory extends TokenizerFactory {
   public static final String NAME = "simplePattern";
 
   public static final String PATTERN = "pattern";
-  private final Automaton dfa;
-  private final int determinizeWorkLimit;
+  private final Automaton automaton;
 
   /** Creates a new SimplePatternTokenizerFactory */
   public SimplePatternTokenizerFactory(Map<String, String> args) {
     super(args);
-    determinizeWorkLimit =
-        getInt(args, "determinizeWorkLimit", Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
-    dfa =
-        Operations.determinize(
-            new RegExp(require(args, PATTERN)).toAutomaton(), determinizeWorkLimit);
+    automaton = new RegExp(require(args, PATTERN)).toAutomaton();
     if (args.isEmpty() == false) {
       throw new IllegalArgumentException("Unknown parameters: " + args);
     }
@@ -85,6 +77,6 @@ public class SimplePatternTokenizerFactory extends TokenizerFactory {
 
   @Override
   public SimplePatternTokenizer create(final AttributeFactory factory) {
-    return new SimplePatternTokenizer(factory, dfa);
+    return new SimplePatternTokenizer(factory, automaton);
   }
 }

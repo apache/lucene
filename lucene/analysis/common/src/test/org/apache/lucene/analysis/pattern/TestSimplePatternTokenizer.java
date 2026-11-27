@@ -18,6 +18,10 @@ package org.apache.lucene.analysis.pattern;
 
 import java.io.IOException;
 import java.io.StringReader;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+import java.util.function.Function;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CharFilter;
 import org.apache.lucene.analysis.TokenStream;
@@ -28,7 +32,11 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 import org.apache.lucene.util.automaton.Automaton;
+import org.apache.lucene.util.automaton.Operations;
+import org.apache.lucene.util.automaton.RegExp;
+import org.apache.lucene.util.automaton.TooComplexToDeterminizeException;
 
 public class TestSimplePatternTokenizer extends BaseTokenStreamTestCase {
 
@@ -134,7 +142,111 @@ public class TestSimplePatternTokenizer extends BaseTokenStreamTestCase {
     a.addTransition(start, mid2, 'a', 'z');
     a.addTransition(mid1, end, 'b');
     a.addTransition(mid2, end, 'b');
-    expectThrows(IllegalArgumentException.class, () -> new SimplePatternTokenizer(a));
+    a.finishState();
+    assertFalse(a.isDeterministic());
+    Tokenizer t = new SimplePatternTokenizer(a);
+    t.setReader(new StringReader("xb ab c"));
+    assertTokenStreamContents(t, new String[] {"xb", "ab"}, new int[] {0, 3}, new int[] {2, 5});
+  }
+
+  public void testNonDeterministicRegExp() throws Exception {
+    assertFalse(new RegExp("ab|ac").toAutomaton().isDeterministic());
+    Tokenizer t = new SimplePatternTokenizer("ab|ac");
+    t.setReader(new StringReader("ab ac ad"));
+    assertTokenStreamContents(t, new String[] {"ab", "ac"}, new int[] {0, 3}, new int[] {2, 5});
+  }
+
+  public void testNonDeterministicRegExpGreedy() throws Exception {
+    assertFalse(new RegExp("[a-z]+|[a-z]+\\.[a-z]+").toAutomaton().isDeterministic());
+    Tokenizer t = new SimplePatternTokenizer("[a-z]+|[a-z]+\\.[a-z]+");
+    t.setReader(new StringReader("foo.bar baz"));
+    assertTokenStreamContents(
+        t, new String[] {"foo.bar", "baz"}, new int[] {0, 8}, new int[] {7, 11});
+  }
+
+  public void testTooComplexToDeterminize() throws Exception {
+    String regexp = "(a|b)*a(a|b){20}";
+    expectThrows(
+        TooComplexToDeterminizeException.class,
+        () ->
+            Operations.determinize(
+                new RegExp(regexp).toAutomaton(), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT));
+    String token = "a" + "b".repeat(20);
+    Tokenizer t = new SimplePatternTokenizer(regexp);
+    t.setReader(new StringReader("c " + token + " c"));
+    assertTokenStreamContents(t, new String[] {token}, new int[] {2}, new int[] {23});
+  }
+
+  public void testRandomNFAMatchesDFA() throws Exception {
+    checkRandomNFAMatchesDFA(random(), SimplePatternTokenizer::new);
+  }
+
+  /**
+   * Checks that tokenizers built from random non-deterministic automata produce the same tokens as
+   * tokenizers built from their determinized equivalents. Shared with {@link
+   * TestSimplePatternSplitTokenizer}.
+   */
+  static void checkRandomNFAMatchesDFA(Random random, Function<Automaton, Tokenizer> newTokenizer)
+      throws IOException {
+    int iters = atLeast(random, 100);
+    for (int iter = 0; iter < iters; iter++) {
+      Automaton nfa = new RegExp(AutomatonTestUtil.randomRegexp(random), RegExp.NONE).toAutomaton();
+      if (nfa.isDeterministic()) {
+        iter--;
+        continue;
+      }
+      Automaton dfa;
+      AutomatonTestUtil.RandomAcceptedStrings acceptedStrings;
+      try {
+        dfa = Operations.determinize(nfa, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
+        acceptedStrings =
+            Operations.isEmpty(dfa) ? null : new AutomatonTestUtil.RandomAcceptedStrings(dfa);
+      } catch (TooComplexToDeterminizeException _) {
+        iter--;
+        continue;
+      }
+      // reuse the same NFA tokenizer for several inputs, to exercise its lazily built states
+      Tokenizer nfaTokenizer = newTokenizer.apply(nfa);
+      for (int round = 0; round < 10; round++) {
+        StringBuilder input = new StringBuilder();
+        int pieces = TestUtil.nextInt(random, 1, 5);
+        for (int piece = 0; piece < pieces; piece++) {
+          input.append(TestUtil.randomUnicodeString(random, 3));
+          if (acceptedStrings != null) {
+            int[] codePoints = acceptedStrings.getRandomAcceptedString(random);
+            input.append(new String(codePoints, 0, codePoints.length));
+          }
+        }
+        assertSameTokens(newTokenizer.apply(dfa), nfaTokenizer, input.toString());
+      }
+    }
+  }
+
+  private static void assertSameTokens(Tokenizer expected, Tokenizer actual, String input)
+      throws IOException {
+    CharTermAttribute termAtt = expected.addAttribute(CharTermAttribute.class);
+    OffsetAttribute offsetAtt = expected.addAttribute(OffsetAttribute.class);
+    List<String> terms = new ArrayList<>();
+    List<Integer> startOffsets = new ArrayList<>();
+    List<Integer> endOffsets = new ArrayList<>();
+    expected.setReader(new StringReader(input));
+    expected.reset();
+    while (expected.incrementToken()) {
+      terms.add(termAtt.toString());
+      startOffsets.add(offsetAtt.startOffset());
+      endOffsets.add(offsetAtt.endOffset());
+    }
+    expected.end();
+    int finalOffset = offsetAtt.endOffset();
+    expected.close();
+
+    actual.setReader(new StringReader(input));
+    assertTokenStreamContents(
+        actual,
+        terms.toArray(new String[0]),
+        startOffsets.stream().mapToInt(Integer::intValue).toArray(),
+        endOffsets.stream().mapToInt(Integer::intValue).toArray(),
+        finalOffset);
   }
 
   public void testOffsetCorrection() throws Exception {
@@ -202,6 +314,18 @@ public class TestSimplePatternTokenizer extends BaseTokenStreamTestCase {
         };
     checkRandomData(random(), b, 200 * RANDOM_MULTIPLIER);
     b.close();
+
+    assertFalse(new RegExp("[a-z]+|[a-z]+\\.[a-z]+").toAutomaton().isDeterministic());
+    Analyzer c =
+        new Analyzer() {
+          @Override
+          protected TokenStreamComponents createComponents(String fieldName) {
+            Tokenizer tokenizer = new SimplePatternTokenizer("[a-z]+|[a-z]+\\.[a-z]+");
+            return new TokenStreamComponents(tokenizer);
+          }
+        };
+    checkRandomData(random(), c, 200 * RANDOM_MULTIPLIER);
+    c.close();
   }
 
   public void testEndLookahead() throws Exception {
