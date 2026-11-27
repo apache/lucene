@@ -17,6 +17,9 @@
 package org.apache.lucene.codecs.lucene103.blocktree;
 
 import java.io.IOException;
+import org.apache.lucene.codecs.lucene103.blocktree.art.ARTReader;
+import org.apache.lucene.codecs.lucene103.blocktree.art.Node;
+import org.apache.lucene.codecs.lucene103.blocktree.art.NodeType;
 import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.ExitableDirectoryReader.ExitingReaderException;
 import org.apache.lucene.index.ImpactsEnum;
@@ -48,7 +51,9 @@ final class IntersectTermsEnum extends BaseTermsEnum {
 
   IntersectTermsEnumFrame[] stack;
 
-  private TrieReader.Node[] nodes = new TrieReader.Node[5];
+  private Node[] nodes = new Node[5];
+  private int[] nodeEnds = new int[5];
+  private int nextNodeIndex = 0;
 
   final ByteRunnable runAutomaton;
   final boolean hasMatchAllSuffixStates;
@@ -60,7 +65,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
 
   private final BytesRef term = new BytesRef();
 
-  final TrieReader trieReader;
+  final ARTReader artReader;
 
   final FieldReader fr;
 
@@ -75,7 +80,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
   // regexp foo*bar must be at least length 6 bytes
   public IntersectTermsEnum(
       FieldReader fr,
-      TrieReader trieReader,
+      ARTReader artReader,
       TransitionAccessor automaton,
       ByteRunnable runAutomaton,
       BytesRef commonSuffix,
@@ -98,11 +103,8 @@ final class IntersectTermsEnum extends BaseTermsEnum {
     for (int idx = 0; idx < stack.length; idx++) {
       stack[idx] = new IntersectTermsEnumFrame(this, idx);
     }
-    for (int nodeIdx = 1; nodeIdx < nodes.length; nodeIdx++) {
-      nodes[nodeIdx] = new TrieReader.Node();
-    }
 
-    this.trieReader = trieReader;
+    this.artReader = artReader;
 
     // TODO: if the automaton is "smallish" we really
     // should use the terms index to seek at least to
@@ -111,13 +113,15 @@ final class IntersectTermsEnum extends BaseTermsEnum {
     // Else the seek cost of loading the frames will be
     // too costly.
 
-    final TrieReader.Node node = nodes[0] = trieReader.root;
+    final Node node = nodes[0] = artReader.root;
+    nodeEnds[0] = 0;
+    nextNodeIndex = 1;
     // Empty string prefix must have an output in the index!
     assert node.hasOutput();
 
     // Special pushFrame since it's the first one:
     final IntersectTermsEnumFrame f = stack[0];
-    f.fp = f.fpOrig = trieReader.root.outputFp;
+    f.fp = f.fpOrig = artReader.root.outputFp;
     f.prefixLength = 0;
     f.setState(0);
     f.node = node;
@@ -161,17 +165,22 @@ final class IntersectTermsEnum extends BaseTermsEnum {
     return stack[ord];
   }
 
-  private TrieReader.Node getNode(int ord) {
-    if (ord >= nodes.length) {
-      final TrieReader.Node[] next =
-          new TrieReader.Node[ArrayUtil.oversize(1 + ord, RamUsageEstimator.NUM_BYTES_OBJECT_REF)];
+  /** Cache a searched node. */
+  private void setNode(Node node, int end) {
+    if (nextNodeIndex >= nodes.length) {
+      final Node[] next =
+          new Node[ArrayUtil.oversize(1 + nextNodeIndex, RamUsageEstimator.NUM_BYTES_OBJECT_REF)];
       System.arraycopy(nodes, 0, next, 0, nodes.length);
-      for (int nodeOrd = nodes.length; nodeOrd < next.length; nodeOrd++) {
-        next[nodeOrd] = new TrieReader.Node();
-      }
       nodes = next;
+
+      final int[] nextNodeEnds = new int[nodes.length];
+      System.arraycopy(nodeEnds, 0, nextNodeEnds, 0, nodeEnds.length);
+      nodeEnds = nextNodeEnds;
     }
-    return nodes[ord];
+    assert end > nodeEnds[nextNodeIndex - 1];
+    nodes[nextNodeIndex] = node;
+    nodeEnds[nextNodeIndex] = end;
+    nextNodeIndex++;
   }
 
   private IntersectTermsEnumFrame pushFrame(int state) throws IOException {
@@ -188,19 +197,32 @@ final class IntersectTermsEnum extends BaseTermsEnum {
     // "bother" with this so we can get the floor data
     // from the index and skip floor blocks when
     // possible:
-    TrieReader.Node node = currentFrame.node;
+    Node node = currentFrame.node;
     int idx = currentFrame.prefixLength;
+    nextNodeIndex = currentFrame.ord + 1;
     assert currentFrame.suffixLength > 0;
 
-    while (idx < f.prefixLength) {
-      final int target = term.bytes[idx] & 0xff;
+    BytesRef clone = term.clone();
+    clone.offset += idx;
+    clone.length -= idx;
+    int offset = term.offset;
+    offset += idx;
+    while (offset < f.prefixLength) {
       // TODO: we could be more efficient for the next()
       // case by using current node as starting point,
       // passed to findTargetNode
-      TrieReader.Node parent = node;
-      node = trieReader.lookupChild(target, parent, getNode(1 + idx));
+      Node parent = node;
+      node = artReader.lookupChild(term, parent, offset);
       assert node != null;
-      idx++;
+      // 1 for index byte.
+      offset++;
+      if (node.nodeType.equals(NodeType.LEAF_NODE) == false) {
+        offset += node.prefixLength;
+      } else if (node.key != null) {
+        offset += node.key.length;
+      }
+
+      setNode(node, offset);
     }
 
     f.node = node;
@@ -258,7 +280,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
     if (term.length < target.length) {
       term.bytes = ArrayUtil.grow(term.bytes, target.length);
     }
-    TrieReader.Node node = nodes[0];
+    Node node = nodes[0];
     assert node == currentFrame.node;
 
     for (int idx = 0; idx <= target.length; idx++) {
@@ -493,8 +515,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
             }
             suffixBytesPos = currentFrame.startBytePos;
           } else {
-            suffixBytesPos =
-                currentFrame.startBytePos + currentFrame.suffixLength - commonSuffix.length;
+            suffixBytesPos = currentFrame.startBytePos + currentFrame.suffixLength - commonSuffix.length;
           }
 
           // Test overlapping suffix part:
