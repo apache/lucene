@@ -561,7 +561,8 @@ public final class Tessellator {
     if (connection == null) {
       return null;
     } else if (hx == qx) {
-      return connection.previous;
+      // hole touches outer segment; pick leftmost endpoint
+      return connection;
     }
 
     // 2. look for points inside the triangle of hole point, segment intersection, and endpoint
