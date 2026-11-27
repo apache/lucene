@@ -111,7 +111,8 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
     phrasePositions = new PhrasePositions[postings.length];
     for (int i = 0; i < postings.length; ++i) {
       phrasePositions[i] =
-          new PhrasePositions(postings[i].postings, postings[i].position, i, postings[i].terms);
+          new PhrasePositions(
+              postings[i].postings, postings[i].position, i, postings[i].terms, captureLeadMatch);
     }
 
     approximation =
@@ -206,12 +207,18 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
     if (!positioned) {
       return false;
     }
+    if (captureLeadMatch) {
+      for (PhrasePositions pp : phrasePositions) {
+        pp.bumped = false;
+      }
+    }
     PhrasePositions pp = pq.pop();
     assert pp != null; // if the pq is not full, then positioned == false
     captureLead(pp);
     matchLength = end - pp.position;
     int next = pq.top().position;
     while (advancePP(pp)) {
+      pp.bumped = false;
       if (hasRpts && !advanceRpts(pp)) {
         break; // pps exhausted
       }
@@ -242,8 +249,8 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
     }
     leadOrd = pp.ord;
     leadPosition = pp.position + pp.offset;
-    leadOffset = pp.postings.startOffset();
-    leadEndOffset = pp.postings.endOffset();
+    leadOffset = pp.startOffset;
+    leadEndOffset = pp.endOffset;
   }
 
   @Override
@@ -256,7 +263,8 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
     // this is slow, but Matches is slow anyway...
     int leadPosition = this.leadPosition;
     for (PhrasePositions pp : phrasePositions) {
-      leadPosition = Math.min(leadPosition, pp.position + pp.offset);
+      int p = pp.bumped ? pp.priorPosition : pp.position;
+      leadPosition = Math.min(leadPosition, p + pp.offset);
     }
     return leadPosition;
   }
@@ -266,7 +274,8 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
     int endPosition = leadPosition;
     for (PhrasePositions pp : phrasePositions) {
       if (pp.ord != leadOrd) {
-        endPosition = Math.max(endPosition, pp.position + pp.offset);
+        int p = pp.bumped ? pp.priorPosition : pp.position;
+        endPosition = Math.max(endPosition, p + pp.offset);
       }
     }
     return endPosition;
@@ -282,7 +291,10 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
     // this is slow, but Matches is slow anyway...
     int leadOffset = this.leadOffset;
     for (PhrasePositions pp : phrasePositions) {
-      leadOffset = Math.min(leadOffset, pp.postings.startOffset());
+      if (pp.ord != leadOrd) {
+        int so = pp.bumped ? pp.priorStartOffset : pp.startOffset;
+        leadOffset = Math.min(leadOffset, so);
+      }
     }
     return leadOffset;
   }
@@ -292,7 +304,8 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
     int endOffset = leadEndOffset;
     for (PhrasePositions pp : phrasePositions) {
       if (pp.ord != leadOrd) {
-        endOffset = Math.max(endOffset, pp.postings.endOffset());
+        int eo = pp.bumped ? pp.priorEndOffset : pp.endOffset;
+        endOffset = Math.max(endOffset, eo);
       }
     }
     return endOffset;
@@ -327,6 +340,7 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
       if (!advancePP(pp)) {
         return false; // exhausted
       }
+      pp.bumped = true;
       if (k != k0) { // careful: mark only those currently in the queue
         bits = FixedBitSet.ensureCapacity(bits, k);
         bits.set(k); // mark that pp2 need to be re-queued

@@ -22,7 +22,9 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.TextField;
+import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
@@ -389,6 +391,43 @@ public class TestSloppyPhraseQuery extends LuceneTestCase {
     // "drug the drug"~5
     assertSaneScoring(pq, is);
     ir.close();
+    dir.close();
+  }
+
+  /** "a b a"~1 must match only "a xx b a"; the later "a" must not leak into the offsets. */
+  public void testOffsetsNotCorruptedByRepeaterCollisionResolution() throws Exception {
+    Directory dir = new ByteBuffersDirectory();
+    RandomIndexWriter writer =
+        new RandomIndexWriter(
+            random(), dir, new MockAnalyzer(random(), MockTokenizer.WHITESPACE, false));
+    FieldType offsetsType = new FieldType(TextField.TYPE_STORED);
+    offsetsType.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
+    Document doc = new Document();
+    String text = "a xx b a yy a";
+    doc.add(new Field("f", text, offsetsType));
+    writer.addDocument(doc);
+    IndexReader reader = writer.getReader();
+    writer.close();
+
+    IndexSearcher searcher = newSearcher(reader);
+    PhraseQuery.Builder builder = new PhraseQuery.Builder();
+    builder.add(new Term("f", "a"), 0);
+    builder.add(new Term("f", "b"), 1);
+    builder.add(new Term("f", "a"), 2);
+    builder.setSlop(1);
+    PhraseQuery pq = builder.build();
+
+    Weight w = searcher.createWeight(searcher.rewrite(pq), ScoreMode.COMPLETE, 1f);
+    LeafReaderContext ctx = reader.leaves().get(0);
+    Matches matches = w.matches(ctx, 0);
+    MatchesIterator mi = matches.getMatches("f");
+    assertTrue("expected a match", mi.next());
+    assertEquals("a xx b a", text.substring(mi.startOffset(), mi.endOffset()));
+    assertEquals(0, mi.startPosition());
+    assertEquals(3, mi.endPosition());
+    assertFalse("expected exactly one match", mi.next());
+
+    reader.close();
     dir.close();
   }
 }
