@@ -417,6 +417,10 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#17070: Fix the connection context ids that Nori assigns to user dictionary nouns. They
+  were off by one, so the noun was treated as a state-change noun and particles after it were
+  chosen as if the presence of a final consonant was reversed. (David Choi)
+
 * GITHUB#17020: Reduce CachingTokenFilter memory use by not copying stale term bytes in
   CharTermAttributeImpl#clone. (Eugene Rizhkov)
 
