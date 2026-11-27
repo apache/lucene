@@ -66,6 +66,17 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
   }
 
   /**
+   * Creates the visited set of one query that finds {@code k} neighbors.
+   *
+   * @param k neighbors to find
+   * @param graphSize size of the graph
+   * @return a visited set appropriate for the expected number of visited nodes
+   */
+  static VisitedSet createQueryVisitedSet(int k, int graphSize) {
+    return VisitedSet.createForQuery(expectedVisitedNodes(k, graphSize), graphSize);
+  }
+
+  /**
    * Creates a new graph searcher.
    *
    * @param candidates max heap that will track the candidate nodes to explore
@@ -141,7 +152,7 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
       innerSearcher =
           new HnswGraphSearcher(
               new NeighborQueue(knnCollector.k(), true),
-              createVisitedSet(knnCollector.k(), getGraphSize(graph)));
+              createQueryVisitedSet(knnCollector.k(), getGraphSize(graph)));
     }
     // Then, check if we the search strategy is seeded
     final AbstractHnswGraphSearcher graphSearcher;
@@ -174,7 +185,7 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
     KnnCollector knnCollector = new TopKnnCollector(topK, visitedLimit, null);
     OnHeapHnswGraphSearcher graphSearcher =
         new OnHeapHnswGraphSearcher(
-            new NeighborQueue(topK, true), createVisitedSet(topK, getGraphSize(graph)));
+            new NeighborQueue(topK, true), createQueryVisitedSet(topK, getGraphSize(graph)));
     graphSearcher.search(knnCollector, scorer, graph, acceptOrds);
     return knnCollector;
   }

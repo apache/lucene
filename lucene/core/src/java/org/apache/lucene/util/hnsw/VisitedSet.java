@@ -29,14 +29,33 @@ import org.apache.lucene.util.FixedBitSet;
 public interface VisitedSet {
 
   /**
-   * Returns an empty set for a search of a graph.
+   * Returns an empty set for a search of a graph, such as the searches of a graph builder: a hash
+   * set if the search is expected to visit less than 1/128 of the graph, else a FixedBitSet.
    *
    * @param expectedVisitedNodes the number of nodes that a search is expected to visit
    * @param graphSize the number of nodes of the graph
    */
   static VisitedSet create(int expectedVisitedNodes, int graphSize) {
+    return create(expectedVisitedNodes, graphSize, 7);
+  }
+
+  /**
+   * Returns an empty set for one query: a FixedBitSet unless the graph is about 2048 times larger
+   * than the expected number of visited nodes, since a FixedBitSet marks nodes faster. Graphs of
+   * more than 2^21 nodes, whose FixedBitSet would take more than 256 KB, use the rule of {@link
+   * #create(int, int)}.
+   *
+   * @param expectedVisitedNodes the number of nodes that the query is expected to visit
+   * @param graphSize the number of nodes of the graph
+   */
+  static VisitedSet createForQuery(int expectedVisitedNodes, int graphSize) {
+    return create(expectedVisitedNodes, graphSize, graphSize <= (1 << 21) ? 11 : 7);
+  }
+
+  // a hash set if the search is expected to visit less than graphSize >>> shift nodes
+  private static VisitedSet create(int expectedVisitedNodes, int graphSize, int shift) {
     int expected = Math.max(1, expectedVisitedNodes); // negative for an empty graph
-    if (expected < (graphSize >>> 7)) {
+    if (expected < (graphSize >>> shift)) {
       IntHashSet nodes = new IntHashSet(expected);
       return new VisitedSet() {
         @Override
