@@ -423,6 +423,10 @@ Optimizations
   fewer radix passes. This speeds up DocIdSetBuilder, e.g. for range queries on fields whose values
   follow doc ID order such as timestamps or index sort fields. (Asharam)
 
+* GITHUB#17087: Store the per-term state of the in-memory postings (last doc ID, freq, position
+  and start offset) in a single array instead of a separate array for each during indexing, so
+  updating a term on every token touches fewer cache lines. (neoremind)
+
 Bug Fixes
 ---------------------
 * GITHUB#17020: Reduce CachingTokenFilter memory use by not copying stale term bytes in

@@ -368,9 +368,9 @@ class FreqProxFields extends Fields {
           return NO_MORE_DOCS;
         } else {
           ended = true;
-          docID = postingsArray.lastDocIDs[termID];
+          docID = postingsArray.lastDocID(termID);
           if (readTermFreq) {
-            freq = postingsArray.termFreqs[termID];
+            freq = postingsArray.termFreq(termID);
           }
         }
       } else {
@@ -386,7 +386,7 @@ class FreqProxFields extends Fields {
           }
         }
 
-        assert docID != postingsArray.lastDocIDs[termID];
+        assert docID != postingsArray.lastDocID(termID);
       }
 
       return docID;
@@ -463,8 +463,8 @@ class FreqProxFields extends Fields {
           return NO_MORE_DOCS;
         } else {
           ended = true;
-          docID = postingsArray.lastDocIDs[termID];
-          freq = postingsArray.termFreqs[termID];
+          docID = postingsArray.lastDocID(termID);
+          freq = postingsArray.termFreq(termID);
         }
       } else {
         int code = reader.readVInt();
@@ -475,7 +475,7 @@ class FreqProxFields extends Fields {
           freq = reader.readVInt();
         }
 
-        assert docID != postingsArray.lastDocIDs[termID];
+        assert docID != postingsArray.lastDocID(termID);
       }
 
       posLeft = freq;
