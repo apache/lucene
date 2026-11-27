@@ -166,7 +166,6 @@ class Lucene99MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSco
     private static final ValueLayout.OfInt INT_UNALIGNED_LE =
         JAVA_INT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
 
-    @SuppressWarnings("restricted")
     Node getNode(int ord) throws IOException {
       checkOrdinal(ord);
       long byteOffset = (long) ord * nodeSize;
@@ -179,7 +178,7 @@ class Lucene99MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSco
         node = MemorySegment.ofArray(scratch);
       }
       return new Node(
-          node.reinterpret(vectorByteSize),
+          node.asSlice(0, vectorByteSize),
           Float.intBitsToFloat(node.get(INT_UNALIGNED_LE, vectorByteSize)));
     }
 
@@ -336,6 +335,11 @@ class Lucene99MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSco
       checkOrdinal(ord);
       Node node = getNode(ord);
       query = node.vector;
+      if (query.isNative() == false) {
+        // the node straddles mmap chunks and was copied into the scratch array, which the next
+        // such node overwrites
+        query = MemorySegment.ofArray(query.toArray(ValueLayout.JAVA_BYTE));
+      }
       queryOffset = node.offset;
     }
 
