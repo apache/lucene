@@ -134,8 +134,8 @@ public abstract class Similarity {
    * method, you'll need to re-index documents for it to take effect.
    *
    * <p>Matches in longer fields are less precise, so implementations of this method usually set
-   * smaller values when <code>state.getLength()</code> is large, and larger values when <code>
-   * state.getLength()</code> is small.
+   * smaller values when <code>state.getNumTerms()</code> is large, and larger values when <code>
+   * state.getNumTerms()</code> is small.
    *
    * <p>Note that for a given term-document frequency, greater unsigned norms must produce scores
    * that are lower or equal, ie. for two encoded norms {@code n1} and {@code n2} so that {@code
@@ -153,9 +153,9 @@ public abstract class Similarity {
     if (state.getIndexOptions() == IndexOptions.DOCS) {
       numTerms = state.getUniqueTermCount();
     } else if (discountOverlaps) {
-      numTerms = state.getLength() - state.getNumOverlap();
+      numTerms = state.getNumTerms() - state.getNumOverlap();
     } else {
-      numTerms = state.getLength();
+      numTerms = state.getNumTerms();
     }
     return SmallFloat.intToByte4(numTerms);
   }

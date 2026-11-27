@@ -624,7 +624,7 @@ public abstract class BaseNormsFormatTestCase extends BaseIndexFileFormatTestCas
 
     @Override
     public long computeNorm(FieldInvertState state) {
-      assert state.getLength() > 0;
+      assert state.getNumTerms() > 0;
       while (true) {
         long norm = norms[index++];
         if (norm != 0) {
