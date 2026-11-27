@@ -41,7 +41,7 @@ abstract class DocumentBatch implements Closeable, Supplier<LeafReader> {
    * @param doc the document to add
    * @return the batch containing the input document
    */
-  public static DocumentBatch of(Analyzer analyzer, Document doc) {
+  static DocumentBatch of(Analyzer analyzer, Document doc) {
     return new SingletonDocumentBatch(analyzer, doc);
   }
 
@@ -52,7 +52,7 @@ abstract class DocumentBatch implements Closeable, Supplier<LeafReader> {
    *     collection.
    * @return the batch containing the input documents
    */
-  public static DocumentBatch of(Analyzer analyzer, Document... docs) {
+  static DocumentBatch of(Analyzer analyzer, Document... docs) {
     if (docs.length == 0) {
       throw new IllegalArgumentException("A DocumentBatch must contain at least one document");
     } else if (docs.length == 1) {
