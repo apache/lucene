@@ -88,9 +88,10 @@ public class TestReqExclBulkScorer extends LuceneTestCase {
     ReqExclBulkScorer reqExcl;
     if (twoPhase) {
       reqExcl =
-          new ReqExclBulkScorer(reqBulkScorer, new RandomTwoPhaseView(random(), excl.iterator()));
+          new ReqExclBulkScorer(
+              reqBulkScorer, new RandomTwoPhaseView(random(), excl.iterator()), maxDoc);
     } else {
-      reqExcl = new ReqExclBulkScorer(reqBulkScorer, excl.iterator());
+      reqExcl = new ReqExclBulkScorer(reqBulkScorer, excl.iterator(), maxDoc);
     }
     final FixedBitSet actualMatches = new FixedBitSet(maxDoc);
     final FixedBitSet acceptedDocs = new FixedBitSet(maxDoc);
@@ -190,7 +191,8 @@ public class TestReqExclBulkScorer extends LuceneTestCase {
                 0f,
                 ScoreMode.COMPLETE_NO_SCORES,
                 new BitSetIterator(required, required.cardinality())),
-            exclusion);
+            exclusion,
+            maxDoc);
     FixedBitSet actual = new FixedBitSet(maxDoc);
     assertEquals(
         DocIdSetIterator.NO_MORE_DOCS,
@@ -239,7 +241,8 @@ public class TestReqExclBulkScorer extends LuceneTestCase {
         new ReqExclBulkScorer(
             new ConstantScoreBulkScorer(
                 0f, ScoreMode.COMPLETE_NO_SCORES, DocIdSetIterator.all(maxDoc)),
-            exclusion);
+            exclusion,
+            maxDoc);
     FixedBitSet collected = new FixedBitSet(maxDoc);
     assertEquals(
         DocIdSetIterator.NO_MORE_DOCS,

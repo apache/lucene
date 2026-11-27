@@ -26,39 +26,102 @@ final class ReqExclBulkScorer extends BulkScorer {
   private final BulkScorer req;
   private final DocIdSetIterator exclApproximation;
   private final TwoPhaseIterator exclTwoPhase;
-  private final WindowBits windowBits = new WindowBits();
+  private final WindowBits windowBits;
 
-  ReqExclBulkScorer(BulkScorer req, Scorer excl) {
-    this.req = req;
-    this.exclTwoPhase = excl.twoPhaseIterator();
-    if (exclTwoPhase != null) {
-      this.exclApproximation = exclTwoPhase.approximation();
-    } else {
-      this.exclApproximation = excl.iterator();
-    }
+  ReqExclBulkScorer(BulkScorer req, Scorer excl, int maxDoc) {
+    this(req, excl.twoPhaseIterator(), excl, maxDoc);
   }
 
-  ReqExclBulkScorer(BulkScorer req, DocIdSetIterator excl) {
-    this.req = req;
-    this.exclTwoPhase = null;
-    this.exclApproximation = excl;
+  ReqExclBulkScorer(BulkScorer req, DocIdSetIterator excl, int maxDoc) {
+    this(req, null, excl, maxDoc);
   }
 
-  ReqExclBulkScorer(BulkScorer req, TwoPhaseIterator excl) {
+  ReqExclBulkScorer(BulkScorer req, TwoPhaseIterator excl, int maxDoc) {
+    this(req, excl, excl.approximation(), maxDoc);
+  }
+
+  private ReqExclBulkScorer(
+      BulkScorer req, TwoPhaseIterator twoPhaseExcl, Scorer fallbackExcl, int maxDoc) {
+    this(
+        req,
+        twoPhaseExcl,
+        twoPhaseExcl != null ? twoPhaseExcl.approximation() : fallbackExcl.iterator(),
+        maxDoc);
+  }
+
+  private ReqExclBulkScorer(
+      BulkScorer req, TwoPhaseIterator excl, DocIdSetIterator approximation, int maxDoc) {
     this.req = req;
     this.exclTwoPhase = excl;
-    this.exclApproximation = excl.approximation();
+    this.exclApproximation = approximation;
+    this.windowBits = shouldUseWindow(req, excl, maxDoc) ? new WindowBits() : null;
+  }
+
+  private static boolean shouldUseWindow(BulkScorer req, TwoPhaseIterator excl, int maxDoc) {
+    if (excl == null) {
+      return true;
+    }
+    if (excl.isBulkOptimized() == true) {
+      return true;
+    }
+    return shouldUseWindow(req.cost(), excl.approximation().cost(), excl.matchCost(), maxDoc);
+  }
+
+  static boolean shouldUseWindow(long reqCost, long exclApproxCost, float matchCost, int maxDoc) {
+    double reqFraction = (double) Math.min(maxDoc, reqCost) / maxDoc;
+    double exclFraction = (double) Math.min(maxDoc, exclApproxCost) / maxDoc;
+
+    double windowCost = exclFraction * (ReqExclScorer.ADVANCE_COST + matchCost * (1 - reqFraction));
+    double switches = 2 * exclFraction * reqFraction / (exclFraction + reqFraction);
+    double leapFrogCost = switches * 2 * ReqExclScorer.ADVANCE_COST;
+    return (windowCost / 128) < leapFrogCost;
   }
 
   @Override
   public int score(LeafCollector collector, Bits acceptDocs, int min, int max) throws IOException {
-    FixedBitSet windowMask = windowBits.windowMask;
+    int upTo =
+        windowBits == null
+            ? scoreLeapFrog(collector, acceptDocs, min, max)
+            : scoreWindowed(collector, acceptDocs, min, max);
+    if (upTo == max) {
+      upTo = req.score(collector, acceptDocs, max, max);
+    }
+    return upTo;
+  }
 
+  private int scoreLeapFrog(LeafCollector collector, Bits acceptDocs, int min, int max)
+      throws IOException {
+    int upTo = min;
+    int exclDoc = exclApproximation.docID();
+
+    while (upTo < max) {
+      if (exclDoc < upTo) {
+        exclDoc = exclApproximation.advance(upTo);
+      }
+      if (exclDoc == upTo) {
+        if (exclTwoPhase.matches()) {
+          // upTo is excluded (matches() just confirmed it), so skip the whole run of consecutive
+          // excluded docs at once. The default TwoPhaseIterator#docIDRunEnd() conservatively
+          // returns the current doc, so clamp to at least upTo+1 to guarantee progress when the
+          // run end is not overridden.
+          upTo = Math.max(upTo + 1, Math.min(exclTwoPhase.docIDRunEnd(), max));
+        }
+        exclDoc = exclApproximation.nextDoc();
+      } else {
+        upTo = req.score(collector, acceptDocs, upTo, Math.min(exclDoc, max));
+      }
+    }
+    return upTo;
+  }
+
+  private int scoreWindowed(LeafCollector collector, Bits acceptDocs, int min, int max)
+      throws IOException {
+    FixedBitSet windowMask = windowBits.windowMask;
     int upTo = min;
 
     while (upTo < max) {
       int windowMin = upTo;
-      int windowMax = (int) Math.min((long) max, (long) windowMin + WINDOW_SIZE);
+      int windowMax = (int) Math.min(max, (long) windowMin + WINDOW_SIZE);
 
       if (exclApproximation.docID() < windowMin) {
         exclApproximation.advance(windowMin);
@@ -84,10 +147,6 @@ final class ReqExclBulkScorer extends BulkScorer {
       }
       windowBits.reset(windowMin, windowMax, acceptDocs == null ? max : acceptDocs.length());
       upTo = req.score(collector, windowBits, windowMin, windowMax);
-    }
-
-    if (upTo == max) {
-      upTo = req.score(collector, acceptDocs, max, max);
     }
     return upTo;
   }

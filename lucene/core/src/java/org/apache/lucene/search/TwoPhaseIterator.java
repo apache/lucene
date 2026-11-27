@@ -142,7 +142,8 @@ public abstract class TwoPhaseIterator {
    * {@link #matches()} — i.e. it is functionally identical to the leap-frog evaluation, just
    * writing into a bit set. Implementations that can confirm matches in bulk — for instance a
    * vectorized scan over a columnar block — should override it; the bit set window is then
-   * collected in one shot rather than one doc at a time.
+   * collected in one shot rather than one doc at a time. Subclasses that override the default
+   * implementation should consider overriding {@link #isBulkOptimized}.
    */
   public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
     DocIdSetIterator approximation = approximation();
@@ -151,6 +152,17 @@ public abstract class TwoPhaseIterator {
         bitSet.set(doc - offset);
       }
     }
+  }
+
+  /**
+   * Returns true if this TwoPhaseIterator provides an optimized implementation of {@link
+   * #intoBitSet}.
+   *
+   * <p>This method can provide a hint to BulkScorer implementations when it comes to choosing an
+   * optimal lead iterator.
+   */
+  public boolean isBulkOptimized() {
+    return false;
   }
 
   /**

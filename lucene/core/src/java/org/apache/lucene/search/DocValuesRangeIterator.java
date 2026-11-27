@@ -347,6 +347,11 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
     }
 
     @Override
+    public boolean isBulkOptimized() {
+      return true;
+    }
+
+    @Override
     public final void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
       while (blockIterator.docID() < upTo) {
         int blockStart = blockIterator.docID();
