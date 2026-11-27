@@ -45,6 +45,10 @@ API Changes
 * GITHUB#16741: Lower the minimum supported major version from 10 to 9. Indexes created with 9.x
   remain fully supported in Lucene 11, no reindexing required. (Luca Cavanna)
 
+* GITHUB#17084: IntervalsSource has a new abstract method maxExtent(), the counterpart of
+  minExtent(). Custom IntervalsSource implementations must implement it; return Integer.MAX_VALUE
+  if the width of the intervals is not bounded. (Alan Woodward)
+
 * GITHUB#14399: Sort pruning decisions are now entirely made through the Pruning
   enum.  The various different locations that made these decisions are consolidated
   into FieldValueHitQueue, and early termination through examining index sorts is
@@ -294,6 +298,10 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#17084: Unordered, ordered and maxgaps intervals over a disjunction no longer expand
+  alternatives that always match the same fixed width (such as single terms, wildcards and
+  phrases of equal length) into a cross product of separate sources. (Alan Woodward)
+
 * GITHUB#16145: Bound the prefetch backoff in MemorySegmentIndexInput. The gap between page-cache probes used to
   grow without limit, so under memory pressure prefetch effectively stopped working. A file now probes on every
   prefetch call until 1024 consecutive hits, then every 256th call; a miss goes back to probing on every call.

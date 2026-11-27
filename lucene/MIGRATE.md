@@ -19,6 +19,18 @@
 
 ## Migration from Lucene 10.x to Lucene 11.0
 
+### IntervalsSource.maxExtent() is abstract (GITHUB#17084)
+
+`IntervalsSource` has a new abstract method `maxExtent()`, the counterpart of `minExtent()`. It
+returns the largest width of any interval the source can return. Disjunctions use it to combine
+alternatives that always have the same width, which avoids expanding them into a cross product
+when they sit under an unordered, ordered or `maxgaps` source.
+
+Custom `IntervalsSource` subclasses must implement it. If the width of your intervals is not
+bounded, or you are not sure, return `Integer.MAX_VALUE`, which is always safe. Only return a
+value equal to `minExtent()` if every interval your source returns has exactly that width in
+every document, including at the start and end of a field.
+
 ### Monitor's QueryTree subclasses implement collectTerms(TermCollector) (GITHUB#16997)
 
 `QueryTree#collectTerms(TermCollector)` is now the abstract method, and

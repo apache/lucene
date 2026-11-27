@@ -66,6 +66,15 @@ class BlockIntervalsSource extends ConjunctionIntervalsSource {
   }
 
   @Override
+  public int maxExtent() {
+    long maxExtent = 0;
+    for (IntervalsSource subSource : subSources) {
+      maxExtent += subSource.maxExtent();
+    }
+    return (int) Math.min(maxExtent, Integer.MAX_VALUE);
+  }
+
+  @Override
   public Collection<IntervalsSource> pullUpDisjunctions() {
     return Collections.singletonList(this); // Disjunctions already pulled up in build()
   }
