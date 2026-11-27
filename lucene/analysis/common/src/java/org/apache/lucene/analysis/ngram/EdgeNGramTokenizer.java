@@ -28,7 +28,7 @@ import org.apache.lucene.util.AttributeFactory;
  * pre-tokenization} and correctly handles supplementary characters.
  */
 public class EdgeNGramTokenizer extends NGramTokenizer {
-  public static final int DEFAULT_MAX_GRAM_SIZE = 1;
+  public static final int DEFAULT_MAX_GRAM_SIZE = 2;
   public static final int DEFAULT_MIN_GRAM_SIZE = 1;
 
   /**
