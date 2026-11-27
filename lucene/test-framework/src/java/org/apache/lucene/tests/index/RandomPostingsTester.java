@@ -85,7 +85,6 @@ import org.apache.lucene.util.UnicodeUtil;
 import org.apache.lucene.util.Version;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
-import org.apache.lucene.util.automaton.Operations;
 
 /** Helper class extracted from BasePostingsFormatTestCase to exercise a postings format. */
 public class RandomPostingsTester {
@@ -1703,8 +1702,7 @@ public class RandomPostingsTester {
     // Test Terms.intersect:
     for (String field : fields.keySet()) {
       while (true) {
-        Automaton a = AutomatonTestUtil.randomAutomaton(random);
-        a = Operations.determinize(a, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
+        Automaton a = AutomatonTestUtil.randomDeterminizedAutomaton(random);
         CompiledAutomaton ca = new CompiledAutomaton(a, false, true, false);
         if (ca.type != CompiledAutomaton.AUTOMATON_TYPE.NORMAL) {
           // Keep retrying until we get an A that will really "use" the PF's intersect code:

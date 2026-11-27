@@ -290,10 +290,7 @@ public class TestAutomatonQuery extends LuceneTestCase {
     for (int i = 0; i < queries.length; i++) {
       queries[i] =
           new AutomatonQuery(
-              new Term("bogus", "bogus"),
-              Operations.determinize(
-                  AutomatonTestUtil.randomAutomaton(random()),
-                  Operations.DEFAULT_DETERMINIZE_WORK_LIMIT));
+              new Term("bogus", "bogus"), AutomatonTestUtil.randomDeterminizedAutomaton(random()));
     }
     final CountDownLatch startingGun = new CountDownLatch(1);
     int numThreads = TestUtil.nextInt(random(), 2, 5);

@@ -227,10 +227,7 @@ public class TestMockAnalyzer extends BaseTokenStreamTestCase {
   public void testRandomRegexps() throws Exception {
     int iters = TEST_NIGHTLY ? atLeast(30) : atLeast(1);
     for (int i = 0; i < iters; i++) {
-      Automaton automaton =
-          Operations.determinize(
-              AutomatonTestUtil.randomAutomaton(random()),
-              Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
+      Automaton automaton = AutomatonTestUtil.randomDeterminizedAutomaton(random());
       final CharacterRunAutomaton dfa = new CharacterRunAutomaton(automaton);
       final boolean lowercase = random().nextBoolean();
       final int limit = TestUtil.nextInt(random(), 0, 500);
