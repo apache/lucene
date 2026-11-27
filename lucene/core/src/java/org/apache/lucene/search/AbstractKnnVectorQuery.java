@@ -111,8 +111,12 @@ abstract class AbstractKnnVectorQuery extends Query {
     TaskExecutor taskExecutor = indexSearcher.getTaskExecutor();
     List<LeafReaderContext> leafReaderContexts = new ArrayList<>(reader.leaves());
     List<Callable<TopDocs>> tasks = new ArrayList<>(leafReaderContexts.size());
+    // Carried from the first pass into the re-entry pass so each leaf's filter is evaluated once
+    LeafAcceptState[] leafStates = new LeafAcceptState[leafReaderContexts.size()];
     for (LeafReaderContext context : leafReaderContexts) {
-      tasks.add(() -> searchLeaf(context, filterWeight, timeLimitingKnnCollectorManager));
+      LeafAcceptState leafState = leafStates[context.ord] = new LeafAcceptState();
+      tasks.add(
+          () -> searchLeaf(context, filterWeight, timeLimitingKnnCollectorManager, leafState));
     }
     Map<Integer, TopDocs> perLeafResults = new HashMap<>();
     TopDocs topK = runSearchTasks(tasks, taskExecutor, perLeafResults, leafReaderContexts);
@@ -133,14 +137,16 @@ abstract class AbstractKnnVectorQuery extends Query {
       while (ctxIter.hasNext()) {
         LeafReaderContext ctx = ctxIter.next();
         TopDocs perLeaf = perLeafResults.get(ctx.ord);
-        if (perLeaf.scoreDocs.length > 0
+        LeafAcceptState leafState = leafStates[ctx.ord];
+        if (leafState.searchedExhaustively == false
+            && perLeaf.scoreDocs.length > 0
             && perLeaf.scoreDocs[perLeaf.scoreDocs.length - 1].score >= minTopKScore) {
           // All this leaf's hits are at or above the global topK min score; explore it further
           ++reentryCount;
-          tasks.add(() -> searchLeaf(ctx, filterWeight, knnCollectorManagerPhase2));
+          tasks.add(() -> searchLeaf(ctx, filterWeight, knnCollectorManagerPhase2, leafState));
         } else {
-          // This leaf is tapped out; discard the context from the active list so we maintain
-          // correspondence between tasks and leaves
+          // This leaf is tapped out, or its results are already exact; discard the context from
+          // the active list so we maintain correspondence between tasks and leaves
           ctxIter.remove();
         }
       }
@@ -227,12 +233,22 @@ abstract class AbstractKnnVectorQuery extends Query {
     return mergeLeafResults(perLeafResults.values().toArray(TopDocs[]::new));
   }
 
-  protected TopDocs searchLeaf(
+  /** Per-leaf state shared by the first search pass and the optimistic re-entry pass. */
+  private static final class LeafAcceptState {
+    /** Built on the first pass and reused, so the filter bitset and its cost are computed once. */
+    AcceptDocs acceptDocs;
+
+    /** True once the leaf was searched exhaustively; re-entering it cannot improve its results. */
+    boolean searchedExhaustively;
+  }
+
+  private TopDocs searchLeaf(
       LeafReaderContext ctx,
       Weight filterWeight,
-      TimeLimitingKnnCollectorManager timeLimitingKnnCollectorManager)
+      TimeLimitingKnnCollectorManager timeLimitingKnnCollectorManager,
+      LeafAcceptState leafState)
       throws IOException {
-    TopDocs results = getLeafResults(ctx, filterWeight, timeLimitingKnnCollectorManager);
+    TopDocs results = getLeafResults(ctx, filterWeight, timeLimitingKnnCollectorManager, leafState);
     if (ctx.docBase > 0) {
       for (ScoreDoc scoreDoc : results.scoreDocs) {
         scoreDoc.doc += ctx.docBase;
@@ -244,28 +260,18 @@ abstract class AbstractKnnVectorQuery extends Query {
   private TopDocs getLeafResults(
       LeafReaderContext ctx,
       Weight filterWeight,
-      TimeLimitingKnnCollectorManager timeLimitingKnnCollectorManager)
+      TimeLimitingKnnCollectorManager timeLimitingKnnCollectorManager,
+      LeafAcceptState leafState)
       throws IOException {
-    final LeafReader reader = ctx.reader();
-    final Bits liveDocs = reader.getLiveDocs();
+    if (leafState.acceptDocs == null) {
+      leafState.acceptDocs = createAcceptDocs(ctx, filterWeight);
+    }
+    final AcceptDocs acceptDocs = leafState.acceptDocs;
 
     if (filterWeight == null) {
-      AcceptDocs acceptDocs = AcceptDocs.fromLiveDocs(liveDocs, reader.maxDoc());
       return approximateSearch(ctx, acceptDocs, Integer.MAX_VALUE, timeLimitingKnnCollectorManager);
     }
 
-    AcceptDocs acceptDocs =
-        AcceptDocs.fromIteratorSupplier(
-            () -> {
-              Scorer scorer = filterWeight.scorer(ctx);
-              if (scorer == null) {
-                return DocIdSetIterator.empty();
-              } else {
-                return scorer.iterator();
-              }
-            },
-            liveDocs,
-            reader.maxDoc());
     final int cost = acceptDocs.cost();
     QueryTimeout queryTimeout = timeLimitingKnnCollectorManager.getQueryTimeout();
 
@@ -282,6 +288,7 @@ abstract class AbstractKnnVectorQuery extends Query {
     if (cost <= perLeafTopK) {
       // If there are <= perLeafTopK possible matches, short-circuit and perform exact search, since
       // HNSW must always visit at least perLeafTopK documents
+      leafState.searchedExhaustively = true;
       return exactSearch(ctx, acceptDocs.iterator(), queryTimeout);
     }
 
@@ -298,8 +305,28 @@ abstract class AbstractKnnVectorQuery extends Query {
       return results;
     } else {
       // We stopped the kNN search because it visited too many nodes, so fall back to exact search
+      leafState.searchedExhaustively = true;
       return exactSearch(ctx, acceptDocs.iterator(), queryTimeout);
     }
+  }
+
+  private static AcceptDocs createAcceptDocs(LeafReaderContext ctx, Weight filterWeight) {
+    final LeafReader reader = ctx.reader();
+    final Bits liveDocs = reader.getLiveDocs();
+    if (filterWeight == null) {
+      return AcceptDocs.fromLiveDocs(liveDocs, reader.maxDoc());
+    }
+    return AcceptDocs.fromIteratorSupplier(
+        () -> {
+          Scorer scorer = filterWeight.scorer(ctx);
+          if (scorer == null) {
+            return DocIdSetIterator.empty();
+          } else {
+            return scorer.iterator();
+          }
+        },
+        liveDocs,
+        reader.maxDoc());
   }
 
   protected KnnCollectorManager getKnnCollectorManager(int k, IndexSearcher searcher) {
