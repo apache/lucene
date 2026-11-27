@@ -413,9 +413,9 @@ Optimizations
   fewer radix passes. This speeds up DocIdSetBuilder, e.g. for range queries on fields whose values
   follow doc ID order such as timestamps or index sort fields. (Asharam)
 
-* GITHUB#XXXXX: Speed up indexing by storing the per-term state that the in-memory postings update
-  on every token in a single array instead of one array per value, so updating a term touches
-  fewer cache lines. (neoremind)
+* GITHUB#17087: Store the per-term state of the in-memory postings (last doc ID, freq, position
+  and start offset) in a single array instead of a separate array for each during indexing, so
+  updating a term on every token touches fewer cache lines. (neoremind)
 
 Bug Fixes
 ---------------------
