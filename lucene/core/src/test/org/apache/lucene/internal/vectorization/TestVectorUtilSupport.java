@@ -59,6 +59,65 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
     assertFloatReturningProviders(p -> p.cosine(a, b));
   }
 
+  public void testDotProducts() {
+    // counts that are not multiples of the 4x4 tile exercise the remainder paths
+    doTestDotProducts(random().nextInt(1, 11), random().nextInt(1, 11), size);
+  }
+
+  public void testDotProductsAcrossBlocks() {
+    // row counts past the b panel size and a dimension past the slice size exercise the blocking
+    // and the accumulation across slices
+    doTestDotProducts(random().nextInt(1, 70), random().nextInt(60, 140), 1026);
+  }
+
+  public void testDotProductsZeroDimension() {
+    int aCount = random().nextInt(1, 6);
+    int bCount = random().nextInt(1, 6);
+    var a = new float[aCount];
+    var b = new float[bCount];
+    for (VectorizationProvider provider :
+        new VectorizationProvider[] {LUCENE_PROVIDER, PANAMA_OR_NATIVE_PROVIDER}) {
+      var out = new float[aCount * bCount];
+      Arrays.fill(out, Float.NaN);
+      provider.getVectorUtilSupport().dotProducts(a, 0, aCount, b, 0, bCount, 0, 1, out);
+      for (float v : out) {
+        assertEquals(0f, v, 0f);
+      }
+    }
+  }
+
+  private void doTestDotProducts(int aCount, int bCount, int size) {
+    int aOffset = random().nextInt(0, 3);
+    int bOffset = random().nextInt(0, 3);
+    // vectors may be padded apart
+    int stride = size + random().nextInt(0, 3);
+    var a = new float[aOffset + aCount * stride];
+    var b = new float[bOffset + bCount * stride];
+    for (int i = 0; i < a.length; ++i) {
+      a[i] = random().nextFloat();
+    }
+    for (int i = 0; i < b.length; ++i) {
+      b[i] = random().nextFloat();
+    }
+    var expected = new float[aCount * bCount];
+    var actual = new float[aCount * bCount];
+    LUCENE_PROVIDER
+        .getVectorUtilSupport()
+        .dotProducts(a, aOffset, aCount, b, bOffset, bCount, size, stride, expected);
+    PANAMA_OR_NATIVE_PROVIDER
+        .getVectorUtilSupport()
+        .dotProducts(a, aOffset, aCount, b, bOffset, bCount, size, stride, actual);
+    for (int i = 0; i < aCount; i++) {
+      float[] ai = Arrays.copyOfRange(a, aOffset + i * stride, aOffset + i * stride + size);
+      for (int j = 0; j < bCount; j++) {
+        float[] bj = Arrays.copyOfRange(b, bOffset + j * stride, bOffset + j * stride + size);
+        float pairwise = LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(ai, bj);
+        assertEquals(pairwise, expected[i * bCount + j], 1e-5 * size);
+        assertEquals(pairwise, actual[i * bCount + j], 1e-5 * size);
+      }
+    }
+  }
+
   public void testBinaryVectors() {
     var a = new byte[size];
     var b = new byte[size];
