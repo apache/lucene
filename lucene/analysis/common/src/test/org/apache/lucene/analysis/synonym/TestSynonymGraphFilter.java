@@ -755,9 +755,9 @@ public class TestSynonymGraphFilter extends BaseTokenStreamTestCase {
   }
 
   /**
-   * If we expand synonyms during indexing, it's a bit better than SynonymFilter is today, but still
-   * necessarily has false positive and negative PhraseQuery matches because we do not index
-   * posLength, so we lose information.
+   * If we expand synonyms during indexing, it's a bit better than the removed SynonymFilter was,
+   * but still necessarily has false positive and negative PhraseQuery matches because we do not
+   * index posLength, so we lose information.
    */
   public void testFlattenedGraph() throws Exception {
 

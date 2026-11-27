@@ -29,7 +29,6 @@ import org.apache.lucene.tests.analysis.MockTokenizer;
  *
  * @lucene.experimental
  */
-@Deprecated
 public class TestSolrSynonymParser extends BaseSynonymParserTestCase {
 
   /** Tests some simple examples from the solr wiki */
@@ -48,22 +47,23 @@ public class TestSolrSynonymParser extends BaseSynonymParserTestCase {
           @Override
           protected TokenStreamComponents createComponents(String fieldName) {
             Tokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, true);
-            return new TokenStreamComponents(tokenizer, new SynonymFilter(tokenizer, map, true));
+            return new TokenStreamComponents(
+                tokenizer, new SynonymGraphFilter(tokenizer, map, true));
           }
         };
 
     assertAnalyzesTo(analyzer, "ball", new String[] {"ball"}, new int[] {1});
 
     assertAnalyzesTo(
-        analyzer, "i-pod", new String[] {"i-pod", "ipod", "ipoooood"}, new int[] {1, 0, 0});
+        analyzer, "i-pod", new String[] {"ipod", "ipoooood", "i-pod"}, new int[] {1, 0, 0});
 
     assertAnalyzesTo(analyzer, "foo", new String[] {"foo", "baz", "bar"}, new int[] {1, 0, 1});
 
     assertAnalyzesTo(
         analyzer,
         "this test",
-        new String[] {"this", "that", "test", "testing"},
-        new int[] {1, 0, 1, 0});
+        new String[] {"that", "this", "testing", "test"},
+        new int[] {1, 0, 1, 1});
     analyzer.close();
   }
 
@@ -145,7 +145,8 @@ public class TestSolrSynonymParser extends BaseSynonymParserTestCase {
           @Override
           protected TokenStreamComponents createComponents(String fieldName) {
             Tokenizer tokenizer = new MockTokenizer(MockTokenizer.KEYWORD, false);
-            return new TokenStreamComponents(tokenizer, new SynonymFilter(tokenizer, map, false));
+            return new TokenStreamComponents(
+                tokenizer, new SynonymGraphFilter(tokenizer, map, false));
           }
         };
 
@@ -172,17 +173,18 @@ public class TestSolrSynonymParser extends BaseSynonymParserTestCase {
           @Override
           protected TokenStreamComponents createComponents(String fieldName) {
             Tokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, true);
-            return new TokenStreamComponents(tokenizer, new SynonymFilter(tokenizer, map, true));
+            return new TokenStreamComponents(
+                tokenizer, new SynonymGraphFilter(tokenizer, map, true));
           }
         };
 
     assertAnalyzesToPositions(
         analyzer,
         "spider man",
-        new String[] {"spider", "spiderman", "man"},
-        new String[] {"word", "SYNONYM", "word"},
+        new String[] {"spiderman", "spider", "man"},
+        new String[] {"SYNONYM", "word", "word"},
         new int[] {1, 0, 1},
-        new int[] {1, 2, 1});
+        new int[] {2, 1, 1});
   }
 
   /** Verify type of original token is "word", others are Synonym. */
@@ -200,15 +202,16 @@ public class TestSolrSynonymParser extends BaseSynonymParserTestCase {
           @Override
           protected TokenStreamComponents createComponents(String fieldName) {
             Tokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, true);
-            return new TokenStreamComponents(tokenizer, new SynonymFilter(tokenizer, map, true));
+            return new TokenStreamComponents(
+                tokenizer, new SynonymGraphFilter(tokenizer, map, true));
           }
         };
 
     assertAnalyzesTo(
         analyzer,
         "lost in the forest",
-        new String[] {"lost", "in", "the", "forest", "woods", "wood"},
-        new String[] {"word", "word", "word", "word", "SYNONYM", "SYNONYM"});
+        new String[] {"lost", "in", "the", "woods", "wood", "forest"},
+        new String[] {"word", "word", "word", "SYNONYM", "SYNONYM", "word"});
   }
 
   /** Test parsing of simple examples. */

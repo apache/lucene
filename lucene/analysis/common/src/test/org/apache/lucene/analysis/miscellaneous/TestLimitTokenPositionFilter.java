@@ -20,7 +20,7 @@ import java.io.IOException;
 import java.io.StringReader;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.synonym.SynonymFilter;
+import org.apache.lucene.analysis.synonym.SynonymGraphFilter;
 import org.apache.lucene.analysis.synonym.SynonymMap;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.tests.analysis.MockTokenizer;
@@ -94,28 +94,16 @@ public class TestLimitTokenPositionFilter extends BaseTokenStreamTestCase {
       SynonymMap.Builder.join(new String[] {"dopple", "ganger"}, multiWordCharsRef);
       builder.add(new CharsRef("two"), multiWordCharsRef.get(), true);
       SynonymMap synonymMap = builder.build();
-      @SuppressWarnings("deprecation")
-      TokenStream stream = new SynonymFilter(tokenizer, synonymMap, true);
+      TokenStream stream = new SynonymGraphFilter(tokenizer, synonymMap, true);
       stream = new LimitTokenPositionFilter(stream, 3, consumeAll);
 
-      // "only", the 4th word of multi-word synonym "and indubitably single only" is not emitted,
-      // since its position is greater than 3.
+      // "only" (4th word of the multi-word synonym "and indubitably single only") and "two"
+      // (which follows the 4-position synonym path) start past position 3, so they are not
+      // emitted.
       assertTokenStreamContents(
           stream,
-          new String[] {
-            "one",
-            "first",
-            "alpha",
-            "beguine",
-            "and",
-            "two",
-            "indubitably",
-            "dopple",
-            "three",
-            "single",
-            "ganger"
-          },
-          new int[] {1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0});
+          new String[] {"first", "alpha", "beguine", "and", "one", "indubitably", "single"},
+          new int[] {1, 0, 0, 0, 0, 1, 1});
     }
   }
 
