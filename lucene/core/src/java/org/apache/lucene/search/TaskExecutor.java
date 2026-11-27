@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
@@ -42,9 +43,14 @@ import org.apache.lucene.util.ThreadInterruptedException;
  * tasks as possible on the calling thread, then waits for all tasks that have been executed in
  * parallel on the executor to be completed and then returns a list with the obtained results.
  *
+ * <p>Callers that share work among tasks through a common counter can instead fork tasks one at a
+ * time with {@link #tryInvoke(Callable)}, keeping the calling thread in control, and await them
+ * with {@link #collectResults(List)}.
+ *
  * @lucene.experimental
  */
 public final class TaskExecutor {
+
   private final Executor executor;
 
   /**
@@ -115,7 +121,44 @@ public final class TaskExecutor {
     return collectResults(futures);
   }
 
-  private static <T> List<T> collectResults(List<RunnableFuture<T>> futures) throws IOException {
+  /**
+   * Forks {@code callable} to another thread of the backing executor, unless the executor would run
+   * it on the calling thread before this method returns. In that case {@code callable} is not run
+   * and the caller keeps control: it can do work itself and offer the task again later, once a
+   * thread may have freed up. Work shared through a common counter then spreads over threads as
+   * they become available, where {@link #invokeAll(Collection)} would have the calling thread run
+   * the first task that the executor did not place on another thread.
+   *
+   * <p>The forked task may start at any time after this method returns, on any thread. Calling
+   * {@link Future#cancel(boolean) cancel(false)} on the returned future skips the task if it has
+   * not started yet, and completes the future with {@code null}. Once the task has started it runs
+   * to completion, and {@link Future#get()} waits for it; interrupting it is not supported. So the
+   * caller can cancel every future it forked and then wait for them with {@link
+   * #collectResults(List)}, and it only waits for tasks that some other thread actually started.
+   *
+   * @param callable the task to fork
+   * @return the future of the forked task, or {@link Optional#empty()} if the executor would have
+   *     run it on the calling thread
+   * @param <T> the return type of the task execution
+   */
+  public <T> Optional<Future<T>> tryInvoke(Callable<T> callable) {
+    Offer<T> offer = new Offer<>(new Task<>(callable, List.of()));
+    executor.execute(offer);
+    offer.submitting = false;
+    return offer.declined ? Optional.empty() : Optional.of(offer.task);
+  }
+
+  /**
+   * Waits for all {@code futures} to complete, and returns their results in the same order. If more
+   * than one future failed, the first failure is rethrown with the others added to it as suppressed
+   * exceptions. A future returned by {@link #tryInvoke(Callable)} that was cancelled before its
+   * task started has a {@code null} result.
+   *
+   * @param futures the futures to wait for
+   * @return the results of {@code futures}
+   * @param <T> the return type of the task execution
+   */
+  public static <T> List<T> collectResults(List<? extends Future<T>> futures) throws IOException {
     Throwable exc = null;
     List<T> results = new ArrayList<>(futures.size());
     for (Future<T> future : futures) {
@@ -151,6 +194,34 @@ public final class TaskExecutor {
   private static <T> void cancelAll(Collection<? extends Future<T>> futures) {
     for (Future<?> future : futures) {
       future.cancel(false);
+    }
+  }
+
+  /**
+   * The command {@link #tryInvoke(Callable)} submits, which declines to run on the calling thread.
+   */
+  private static final class Offer<T> implements Runnable {
+
+    private final Thread caller = Thread.currentThread();
+    private final Task<T> task;
+
+    // Only the caller thread reads or writes these: any other thread fails the caller check first.
+    // Declining only while submitting means a task that the executor queued and that the caller
+    // happens to take later still runs, rather than leaving its future incomplete.
+    private boolean submitting = true;
+    private boolean declined;
+
+    Offer(Task<T> task) {
+      this.task = task;
+    }
+
+    @Override
+    public void run() {
+      if (Thread.currentThread() == caller && submitting) {
+        declined = true;
+        return;
+      }
+      task.run();
     }
   }
 

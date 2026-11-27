@@ -33,12 +33,14 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.stream.Collectors;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
@@ -1210,6 +1212,77 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     }
     // cannot build twice
     expectThrows(IllegalStateException.class, () -> builder.build(size));
+  }
+
+  /**
+   * A worker that the executor queued and that has not started when the calling thread runs out of
+   * batches has nothing left to do, so the merge must not wait for a thread to start it.
+   */
+  public void testConcurrentMergeBuilderDoesNotWaitForQueuedWorkers() throws Exception {
+    int size = atLeast(1000);
+    KnnVectorValues vectors = vectorValues(size, atLeast(10));
+    RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
+    ExecutorService pool = Executors.newFixedThreadPool(1, new NamedThreadFactory("hnswQueued"));
+    CountDownLatch release = new CountDownLatch(1);
+    try {
+      // occupy the only thread, so that every worker the builder forks stays queued
+      Future<?> blocker =
+          pool.submit(() -> {
+            release.await();
+            return null;
+          });
+      HnswGraphBuilder.randSeed = random().nextLong();
+      HnswConcurrentMergeBuilder builder =
+          new HnswConcurrentMergeBuilder(
+              new TaskExecutor(pool), 4, scorerSupplier, 30, new OnHeapHnswGraph(10, size), null);
+      builder.setBatchSize(100);
+      // waiting for the queued workers would hang here, since nothing releases the blocker yet
+      OnHeapHnswGraph graph = builder.build(size);
+      assertFalse(blocker.isDone());
+      assertEquals(size, graph.size());
+    } finally {
+      release.countDown();
+      TestUtil.shutdownExecutorService(pool);
+    }
+  }
+
+  /** Once a worker fails, the others must stop claiming batches rather than finish the merge. */
+  public void testConcurrentMergeBuilderStopsWorkersOnFailure() throws Exception {
+    int size = atLeast(1000);
+    int workers = 4;
+    int batchSize = 100;
+    KnnVectorValues vectors = vectorValues(size, atLeast(10));
+    RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
+    ExecutorService pool =
+        Executors.newFixedThreadPool(workers, new NamedThreadFactory("hnswFailure"));
+    try {
+      HnswGraphBuilder.randSeed = random().nextLong();
+      HnswConcurrentMergeBuilder builder =
+          new HnswConcurrentMergeBuilder(
+              new TaskExecutor(pool),
+              workers,
+              scorerSupplier,
+              30,
+              new OnHeapHnswGraph(10, size),
+              null);
+      builder.setBatchSize(batchSize);
+      // every node added checks for an abort first, so this counts the nodes workers started
+      AtomicInteger nodesStarted = new AtomicInteger();
+      int failAt = TestUtil.nextInt(random(), 1, size / 4);
+      builder.setAbortCheck(() -> {
+        if (nodesStarted.incrementAndGet() == failAt) {
+          throw new IOException("aborted");
+        }
+      });
+      IOException e = expectThrows(IOException.class, () -> builder.build(size));
+      assertEquals("aborted", e.getMessage());
+      // each worker finishes at most the batch it was in when the failure happened
+      assertTrue(
+          nodesStarted.get() + " nodes started of " + size,
+          nodesStarted.get() <= failAt + workers * batchSize);
+    } finally {
+      TestUtil.shutdownExecutorService(pool);
+    }
   }
 
   private static final int MERGE_DIM = 16;
