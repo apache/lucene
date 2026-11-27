@@ -567,6 +567,9 @@ Build
 * GITHUB#17035: Upgrade to a custom fork of JFlex (1.10.0); tokenizer regeneration is an order
   of magnitude faster and needs far less memory. (Dawid Weiss)
 
+* GITHUB#16894: Committers can benchmark a pull request with luceneutil by applying the benchmark:luceneutil-1m label;
+  results are posted on the pull request. (Owais Kazi)
+
 Other
 ---------------------
 
