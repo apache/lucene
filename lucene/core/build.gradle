@@ -16,6 +16,7 @@
  */
 
 import de.undercouch.gradle.tasks.download.Download
+import org.apache.tools.ant.taskdefs.condition.Os
 import org.apache.lucene.gradle.plugins.globals.LuceneBuildGlobalsExtension
 import org.apache.lucene.gradle.plugins.misc.QuietExec
 import org.apache.lucene.gradle.plugins.mrjar.LuceneJavaCoreMrjarPlugin
@@ -29,6 +30,44 @@ description = 'Lucene core library'
 dependencies {
   moduleTestImplementation project(':lucene:codecs')
   moduleTestImplementation project(':lucene:test-framework')
+}
+
+// Real native integration tests are opt-in so ordinary tests do not need a C compiler.
+def nativeVectorTests = buildOptions.addBooleanOption("tests.nativevector.run",
+    "Build and run native vector integration tests (Linux/macOS, requires a C compiler)", false)
+def nativeVectorCompiler = buildOptions.addOption("lucene.tool.cc",
+    "C compiler for native vector test libraries (path or name)", "cc")
+
+if (nativeVectorTests.get()) {
+  boolean macOS = Os.isFamily(Os.FAMILY_MAC)
+  if (!macOS && !Os.isName("linux")) {
+    throw new GradleException("Native vector test libraries currently support Linux and macOS only.")
+  }
+  def libraryRoot = layout.buildDirectory.dir("native-vector-tests")
+  def source = file("src/test-native/native_vectors.c")
+  def header = rootProject.file("lucene/misc/src/c/dotProduct.h")
+  def libraryTasks = ["prefixed", "unprefixed"].collect { variant ->
+    def output = libraryRoot.map { it.file("${variant}/${System.mapLibraryName('dotProduct')}") }
+    tasks.register("compileNativeVector${variant.capitalize()}", QuietExec, {
+      description = "Compile the ${variant} native vector test library"
+      inputs.files source, header
+      inputs.property "compiler", nativeVectorCompiler
+      outputs.file output
+      executable = nativeVectorCompiler.get()
+      args = [macOS ? "-dynamiclib" : "-shared", "-fPIC", "-std=c11", "-O2",
+              "-Wall", "-Wextra", "-Werror", "-I", header.parent,
+              "-DUNPREFIXED=${variant == 'unprefixed' ? 1 : 0}",
+              source.absolutePath, "-o", output.get().asFile.absolutePath, "-lm"]
+      doFirst {
+        output.get().asFile.parentFile.mkdirs()
+      }
+    })
+  }
+  tasks.withType(Test).configureEach {
+    dependsOn libraryTasks
+    inputs.dir libraryRoot
+    systemProperty "tests.nativevector.libraryRoot", libraryRoot.get().asFile.absolutePath
+  }
 }
 
 // Setup api stub generation and multi-release jar support for the following JDKs.
