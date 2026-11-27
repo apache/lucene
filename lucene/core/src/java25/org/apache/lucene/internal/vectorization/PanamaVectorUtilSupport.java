@@ -29,6 +29,7 @@ import static jdk.incubator.vector.VectorOperators.ZERO_EXTEND_S2I;
 import static org.apache.lucene.util.VectorUtil.isUnitVector;
 
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 import jdk.incubator.vector.ByteVector;
 import jdk.incubator.vector.DoubleVector;
 import jdk.incubator.vector.FloatVector;
@@ -92,6 +93,9 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       SHORT_SPECIES = null;
     }
   }
+
+  private static final ValueLayout.OfFloat LAYOUT_LE_FLOAT =
+      ValueLayout.JAVA_FLOAT_UNALIGNED.withOrder(LITTLE_ENDIAN);
 
   // the way FMA should work! if available use it, otherwise fall back to mul/add
   @SuppressForbidden(reason = "Uses FMA only where fast and carefully contained")
@@ -171,6 +175,502 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     FloatVector res1 = acc1.add(acc2);
     FloatVector res2 = acc3.add(acc4);
     return res1.add(res2).reduceLanes(ADD);
+  }
+
+  @Override
+  public void dotProductBulk(float[] query, float[][] docs, float[] results) {
+    int docIdx = 0;
+
+    // Process in batches of 4 documents at a time
+    for (; docIdx + 3 < docs.length; docIdx += 4) {
+      float[] d0 = docs[docIdx];
+      float[] d1 = docs[docIdx + 1];
+      float[] d2 = docs[docIdx + 2];
+      float[] d3 = docs[docIdx + 3];
+
+      FloatVector acc0 = FloatVector.zero(FLOAT_SPECIES);
+      FloatVector acc1 = FloatVector.zero(FLOAT_SPECIES);
+      FloatVector acc2 = FloatVector.zero(FLOAT_SPECIES);
+      FloatVector acc3 = FloatVector.zero(FLOAT_SPECIES);
+
+      int i = 0;
+      int limit = FLOAT_SPECIES.loopBound(query.length);
+
+      for (; i < limit; i += FLOAT_SPECIES.length()) {
+        FloatVector vq = FloatVector.fromArray(FLOAT_SPECIES, query, i);
+
+        acc0 = fma(vq, FloatVector.fromArray(FLOAT_SPECIES, d0, i), acc0);
+        acc1 = fma(vq, FloatVector.fromArray(FLOAT_SPECIES, d1, i), acc1);
+        acc2 = fma(vq, FloatVector.fromArray(FLOAT_SPECIES, d2, i), acc2);
+        acc3 = fma(vq, FloatVector.fromArray(FLOAT_SPECIES, d3, i), acc3);
+      }
+
+      float res0 = acc0.reduceLanes(ADD);
+      float res1 = acc1.reduceLanes(ADD);
+      float res2 = acc2.reduceLanes(ADD);
+      float res3 = acc3.reduceLanes(ADD);
+
+      for (; i < query.length; i++) {
+        float q = query[i];
+        res0 = fma(q, d0[i], res0);
+        res1 = fma(q, d1[i], res1);
+        res2 = fma(q, d2[i], res2);
+        res3 = fma(q, d3[i], res3);
+      }
+
+      results[docIdx] = res0;
+      results[docIdx + 1] = res1;
+      results[docIdx + 2] = res2;
+      results[docIdx + 3] = res3;
+    }
+
+    for (; docIdx < docs.length; docIdx++) {
+      results[docIdx] = dotProduct(query, docs[docIdx]);
+    }
+  }
+
+  @Override
+  public void cosineBulk(float[] query, float[][] docs, float[] results) {
+    int docIdx = 0;
+
+    for (; docIdx + 3 < docs.length; docIdx += 4) {
+      float[] d0 = docs[docIdx];
+      float[] d1 = docs[docIdx + 1];
+      float[] d2 = docs[docIdx + 2];
+      float[] d3 = docs[docIdx + 3];
+
+      FloatVector acc0 = FloatVector.zero(FLOAT_SPECIES);
+      FloatVector acc1 = FloatVector.zero(FLOAT_SPECIES);
+      FloatVector acc2 = FloatVector.zero(FLOAT_SPECIES);
+      FloatVector acc3 = FloatVector.zero(FLOAT_SPECIES);
+
+      FloatVector qvNorm = FloatVector.zero(FLOAT_SPECIES);
+      FloatVector dv0Norm = FloatVector.zero(FLOAT_SPECIES);
+      FloatVector dv1Norm = FloatVector.zero(FLOAT_SPECIES);
+      FloatVector dv2Norm = FloatVector.zero(FLOAT_SPECIES);
+      FloatVector dv3Norm = FloatVector.zero(FLOAT_SPECIES);
+
+      int i = 0;
+      int limit = FLOAT_SPECIES.loopBound(query.length);
+
+      for (; i < limit; i += FLOAT_SPECIES.length()) {
+        FloatVector vq = FloatVector.fromArray(FLOAT_SPECIES, query, i);
+        FloatVector vd0 = FloatVector.fromArray(FLOAT_SPECIES, d0, i);
+        FloatVector vd1 = FloatVector.fromArray(FLOAT_SPECIES, d1, i);
+        FloatVector vd2 = FloatVector.fromArray(FLOAT_SPECIES, d2, i);
+        FloatVector vd3 = FloatVector.fromArray(FLOAT_SPECIES, d3, i);
+
+        qvNorm = fma(vq, vq, qvNorm);
+        acc0 = fma(vq, vd0, acc0);
+        acc1 = fma(vq, vd1, acc1);
+        acc2 = fma(vq, vd2, acc2);
+        acc3 = fma(vq, vd3, acc3);
+
+        dv0Norm = fma(vd0, vd0, dv0Norm);
+        dv1Norm = fma(vd1, vd1, dv1Norm);
+        dv2Norm = fma(vd2, vd2, dv2Norm);
+        dv3Norm = fma(vd3, vd3, dv3Norm);
+      }
+
+      float sum0 = acc0.reduceLanes(ADD);
+      float sum1 = acc1.reduceLanes(ADD);
+      float sum2 = acc2.reduceLanes(ADD);
+      float sum3 = acc3.reduceLanes(ADD);
+
+      float qNorm = qvNorm.reduceLanes(ADD);
+      float d0Norm = dv0Norm.reduceLanes(ADD);
+      float d1Norm = dv1Norm.reduceLanes(ADD);
+      float d2Norm = dv2Norm.reduceLanes(ADD);
+      float d3Norm = dv3Norm.reduceLanes(ADD);
+
+      for (; i < query.length; i++) {
+        float q = query[i];
+        float val0 = d0[i];
+        float val1 = d1[i];
+        float val2 = d2[i];
+        float val3 = d3[i];
+
+        sum0 = fma(q, val0, sum0);
+        sum1 = fma(q, val1, sum1);
+        sum2 = fma(q, val2, sum2);
+        sum3 = fma(q, val3, sum3);
+
+        qNorm = fma(q, q, qNorm);
+        d0Norm = fma(val0, val0, d0Norm);
+        d1Norm = fma(val1, val1, d1Norm);
+        d2Norm = fma(val2, val2, d2Norm);
+        d3Norm = fma(val3, val3, d3Norm);
+      }
+
+      results[docIdx] = (float) (sum0 / Math.sqrt((double) qNorm * (double) d0Norm));
+      results[docIdx + 1] = (float) (sum1 / Math.sqrt((double) qNorm * (double) d1Norm));
+      results[docIdx + 2] = (float) (sum2 / Math.sqrt((double) qNorm * (double) d2Norm));
+      results[docIdx + 3] = (float) (sum3 / Math.sqrt((double) qNorm * (double) d3Norm));
+    }
+
+    for (; docIdx < docs.length; docIdx++) {
+      results[docIdx] = cosine(query, docs[docIdx]);
+    }
+  }
+
+  @Override
+  public void squareDistanceBulk(float[] query, float[][] docs, float[] results) {
+    int docIdx = 0;
+
+    for (; docIdx + 3 < docs.length; docIdx += 4) {
+      float[] d0 = docs[docIdx];
+      float[] d1 = docs[docIdx + 1];
+      float[] d2 = docs[docIdx + 2];
+      float[] d3 = docs[docIdx + 3];
+
+      FloatVector acc0 = FloatVector.zero(FLOAT_SPECIES);
+      FloatVector acc1 = FloatVector.zero(FLOAT_SPECIES);
+      FloatVector acc2 = FloatVector.zero(FLOAT_SPECIES);
+      FloatVector acc3 = FloatVector.zero(FLOAT_SPECIES);
+
+      int i = 0;
+      int limit = FLOAT_SPECIES.loopBound(query.length);
+
+      for (; i < limit; i += FLOAT_SPECIES.length()) {
+        FloatVector vq = FloatVector.fromArray(FLOAT_SPECIES, query, i);
+        FloatVector diff0 = vq.sub(FloatVector.fromArray(FLOAT_SPECIES, d0, i));
+        FloatVector diff1 = vq.sub(FloatVector.fromArray(FLOAT_SPECIES, d1, i));
+        FloatVector diff2 = vq.sub(FloatVector.fromArray(FLOAT_SPECIES, d2, i));
+        FloatVector diff3 = vq.sub(FloatVector.fromArray(FLOAT_SPECIES, d3, i));
+
+        acc0 = fma(diff0, diff0, acc0);
+        acc1 = fma(diff1, diff1, acc1);
+        acc2 = fma(diff2, diff2, acc2);
+        acc3 = fma(diff3, diff3, acc3);
+      }
+
+      float res0 = acc0.reduceLanes(ADD);
+      float res1 = acc1.reduceLanes(ADD);
+      float res2 = acc2.reduceLanes(ADD);
+      float res3 = acc3.reduceLanes(ADD);
+
+      for (; i < query.length; i++) {
+        float q = query[i];
+        float diff0 = q - d0[i];
+        float diff1 = q - d1[i];
+        float diff2 = q - d2[i];
+        float diff3 = q - d3[i];
+
+        res0 = fma(diff0, diff0, res0);
+        res1 = fma(diff1, diff1, res1);
+        res2 = fma(diff2, diff2, res2);
+        res3 = fma(diff3, diff3, res3);
+      }
+
+      results[docIdx] = res0;
+      results[docIdx + 1] = res1;
+      results[docIdx + 2] = res2;
+      results[docIdx + 3] = res3;
+    }
+
+    for (; docIdx < docs.length; docIdx++) {
+      results[docIdx] = squareDistance(query, docs[docIdx]);
+    }
+  }
+
+  /** SIMD accelerated bulk dot product for off-heap memory segments. */
+  public static void dotProductBulk(
+      MemorySegment seg,
+      float[] scores,
+      float[] query,
+      long node1Offset,
+      long node2Offset,
+      long node3Offset,
+      long node4Offset,
+      int dims) {
+    dotProductBulkImpl(
+        seg, scores, query, -1L, node1Offset, node2Offset, node3Offset, node4Offset, dims);
+  }
+
+  public static void dotProductBulk(
+      MemorySegment seg,
+      float[] scores,
+      long queryOffset,
+      long node1Offset,
+      long node2Offset,
+      long node3Offset,
+      long node4Offset,
+      int dims) {
+    dotProductBulkImpl(
+        seg, scores, null, queryOffset, node1Offset, node2Offset, node3Offset, node4Offset, dims);
+  }
+
+  private static void dotProductBulkImpl(
+      MemorySegment seg,
+      float[] scores,
+      float[] qArray,
+      long qOffset,
+      long node1Offset,
+      long node2Offset,
+      long node3Offset,
+      long node4Offset,
+      int dims) {
+    FloatVector acc0 = FloatVector.zero(FLOAT_SPECIES);
+    FloatVector acc1 = FloatVector.zero(FLOAT_SPECIES);
+    FloatVector acc2 = FloatVector.zero(FLOAT_SPECIES);
+    FloatVector acc3 = FloatVector.zero(FLOAT_SPECIES);
+
+    int i = 0;
+    int limit = FLOAT_SPECIES.loopBound(dims);
+
+    for (; i < limit; i += FLOAT_SPECIES.length()) {
+      final long offset = (long) i * Float.BYTES;
+      FloatVector vq =
+          (qOffset == -1L)
+              ? FloatVector.fromArray(FLOAT_SPECIES, qArray, i)
+              : FloatVector.fromMemorySegment(FLOAT_SPECIES, seg, qOffset + offset, LITTLE_ENDIAN);
+
+      FloatVector v0 =
+          FloatVector.fromMemorySegment(FLOAT_SPECIES, seg, node1Offset + offset, LITTLE_ENDIAN);
+      FloatVector v1 =
+          FloatVector.fromMemorySegment(FLOAT_SPECIES, seg, node2Offset + offset, LITTLE_ENDIAN);
+      FloatVector v2 =
+          FloatVector.fromMemorySegment(FLOAT_SPECIES, seg, node3Offset + offset, LITTLE_ENDIAN);
+      FloatVector v3 =
+          FloatVector.fromMemorySegment(FLOAT_SPECIES, seg, node4Offset + offset, LITTLE_ENDIAN);
+
+      acc0 = fma(vq, v0, acc0);
+      acc1 = fma(vq, v1, acc1);
+      acc2 = fma(vq, v2, acc2);
+      acc3 = fma(vq, v3, acc3);
+    }
+
+    float res0 = acc0.reduceLanes(ADD);
+    float res1 = acc1.reduceLanes(ADD);
+    float res2 = acc2.reduceLanes(ADD);
+    float res3 = acc3.reduceLanes(ADD);
+
+    for (; i < dims; i++) {
+      final long offset = (long) i * Float.BYTES;
+      float q = (qOffset == -1L) ? qArray[i] : seg.get(LAYOUT_LE_FLOAT, qOffset + offset);
+      res0 = fma(q, seg.get(LAYOUT_LE_FLOAT, node1Offset + offset), res0);
+      res1 = fma(q, seg.get(LAYOUT_LE_FLOAT, node2Offset + offset), res1);
+      res2 = fma(q, seg.get(LAYOUT_LE_FLOAT, node3Offset + offset), res2);
+      res3 = fma(q, seg.get(LAYOUT_LE_FLOAT, node4Offset + offset), res3);
+    }
+
+    scores[0] = res0;
+    scores[1] = res1;
+    scores[2] = res2;
+    scores[3] = res3;
+  }
+
+  /** SIMD accelerated bulk cosine similarity for off-heap memory segments. */
+  public static void cosineBulk(
+      MemorySegment seg,
+      float[] scores,
+      float[] query,
+      long node1Offset,
+      long node2Offset,
+      long node3Offset,
+      long node4Offset,
+      int dims) {
+    cosineBulkImpl(
+        seg, scores, query, -1L, node1Offset, node2Offset, node3Offset, node4Offset, dims);
+  }
+
+  public static void cosineBulk(
+      MemorySegment seg,
+      float[] scores,
+      long queryOffset,
+      long node1Offset,
+      long node2Offset,
+      long node3Offset,
+      long node4Offset,
+      int dims) {
+    cosineBulkImpl(
+        seg, scores, null, queryOffset, node1Offset, node2Offset, node3Offset, node4Offset, dims);
+  }
+
+  private static void cosineBulkImpl(
+      MemorySegment seg,
+      float[] scores,
+      float[] qArray,
+      long qOffset,
+      long node1Offset,
+      long node2Offset,
+      long node3Offset,
+      long node4Offset,
+      int dims) {
+    FloatVector acc0 = FloatVector.zero(FLOAT_SPECIES);
+    FloatVector acc1 = FloatVector.zero(FLOAT_SPECIES);
+    FloatVector acc2 = FloatVector.zero(FLOAT_SPECIES);
+    FloatVector acc3 = FloatVector.zero(FLOAT_SPECIES);
+
+    FloatVector qvNorm = FloatVector.zero(FLOAT_SPECIES);
+    FloatVector dv0Norm = FloatVector.zero(FLOAT_SPECIES);
+    FloatVector dv1Norm = FloatVector.zero(FLOAT_SPECIES);
+    FloatVector dv2Norm = FloatVector.zero(FLOAT_SPECIES);
+    FloatVector dv3Norm = FloatVector.zero(FLOAT_SPECIES);
+
+    int i = 0;
+    int limit = FLOAT_SPECIES.loopBound(dims);
+
+    for (; i < limit; i += FLOAT_SPECIES.length()) {
+      final long offset = (long) i * Float.BYTES;
+      FloatVector vq =
+          (qOffset == -1L)
+              ? FloatVector.fromArray(FLOAT_SPECIES, qArray, i)
+              : FloatVector.fromMemorySegment(FLOAT_SPECIES, seg, qOffset + offset, LITTLE_ENDIAN);
+
+      FloatVector v0 =
+          FloatVector.fromMemorySegment(FLOAT_SPECIES, seg, node1Offset + offset, LITTLE_ENDIAN);
+      FloatVector v1 =
+          FloatVector.fromMemorySegment(FLOAT_SPECIES, seg, node2Offset + offset, LITTLE_ENDIAN);
+      FloatVector v2 =
+          FloatVector.fromMemorySegment(FLOAT_SPECIES, seg, node3Offset + offset, LITTLE_ENDIAN);
+      FloatVector v3 =
+          FloatVector.fromMemorySegment(FLOAT_SPECIES, seg, node4Offset + offset, LITTLE_ENDIAN);
+
+      qvNorm = fma(vq, vq, qvNorm);
+      acc0 = fma(vq, v0, acc0);
+      acc1 = fma(vq, v1, acc1);
+      acc2 = fma(vq, v2, acc2);
+      acc3 = fma(vq, v3, acc3);
+
+      dv0Norm = fma(v0, v0, dv0Norm);
+      dv1Norm = fma(v1, v1, dv1Norm);
+      dv2Norm = fma(v2, v2, dv2Norm);
+      dv3Norm = fma(v3, v3, dv3Norm);
+    }
+
+    float sum0 = acc0.reduceLanes(ADD);
+    float sum1 = acc1.reduceLanes(ADD);
+    float sum2 = acc2.reduceLanes(ADD);
+    float sum3 = acc3.reduceLanes(ADD);
+
+    float qNorm = qvNorm.reduceLanes(ADD);
+    float d0Norm = dv0Norm.reduceLanes(ADD);
+    float d1Norm = dv1Norm.reduceLanes(ADD);
+    float d2Norm = dv2Norm.reduceLanes(ADD);
+    float d3Norm = dv3Norm.reduceLanes(ADD);
+
+    for (; i < dims; i++) {
+      final long offset = (long) i * Float.BYTES;
+      float q = (qOffset == -1L) ? qArray[i] : seg.get(LAYOUT_LE_FLOAT, qOffset + offset);
+      float val0 = seg.get(LAYOUT_LE_FLOAT, node1Offset + offset);
+      float val1 = seg.get(LAYOUT_LE_FLOAT, node2Offset + offset);
+      float val2 = seg.get(LAYOUT_LE_FLOAT, node3Offset + offset);
+      float val3 = seg.get(LAYOUT_LE_FLOAT, node4Offset + offset);
+
+      sum0 = fma(q, val0, sum0);
+      sum1 = fma(q, val1, sum1);
+      sum2 = fma(q, val2, sum2);
+      sum3 = fma(q, val3, sum3);
+
+      qNorm = fma(q, q, qNorm);
+      d0Norm = fma(val0, val0, d0Norm);
+      d1Norm = fma(val1, val1, d1Norm);
+      d2Norm = fma(val2, val2, d2Norm);
+      d3Norm = fma(val3, val3, d3Norm);
+    }
+
+    scores[0] = (float) (sum0 / Math.sqrt((double) qNorm * (double) d0Norm));
+    scores[1] = (float) (sum1 / Math.sqrt((double) qNorm * (double) d1Norm));
+    scores[2] = (float) (sum2 / Math.sqrt((double) qNorm * (double) d2Norm));
+    scores[3] = (float) (sum3 / Math.sqrt((double) qNorm * (double) d3Norm));
+  }
+
+  /** SIMD accelerated bulk square distance for off-heap memory segments. */
+  public static void squareDistanceBulk(
+      MemorySegment seg,
+      float[] scores,
+      float[] query,
+      long node1Offset,
+      long node2Offset,
+      long node3Offset,
+      long node4Offset,
+      int dims) {
+    squareDistanceBulkImpl(
+        seg, scores, query, -1L, node1Offset, node2Offset, node3Offset, node4Offset, dims);
+  }
+
+  public static void squareDistanceBulk(
+      MemorySegment seg,
+      float[] scores,
+      long queryOffset,
+      long node1Offset,
+      long node2Offset,
+      long node3Offset,
+      long node4Offset,
+      int dims) {
+    squareDistanceBulkImpl(
+        seg, scores, null, queryOffset, node1Offset, node2Offset, node3Offset, node4Offset, dims);
+  }
+
+  private static void squareDistanceBulkImpl(
+      MemorySegment seg,
+      float[] scores,
+      float[] qArray,
+      long qOffset,
+      long node1Offset,
+      long node2Offset,
+      long node3Offset,
+      long node4Offset,
+      int dims) {
+    FloatVector acc0 = FloatVector.zero(FLOAT_SPECIES);
+    FloatVector acc1 = FloatVector.zero(FLOAT_SPECIES);
+    FloatVector acc2 = FloatVector.zero(FLOAT_SPECIES);
+    FloatVector acc3 = FloatVector.zero(FLOAT_SPECIES);
+
+    int i = 0;
+    int limit = FLOAT_SPECIES.loopBound(dims);
+
+    for (; i < limit; i += FLOAT_SPECIES.length()) {
+      final long offset = (long) i * Float.BYTES;
+      FloatVector vq =
+          (qOffset == -1L)
+              ? FloatVector.fromArray(FLOAT_SPECIES, qArray, i)
+              : FloatVector.fromMemorySegment(FLOAT_SPECIES, seg, qOffset + offset, LITTLE_ENDIAN);
+
+      FloatVector v0 =
+          FloatVector.fromMemorySegment(FLOAT_SPECIES, seg, node1Offset + offset, LITTLE_ENDIAN);
+      FloatVector v1 =
+          FloatVector.fromMemorySegment(FLOAT_SPECIES, seg, node2Offset + offset, LITTLE_ENDIAN);
+      FloatVector v2 =
+          FloatVector.fromMemorySegment(FLOAT_SPECIES, seg, node3Offset + offset, LITTLE_ENDIAN);
+      FloatVector v3 =
+          FloatVector.fromMemorySegment(FLOAT_SPECIES, seg, node4Offset + offset, LITTLE_ENDIAN);
+
+      FloatVector diff0 = vq.sub(v0);
+      FloatVector diff1 = vq.sub(v1);
+      FloatVector diff2 = vq.sub(v2);
+      FloatVector diff3 = vq.sub(v3);
+
+      acc0 = fma(diff0, diff0, acc0);
+      acc1 = fma(diff1, diff1, acc1);
+      acc2 = fma(diff2, diff2, acc2);
+      acc3 = fma(diff3, diff3, acc3);
+    }
+
+    float res0 = acc0.reduceLanes(ADD);
+    float res1 = acc1.reduceLanes(ADD);
+    float res2 = acc2.reduceLanes(ADD);
+    float res3 = acc3.reduceLanes(ADD);
+
+    for (; i < dims; i++) {
+      final long offset = (long) i * Float.BYTES;
+      float q = (qOffset == -1L) ? qArray[i] : seg.get(LAYOUT_LE_FLOAT, qOffset + offset);
+      float diff0 = q - seg.get(LAYOUT_LE_FLOAT, node1Offset + offset);
+      float diff1 = q - seg.get(LAYOUT_LE_FLOAT, node2Offset + offset);
+      float diff2 = q - seg.get(LAYOUT_LE_FLOAT, node3Offset + offset);
+      float diff3 = q - seg.get(LAYOUT_LE_FLOAT, node4Offset + offset);
+
+      res0 = fma(diff0, diff0, res0);
+      res1 = fma(diff1, diff1, res1);
+      res2 = fma(diff2, diff2, res2);
+      res3 = fma(diff3, diff3, res3);
+    }
+
+    scores[0] = res0;
+    scores[1] = res1;
+    scores[2] = res2;
+    scores[3] = res3;
   }
 
   @Override

@@ -32,6 +32,33 @@ public interface VectorUtilSupport {
    */
   float dotProduct(short[] a, short[] b);
 
+  /**
+   * Calculate the dot product of a query vector against a batch of document vectors
+   *
+   * @param query The query vector
+   * @param docs Array of document vectors to score against
+   * @param results Result vector which will be overwritten
+   */
+  void dotProductBulk(float[] query, float[][] docs, float[] results);
+
+  /**
+   * Calculate the cosine similarity of a query vector against a batch of document vectors
+   *
+   * @param query The query vector
+   * @param docs Array of document vectors to score against
+   * @param results Result vector which will be overwritten
+   */
+  void cosineBulk(float[] query, float[][] docs, float[] results);
+
+  /**
+   * Calculate the square distance of a query vector against a batch of document vectors
+   *
+   * @param query The query vector
+   * @param docs Array of document vectors to score against
+   * @param results Result vector which will be overwritten
+   */
+  void squareDistanceBulk(float[] query, float[][] docs, float[] results);
+
   /** Returns the cosine similarity between the two vectors. */
   float cosine(float[] v1, float[] v2);
 

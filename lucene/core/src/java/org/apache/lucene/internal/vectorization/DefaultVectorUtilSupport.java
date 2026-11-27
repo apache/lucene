@@ -76,6 +76,27 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
+  public void dotProductBulk(float[] query, float[][] docs, float[] results) {
+    for (int i = 0; i < docs.length; i++) {
+      results[i] = dotProduct(query, docs[i]);
+    }
+  }
+
+  @Override
+  public void cosineBulk(float[] query, float[][] docs, float[] results) {
+    for (int i = 0; i < docs.length; i++) {
+      results[i] = cosine(query, docs[i]);
+    }
+  }
+
+  @Override
+  public void squareDistanceBulk(float[] query, float[][] docs, float[] results) {
+    for (int i = 0; i < docs.length; i++) {
+      results[i] = squareDistance(query, docs[i]);
+    }
+  }
+
+  @Override
   public float cosine(float[] a, float[] b) {
     float sum = 0.0f;
     float norm1 = 0.0f;

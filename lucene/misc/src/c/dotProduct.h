@@ -55,6 +55,9 @@ int64_t lucene_int4DibitDotProduct(uint8_t q[], uint8_t d[], int32_t n);
 float lucene_dotProductFloat(float a[], float b[], int32_t n);
 float lucene_squareDistanceFloat(float a[], float b[], int32_t n);
 float lucene_cosineFloat(float a[], float b[], int32_t n);
+void lucene_dotProductBulkFloat(float q[], float *docs[], float results[], int32_t numDocs, int32_t dim);
+void lucene_squareDistanceBulkFloat(float q[], float *docs[], float results[], int32_t numDocs, int32_t dim);
+void lucene_cosineBulkFloat(float q[], float *docs[], float results[], int32_t numDocs, int32_t dim);
 
 // Writes n quantized values to dest and returns the corrective offset.
 float lucene_minMaxScalarQuantize(float vector[], int8_t dest[], float scale, float alpha,
