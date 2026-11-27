@@ -397,6 +397,11 @@ final class ReaderPool implements Closeable {
         : "info.dir=" + info.info.dir + " vs " + originalDirectory;
     if (closed.get()) {
       assert readerMap.isEmpty() : "Reader map is not empty: " + readerMap;
+      if (create == false) {
+        // A closed pool holds no readers, which is the answer a lookup is asking
+        // for. Callers passing create=false already handle a null result.
+        return null;
+      }
       throw new AlreadyClosedException("ReaderPool is already closed");
     }
 
