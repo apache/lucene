@@ -115,6 +115,11 @@ class MinimumShouldMatchIntervalsSource extends IntervalsSource {
   }
 
   @Override
+  public int maxExtent() {
+    return Integer.MAX_VALUE;
+  }
+
+  @Override
   public Collection<IntervalsSource> pullUpDisjunctions() {
     return Collections.singleton(this);
   }

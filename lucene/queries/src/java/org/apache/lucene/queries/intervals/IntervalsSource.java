@@ -68,11 +68,10 @@ public abstract class IntervalsSource {
    * Integer#MAX_VALUE} if the width is unbounded
    *
    * <p>Sources whose minimum and maximum extents are equal always return intervals of the same
-   * width, which allows disjunctions of them to be combined without risking minimization problems
+   * width, which allows disjunctions of them to be combined without risking minimization problems.
+   * Sources that cannot guarantee a bound should return {@code Integer.MAX_VALUE}
    */
-  public int maxExtent() {
-    return Integer.MAX_VALUE;
-  }
+  public abstract int maxExtent();
 
   /**
    * Expert: return the set of disjunctions that make up this IntervalsSource

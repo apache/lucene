@@ -75,6 +75,11 @@ class OrderedIntervalsSource extends MinimizingConjunctionIntervalsSource {
   }
 
   @Override
+  public int maxExtent() {
+    return Integer.MAX_VALUE;
+  }
+
+  @Override
   public Collection<IntervalsSource> pullUpDisjunctions() {
     return Disjunctions.pullUp(subSources, OrderedIntervalsSource::new);
   }
