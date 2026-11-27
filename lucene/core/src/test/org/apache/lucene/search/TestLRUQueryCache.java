@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -50,6 +51,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.IntConsumer;
 import java.util.function.IntSupplier;
+import java.util.function.Predicate;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.LongPoint;
@@ -1387,9 +1389,9 @@ public class TestLRUQueryCache extends LuceneTestCase {
       iters = atLeast(2000);
     }
 
-    final LRUQueryCache queryCache =
-        new LRUQueryCache(
-            maxSize, maxRamBytesUsed, _ -> random().nextBoolean(), Float.POSITIVE_INFINITY);
+    // Also checks that onQueryCache and onQueryEviction fire once per distinct query
+    final QueryCallbackRecordingCache queryCache =
+        new QueryCallbackRecordingCache(maxSize, maxRamBytesUsed, _ -> random().nextBoolean());
     IndexSearcher uncachedSearcher = null;
     IndexSearcher cachedSearcher = null;
 
@@ -1423,12 +1425,19 @@ public class TestLRUQueryCache extends LuceneTestCase {
           q, uncachedSearcher.search(q, size).scoreDocs, cachedSearcher.search(q, size).scoreDocs);
       if (rarely()) {
         queryCache.assertConsistent();
+        queryCache.assertLiveQueriesMatchCache();
       }
     }
     queryCache.assertConsistent();
+    queryCache.assertLiveQueriesMatchCache();
     w.close();
     reader.close();
     dir.close();
+    // All segments are closed now, so cleaning up evicts every remaining query
+    queryCache.cleanUp();
+    assertEquals(0, queryCache.getCacheSize());
+    assertEquals(queryCache.queryCacheCalls.size(), queryCache.queryEvictionCalls.size());
+    queryCache.assertLiveQueriesMatchCache();
     queryCache.assertConsistent();
     queryCache.close();
   }
@@ -2719,58 +2728,73 @@ public class TestLRUQueryCache extends LuceneTestCase {
     queryCache.close();
   }
 
-  public void testUnifiedCacheEntryCallbacks() throws IOException {
-    // Track unified callback invocations
-    final AtomicInteger insertedCount = new AtomicInteger();
-    final AtomicInteger evictedCount = new AtomicInteger();
-    final AtomicLong insertedTotalRam = new AtomicLong();
-    final AtomicLong evictedTotalRam = new AtomicLong();
+  public void testInvalidNumberOfPartitions() {
+    for (int numberOfPartitions : new int[] {0, -1, 3, 10, 17}) {
+      IllegalArgumentException e =
+          expectThrows(
+              IllegalArgumentException.class,
+              () -> new LRUQueryCache(1000, 10000, _ -> true, 1, numberOfPartitions, null));
+      assertTrue(e.getMessage(), e.getMessage().contains("power of two"));
+    }
+  }
 
-    // Also track deprecated callbacks to verify consistency
-    final AtomicLong deprecatedQueryCacheRam = new AtomicLong();
-    final AtomicLong deprecatedDocIdSetCacheRam = new AtomicLong();
-    final AtomicLong deprecatedQueryEvictionRam = new AtomicLong();
-    final AtomicLong deprecatedDocIdSetEvictionRam = new AtomicLong();
+  public void testMaxSizeSmallerThanNumberOfPartitions() {
+    IllegalArgumentException e =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> new LRUQueryCache(15, 10000, _ -> true, 1, 16, null));
+    assertTrue(e.getMessage(), e.getMessage().contains("maxSize must be at least"));
+    // exactly one entry per partition is allowed
+    new LRUQueryCache(16, 10000, _ -> true, 1, 16, null);
+  }
 
-    // Use 1 partition, no background cleanup (manual cleanUp calls instead)
+  public void testDefaultNumberOfPartitionsFitsMaxSize() {
+    for (int maxSize : new int[] {1, 2, 3, 10, 15, 16, 17, 1000}) {
+      LRUQueryCache cache = new LRUQueryCache(maxSize, 10000, _ -> true, 1);
+      int numberOfPartitions = cache.getLruQueryCacheSegments().length;
+      assertEquals(1, Integer.bitCount(numberOfPartitions));
+      assertTrue(numberOfPartitions <= Math.min(maxSize, 16));
+      assertTrue(numberOfPartitions * 2 > Math.min(maxSize, 16));
+    }
+  }
+
+  public void testCallbacksAccountRamConsistently() throws IOException {
+    final AtomicInteger docIdSetCacheCount = new AtomicInteger();
+    final AtomicInteger docIdSetEvictionCount = new AtomicInteger();
+    final AtomicLong queryCacheRam = new AtomicLong();
+    final AtomicLong docIdSetCacheRam = new AtomicLong();
+    final AtomicLong queryEvictionRam = new AtomicLong();
+    final AtomicLong docIdSetEvictionRam = new AtomicLong();
+
+    // maxSize=2 with 1 partition: 2 entries fit, the 3rd triggers eviction. No background cleanup
+    // (manual cleanUp calls instead).
     final LRUQueryCache queryCache =
         new LRUQueryCache(2, 10000000, _ -> true, 1, 1, null) {
           @Override
           protected void onQueryCache(Query query, long ramBytesUsed) {
             super.onQueryCache(query, ramBytesUsed);
-            deprecatedQueryCacheRam.addAndGet(ramBytesUsed);
+            queryCacheRam.addAndGet(ramBytesUsed);
           }
 
           @Override
           protected void onDocIdSetCache(Object readerCoreKey, long ramBytesUsed) {
             super.onDocIdSetCache(readerCoreKey, ramBytesUsed);
-            deprecatedDocIdSetCacheRam.addAndGet(ramBytesUsed);
+            docIdSetCacheCount.incrementAndGet();
+            docIdSetCacheRam.addAndGet(ramBytesUsed);
           }
 
           @Override
           protected void onQueryEviction(Query query, long ramBytesUsed) {
             super.onQueryEviction(query, ramBytesUsed);
-            deprecatedQueryEvictionRam.addAndGet(ramBytesUsed);
+            queryEvictionRam.addAndGet(ramBytesUsed);
           }
 
           @Override
           protected void onDocIdSetEviction(
               Object readerCoreKey, int numEntries, long sumRamBytesUsed) {
             super.onDocIdSetEviction(readerCoreKey, numEntries, sumRamBytesUsed);
-            deprecatedDocIdSetEvictionRam.addAndGet(sumRamBytesUsed);
-          }
-
-          @Override
-          protected void onCacheEntryInserted(
-              Object readerCoreKey, Query query, long ramBytesUsed) {
-            insertedCount.incrementAndGet();
-            insertedTotalRam.addAndGet(ramBytesUsed);
-          }
-
-          @Override
-          protected void onCacheEntryEvicted(Object readerCoreKey, Query query, long ramBytesUsed) {
-            evictedCount.incrementAndGet();
-            evictedTotalRam.addAndGet(ramBytesUsed);
+            docIdSetEvictionCount.addAndGet(numEntries);
+            docIdSetEvictionRam.addAndGet(sumRamBytesUsed);
           }
         };
 
@@ -2794,10 +2818,6 @@ public class TestLRUQueryCache extends LuceneTestCase {
     final DirectoryReader reader = DirectoryReader.open(iw);
     assertEquals("Expected exactly 1 segment", 1, reader.leaves().size());
 
-    // maxSize=2 means 2 entries fit, 3rd triggers eviction
-    LRUQueryCache.LRUQueryCachePartition[] partitions = queryCache.getLruQueryCacheSegments();
-    partitions[0].setMaxSize(2);
-
     final IndexSearcher searcher = new IndexSearcher(reader);
     searcher.setQueryCache(queryCache);
     searcher.setQueryCachingPolicy(ALWAYS_CACHE);
@@ -2808,30 +2828,24 @@ public class TestLRUQueryCache extends LuceneTestCase {
 
     // Cache query1 — 1 segment, 1 insertion
     searcher.search(new ConstantScoreQuery(query1), 1);
-    assertEquals(1, insertedCount.get());
-    assertEquals(0, evictedCount.get());
+    assertEquals(1, docIdSetCacheCount.get());
+    assertEquals(0, docIdSetEvictionCount.get());
+    assertRamMatchesCallbacks(
+        queryCache, queryCacheRam, docIdSetCacheRam, queryEvictionRam, docIdSetEvictionRam);
 
     // Cache query2 — fills cache to maxSize=2
     searcher.search(new ConstantScoreQuery(query2), 1);
-    assertEquals(2, insertedCount.get());
-    assertEquals(0, evictedCount.get());
+    assertEquals(2, docIdSetCacheCount.get());
+    assertEquals(0, docIdSetEvictionCount.get());
+    assertRamMatchesCallbacks(
+        queryCache, queryCacheRam, docIdSetCacheRam, queryEvictionRam, docIdSetEvictionRam);
 
     // Cache query3 — triggers eviction of LRU entry (query1)
     searcher.search(new ConstantScoreQuery(query3), 1);
-    assertEquals(3, insertedCount.get());
-    assertTrue("Expected evictions but got none", evictedCount.get() > 0);
-
-    // Verify unified callback RAM equals sum of deprecated callback RAM for insertions
-    assertEquals(
-        "Unified inserted RAM should equal sum of deprecated query + docIdSet RAM",
-        deprecatedQueryCacheRam.get() + deprecatedDocIdSetCacheRam.get(),
-        insertedTotalRam.get());
-
-    // Verify unified callback RAM equals sum of deprecated callback RAM for evictions
-    assertEquals(
-        "Unified evicted RAM should equal sum of deprecated query + docIdSet eviction RAM",
-        deprecatedQueryEvictionRam.get() + deprecatedDocIdSetEvictionRam.get(),
-        evictedTotalRam.get());
+    assertEquals(3, docIdSetCacheCount.get());
+    assertEquals(1, docIdSetEvictionCount.get());
+    assertRamMatchesCallbacks(
+        queryCache, queryCacheRam, docIdSetCacheRam, queryEvictionRam, docIdSetEvictionRam);
 
     // Close everything and clean up to trigger remaining evictions
     reader.close();
@@ -2839,18 +2853,28 @@ public class TestLRUQueryCache extends LuceneTestCase {
     queryCache.cleanUp();
 
     // After full eviction, all inserted RAM should be accounted for in evicted RAM
+    assertEquals(0, queryCache.ramBytesUsed());
     assertEquals(
         "Total inserted RAM should equal total evicted RAM after full cleanup",
-        insertedTotalRam.get(),
-        evictedTotalRam.get());
-
-    // Verify the deprecated callbacks also balance
-    assertEquals(
-        deprecatedQueryCacheRam.get() + deprecatedDocIdSetCacheRam.get(),
-        deprecatedQueryEvictionRam.get() + deprecatedDocIdSetEvictionRam.get());
+        queryCacheRam.get() + docIdSetCacheRam.get(),
+        queryEvictionRam.get() + docIdSetEvictionRam.get());
 
     dir.close();
     queryCache.close();
+  }
+
+  private static void assertRamMatchesCallbacks(
+      LRUQueryCache queryCache,
+      AtomicLong queryCacheRam,
+      AtomicLong docIdSetCacheRam,
+      AtomicLong queryEvictionRam,
+      AtomicLong docIdSetEvictionRam) {
+    assertEquals(
+        queryCacheRam.get()
+            + docIdSetCacheRam.get()
+            - queryEvictionRam.get()
+            - docIdSetEvictionRam.get(),
+        queryCache.ramBytesUsed());
   }
 
   public void testReQueryWithEqualButDistinctQueryInstanceHits() throws IOException {
@@ -2898,16 +2922,21 @@ public class TestLRUQueryCache extends LuceneTestCase {
   }
 
   private static IndexReader twoSegmentIndex(Directory dir, String term) throws IOException {
+    return multiSegmentIndex(dir, term, 2);
+  }
+
+  private static IndexReader multiSegmentIndex(Directory dir, String term, int numSegments)
+      throws IOException {
     IndexWriterConfig iwc = new IndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE);
     try (IndexWriter w = new IndexWriter(dir, iwc)) {
-      for (int i = 0; i < 2; i++) {
+      for (int i = 0; i < numSegments; i++) {
         Document doc = new Document();
         doc.add(new StringField("f", term, Store.NO));
         w.addDocument(doc);
         w.commit(); // separate segment per doc
       }
       IndexReader reader = DirectoryReader.open(w);
-      assertEquals(2, reader.leaves().size());
+      assertEquals(numSegments, reader.leaves().size());
       return reader;
     }
   }
@@ -2969,6 +2998,237 @@ public class TestLRUQueryCache extends LuceneTestCase {
             queries[1]);
         queryCache.close();
       }
+    }
+  }
+
+  public void testOnQueryCacheFiresOncePerDistinctQuery() throws IOException {
+    try (Directory dir = newDirectory()) {
+      try (IndexReader reader = twoSegmentIndex(dir, "red")) {
+        final AtomicLong queryCacheCalls = new AtomicLong();
+        final AtomicLong queryEvictionCalls = new AtomicLong();
+        final AtomicLong docIdSetCacheCalls = new AtomicLong();
+        final LRUQueryCache queryCache =
+            new LRUQueryCache(100, 100_000_000, _ -> true, Float.POSITIVE_INFINITY) {
+              @Override
+              protected void onQueryCache(Query query, long ramBytesUsed) {
+                queryCacheCalls.incrementAndGet();
+              }
+
+              @Override
+              protected void onQueryEviction(Query query, long ramBytesUsed) {
+                queryEvictionCalls.incrementAndGet();
+              }
+
+              @Override
+              protected void onDocIdSetCache(Object readerCoreKey, long ramBytesUsed) {
+                docIdSetCacheCalls.incrementAndGet();
+              }
+            };
+        IndexSearcher searcher = new IndexSearcher(reader);
+        searcher.setQueryCache(queryCache);
+        searcher.setQueryCachingPolicy(ALWAYS_CACHE);
+
+        Query query = new TermQuery(new Term("f", "red"));
+        searcher.search(new ConstantScoreQuery(query), 1);
+
+        assertEquals(2, queryCache.getCacheSize()); // cached on both segments
+        assertEquals("query cached once, not once per segment", 1, queryCacheCalls.get());
+        assertEquals("doc-id set cached per segment", 2, docIdSetCacheCalls.get());
+
+        queryCache.clearQuery(query);
+        queryCache.cleanUp();
+        assertEquals("query evicted once, not once per segment", 1, queryEvictionCalls.get());
+        queryCache.close();
+      }
+    }
+  }
+
+  public void testOnQueryEvictionFiresWhenLastEntryIsEvicted() throws IOException {
+    try (Directory dir = newDirectory();
+        IndexReader reader = multiSegmentIndex(dir, "red", 3)) {
+      // 1 partition with room for 2 entries, so the LRU eviction order is deterministic
+      QueryCallbackRecordingCache queryCache = new QueryCallbackRecordingCache(2, 1);
+      IndexReader.CacheHelper h0 = reader.leaves().get(0).reader().getCoreCacheHelper();
+      IndexReader.CacheHelper h1 = reader.leaves().get(1).reader().getCoreCacheHelper();
+      IndexReader.CacheHelper h2 = reader.leaves().get(2).reader().getCoreCacheHelper();
+      Query a = new TermQuery(new Term("f", "a"));
+      Query b = new TermQuery(new Term("f", "b"));
+      Query c = new TermQuery(new Term("f", "c"));
+
+      putEmpty(queryCache, a, h0);
+      putEmpty(queryCache, a, h1);
+      assertEquals("A cached on two segments fires once", List.of(a), queryCache.queryCacheCalls);
+
+      // B evicts A's entry on h0 (the LRU entry), but A is still cached on h1
+      putEmpty(queryCache, b, h2);
+      assertEquals(1, queryCache.getEvictionCount());
+      assertEquals(List.of(a, b), queryCache.queryCacheCalls);
+      assertEquals("A still has an entry", List.of(), queryCache.queryEvictionCalls);
+
+      // C evicts A's entry on h1, which is A's last entry
+      putEmpty(queryCache, c, h0);
+      assertEquals(2, queryCache.getEvictionCount());
+      assertEquals(List.of(a, b, c), queryCache.queryCacheCalls);
+      assertEquals(List.of(a), queryCache.queryEvictionCalls);
+
+      // Re-caching A after it was fully evicted fires onQueryCache again. This evicts B's only
+      // entry, so B fires onQueryEviction.
+      putEmpty(queryCache, a, h1);
+      assertEquals(List.of(a, b, c, a), queryCache.queryCacheCalls);
+      assertEquals(List.of(a, b), queryCache.queryEvictionCalls);
+
+      queryCache.assertLiveQueriesMatchCache();
+      queryCache.assertConsistent();
+      queryCache.close();
+    }
+  }
+
+  public void testOnQueryEvictionFiresWhenLastSegmentIsCleared() throws IOException {
+    try (Directory dir = newDirectory();
+        IndexReader reader = twoSegmentIndex(dir, "red")) {
+      QueryCallbackRecordingCache queryCache = new QueryCallbackRecordingCache(100, 1);
+      IndexReader.CacheHelper h0 = reader.leaves().get(0).reader().getCoreCacheHelper();
+      IndexReader.CacheHelper h1 = reader.leaves().get(1).reader().getCoreCacheHelper();
+      Query a = new TermQuery(new Term("f", "a"));
+      Query b = new TermQuery(new Term("f", "b"));
+
+      putEmpty(queryCache, a, h0);
+      putEmpty(queryCache, a, h1);
+      putEmpty(queryCache, b, h0);
+      assertEquals(List.of(a, b), queryCache.queryCacheCalls);
+
+      // Clearing segment 0 removes B's only entry and one of A's two entries
+      queryCache.clearCoreCacheKey(h0.getKey());
+      queryCache.cleanUp();
+      assertEquals(1, queryCache.getCacheSize());
+      assertEquals(List.of(b), queryCache.queryEvictionCalls);
+      queryCache.assertLiveQueriesMatchCache();
+
+      // Clearing segment 1 removes A's last entry
+      queryCache.clearCoreCacheKey(h1.getKey());
+      queryCache.cleanUp();
+      assertEquals(0, queryCache.getCacheSize());
+      assertEquals(List.of(b, a), queryCache.queryEvictionCalls);
+      assertEquals(0, queryCache.ramBytesUsed());
+      queryCache.assertLiveQueriesMatchCache();
+      queryCache.close();
+    }
+  }
+
+  public void testEqualQueryInstancesAreCachedAndEvictedOnce() throws IOException {
+    try (Directory dir = newDirectory();
+        IndexReader reader = twoSegmentIndex(dir, "red")) {
+      QueryCallbackRecordingCache queryCache = new QueryCallbackRecordingCache(100, 1);
+      IndexReader.CacheHelper h0 = reader.leaves().get(0).reader().getCoreCacheHelper();
+      IndexReader.CacheHelper h1 = reader.leaves().get(1).reader().getCoreCacheHelper();
+      Query a1 = new TermQuery(new Term("f", "red"));
+      Query a2 = new TermQuery(new Term("f", "red"));
+      assertNotSame(a1, a2);
+
+      putEmpty(queryCache, a1, h0);
+      putEmpty(queryCache, a2, h1);
+      assertEquals(2, queryCache.getCacheSize());
+      assertEquals("equal queries are one distinct query", 1, queryCache.queryCacheCalls.size());
+      assertSame(a1, queryCache.queryCacheCalls.get(0));
+
+      // Clear with a third, equal instance
+      queryCache.clearQuery(new TermQuery(new Term("f", "red")));
+      queryCache.cleanUp();
+      assertEquals(0, queryCache.getCacheSize());
+      assertEquals(1, queryCache.queryEvictionCalls.size());
+      assertSame(
+          "evicted query is the canonical instance", a1, queryCache.queryEvictionCalls.get(0));
+      queryCache.assertLiveQueriesMatchCache();
+      queryCache.close();
+    }
+  }
+
+  public void testOnQueryCacheFiresOncePerDistinctQueryAcrossPartitions() throws IOException {
+    try (Directory dir = newDirectory();
+        IndexReader reader = twoSegmentIndex(dir, "red")) {
+      QueryCallbackRecordingCache queryCache = new QueryCallbackRecordingCache(1000, 16);
+      IndexReader.CacheHelper h0 = reader.leaves().get(0).reader().getCoreCacheHelper();
+      IndexReader.CacheHelper h1 = reader.leaves().get(1).reader().getCoreCacheHelper();
+      int numQueries = atLeast(50);
+      Set<Query> queries = new HashSet<>();
+      for (int i = 0; i < numQueries; i++) {
+        Query query = new TermQuery(new Term("f", "term" + i));
+        queries.add(query);
+        putEmpty(queryCache, query, h0);
+        putEmpty(queryCache, query, h1);
+      }
+      assertEquals(2 * numQueries, queryCache.getCacheSize());
+      long nonEmptyPartitions =
+          Arrays.stream(queryCache.getLruQueryCacheSegments())
+              .filter(p -> p.keys().isEmpty() == false)
+              .count();
+      assertTrue("queries should span several partitions", nonEmptyPartitions > 1);
+      assertEquals(numQueries, queryCache.queryCacheCalls.size());
+      assertEquals(queries, new HashSet<>(queryCache.queryCacheCalls));
+
+      // Each query still has an entry on segment 1
+      queryCache.clearCoreCacheKey(h0.getKey());
+      queryCache.cleanUp();
+      assertEquals(List.of(), queryCache.queryEvictionCalls);
+
+      queryCache.clearCoreCacheKey(h1.getKey());
+      queryCache.cleanUp();
+      assertEquals(numQueries, queryCache.queryEvictionCalls.size());
+      assertEquals(queries, new HashSet<>(queryCache.queryEvictionCalls));
+      assertEquals(0, queryCache.ramBytesUsed());
+      queryCache.assertLiveQueriesMatchCache();
+      queryCache.close();
+    }
+  }
+
+  private static void putEmpty(
+      LRUQueryCache queryCache, Query query, IndexReader.CacheHelper cacheHelper) {
+    queryCache.putIfAbsent(query, new LRUQueryCache.CacheAndCount(DocIdSet.EMPTY, 0), cacheHelper);
+  }
+
+  /**
+   * Records {@link #onQueryCache} and {@link #onQueryEviction} calls and checks that they fire once
+   * per distinct query: {@code onQueryCache} only for a query that is not already cached, and
+   * {@code onQueryEviction} only for a cached query, with the same RAM that was reported when it
+   * was cached.
+   */
+  private static class QueryCallbackRecordingCache extends LRUQueryCache {
+    final List<Query> queryCacheCalls = Collections.synchronizedList(new ArrayList<>());
+    final List<Query> queryEvictionCalls = Collections.synchronizedList(new ArrayList<>());
+    private final Map<Query, Long> liveQueryBytes = new ConcurrentHashMap<>();
+
+    QueryCallbackRecordingCache(int maxSize, int numberOfPartitions) {
+      super(maxSize, 100_000_000, _ -> true, Float.POSITIVE_INFINITY, numberOfPartitions, null);
+    }
+
+    QueryCallbackRecordingCache(
+        int maxSize, long maxRamBytesUsed, Predicate<LeafReaderContext> leavesToCache) {
+      super(maxSize, maxRamBytesUsed, leavesToCache, Float.POSITIVE_INFINITY);
+    }
+
+    @Override
+    protected void onQueryCache(Query query, long ramBytesUsed) {
+      super.onQueryCache(query, ramBytesUsed);
+      queryCacheCalls.add(query);
+      Long previous = liveQueryBytes.put(query, ramBytesUsed);
+      assertNull("onQueryCache fired for a query that is already cached: " + query, previous);
+    }
+
+    @Override
+    protected void onQueryEviction(Query query, long ramBytesUsed) {
+      super.onQueryEviction(query, ramBytesUsed);
+      queryEvictionCalls.add(query);
+      Long cachedBytes = liveQueryBytes.remove(query);
+      assertNotNull("onQueryEviction fired for a query that is not cached: " + query, cachedBytes);
+      assertEquals(
+          "evicted query bytes must match cached query bytes",
+          cachedBytes.longValue(),
+          ramBytesUsed);
+    }
+
+    /** The queries the callbacks say are cached match the queries actually in the cache. */
+    void assertLiveQueriesMatchCache() {
+      assertEquals(new HashSet<>(cachedQueries()), liveQueryBytes.keySet());
     }
   }
 
