@@ -29,8 +29,6 @@ import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
-import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
-import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsWriter;
 import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.MergeScheduler;
 import org.apache.lucene.index.SegmentReadState;
@@ -44,10 +42,13 @@ import org.apache.lucene.util.hnsw.HnswGraph;
 /**
  * An HNSW vector format that de-duplicates raw vectors.
  *
- * <p>Graph construction and search are identical to {@link
- * org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat}. A {@link DedupFlatVectorsFormat} is
- * used for the flat vector storage, which stores each distinct vector exactly once, shared across
- * all documents that reference it.
+ * <p>Unlike {@link org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat}, which builds one
+ * HNSW node per document, this format builds a single graph node per <b>distinct</b> vector (see
+ * {@link DedupHnswVectorsWriter}), saving graph construction time and index size when many
+ * documents share the same vector. At search time the graph is traversed over distinct vectors and
+ * each match is expanded back to all documents that reference it (see {@link
+ * DedupHnswVectorsReader}). A {@link DedupFlatVectorsFormat} is used for the flat vector storage,
+ * which stores each distinct vector exactly once, shared across all documents that reference it.
  *
  * <p>This format is suitable for high-performance filtered vector search when filter information is
  * available at indexing time. In addition to the primary vector field, the user creates separate
@@ -66,6 +67,13 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  */
 public final class DedupHnswVectorsFormat extends KnnVectorsFormat {
   private static final String NAME = "DedupHnswVectorsFormat";
+
+  /**
+   * Default hybrid-group threshold: {@code 0} disables the {@link DedupLayoutMode#HYBRID} layout,
+   * so fields fall back to the whole-field {@link DedupLayoutMode#PLAIN}/{@link
+   * DedupLayoutMode#DEDUP} selection.
+   */
+  public static final int DEFAULT_HYBRID_GROUP_THRESHOLD = 0;
 
   /**
    * Controls how many of the nearest neighbor candidates are connected to the new node. Defaults to
@@ -101,10 +109,24 @@ public final class DedupHnswVectorsFormat extends KnnVectorsFormat {
    */
   private final int tinySegmentsThreshold;
 
+  /**
+   * When positive, enables the {@link DedupLayoutMode#HYBRID} layout: within a field, any distinct
+   * vector (group) referenced by <b>more than</b> this many documents is promoted to a single HNSW
+   * node with a posting list, while all remaining documents stay as individual HNSW nodes with no
+   * postings. {@code 0} (the default) disables HYBRID and keeps the whole-field PLAIN/DEDUP
+   * selection. Negative values are not allowed.
+   */
+  private final int hybridGroupThreshold;
+
   /** Constructs a format using default graph construction parameters */
   public DedupHnswVectorsFormat() {
     this(
-        DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, DEFAULT_NUM_MERGE_WORKER, null, HNSW_GRAPH_THRESHOLD);
+        DEFAULT_MAX_CONN,
+        DEFAULT_BEAM_WIDTH,
+        DEFAULT_NUM_MERGE_WORKER,
+        null,
+        HNSW_GRAPH_THRESHOLD,
+        DEFAULT_HYBRID_GROUP_THRESHOLD);
   }
 
   /**
@@ -114,7 +136,13 @@ public final class DedupHnswVectorsFormat extends KnnVectorsFormat {
    * @param beamWidth the size of the queue maintained during graph construction.
    */
   public DedupHnswVectorsFormat(int maxConn, int beamWidth) {
-    this(maxConn, beamWidth, DEFAULT_NUM_MERGE_WORKER, null, HNSW_GRAPH_THRESHOLD);
+    this(
+        maxConn,
+        beamWidth,
+        DEFAULT_NUM_MERGE_WORKER,
+        null,
+        HNSW_GRAPH_THRESHOLD,
+        DEFAULT_HYBRID_GROUP_THRESHOLD);
   }
 
   /**
@@ -126,7 +154,13 @@ public final class DedupHnswVectorsFormat extends KnnVectorsFormat {
    *     neighbors of the current graph size
    */
   public DedupHnswVectorsFormat(int maxConn, int beamWidth, int tinySegmentsThreshold) {
-    this(maxConn, beamWidth, DEFAULT_NUM_MERGE_WORKER, null, tinySegmentsThreshold);
+    this(
+        maxConn,
+        beamWidth,
+        DEFAULT_NUM_MERGE_WORKER,
+        null,
+        tinySegmentsThreshold,
+        DEFAULT_HYBRID_GROUP_THRESHOLD);
   }
 
   /**
@@ -142,7 +176,13 @@ public final class DedupHnswVectorsFormat extends KnnVectorsFormat {
    */
   public DedupHnswVectorsFormat(
       int maxConn, int beamWidth, int numMergeWorkers, ExecutorService mergeExec) {
-    this(maxConn, beamWidth, numMergeWorkers, mergeExec, HNSW_GRAPH_THRESHOLD);
+    this(
+        maxConn,
+        beamWidth,
+        numMergeWorkers,
+        mergeExec,
+        HNSW_GRAPH_THRESHOLD,
+        DEFAULT_HYBRID_GROUP_THRESHOLD);
   }
 
   /**
@@ -157,13 +197,17 @@ public final class DedupHnswVectorsFormat extends KnnVectorsFormat {
    *     MergeScheduler#getIntraMergeExecutor(MergePolicy.OneMerge)} is used.
    * @param tinySegmentsThreshold the expected number of vector operations to return k nearest
    *     neighbors of the current graph size
+   * @param hybridGroupThreshold when positive, enables the {@link DedupLayoutMode#HYBRID} layout:
+   *     groups referenced by more than this many documents are promoted to posting-backed graph
+   *     nodes, while all other documents remain individual graph nodes. {@code 0} disables HYBRID.
    */
   public DedupHnswVectorsFormat(
       int maxConn,
       int beamWidth,
       int numMergeWorkers,
       ExecutorService mergeExec,
-      int tinySegmentsThreshold) {
+      int tinySegmentsThreshold,
+      int hybridGroupThreshold) {
     super(NAME);
     if (maxConn <= 0 || maxConn > MAXIMUM_MAX_CONN) {
       throw new IllegalArgumentException(
@@ -179,9 +223,15 @@ public final class DedupHnswVectorsFormat extends KnnVectorsFormat {
               + "; beamWidth="
               + beamWidth);
     }
+    if (hybridGroupThreshold < 0) {
+      throw new IllegalArgumentException(
+          "hybridGroupThreshold must be non-negative; hybridGroupThreshold="
+              + hybridGroupThreshold);
+    }
     this.maxConn = maxConn;
     this.beamWidth = beamWidth;
     this.tinySegmentsThreshold = tinySegmentsThreshold;
+    this.hybridGroupThreshold = hybridGroupThreshold;
     if (numMergeWorkers == 1 && mergeExec != null) {
       throw new IllegalArgumentException(
           "No executor service is needed as we'll use single thread to merge");
@@ -196,9 +246,7 @@ public final class DedupHnswVectorsFormat extends KnnVectorsFormat {
 
   @Override
   public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    // TODO: Can we have an HNSW writer that uses de-duplication information to speed up graph
-    //  construction?
-    return new Lucene99HnswVectorsWriter(
+    return new DedupHnswVectorsWriter(
         state,
         maxConn,
         beamWidth,
@@ -206,12 +254,13 @@ public final class DedupHnswVectorsFormat extends KnnVectorsFormat {
         FORMAT.fieldsWriter(state),
         numMergeWorkers,
         mergeExec,
-        tinySegmentsThreshold);
+        tinySegmentsThreshold,
+        hybridGroupThreshold);
   }
 
   @Override
   public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    return new Lucene99HnswVectorsReader(
+    return new DedupHnswVectorsReader(
         state,
         FORMAT.fieldsReader(
             state.withHints(FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM)));
@@ -231,6 +280,8 @@ public final class DedupHnswVectorsFormat extends KnnVectorsFormat {
         + beamWidth
         + ", tinySegmentsThreshold="
         + tinySegmentsThreshold
+        + ", hybridGroupThreshold="
+        + hybridGroupThreshold
         + ")";
   }
 }
