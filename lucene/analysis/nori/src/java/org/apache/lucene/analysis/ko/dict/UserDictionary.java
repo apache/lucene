@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import org.apache.lucene.analysis.morph.Dictionary;
+import org.apache.lucene.analysis.morph.MorphFSTLoader;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IntsRefBuilder;
 import org.apache.lucene.util.fst.FST;
@@ -47,6 +48,10 @@ public final class UserDictionary implements Dictionary<UserMorphData> {
   private UserMorphData morphAtts;
 
   public static UserDictionary open(Reader reader) throws IOException {
+    return open(reader, true);
+  }
+
+  public static UserDictionary open(Reader reader, boolean cacheHangulRootArcs) throws IOException {
 
     BufferedReader br = new BufferedReader(reader);
     String line;
@@ -67,11 +72,15 @@ public final class UserDictionary implements Dictionary<UserMorphData> {
     if (entries.isEmpty()) {
       return null;
     } else {
-      return new UserDictionary(entries);
+      return new UserDictionary(entries, cacheHangulRootArcs);
     }
   }
 
   private UserDictionary(List<String> entries) throws IOException {
+    this(entries, true);
+  }
+
+  private UserDictionary(List<String> entries, boolean cacheHangulRootArcs) throws IOException {
     final CharacterDefinition charDef = CharacterDefinition.getInstance();
     entries.sort(Comparator.comparing(e -> e.split("\\s+")[0]));
 
@@ -135,8 +144,11 @@ public final class UserDictionary implements Dictionary<UserMorphData> {
     if (entryIndex < rightIds.length) {
       rightIds = ArrayUtil.copyOfSubArray(rightIds, 0, entryIndex);
     }
+    FST.FSTMetadata<Long> metadata = fstCompiler.compile();
     this.fst =
-        new TokenInfoFST(FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader()));
+        new TokenInfoFST(
+            MorphFSTLoader.loadCompiled(metadata, fstCompiler.getFSTReader()),
+            cacheHangulRootArcs);
     int[][] segmentations = _segmentations.toArray(int[][]::new);
     this.morphAtts = new UserMorphData(segmentations, rightIds);
   }
