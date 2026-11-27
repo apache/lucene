@@ -19,6 +19,7 @@ package org.apache.lucene.queries.function;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicReference;
+import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
@@ -35,6 +36,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.BoostQuery;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.DoubleValues;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.Explanation;
@@ -47,9 +49,11 @@ import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TopScoreDocCollectorManager;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.search.QueryUtils;
+import org.apache.lucene.tests.util.TestUtil;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
@@ -445,6 +449,86 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
         assertEquals(5, topDocs.scoreDocs.length);
         // Highest numeric values (200, 199, 198, 197, 196) must be returned
         assertTrue(topDocs.scoreDocs[0].score >= 196f);
+      }
+    }
+  }
+
+  public void testMaxScoreIsUpperBoundWithDocValuesSkipper() throws Exception {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig conf = newIndexWriterConfig();
+      conf.setCodec(TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(16)));
+      conf.setMergePolicy(newLogMergePolicy());
+      try (IndexWriter indexWriter = new IndexWriter(dir, conf)) {
+        for (int i = 0; i < 512; i++) {
+          Document doc = new Document();
+          doc.add(new TextField(TEXT_FIELD, "skipper", Field.Store.NO));
+          doc.add(NumericDocValuesField.indexedField("val", i - 256)); // -256..255
+          indexWriter.addDocument(doc);
+        }
+        indexWriter.forceMerge(1);
+      }
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        Query q =
+            new FunctionScoreQuery(
+                new TermQuery(new Term(TEXT_FIELD, "skipper")),
+                DoubleValuesSource.fromLongField("val"));
+        Weight weight = searcher.createWeight(searcher.rewrite(q), ScoreMode.TOP_SCORES, 2f);
+        LeafReaderContext ctx = reader.leaves().get(0);
+        assertNotNull(ctx.reader().getDocValuesSkipper("val"));
+        Scorer scorer = weight.scorer(ctx);
+        DocIdSetIterator iterator = scorer.iterator();
+        for (int doc = iterator.nextDoc();
+            doc != DocIdSetIterator.NO_MORE_DOCS;
+            doc = iterator.nextDoc()) {
+          int upTo = scorer.advanceShallow(doc);
+          float maxScore = scorer.getMaxScore(upTo);
+          float score = scorer.score();
+          assertTrue("doc=" + doc + " score=" + score + " maxScore=" + maxScore, score <= maxScore);
+        }
+      }
+    }
+  }
+
+  public void testMaxScorePruningWithDocValuesSkipper() throws Exception {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig conf = newIndexWriterConfig();
+      conf.setCodec(TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(16)));
+      conf.setMergePolicy(newLogMergePolicy());
+      try (IndexWriter indexWriter = new IndexWriter(dir, conf)) {
+        for (int i = 0; i < 2000; i++) {
+          Document doc = new Document();
+          doc.add(new TextField(TEXT_FIELD, "common", Field.Store.NO));
+          indexWriter.addDocument(doc);
+        }
+        // the best hit comes last
+        Document doc = new Document();
+        doc.add(new TextField(TEXT_FIELD, "rare", Field.Store.NO));
+        doc.add(NumericDocValuesField.indexedField("val", 1_000_000));
+        indexWriter.addDocument(doc);
+        indexWriter.forceMerge(1);
+      }
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        Query q =
+            new BooleanQuery.Builder()
+                .add(
+                    new FunctionScoreQuery(
+                        new TermQuery(new Term(TEXT_FIELD, "rare")),
+                        DoubleValuesSource.fromLongField("val")),
+                    BooleanClause.Occur.SHOULD)
+                .add(new TermQuery(new Term(TEXT_FIELD, "common")), BooleanClause.Occur.SHOULD)
+                .build();
+
+        // more hits than the total hits threshold, so that non-competitive hits get skipped
+        TopDocs topDocs = searcher.search(q, 10);
+        TopDocs exhaustive =
+            searcher.search(q, new TopScoreDocCollectorManager(10, Integer.MAX_VALUE));
+        assertEquals(2000, exhaustive.scoreDocs[0].doc);
+        assertEquals(exhaustive.scoreDocs[0].doc, topDocs.scoreDocs[0].doc);
+        assertEquals(exhaustive.scoreDocs[0].score, topDocs.scoreDocs[0].score, 0f);
       }
     }
   }

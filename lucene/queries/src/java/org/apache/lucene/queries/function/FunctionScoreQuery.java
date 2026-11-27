@@ -260,12 +260,11 @@ public final class FunctionScoreQuery extends Query {
 
             @Override
             public float getMaxScore(int upTo) throws IOException {
-              float innerMaxScore = in.getMaxScore(upTo);
               float valueMaxScore = scores.getMaxScore(upTo);
               if (Float.isInfinite(valueMaxScore)) {
                 return Float.POSITIVE_INFINITY;
               }
-              return innerMaxScore * valueMaxScore * boost;
+              return Math.max(valueMaxScore, 0f) * boost;
             }
           };
       return new DefaultScorerSupplier(scorer);
