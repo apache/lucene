@@ -76,6 +76,11 @@ class OverlappingIntervalsSource extends ConjunctionIntervalsSource {
   }
 
   @Override
+  public int maxExtent() {
+    return source.maxExtent();
+  }
+
+  @Override
   public Collection<IntervalsSource> pullUpDisjunctions() {
     return Disjunctions.pullUp(
         Arrays.asList(source, reference),

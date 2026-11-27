@@ -231,6 +231,11 @@ class TermIntervalsSource extends IntervalsSource {
   }
 
   @Override
+  public int maxExtent() {
+    return 1;
+  }
+
+  @Override
   public Collection<IntervalsSource> pullUpDisjunctions() {
     return Collections.singleton(this);
   }

@@ -132,6 +132,16 @@ class ExtendedIntervalsSource extends IntervalsSource {
   }
 
   @Override
+  public int maxExtent() {
+    if (before > 0) {
+      // the start is clamped to 0, so intervals near the start of a document can be shorter
+      return Integer.MAX_VALUE;
+    }
+    long maxExtent = (long) before + source.maxExtent() + after;
+    return (int) Math.max(0, Math.min(maxExtent, Integer.MAX_VALUE));
+  }
+
+  @Override
   public Collection<IntervalsSource> pullUpDisjunctions() {
     Collection<IntervalsSource> inner = source.pullUpDisjunctions();
     if (inner.size() == 0) {

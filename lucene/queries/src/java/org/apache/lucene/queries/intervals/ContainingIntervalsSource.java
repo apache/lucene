@@ -71,6 +71,11 @@ class ContainingIntervalsSource extends ConjunctionIntervalsSource {
   }
 
   @Override
+  public int maxExtent() {
+    return big.maxExtent();
+  }
+
+  @Override
   public Collection<IntervalsSource> pullUpDisjunctions() {
     return Disjunctions.pullUp(big, s -> new ContainingIntervalsSource(s, small));
   }
