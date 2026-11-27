@@ -117,6 +117,7 @@ public class TestHnswBitVectorsFormat extends BaseIndexFileFormatTestCase {
   public void testLimits() {
     expectThrows(IllegalArgumentException.class, () -> new HnswBitVectorsFormat(-1, 20));
     expectThrows(IllegalArgumentException.class, () -> new HnswBitVectorsFormat(0, 20));
+    expectThrows(IllegalArgumentException.class, () -> new HnswBitVectorsFormat(1, 20));
     expectThrows(IllegalArgumentException.class, () -> new HnswBitVectorsFormat(20, 0));
     expectThrows(IllegalArgumentException.class, () -> new HnswBitVectorsFormat(20, -1));
     expectThrows(IllegalArgumentException.class, () -> new HnswBitVectorsFormat(512 + 1, 20));

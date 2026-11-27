@@ -55,11 +55,14 @@ public class TestDedupHnswScalarQuantizedVectorsFormat extends TestDedupHnswVect
     return TestUtil.alwaysKnnVectorsFormat(format);
   }
 
+  @Override
   public void testLimits() {
     expectThrows(
         IllegalArgumentException.class, () -> new DedupHnswScalarQuantizedVectorsFormat(-1, 20));
     expectThrows(
         IllegalArgumentException.class, () -> new DedupHnswScalarQuantizedVectorsFormat(0, 20));
+    expectThrows(
+        IllegalArgumentException.class, () -> new DedupHnswScalarQuantizedVectorsFormat(1, 20));
     expectThrows(
         IllegalArgumentException.class, () -> new DedupHnswScalarQuantizedVectorsFormat(20, 0));
     expectThrows(

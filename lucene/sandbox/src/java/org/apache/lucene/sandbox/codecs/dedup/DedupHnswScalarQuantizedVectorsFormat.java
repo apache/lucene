@@ -179,9 +179,9 @@ public final class DedupHnswScalarQuantizedVectorsFormat extends KnnVectorsForma
       ExecutorService mergeExec,
       int tinySegmentsThreshold) {
     super(NAME);
-    if (maxConn <= 0 || maxConn > MAXIMUM_MAX_CONN) {
+    if (maxConn < 2 || maxConn > MAXIMUM_MAX_CONN) {
       throw new IllegalArgumentException(
-          "maxConn must be positive and less than or equal to "
+          "maxConn must be greater than 1 and less than or equal to "
               + MAXIMUM_MAX_CONN
               + "; maxConn="
               + maxConn);
