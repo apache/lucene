@@ -51,6 +51,7 @@ import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
 import org.apache.lucene.tests.codecs.asserting.AssertingDocValuesFormat;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.RandomLongValues;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
@@ -117,6 +118,7 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
   }
 
   public void testBiasedMixOfRandomUpdates() throws Exception {
+    RandomLongValues randomValues = RandomLongValues.random(random());
     // 3 types of operations: add, updated, updateDV.
     // rather then randomizing equally, we'll pick (random) cutoffs so each test run is biased,
     // in terms of some ops happen more often then others
@@ -134,14 +136,14 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
     // start with at least one doc before any chance of updates
     final int numSeedDocs = atLeast(1);
     for (int i = 0; i < numSeedDocs; i++) {
-      final long val = random().nextLong();
+      final long val = randomValues.nextValue();
       expected.put(i, val);
       writer.addDocument(doc(i, val));
     }
 
     for (int i = 0; i < numOperations; i++) {
       final int op = TestUtil.nextInt(random(), 1, 100);
-      final long val = random().nextLong();
+      final long val = randomValues.nextValue();
       if (op <= ADD_CUTOFF) {
         final int id = expected.size();
         expected.put(id, val);
@@ -1294,6 +1296,7 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
   }
 
   public void testStressMultiThreading() throws Exception {
+    RandomLongValues randomValues = RandomLongValues.random(random());
     final Directory dir = newDirectory();
     IndexWriterConfig conf = newIndexWriterConfig(new MockAnalyzer(random()));
     final IndexWriter writer = new IndexWriter(dir, conf);
@@ -1312,7 +1315,7 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
       else g = "g3";
       doc.add(new StringField("updKey", g, Store.NO));
       for (int j = 0; j < numFields; j++) {
-        long value = random().nextInt();
+        long value = randomValues.nextValue();
         doc.add(new NumericDocValuesField("f" + j, value));
         doc.add(new NumericDocValuesField("cf" + j, value * 2)); // control, always updated to f * 2
       }
@@ -1334,6 +1337,7 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
               boolean success = false;
               try {
                 Random random = random();
+                RandomLongValues updateValues = RandomLongValues.random(random);
                 while (numUpdates.getAndDecrement() > 0) {
                   double group = random.nextDouble();
                   Term t;
@@ -1345,7 +1349,7 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
                   final int field = random().nextInt(numFields);
                   final String f = "f" + field;
                   final String cf = "cf" + field;
-                  long updValue = random.nextInt();
+                  long updValue = updateValues.nextValue();
                   writer.updateDocValues(
                       t,
                       new NumericDocValuesField(f, updValue),
@@ -1420,6 +1424,7 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
   }
 
   public void testUpdateDifferentDocsInDifferentGens() throws Exception {
+    RandomLongValues randomValues = RandomLongValues.random(random());
     // update same document multiple times across generations
     Directory dir = newDirectory();
     IndexWriterConfig conf = newIndexWriterConfig(new MockAnalyzer(random()));
@@ -1429,7 +1434,7 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
     for (int i = 0; i < numDocs; i++) {
       Document doc = new Document();
       doc.add(new StringField("id", "doc" + i, Store.NO));
-      long value = random().nextInt();
+      long value = randomValues.nextValue();
       doc.add(new NumericDocValuesField("f", value));
       doc.add(new NumericDocValuesField("cf", value * 2));
       writer.addDocument(doc);
@@ -1439,7 +1444,7 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
     for (int i = 0; i < numGens; i++) {
       int doc = random().nextInt(numDocs);
       Term t = new Term("id", "doc" + doc);
-      long value = random().nextLong();
+      long value = randomValues.nextValue();
       writer.updateDocValues(
           t, new NumericDocValuesField("f", value), new NumericDocValuesField("cf", value * 2));
       DirectoryReader reader = DirectoryReader.open(writer);
@@ -1513,6 +1518,7 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
   }
 
   public void testAddIndexes() throws Exception {
+    RandomLongValues randomValues = RandomLongValues.random(random());
     Directory dir1 = newDirectory();
     IndexWriterConfig conf = newIndexWriterConfig(new MockAnalyzer(random()));
     IndexWriter writer = new IndexWriter(dir1, conf);
@@ -1538,7 +1544,7 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
     }
 
     // update some docs to a random value
-    long value = random().nextInt();
+    long value = randomValues.nextValue();
     Term term = new Term("id", RandomPicks.randomFrom(random(), randomTerms));
     writer.updateDocValues(
         term,
@@ -1575,6 +1581,7 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
   }
 
   public void testAddNewFieldAfterAddIndexes() throws Exception {
+    RandomLongValues randomValues = RandomLongValues.random(random());
     Directory dir1 = newDirectory();
     IndexWriterConfig conf =
         newIndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(NoMergePolicy.INSTANCE);
@@ -1618,7 +1625,7 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
       assertTrue(originalFieldInfos.size() > 0);
 
       // update all doc values
-      long value = random().nextInt();
+      long value = randomValues.nextValue();
       for (int i = 0; i < numDocs; i++) {
         Term term = new Term("id", newBytesRef(Integer.toString(i)));
         writer.updateDocValues(term, new NumericDocValuesField("ndv", value));
@@ -1643,6 +1650,7 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
   }
 
   public void testUpdatesAfterAddIndexes() throws Exception {
+    RandomLongValues randomValues = RandomLongValues.random(random());
     Directory dir1 = newDirectory();
     IndexWriterConfig conf =
         newIndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(NoMergePolicy.INSTANCE);
@@ -1688,7 +1696,7 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
       assertTrue(originalFieldInfos.size() > 0);
 
       // update some docs to a random value
-      long value = random().nextInt();
+      long value = randomValues.nextValue();
       Term term = new Term("id", newBytesRef(Integer.toString(random().nextInt(numDocs) * 2)));
       writer.updateDocValues(
           term,
@@ -1765,6 +1773,7 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
   }
 
   public void testTonsOfUpdates() throws Exception {
+    RandomLongValues randomValues = RandomLongValues.random(random());
     // LUCENE-5248: make sure that when there are many updates, we don't use too much RAM
     Directory dir = newDirectory();
     final Random random = random();
@@ -1790,7 +1799,7 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
         doc.add(new StringField("upd", RandomPicks.randomFrom(random, updateTerms), Store.NO));
       }
       for (int j = 0; j < numNumericFields; j++) {
-        long val = random.nextInt();
+        long val = randomValues.nextValue();
         doc.add(new NumericDocValuesField("f" + j, val));
         doc.add(new NumericDocValuesField("cf" + j, val * 2));
       }
@@ -1806,7 +1815,7 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
     for (int i = 0; i < numUpdates; i++) {
       int field = random.nextInt(numNumericFields);
       Term updateTerm = new Term("upd", RandomPicks.randomFrom(random, updateTerms));
-      long value = random.nextInt();
+      long value = randomValues.nextValue();
       writer.updateDocValues(
           updateTerm,
           new NumericDocValuesField("f" + field, value),

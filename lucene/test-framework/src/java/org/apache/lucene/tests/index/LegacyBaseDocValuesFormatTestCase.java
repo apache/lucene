@@ -102,6 +102,16 @@ import org.apache.lucene.util.automaton.RegExp;
  */
 public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFormatTestCase {
 
+  private RandomLongValues longValues;
+
+  // the values of a test come from the same distribution, so that patterns in the values show
+  private long nextLongValue() {
+    if (longValues == null) {
+      longValues = RandomLongValues.random(random());
+    }
+    return longValues.nextValue();
+  }
+
   @Override
   protected void addRandomFields(Document doc) {
     if (usually()) {
@@ -118,9 +128,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
     }
     numValues = random().nextInt(5);
     for (int i = 0; i < numValues; ++i) {
-      doc.add(
-          new SortedNumericDocValuesField(
-              "sndv", TestUtil.nextLong(random(), Long.MIN_VALUE, Long.MAX_VALUE)));
+      doc.add(new SortedNumericDocValuesField("sndv", nextLongValue()));
     }
   }
 
@@ -2835,7 +2843,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
       storedBinField.setBytesValue(buffer);
       dvBinField.setBytesValue(buffer);
       dvSortedField.setBytesValue(buffer);
-      long numericValue = random().nextLong();
+      long numericValue = nextLongValue();
       storedNumericField.setStringValue(Long.toString(numericValue));
       dvNumericField.setLongValue(numericValue);
       writer.addDocument(doc);
@@ -2923,7 +2931,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
       storedBinField.setBytesValue(buffer);
       dvBinField.setBytesValue(buffer);
       dvSortedField.setBytesValue(buffer);
-      long numericValue = random().nextLong();
+      long numericValue = nextLongValue();
       storedNumericField.setStringValue(Long.toString(numericValue));
       dvNumericField.setLongValue(numericValue);
       Document doc = new Document();
@@ -2949,7 +2957,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
       int numSortedNumericFields = random().nextInt(3);
       Set<Long> numValues = new TreeSet<>();
       for (int j = 0; j < numSortedNumericFields; j++) {
-        numValues.add(TestUtil.nextLong(random(), Long.MIN_VALUE, Long.MAX_VALUE));
+        numValues.add(nextLongValue());
       }
       for (Long l : numValues) {
         doc.add(new SortedNumericDocValuesField("dvSortedNumeric", l));
@@ -3081,12 +3089,8 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
       }
 
       for (int j = 0; j < numSortedNums; j++) {
-        doc.add(
-            new SortedNumericDocValuesField(
-                "sn" + j, TestUtil.nextLong(random(), Long.MIN_VALUE, Long.MAX_VALUE)));
-        doc.add(
-            new SortedNumericDocValuesField(
-                "sn" + j, TestUtil.nextLong(random(), Long.MIN_VALUE, Long.MAX_VALUE)));
+        doc.add(new SortedNumericDocValuesField("sn" + j, nextLongValue()));
+        doc.add(new SortedNumericDocValuesField("sn" + j, nextLongValue()));
       }
       writer.addDocument(doc);
     }

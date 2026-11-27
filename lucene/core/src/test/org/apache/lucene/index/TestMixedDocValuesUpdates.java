@@ -42,6 +42,7 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.RandomLongValues;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
@@ -176,6 +177,7 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
   }
 
   public void testStressMultiThreading() throws Exception {
+    RandomLongValues randomValues = RandomLongValues.random(random());
     final Directory dir = newDirectory();
     IndexWriterConfig conf = newIndexWriterConfig(new MockAnalyzer(random()));
     final IndexWriter writer = new IndexWriter(dir, conf);
@@ -195,7 +197,7 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
       else g = "g3";
       doc.add(new StringField("updKey", g, Store.NO));
       for (int j = 0; j < numFields; j++) {
-        long value = random().nextInt();
+        long value = randomValues.nextValue();
         doc.add(new BinaryDocValuesField("f" + j, TestBinaryDocValuesUpdates.toBytes(value)));
         doc.add(new NumericDocValuesField("cf" + j, value * 2)); // control, always updated to f * 2
       }
@@ -216,6 +218,7 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
               boolean success = false;
               try {
                 Random random = random();
+                RandomLongValues updateValues = RandomLongValues.random(random);
                 while (numUpdates.getAndDecrement() > 0) {
                   double group = random.nextDouble();
                   Term t;
@@ -228,7 +231,7 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
                   int field = random().nextInt(numFields);
                   final String f = "f" + field;
                   final String cf = "cf" + field;
-                  long updValue = random.nextInt();
+                  long updValue = updateValues.nextValue();
                   //              System.err.println("[" + Thread.currentThread().getName() + "] t="
                   // + t + ", f=" + f + ", updValue=" + updValue);
                   writer.updateDocValues(
@@ -322,6 +325,7 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
   }
 
   public void testUpdateDifferentDocsInDifferentGens() throws Exception {
+    RandomLongValues randomValues = RandomLongValues.random(random());
     // update same document multiple times across generations
     Directory dir = newDirectory();
     IndexWriterConfig conf = newIndexWriterConfig(new MockAnalyzer(random()));
@@ -331,7 +335,7 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
     for (int i = 0; i < numDocs; i++) {
       Document doc = new Document();
       doc.add(new StringField("id", "doc" + i, Store.NO));
-      long value = random().nextInt();
+      long value = randomValues.nextValue();
       doc.add(new BinaryDocValuesField("f", TestBinaryDocValuesUpdates.toBytes(value)));
       doc.add(new NumericDocValuesField("cf", value * 2));
       writer.addDocument(doc);
@@ -341,7 +345,7 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
     for (int i = 0; i < numGens; i++) {
       int doc = random().nextInt(numDocs);
       Term t = new Term("id", "doc" + doc);
-      long value = random().nextLong();
+      long value = randomValues.nextValue();
       if (random().nextBoolean()) {
         doUpdate(
             t,
@@ -374,6 +378,7 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
 
   @Nightly
   public void testTonsOfUpdates() throws Exception {
+    RandomLongValues randomValues = RandomLongValues.random(random());
     // LUCENE-5248: make sure that when there are many updates, we don't use too much RAM
     Directory dir = newDirectory();
     final Random random = random();
@@ -402,7 +407,7 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
         doc.add(new StringField("upd", RandomPicks.randomFrom(random, updateTerms), Store.NO));
       }
       for (int j = 0; j < numBinaryFields; j++) {
-        long val = random.nextInt();
+        long val = randomValues.nextValue();
         doc.add(new BinaryDocValuesField("f" + j, TestBinaryDocValuesUpdates.toBytes(val)));
         doc.add(new NumericDocValuesField("cf" + j, val * 2));
       }
@@ -419,7 +424,7 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
     for (int i = 0; i < numUpdates; i++) {
       int field = random.nextInt(numBinaryFields);
       Term updateTerm = new Term("upd", RandomPicks.randomFrom(random, updateTerms));
-      long value = random.nextInt();
+      long value = randomValues.nextValue();
       writer.updateDocValues(
           updateTerm,
           new BinaryDocValuesField("f" + field, TestBinaryDocValuesUpdates.toBytes(value)),
@@ -498,6 +503,7 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
 
   public void testTryUpdateMultiThreaded()
       throws IOException, BrokenBarrierException, InterruptedException {
+    RandomLongValues randomValues = RandomLongValues.random(random());
     Directory dir = newDirectory();
     IndexWriterConfig conf = newIndexWriterConfig();
     IndexWriter writer = new IndexWriter(dir, conf);
@@ -507,7 +513,7 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
     for (int i = 0; i < locks.length; i++) {
       locks[i] = new ReentrantLock();
       Document doc = new Document();
-      values[i] = random().nextLong();
+      values[i] = randomValues.nextValue();
       doc.add(new StringField("id", Integer.toString(i), Store.NO));
       doc.add(new NumericDocValuesField("value", values[i]));
       writer.addDocument(doc);
@@ -519,13 +525,14 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
     for (int i = 0; i < threads.length; i++) {
       threads[i] =
           new Thread(() -> {
+            RandomLongValues updateValues = RandomLongValues.random(random());
             try {
               barrier.await();
               for (int doc = 0; doc < 1000; doc++) {
                 int docId = random().nextInt(locks.length);
                 locks[docId].lock();
                 try {
-                  Long value = rarely() ? null : random().nextLong(); // sometimes reset it
+                  Long value = rarely() ? null : updateValues.nextValue(); // sometimes reset it
                   if (random().nextBoolean()) {
                     writer.updateDocValues(
                         new Term("id", docId + ""), new NumericDocValuesField("value", value));

@@ -30,6 +30,7 @@ import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.RandomLongValues;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 
@@ -59,6 +60,7 @@ public class TestIncrementalDocValuesUpdates extends LuceneTestCase {
    * handle) count bounded so it also runs under the default open-handle limit.
    */
   public void testDefaultBudgetHeavyStackingAndFolding() throws Exception {
+    RandomLongValues randomValues = RandomLongValues.random(random());
     IndexWriterConfig conf =
         new IndexWriterConfig(new MockAnalyzer(random()))
             .setMaxDocValuesOverlays(IndexWriterConfig.DEFAULT_MAX_DOC_VALUES_OVERLAYS);
@@ -80,7 +82,7 @@ public class TestIncrementalDocValuesUpdates extends LuceneTestCase {
       final int updates = atLeast(300);
       for (int i = 0; i < updates; i++) {
         String id = "d" + random().nextInt(numDocs);
-        long v = random().nextLong();
+        long v = randomValues.nextValue();
         String field = random().nextBoolean() ? "a" : "b";
         w.updateNumericDocValue(new Term("id", id), field, v);
         (field.equals("a") ? expectedA : expectedB).put(id, v);
@@ -123,6 +125,7 @@ public class TestIncrementalDocValuesUpdates extends LuceneTestCase {
 
   /** Random set-only updates across many docs and fields, interleaved with reopens and merges. */
   public void testRandomizedSetOnlyUpdates() throws Exception {
+    RandomLongValues randomValues = RandomLongValues.random(random());
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, incrementalConfig())) {
       int numDocs = atLeast(50);
@@ -137,7 +140,7 @@ public class TestIncrementalDocValuesUpdates extends LuceneTestCase {
       int updates = atLeast(200);
       for (int i = 0; i < updates; i++) {
         String id = "d" + random().nextInt(numDocs);
-        long v = random().nextLong();
+        long v = randomValues.nextValue();
         w.updateNumericDocValue(new Term("id", id), "val", v);
         expected.put(id, v);
         if (rarely()) {
@@ -276,6 +279,7 @@ public class TestIncrementalDocValuesUpdates extends LuceneTestCase {
    * tracked separately.
    */
   public void testMultipleUpdatableFields() throws Exception {
+    RandomLongValues randomValues = RandomLongValues.random(random());
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, incrementalConfig())) {
       int numDocs = atLeast(40);
@@ -295,7 +299,7 @@ public class TestIncrementalDocValuesUpdates extends LuceneTestCase {
       for (int u = 0; u < updates; u++) {
         int i = random().nextInt(numDocs);
         int f = random().nextInt(numFields);
-        long v = random().nextLong();
+        long v = randomValues.nextValue();
         w.updateNumericDocValue(new Term("id", "d" + i), "f" + f, v);
         expected[i][f] = v;
         if (rarely()) {
@@ -320,6 +324,7 @@ public class TestIncrementalDocValuesUpdates extends LuceneTestCase {
    * value.
    */
   public void testUpdatesInterleavedWithDeletes() throws Exception {
+    RandomLongValues randomValues = RandomLongValues.random(random());
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, incrementalConfig())) {
       int numDocs = atLeast(60);
@@ -338,7 +343,7 @@ public class TestIncrementalDocValuesUpdates extends LuceneTestCase {
           w.deleteDocuments(new Term("id", id));
           expected.remove(id);
         } else if (expected.containsKey(id)) {
-          long v = random().nextLong();
+          long v = randomValues.nextValue();
           w.updateNumericDocValue(new Term("id", id), "val", v);
           expected.put(id, v);
         }
@@ -359,6 +364,7 @@ public class TestIncrementalDocValuesUpdates extends LuceneTestCase {
    * sorted order.
    */
   public void testSortedIndexWithUpdates() throws Exception {
+    RandomLongValues randomValues = RandomLongValues.random(random());
     try (Directory dir = newDirectory()) {
       IndexWriterConfig conf =
           incrementalConfig().setIndexSort(new Sort(new SortField("sortkey", SortField.Type.LONG)));
@@ -375,7 +381,7 @@ public class TestIncrementalDocValuesUpdates extends LuceneTestCase {
         }
         for (int u = 0; u < atLeast(200); u++) {
           String id = "d" + random().nextInt(numDocs);
-          long v = random().nextLong();
+          long v = randomValues.nextValue();
           w.updateNumericDocValue(new Term("id", id), "val", v);
           expected.put(id, v);
           if (rarely()) {
@@ -396,6 +402,7 @@ public class TestIncrementalDocValuesUpdates extends LuceneTestCase {
    * latest values.
    */
   public void testAddIndexesFromUpdatedIndex() throws Exception {
+    RandomLongValues randomValues = RandomLongValues.random(random());
     try (Directory src = newDirectory();
         Directory dst = newDirectory()) {
       Map<String, Long> expected = new HashMap<>();
@@ -410,7 +417,7 @@ public class TestIncrementalDocValuesUpdates extends LuceneTestCase {
         }
         for (int u = 0; u < atLeast(150); u++) {
           String id = "d" + random().nextInt(numDocs);
-          long v = random().nextLong();
+          long v = randomValues.nextValue();
           w.updateNumericDocValue(new Term("id", id), "val", v);
           expected.put(id, v);
         }
