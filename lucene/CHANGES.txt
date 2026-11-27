@@ -620,6 +620,8 @@ Other
 
 * GITHUB#17080: Add delegate constructors to all Asserting*Format classes. (Simon Cooper)
 
+* GITHUB#16534: Correct termBytePool reference in FreqProxTermsEnum and clarify pool sharing. (neoremind)
+
 ======================= Lucene 10.6.0 =======================
 
 API Changes
