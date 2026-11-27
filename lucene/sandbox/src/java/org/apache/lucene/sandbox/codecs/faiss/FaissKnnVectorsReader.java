@@ -134,7 +134,8 @@ final class FaissKnnVectorsReader extends KnnVectorsReader {
         FieldInfo fi = state.fieldInfos.fieldInfo(fieldMeta.name);
         indexMap.put(
             fieldMeta.name,
-            FaissLibrary.INSTANCE.readIndex(indexInput, fi.getVectorSimilarityFunction()));
+            FaissLibrary.INSTANCE.readIndex(
+                indexInput, fi.getVectorSimilarityFunction(), fi.getVectorEncoding()));
       }
     } catch (Throwable t) {
       IOUtils.closeWhileSuppressingExceptions(t, this);
@@ -179,10 +180,8 @@ final class FaissKnnVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public ByteVectorValues getByteVectorValues(String field) {
-    // TODO: Support using SQ8 quantization, see:
-    //  - https://github.com/opensearch-project/k-NN/pull/2425
-    throw new UnsupportedOperationException("Byte vectors not supported");
+  public ByteVectorValues getByteVectorValues(String field) throws IOException {
+    return rawVectorsReader.getByteVectorValues(field);
   }
 
   @Override
@@ -202,9 +201,10 @@ final class FaissKnnVectorsReader extends KnnVectorsReader {
   @Override
   public void search(
       String field, byte[] vector, KnnCollector knnCollector, AcceptDocs acceptDocs) {
-    // TODO: Support using SQ8 quantization, see:
-    //  - https://github.com/opensearch-project/k-NN/pull/2425
-    throw new UnsupportedOperationException("Byte vectors not supported");
+    FaissLibrary.Index index = indexMap.get(field);
+    if (index != null) {
+      index.search(vector, knnCollector, acceptDocs);
+    }
   }
 
   @Override

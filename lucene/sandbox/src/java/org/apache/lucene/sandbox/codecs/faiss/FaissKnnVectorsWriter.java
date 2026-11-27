@@ -31,6 +31,7 @@ import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatFieldVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
@@ -100,10 +101,11 @@ final class FaissKnnVectorsWriter extends KnnVectorsWriter {
   public IORunnable mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
     rawVectorsWriter.mergeOneFlatVectorField(fieldInfo, mergeState);
     switch (fieldInfo.getVectorEncoding()) {
-      case BYTE ->
-          // TODO: Support using SQ8 quantization, see:
-          //  - https://github.com/opensearch-project/k-NN/pull/2425
-          throw new UnsupportedOperationException("Byte vectors not supported");
+      case BYTE -> {
+        ByteVectorValues merged =
+            KnnVectorsWriter.MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState);
+        writeByteField(fieldInfo, merged, doc -> doc);
+      }
       case FLOAT16 -> throw new UnsupportedOperationException("Float16 vectors not supported");
       case FLOAT32 -> {
         FloatVectorValues merged =
@@ -127,10 +129,20 @@ final class FaissKnnVectorsWriter extends KnnVectorsWriter {
     for (Map.Entry<FieldInfo, FlatFieldVectorsWriter<?>> entry : rawFields.entrySet()) {
       FieldInfo fieldInfo = entry.getKey();
       switch (fieldInfo.getVectorEncoding()) {
-        case BYTE ->
-            // TODO: Support using SQ8 quantization, see:
-            //  - https://github.com/opensearch-project/k-NN/pull/2425
-            throw new UnsupportedOperationException("Byte vectors not supported");
+        case BYTE -> {
+          @SuppressWarnings("unchecked")
+          FlatFieldVectorsWriter<byte[]> rawWriter =
+              (FlatFieldVectorsWriter<byte[]>) entry.getValue();
+
+          List<byte[]> vectors = rawWriter.getVectors();
+          int dimension = fieldInfo.getVectorDimension();
+          DocIdSet docIdSet = rawWriter.getDocsWithFieldSet();
+
+          writeByteField(
+              fieldInfo,
+              new BufferedByteVectorValues(vectors, dimension, docIdSet),
+              (sortMap != null) ? sortMap::oldToNew : doc -> doc);
+        }
 
         case FLOAT16 -> throw new UnsupportedOperationException("Float16 vectors not supported");
 
@@ -164,6 +176,30 @@ final class FaissKnnVectorsWriter extends KnnVectorsWriter {
             indexParams,
             fieldInfo.getVectorSimilarityFunction(),
             floatVectorValues,
+            oldToNewDocId)) {
+
+      // Write index
+      long dataOffset = data.getFilePointer();
+      index.write(data);
+      long dataLength = data.getFilePointer() - dataOffset;
+
+      meta.writeLong(dataOffset);
+      meta.writeLong(dataLength);
+    }
+  }
+
+  private void writeByteField(
+      FieldInfo fieldInfo, ByteVectorValues byteVectorValues, IntToIntFunction oldToNewDocId)
+      throws IOException {
+    int number = fieldInfo.number;
+    meta.writeInt(number);
+
+    try (FaissLibrary.Index index =
+        FaissLibrary.INSTANCE.createIndex(
+            description,
+            indexParams,
+            fieldInfo.getVectorSimilarityFunction(),
+            byteVectorValues,
             oldToNewDocId)) {
 
       // Write index
@@ -228,6 +264,43 @@ final class FaissKnnVectorsWriter extends KnnVectorsWriter {
 
     @Override
     public FloatVectorValues copy() {
+      throw new AssertionError("Should not be called");
+    }
+
+    @Override
+    public DocIndexIterator iterator() {
+      return fromDISI(docIdSet.iterator());
+    }
+  }
+
+  private static class BufferedByteVectorValues extends ByteVectorValues {
+    private final List<byte[]> bytes;
+    private final int dimension;
+    private final DocIdSet docIdSet;
+
+    public BufferedByteVectorValues(List<byte[]> bytes, int dimension, DocIdSet docIdSet) {
+      this.bytes = bytes;
+      this.dimension = dimension;
+      this.docIdSet = docIdSet;
+    }
+
+    @Override
+    public byte[] vectorValue(int ord) {
+      return bytes.get(ord);
+    }
+
+    @Override
+    public int dimension() {
+      return dimension;
+    }
+
+    @Override
+    public int size() {
+      return bytes.size();
+    }
+
+    @Override
+    public ByteVectorValues copy() {
       throw new AssertionError("Should not be called");
     }
 
