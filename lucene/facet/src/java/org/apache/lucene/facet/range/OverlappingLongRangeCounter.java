@@ -360,9 +360,13 @@ class OverlappingLongRangeCounter extends LongRangeCounter {
         outputs.add(index);
       } else if (left != null) {
         assert right != null;
-        // Recurse:
-        left.addOutputs(index, range);
-        right.addOutputs(index, range);
+        // The children partition this node, so only descend into intersecting children.
+        if (range.min <= left.end) {
+          left.addOutputs(index, range);
+        }
+        if (range.max >= right.start) {
+          right.addOutputs(index, range);
+        }
       }
     }
 

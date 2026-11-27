@@ -70,6 +70,32 @@ import org.apache.lucene.util.NumericUtils;
 
 public class TestRangeFacetCounts extends FacetTestCase {
 
+  public void testOverlappingRangeTreeBoundaries() {
+    LongRange[] ranges = new LongRange[64];
+    ranges[0] = new LongRange("all", Long.MIN_VALUE, true, Long.MAX_VALUE, true);
+    ranges[1] = new LongRange("min", Long.MIN_VALUE, true, Long.MIN_VALUE, true);
+    ranges[2] = new LongRange("max", Long.MAX_VALUE, true, Long.MAX_VALUE, true);
+    for (int i = 3; i < ranges.length; i++) {
+      long start = random().nextInt(512) - 256;
+      ranges[i] = new LongRange("range" + i, start, true, start + random().nextInt(12), true);
+    }
+    int[] counts = new int[ranges.length];
+    int[] expected = new int[ranges.length];
+    LongRangeCounter counter = LongRangeCounter.create(ranges, counts);
+    for (LongRange range : ranges) {
+      for (long value : new long[] {range.min, range.max}) {
+        counter.addSingleValued(value);
+        for (int i = 0; i < ranges.length; i++) {
+          if (ranges[i].accept(value)) {
+            expected[i]++;
+          }
+        }
+      }
+    }
+    assertEquals(0, counter.finish());
+    assertArrayEquals(expected, counts);
+  }
+
   public void testBasicLong() throws Exception {
     Directory d = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), d);

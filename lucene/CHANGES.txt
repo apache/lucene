@@ -411,6 +411,9 @@ Optimizations
 
 * GITHUB#16757: Speed up building cached bit sets in LRUQueryCache. (Ke Wei)
 
+* GITHUB#17059: Building overlapping numeric range facets skips tree branches outside each requested
+  range, reducing setup time for large numbers of overlapping ranges. (Asharam)
+
 * GITHUB#17045: LSBRadixSorter sorts values that are clustered in a small part of their range with
   fewer radix passes. This speeds up DocIdSetBuilder, e.g. for range queries on fields whose values
   follow doc ID order such as timestamps or index sort fields. (Asharam)
