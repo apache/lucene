@@ -137,7 +137,7 @@ public class SuggestField extends Field {
     return new BytesRef(byteArrayOutputStream.toByteArray());
   }
 
-  private boolean isReserved(char c) {
+  static boolean isReserved(char c) {
     switch (c) {
       case ConcatenateGraphFilter.SEP_LABEL:
       case CompletionAnalyzer.HOLE_CHARACTER:

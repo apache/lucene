@@ -41,6 +41,14 @@ import org.junit.Before;
 
 public class TestContextSuggestField extends LuceneTestCase {
 
+  /** Characters that may not appear in a suggestion or in a context value. */
+  static final int[] RESERVED_CHARS = {
+    ContextSuggestField.CONTEXT_SEPARATOR,
+    ConcatenateGraphFilter.SEP_LABEL,
+    CompletionAnalyzer.HOLE_CHARACTER,
+    NRTSuggesterBuilder.END_BYTE
+  };
+
   public Directory dir;
 
   @Before
@@ -99,6 +107,29 @@ public class TestContextSuggestField extends LuceneTestCase {
                 iw.commit(false);
               });
       assertTrue(expected.getMessage().contains("[0x1d]"));
+    }
+  }
+
+  public void testReservedCharsInContext() throws Exception {
+    for (int reserved : RESERVED_CHARS) {
+      Analyzer analyzer = new MockAnalyzer(random());
+      String context = "ad" + (char) reserved + "min";
+      try (Directory contextDir = newDirectory();
+          RandomIndexWriter iw =
+              new RandomIndexWriter(random(), contextDir, iwcWithSuggestField(analyzer, "name"))) {
+        Document document = new Document();
+        IllegalArgumentException expected =
+            expectThrows(
+                IllegalArgumentException.class,
+                () -> {
+                  document.add(new ContextSuggestField("name", "sugg", 1, context));
+                  iw.addDocument(document);
+                  iw.commit(false);
+                });
+        assertTrue(
+            expected.getMessage(),
+            expected.getMessage().contains("[0x" + Integer.toHexString(reserved) + "]"));
+      }
     }
   }
 

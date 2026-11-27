@@ -126,7 +126,7 @@ public class ContextQuery extends CompletionQuery implements Accountable {
       throw new IllegalArgumentException("'boost' must be >= 0");
     }
     for (int i = 0; i < context.length(); i++) {
-      if (ContextSuggestField.CONTEXT_SEPARATOR == context.charAt(i)) {
+      if (ContextSuggestField.isReserved(context.charAt(i))) {
         throw new IllegalArgumentException(
             "Illegal value ["
                 + context

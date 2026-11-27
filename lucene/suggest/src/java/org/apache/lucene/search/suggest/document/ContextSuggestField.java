@@ -165,7 +165,7 @@ public class ContextSuggestField extends SuggestField {
 
   private void validate(final CharSequence value) {
     for (int i = 0; i < value.length(); i++) {
-      if (CONTEXT_SEPARATOR == value.charAt(i)) {
+      if (isReserved(value.charAt(i))) {
         throw new IllegalArgumentException(
             "Illegal value ["
                 + value
@@ -176,5 +176,13 @@ public class ContextSuggestField extends SuggestField {
                 + " is a reserved character");
       }
     }
+  }
+
+  /**
+   * Returns true if the character is reserved, either as the context separator or by the completion
+   * postings format (see {@link SuggestField}).
+   */
+  static boolean isReserved(char c) {
+    return CONTEXT_SEPARATOR == c || SuggestField.isReserved(c);
   }
 }
