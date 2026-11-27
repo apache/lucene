@@ -22,6 +22,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.LongValues;
@@ -72,6 +73,42 @@ public class TestDirectPacked extends LuceneTestCase {
     assertTrue(expected.getMessage().startsWith("Wrong number of values added"));
 
     output.close();
+    dir.close();
+  }
+
+  public void testExposesPackedStorage() throws Exception {
+    Directory dir = newDirectory();
+    IndexOutput output = dir.createOutput("foo", IOContext.DEFAULT);
+    output.writeBytes(new byte[1024], 1024);
+    output.close();
+    IndexInput input = dir.openInput("foo", IOContext.DEFAULT);
+    RandomAccessInput slice = input.randomAccessSlice(0, input.length());
+    for (int bitsPerValue : DirectWriter.SUPPORTED_BITS_PER_VALUE) {
+      long offset = TestUtil.nextInt(random(), 0, 100);
+      LongValues reader = DirectReader.getInstance(slice, bitsPerValue, offset);
+      assertTrue(reader instanceof DirectPackedValues);
+      DirectPackedValues packed = (DirectPackedValues) reader;
+      assertEquals(bitsPerValue, packed.bitsPerValue());
+      assertSame(slice, packed.input());
+      assertEquals(offset, packed.offset());
+    }
+    input.close();
+    dir.close();
+  }
+
+  public void testMergeInstanceHidesPackedStorage() throws Exception {
+    Directory dir = newDirectory();
+    IndexOutput output = dir.createOutput("foo", IOContext.DEFAULT);
+    output.writeBytes(new byte[1024], 1024);
+    output.close();
+    IndexInput input = dir.openInput("foo", IOContext.DEFAULT);
+    RandomAccessInput slice = input.randomAccessSlice(0, input.length());
+    for (int bitsPerValue : DirectWriter.SUPPORTED_BITS_PER_VALUE) {
+      // Merge instances buffer decoded values, so callers can't read the input directly.
+      LongValues reader = DirectReader.getMergeInstance(slice, bitsPerValue, 8);
+      assertFalse(reader instanceof DirectPackedValues);
+    }
+    input.close();
     dir.close();
   }
 
