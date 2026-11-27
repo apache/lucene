@@ -704,7 +704,9 @@ public class TestColumnBatchVectorColumn extends LuceneTestCase {
           assertEquals(expected.length, actual.length);
           for (int j = 0; j < expected.length; j++) {
             assertEquals(expected[j].doc, actual[j].doc);
-            assertEquals(expected[j].score, actual[j].score, 0f);
+            // the two directories are randomized independently, so the scorers (heap vs
+            // memory-segment SIMD) may differ in float rounding
+            assertEquals(expected[j].score, actual[j].score, 1e-5f);
           }
         }
       }
