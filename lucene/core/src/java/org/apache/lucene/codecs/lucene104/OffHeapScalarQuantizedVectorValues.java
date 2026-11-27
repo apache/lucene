@@ -25,6 +25,7 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.MemorySegmentAccessInput;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
@@ -48,6 +49,8 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
   final ByteBuffer byteBuffer;
   final int byteSize;
   private int lastOrd = -1;
+  // touch() stores its sum here so the JIT cannot remove the cache-warming loads as unused
+  int touched;
   final float[] correctiveValues;
   int quantizedComponentSum;
   final OptimizedScalarQuantizer quantizer;
@@ -132,6 +135,25 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
     quantizedComponentSum = slice.readInt();
     lastOrd = targetOrd;
     return vectorValue;
+  }
+
+  /**
+   * Loads one byte of every cache line of the given vectors, so that their cache misses overlap
+   * instead of being paid one after the other while they are scored.
+   */
+  void touch(int[] ords, int count) throws IOException {
+    if (slice instanceof MemorySegmentAccessInput in) {
+      int sum = 0;
+      for (int i = 0; i < count; i++) {
+        long start = (long) ords[i] * byteSize;
+        long last = start + byteSize - 1;
+        for (long pos = start; pos < last; pos += 64) {
+          sum += in.readByte(pos);
+        }
+        sum += in.readByte(last);
+      }
+      touched = sum;
+    }
   }
 
   @Override
