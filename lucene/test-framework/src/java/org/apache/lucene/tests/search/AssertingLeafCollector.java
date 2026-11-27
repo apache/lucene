@@ -41,6 +41,7 @@ class AssertingLeafCollector extends FilterLeafCollector {
 
   private int[] docBuffer;
   private int batchCollectionDepth;
+  private int streamGeneration;
 
   AssertingLeafCollector(LeafCollector collector, int min, int max) {
     super(collector);
@@ -101,9 +102,11 @@ class AssertingLeafCollector extends FilterLeafCollector {
     } else {
       batchCollectionDepth++;
       try {
-        in.collect(new AssertingDocIdStream(stream));
+        in.collect(new AssertingDocIdStream(stream, -1, lastCollected));
       } finally {
         batchCollectionDepth--;
+        // The stream and its forks are no longer valid
+        streamGeneration++;
       }
     }
   }
@@ -184,21 +187,53 @@ class AssertingLeafCollector extends FilterLeafCollector {
   private class AssertingDocIdStream extends DocIdStream {
 
     private final DocIdStream stream;
-    private int lastUpTo = -1;
+    private final int generation;
+    private int lastUpTo;
+    // Last doc returned by this stream. Tracked per stream rather than via lastCollected, since
+    // forks return the same doc IDs as the stream they were forked from.
+    private int lastDoc;
 
-    AssertingDocIdStream(DocIdStream stream) {
+    AssertingDocIdStream(DocIdStream stream, int lastUpTo, int lastDoc) {
       this.stream = stream;
+      this.generation = streamGeneration;
+      this.lastUpTo = lastUpTo;
+      this.lastDoc = lastDoc;
+    }
+
+    private void assertValid() {
+      assert generation == streamGeneration
+          : "DocIdStream used after the call to collect(DocIdStream) returned";
+    }
+
+    private void onDoc(int doc) {
+      assert doc > lastDoc : "Out of order : " + lastDoc + " " + doc;
+      assert doc >= min : "Out of range: " + doc + " < " + min;
+      assert doc < max : "Out of range: " + doc + " >= " + max;
+      lastDoc = doc;
+      lastCollected = Math.max(lastCollected, doc);
+    }
+
+    @Override
+    public DocIdStream fork() {
+      assertValid();
+      if (rarely()) {
+        // Forking is optional, exercise callers' fallback path.
+        return null;
+      }
+      DocIdStream fork = stream.fork();
+      if (fork == null) {
+        return null;
+      }
+      return new AssertingDocIdStream(fork, lastUpTo, lastDoc);
     }
 
     @Override
     public void forEach(IOIntConsumer consumer) throws IOException {
+      assertValid();
       assert lastUpTo != DocIdSetIterator.NO_MORE_DOCS : "exhausted";
       stream.forEach(doc -> {
-        assert doc > lastCollected : "Out of order : " + lastCollected + " " + doc;
-        assert doc >= min : "Out of range: " + doc + " < " + min;
-        assert doc < max : "Out of range: " + doc + " >= " + max;
+        onDoc(doc);
         consumer.accept(doc);
-        lastCollected = doc;
       });
       lastUpTo = DocIdSetIterator.NO_MORE_DOCS;
       assert stream.mayHaveRemaining() == false;
@@ -206,14 +241,15 @@ class AssertingLeafCollector extends FilterLeafCollector {
 
     @Override
     public void forEach(int upTo, IOIntConsumer consumer) throws IOException {
+      assertValid();
       assert lastUpTo < upTo : "upTo=" + upTo + " but previous upTo=" + lastUpTo;
-      stream.forEach(doc -> {
-        assert doc > lastCollected : "Out of order : " + lastCollected + " " + doc;
-        assert doc >= min : "Out of range: " + doc + " < " + min;
-        assert doc < max : "Out of range: " + doc + " >= " + max;
-        consumer.accept(doc);
-        lastCollected = doc;
-      });
+      stream.forEach(
+          upTo,
+          doc -> {
+            assert doc < upTo : "Out of range: " + doc + " >= upTo=" + upTo;
+            onDoc(doc);
+            consumer.accept(doc);
+          });
       lastUpTo = upTo;
       if (upTo == DocIdSetIterator.NO_MORE_DOCS) {
         assert stream.mayHaveRemaining() == false;
@@ -222,6 +258,7 @@ class AssertingLeafCollector extends FilterLeafCollector {
 
     @Override
     public int count() throws IOException {
+      assertValid();
       assert lastUpTo != DocIdSetIterator.NO_MORE_DOCS : "exhausted";
       int count = stream.count();
       lastUpTo = DocIdSetIterator.NO_MORE_DOCS;
@@ -231,6 +268,7 @@ class AssertingLeafCollector extends FilterLeafCollector {
 
     @Override
     public int count(int upTo) throws IOException {
+      assertValid();
       assert lastUpTo < upTo : "upTo=" + upTo + " but previous upTo=" + lastUpTo;
       int count = stream.count(upTo);
       lastUpTo = upTo;
@@ -242,9 +280,13 @@ class AssertingLeafCollector extends FilterLeafCollector {
 
     @Override
     public int intoArray(int[] array) {
+      assertValid();
       assert array.length > 0;
       int count = stream.intoArray(array);
       assert lastUpTo != DocIdSetIterator.NO_MORE_DOCS || count == 0;
+      for (int i = 0; i < count; ++i) {
+        onDoc(array[i]);
+      }
       if (count < array.length) {
         lastUpTo = DocIdSetIterator.NO_MORE_DOCS;
         assert stream.mayHaveRemaining() == false;
@@ -256,6 +298,7 @@ class AssertingLeafCollector extends FilterLeafCollector {
 
     @Override
     public int intoArray(int upTo, int[] array) {
+      assertValid();
       assert array.length > 0;
       assert lastUpTo <= upTo : "upTo=" + upTo + " but previous upTo=" + lastUpTo;
       int count = stream.intoArray(upTo, array);
@@ -264,6 +307,9 @@ class AssertingLeafCollector extends FilterLeafCollector {
 
       if (count != 0) {
         assert array[count - 1] < upTo;
+      }
+      for (int i = 0; i < count; ++i) {
+        onDoc(array[i]);
       }
 
       if (count < array.length) {
@@ -281,6 +327,7 @@ class AssertingLeafCollector extends FilterLeafCollector {
 
     @Override
     public boolean mayHaveRemaining() {
+      assertValid();
       boolean mayHaveRemaining = stream.mayHaveRemaining();
       if (lastUpTo == DocIdSetIterator.NO_MORE_DOCS) {
         assert mayHaveRemaining == false;

@@ -209,7 +209,48 @@ public class MultiCollector implements Collector {
       }
     }
 
-    // NOTE: not propagating collect(DocIdStream) since DocIdStreams may only be consumed once.
+    @Override
+    public void collect(DocIdStream stream) throws IOException {
+      // A DocIdStream may only be consumed once, so give each collector its own fork. The last
+      // collector consumes the original stream. All forks must be created before any collector
+      // starts consuming, since forks start at the current position of the stream.
+      final DocIdStream[] streams = new DocIdStream[collectors.length];
+      int last = -1;
+      for (int i = 0; i < collectors.length; i++) {
+        if (collectors[i] != null) {
+          if (last != -1) {
+            DocIdStream fork = stream.fork();
+            if (fork == null) {
+              // This stream doesn't support forking, fall back to collecting doc by doc.
+              stream.forEach(this::collect);
+              return;
+            }
+            streams[last] = fork;
+          }
+          last = i;
+        }
+      }
+      if (last == -1) {
+        return;
+      }
+      streams[last] = stream;
+
+      for (int i = 0; i < collectors.length; i++) {
+        final DocIdStream s = streams[i];
+        if (s != null) {
+          try {
+            collectors[i].collect(s);
+          } catch (CollectionTerminatedException _) {
+            collectors[i].finish();
+            collectors[i] = null;
+            if (allCollectorsTerminated()) {
+              throw new CollectionTerminatedException();
+            }
+          }
+        }
+      }
+    }
+
     @Override
     public void collect(int doc) throws IOException {
       for (int i = 0; i < collectors.length; i++) {

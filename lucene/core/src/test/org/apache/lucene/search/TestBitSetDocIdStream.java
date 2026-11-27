@@ -17,6 +17,8 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BitSetIterator;
@@ -196,5 +198,45 @@ public class TestBitSetDocIdStream extends LuceneTestCase {
     assertEquals(bitSet.prevSetBit(bitSet.length() - 1), iterator.docID());
 
     assertFalse(stream.mayHaveRemaining());
+  }
+
+  public void testFork() throws IOException {
+    FixedBitSet bitSet = randomBitSet();
+    int base = 42;
+    BitSetDocIdStream stream = new BitSetDocIdStream(bitSet, base);
+    int upTo = random().nextInt(bitSet.length() + 1);
+    assertEquals(bitSet.cardinality(0, upTo), stream.count(base + upTo));
+
+    List<Integer> expected = new ArrayList<>();
+    for (int i = upTo; i < bitSet.length(); ++i) {
+      if (bitSet.get(i)) {
+        expected.add(base + i);
+      }
+    }
+
+    DocIdStream fork1 = stream.fork();
+    DocIdStream fork2 = fork1.fork();
+    assertNotNull(fork1);
+    assertNotNull(fork2);
+
+    assertEquals(expected, toList(fork1));
+    assertFalse(fork1.mayHaveRemaining());
+    assertEquals(expected.size(), fork2.count());
+    assertFalse(fork2.mayHaveRemaining());
+
+    // Consuming forks doesn't advance the original stream
+    assertEquals(expected, toList(stream));
+    assertFalse(stream.mayHaveRemaining());
+
+    // Exhausted streams can be forked too
+    DocIdStream fork3 = stream.fork();
+    assertFalse(fork3.mayHaveRemaining());
+    assertEquals(0, fork3.count());
+  }
+
+  private static List<Integer> toList(DocIdStream stream) throws IOException {
+    List<Integer> docs = new ArrayList<>();
+    stream.forEach(docs::add);
+    return docs;
   }
 }

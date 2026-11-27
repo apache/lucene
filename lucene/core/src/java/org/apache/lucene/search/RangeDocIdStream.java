@@ -33,6 +33,18 @@ final class RangeDocIdStream extends DocIdStream {
     this.max = max;
   }
 
+  private RangeDocIdStream(RangeDocIdStream other) {
+    // Doesn't go through the public constructor, which rejects empty ranges, so that exhausted
+    // streams can be forked too.
+    this.upTo = other.upTo;
+    this.max = other.max;
+  }
+
+  @Override
+  public DocIdStream fork() {
+    return new RangeDocIdStream(this);
+  }
+
   @Override
   public boolean mayHaveRemaining() {
     return upTo < max;

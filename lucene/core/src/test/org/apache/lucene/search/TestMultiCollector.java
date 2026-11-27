@@ -26,15 +26,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.DummyTotalHitCountCollector;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.IOIntConsumer;
 
 public class TestMultiCollector extends LuceneTestCase {
 
@@ -593,6 +598,321 @@ public class TestMultiCollector extends LuceneTestCase {
           assertEquals(ScoreMode.COMPLETE_NO_SCORES, c.scoreMode());
         }
       }
+    }
+  }
+
+  public void testCollectDocIdStream() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
+    iw.addDocument(new Document());
+    DirectoryReader reader = iw.getReader();
+    iw.close();
+    final LeafReaderContext ctx = reader.leaves().get(0);
+
+    List<DocIdStreamRecordingCollector> collectors = new ArrayList<>();
+    for (int i = TestUtil.nextInt(random(), 2, 5); i > 0; --i) {
+      collectors.add(new DocIdStreamRecordingCollector(random().nextBoolean(), Integer.MAX_VALUE));
+    }
+    LeafCollector lc = MultiCollector.wrap(collectors).getLeafCollector(ctx);
+
+    FixedBitSet window1 = randomWindow();
+    FixedBitSet window2 = randomWindow();
+    int base2 = window1.length();
+    lc.collect(new BitSetDocIdStream(window1, 0));
+    lc.collect(new BitSetDocIdStream(window2, base2));
+    lc.finish();
+
+    List<Integer> expected = new ArrayList<>();
+    expected.addAll(docs(window1, 0));
+    expected.addAll(docs(window2, base2));
+    for (DocIdStreamRecordingCollector collector : collectors) {
+      // Every collector got the DocIdStreams, rather than doc IDs one by one
+      assertEquals(2, collector.streamCalls);
+      assertEquals(0, collector.docCalls);
+      assertEquals(expected, collector.docs);
+    }
+
+    reader.close();
+    dir.close();
+  }
+
+  public void testCollectDocIdStreamWithoutForkSupport() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
+    iw.addDocument(new Document());
+    DirectoryReader reader = iw.getReader();
+    iw.close();
+    final LeafReaderContext ctx = reader.leaves().get(0);
+
+    List<DocIdStreamRecordingCollector> collectors = new ArrayList<>();
+    List<String> events = new ArrayList<>();
+    for (int i = TestUtil.nextInt(random(), 2, 5); i > 0; --i) {
+      DocIdStreamRecordingCollector collector =
+          new DocIdStreamRecordingCollector(random().nextBoolean(), Integer.MAX_VALUE);
+      collector.name = "c" + collectors.size();
+      collector.events = events;
+      collectors.add(collector);
+    }
+    LeafCollector lc = MultiCollector.wrap(collectors).getLeafCollector(ctx);
+
+    FixedBitSet window = randomWindow();
+    DocIdStream in = new BitSetDocIdStream(window, 0);
+    DocIdStream stream =
+        new DocIdStream() {
+          @Override
+          public void forEach(int upTo, IOIntConsumer consumer) throws IOException {
+            in.forEach(upTo, consumer);
+          }
+
+          @Override
+          public int count(int upTo) throws IOException {
+            return in.count(upTo);
+          }
+
+          @Override
+          public int intoArray(int upTo, int[] array) {
+            return in.intoArray(upTo, array);
+          }
+
+          @Override
+          public boolean mayHaveRemaining() {
+            return in.mayHaveRemaining();
+          }
+        };
+    assertNull(stream.fork());
+    lc.collect(stream);
+
+    List<Integer> expected = docs(window, 0);
+    List<String> expectedEvents = new ArrayList<>();
+    for (int doc : expected) {
+      for (DocIdStreamRecordingCollector collector : collectors) {
+        expectedEvents.add(collector.name + ":" + doc);
+      }
+    }
+    for (DocIdStreamRecordingCollector collector : collectors) {
+      // Falls back to collecting doc by doc
+      assertEquals(0, collector.streamCalls);
+      assertEquals(expected.size(), collector.docCalls);
+      assertEquals(expected, collector.docs);
+    }
+    // Each doc is passed to all collectors before moving on to the next doc, like before forking
+    // was supported
+    assertEquals(expectedEvents, events);
+
+    reader.close();
+    dir.close();
+  }
+
+  public void testCollectDocIdStreamCollectionTermination() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
+    iw.addDocument(new Document());
+    DirectoryReader reader = iw.getReader();
+    iw.close();
+    final LeafReaderContext ctx = reader.leaves().get(0);
+
+    FixedBitSet window1 = randomWindow();
+    FixedBitSet window2 = randomWindow();
+    int base2 = window1.length();
+    List<Integer> docs1 = docs(window1, 0);
+    List<Integer> docs2 = docs(window2, base2);
+
+    // c1 terminates on the first window, c2 on the second one
+    int terminateAfter1 = random().nextInt(docs1.size());
+    int terminateAfter2 = docs1.size() + random().nextInt(docs2.size());
+    DocIdStreamRecordingCollector c1 =
+        new DocIdStreamRecordingCollector(random().nextBoolean(), terminateAfter1);
+    DocIdStreamRecordingCollector c2 =
+        new DocIdStreamRecordingCollector(random().nextBoolean(), terminateAfter2);
+    LeafCollector lc = MultiCollector.wrap(c1, c2).getLeafCollector(ctx);
+
+    lc.collect(new BitSetDocIdStream(window1, 0));
+    assertTrue(c1.finishCalled);
+    assertFalse(c2.finishCalled);
+    assertEquals(docs1.subList(0, terminateAfter1), c1.docs);
+    assertEquals(docs1, c2.docs);
+
+    expectThrows(
+        CollectionTerminatedException.class,
+        () -> lc.collect(new BitSetDocIdStream(window2, base2)));
+    assertEquals(1, c1.streamCalls);
+    assertTrue(c2.finishCalled);
+    List<Integer> expected2 = new ArrayList<>(docs1);
+    expected2.addAll(docs2);
+    assertEquals(expected2.subList(0, terminateAfter2), c2.docs);
+
+    reader.close();
+    dir.close();
+  }
+
+  public void testCollectDocIdStreamRandomQueries() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    final int numDocs = atLeast(5000);
+    for (int i = 0; i < numDocs; ++i) {
+      Document doc = new Document();
+      if (random().nextBoolean()) {
+        doc.add(new StringField("f", "a", Field.Store.NO));
+      }
+      if (random().nextInt(3) == 0) {
+        doc.add(new StringField("g", "b", Field.Store.NO));
+      }
+      w.addDocument(doc);
+    }
+    final IndexReader reader = w.getReader();
+    w.close();
+    final IndexSearcher searcher = newSearcher(reader);
+
+    Query a = new TermQuery(new Term("f", "a"));
+    Query b = new TermQuery(new Term("g", "b"));
+    Query[] queries =
+        new Query[] {
+          a,
+          new ConstantScoreQuery(b),
+          new BooleanQuery.Builder()
+              .add(a, BooleanClause.Occur.SHOULD)
+              .add(b, BooleanClause.Occur.SHOULD)
+              .build(),
+          new BooleanQuery.Builder()
+              .add(a, BooleanClause.Occur.FILTER)
+              .add(b, BooleanClause.Occur.FILTER)
+              .build(),
+          MatchAllDocsQuery.INSTANCE
+        };
+    for (Query query : queries) {
+      List<Integer> expected = collectDocs(searcher, query, 1).get(0);
+      for (List<Integer> actual : collectDocs(searcher, query, TestUtil.nextInt(random(), 2, 4))) {
+        assertEquals(query.toString(), expected, actual);
+      }
+    }
+
+    reader.close();
+    dir.close();
+  }
+
+  /** Collect matches of {@code query} into {@code numCollectors} collectors. */
+  private static List<List<Integer>> collectDocs(
+      IndexSearcher searcher, Query query, int numCollectors) throws IOException {
+    List<List<DocIdStreamRecordingCollector>> collectorsPerSlice = new ArrayList<>();
+    searcher.search(
+        query,
+        new CollectorManager<Collector, Void>() {
+          @Override
+          public Collector newCollector() {
+            List<DocIdStreamRecordingCollector> collectors = new ArrayList<>();
+            for (int i = 0; i < numCollectors; ++i) {
+              collectors.add(
+                  new DocIdStreamRecordingCollector(random().nextBoolean(), Integer.MAX_VALUE));
+            }
+            collectorsPerSlice.add(collectors);
+            return MultiCollector.wrap(collectors);
+          }
+
+          @Override
+          public Void reduce(Collection<Collector> collectors) {
+            return null;
+          }
+        });
+    List<List<Integer>> docs = new ArrayList<>();
+    for (int i = 0; i < numCollectors; ++i) {
+      List<Integer> collectorDocs = new ArrayList<>();
+      for (List<DocIdStreamRecordingCollector> collectors : collectorsPerSlice) {
+        collectorDocs.addAll(collectors.get(i).docs);
+      }
+      Collections.sort(collectorDocs);
+      docs.add(collectorDocs);
+    }
+    return docs;
+  }
+
+  /** Return a random window of matches, with at least one match. */
+  private static FixedBitSet randomWindow() {
+    FixedBitSet window = new FixedBitSet(TestUtil.nextInt(random(), 1, 300));
+    for (int i = 0; i < window.length(); ++i) {
+      if (random().nextBoolean()) {
+        window.set(i);
+      }
+    }
+    window.set(random().nextInt(window.length()));
+    return window;
+  }
+
+  private static List<Integer> docs(FixedBitSet window, int base) {
+    List<Integer> docs = new ArrayList<>();
+    for (int i = 0; i < window.length(); ++i) {
+      if (window.get(i)) {
+        docs.add(base + i);
+      }
+    }
+    return docs;
+  }
+
+  /**
+   * Records collected doc IDs, and whether they were collected one by one or through a {@link
+   * DocIdStream}. Throws a {@link CollectionTerminatedException} after {@code terminateAfter} docs.
+   */
+  private static class DocIdStreamRecordingCollector extends SimpleCollector {
+
+    final List<Integer> docs = new ArrayList<>();
+    private final boolean useIntoArray;
+    private final int terminateAfter;
+    private int docBase;
+    int streamCalls;
+    int docCalls;
+    boolean finishCalled;
+    // Optional log of "name:doc" events, which can be shared across collectors
+    String name;
+    List<String> events;
+
+    DocIdStreamRecordingCollector(boolean useIntoArray, int terminateAfter) {
+      this.useIntoArray = useIntoArray;
+      this.terminateAfter = terminateAfter;
+    }
+
+    @Override
+    protected void doSetNextReader(LeafReaderContext context) throws IOException {
+      docBase = context.docBase;
+    }
+
+    @Override
+    public void collect(int doc) throws IOException {
+      docCalls++;
+      record(doc);
+    }
+
+    @Override
+    public void collect(DocIdStream stream) throws IOException {
+      streamCalls++;
+      if (useIntoArray) {
+        int[] buffer = new int[7];
+        for (int count = stream.intoArray(buffer); count != 0; count = stream.intoArray(buffer)) {
+          for (int i = 0; i < count; ++i) {
+            record(buffer[i]);
+          }
+        }
+      } else {
+        stream.forEach(this::record);
+      }
+    }
+
+    private void record(int doc) {
+      if (docs.size() >= terminateAfter) {
+        throw new CollectionTerminatedException();
+      }
+      docs.add(docBase + doc);
+      if (events != null) {
+        events.add(name + ":" + (docBase + doc));
+      }
+    }
+
+    @Override
+    public void finish() {
+      finishCalled = true;
+    }
+
+    @Override
+    public ScoreMode scoreMode() {
+      return ScoreMode.COMPLETE_NO_SCORES;
     }
   }
 

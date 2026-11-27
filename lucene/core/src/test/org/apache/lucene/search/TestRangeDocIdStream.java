@@ -18,6 +18,7 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.FixedBitSet;
 
 public class TestRangeDocIdStream extends LuceneTestCase {
@@ -152,5 +153,34 @@ public class TestRangeDocIdStream extends LuceneTestCase {
     assertEquals(100 - 90, stream.count(120));
 
     assertFalse(stream.mayHaveRemaining());
+  }
+
+  public void testFork() throws IOException {
+    RangeDocIdStream stream = new RangeDocIdStream(42, 100);
+    int upTo = TestUtil.nextInt(random(), 42, 100);
+    assertEquals(upTo - 42, stream.count(upTo));
+
+    DocIdStream fork1 = stream.fork();
+    DocIdStream fork2 = fork1.fork();
+    assertNotNull(fork1);
+    assertNotNull(fork2);
+
+    assertEquals(100 - upTo, fork1.count());
+    assertFalse(fork1.mayHaveRemaining());
+
+    int[] expected = new int[] {upTo};
+    fork2.forEach(doc -> {
+      assertEquals(expected[0]++, doc);
+    });
+    assertEquals(100, expected[0]);
+
+    // Consuming forks doesn't advance the original stream
+    assertEquals(100 - upTo, stream.count());
+    assertFalse(stream.mayHaveRemaining());
+
+    // Exhausted streams can be forked too
+    DocIdStream fork3 = stream.fork();
+    assertFalse(fork3.mayHaveRemaining());
+    assertEquals(0, fork3.count());
   }
 }

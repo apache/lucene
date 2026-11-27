@@ -34,6 +34,19 @@ final class BitSetDocIdStream extends DocIdStream {
     max = MathUtil.unsignedMin(Integer.MAX_VALUE, offset + bitSet.length());
   }
 
+  private BitSetDocIdStream(BitSetDocIdStream other) {
+    this.bitSet = other.bitSet;
+    this.offset = other.offset;
+    this.upTo = other.upTo;
+    this.max = other.max;
+  }
+
+  @Override
+  public DocIdStream fork() {
+    // The bit set is not modified while this stream is valid, so it can be shared.
+    return new BitSetDocIdStream(this);
+  }
+
   @Override
   public boolean mayHaveRemaining() {
     return upTo < max;
