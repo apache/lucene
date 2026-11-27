@@ -208,10 +208,11 @@ public class DefaultBulkScorerBenchmark {
     }
   }
 
+  // Constant score bulk scoring collects sparse matches one by one, so both methods count.
   private static final class DocIdStreamCountingLeafCollector extends CountingLeafCollector {
     @Override
     public void collect(int doc) {
-      throw new AssertionError("Constant score bulk scoring must use DocIdStream collection");
+      count++;
     }
 
     @Override

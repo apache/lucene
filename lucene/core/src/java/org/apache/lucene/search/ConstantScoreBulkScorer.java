@@ -26,6 +26,15 @@ import org.apache.lucene.util.MathUtil;
  * DocIdSetIterator#intoBitSet}.
  */
 final class ConstantScoreBulkScorer extends BulkScorer {
+
+  /**
+   * Plain iterators that are expected to match less than one doc out of this number are better
+   * collected one doc at a time: loading, collecting and clearing a window costs the same however
+   * few matches it has. This is 32 matches per window of {@link
+   * DenseConjunctionBulkScorer#WINDOW_SIZE} docs.
+   */
+  static final int SPARSE_THRESHOLD_INVERSE = 128;
+
   private final Scorer scorer;
   private final DocIdSetIterator iterator;
   // When non-null, matches of the approximation must be confirmed via twoPhase#matches() /

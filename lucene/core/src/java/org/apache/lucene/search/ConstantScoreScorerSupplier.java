@@ -90,10 +90,13 @@ public abstract class ConstantScoreScorerSupplier extends ScorerSupplier {
         twoPhases = Collections.singletonList(twoPhase);
       }
       return new DenseConjunctionBulkScorer(iterators, twoPhases, maxDoc, score);
-    } else if (scoreMode.needsScores() == false) {
+    } else if (scoreMode.needsScores() == false
+        && (twoPhase != null
+            || iterator.cost() >= maxDoc / ConstantScoreBulkScorer.SPARSE_THRESHOLD_INVERSE)) {
       // Collect window-by-window via intoBitSet. For a two-phase iterator this confirms matches in
       // its (possibly bulk) intoBitSet; the only overhead over a plain leap-frog is the reusable
-      // window bit set, which buys batched live-docs masking and bulk collection in return.
+      // window bit set, which buys batched live-docs masking and bulk collection in return. Plain
+      // iterators that are expected to be sparse are collected one doc at a time instead.
       return twoPhase == null
           ? new ConstantScoreBulkScorer(score, scoreMode, iterator)
           : new ConstantScoreBulkScorer(score, scoreMode, twoPhase);

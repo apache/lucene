@@ -172,6 +172,37 @@ public class TestConstantScoreBulkScorer extends LuceneTestCase {
     assertEquals(match, collect(bulkScorer, maxDoc, null));
   }
 
+  public void testSupplierRoutesPlainIteratorsByCost() throws IOException {
+    int maxDoc = 100_000;
+    // Matches fewer than 1 doc out of SPARSE_THRESHOLD_INVERSE: collected one doc at a time.
+    FixedBitSet sparse = modBitSet(maxDoc, 1000);
+    BulkScorer bulkScorer =
+        ConstantScoreScorerSupplier.fromIterator(
+                new BitSetIterator(sparse, sparse.cardinality()),
+                1f,
+                ScoreMode.COMPLETE_NO_SCORES,
+                maxDoc)
+            .bulkScorer();
+    assertTrue(
+        "expected DefaultBulkScorer but got " + bulkScorer.getClass().getName(),
+        bulkScorer instanceof Weight.DefaultBulkScorer);
+    assertEquals(sparse, collect(bulkScorer, maxDoc, null));
+
+    // Denser, but below the threshold of DenseConjunctionBulkScorer: collected through bit sets.
+    FixedBitSet dense = modBitSet(maxDoc, 64);
+    bulkScorer =
+        ConstantScoreScorerSupplier.fromIterator(
+                new BitSetIterator(dense, dense.cardinality()),
+                1f,
+                ScoreMode.COMPLETE_NO_SCORES,
+                maxDoc)
+            .bulkScorer();
+    assertTrue(
+        "expected ConstantScoreBulkScorer but got " + bulkScorer.getClass().getName(),
+        bulkScorer instanceof ConstantScoreBulkScorer);
+    assertEquals(dense, collect(bulkScorer, maxDoc, null));
+  }
+
   public void testSupplierRoutesSparseNonBulkTwoPhase() throws IOException {
     int maxDoc = 100_000;
     FixedBitSet match = modBitSet(maxDoc, 1000);
