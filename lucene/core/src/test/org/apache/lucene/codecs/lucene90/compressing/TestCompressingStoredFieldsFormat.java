@@ -64,6 +64,8 @@ public class TestCompressingStoredFieldsFormat extends BaseStoredFieldsFormatTes
               dir,
               newIndexWriterConfig()
                   .setCodec(new LZ4WithPresetCompressingCodec(4096, 2, false, 8))
+                  .setMaxBufferedDocs(IndexWriterConfig.DISABLE_AUTO_FLUSH)
+                  .setRAMBufferSizeMB(IndexWriterConfig.DEFAULT_RAM_BUFFER_SIZE_MB)
                   .setMergePolicy(NoMergePolicy.INSTANCE))) {
         String[] values = {
           "a".repeat(512),
