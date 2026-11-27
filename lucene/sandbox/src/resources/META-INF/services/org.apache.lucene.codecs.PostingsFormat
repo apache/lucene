@@ -14,3 +14,4 @@
 #  limitations under the License.
 
 org.apache.lucene.sandbox.codecs.idversion.IDVersionPostingsFormat
+org.apache.lucene.sandbox.codecs.pkhash.PrimaryKeyHashPostingsFormat
