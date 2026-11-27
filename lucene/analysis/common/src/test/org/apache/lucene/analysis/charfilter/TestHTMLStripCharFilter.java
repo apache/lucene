@@ -318,6 +318,74 @@ public class TestHTMLStripCharFilter extends BaseTokenStreamTestCase {
     }
   }
 
+  /**
+   * Moves markup across the scanner's buffer refill boundary and checks that the stripped text and
+   * the corrected offsets only shift by the length of the plain-text prefix.
+   */
+  public void testMarkupAcrossRefillBoundary() throws Exception {
+    String[] snippets = {
+      "x &amp; &#x1F600; &#128512; &lt;y&gt; &nbsp;&bogus; z",
+      "x \uD83D\uDE00 <b>bold</b>\uD83D\uDE00<i \uD83D\uDE00='\uD83D\uDE00'>i</i> z",
+      "x <!-- a comment -- with -- dashes --> <p>para</p> <br/> z",
+      "x <a href=\"h\" title='t'>link</a> <foo bar=baz\n qux> <?pi x?> z",
+      "x <![CDATA[ <kept> & ]]> <script>a<b</script><style>p{}</style> z",
+      "x < y &amp &#xZZ; &#; <b </ <!-- z",
+    };
+    assertEquals("x & \uD83D\uDE00 \uD83D\uDE00 <y>  &bogus; z", strip(snippets[0]));
+    assertEquals("x  \npara\n \n z", strip(snippets[2]));
+    int boundary = HTMLStripCharFilter.getInitialBufferSize();
+    for (String snippet : snippets) {
+      String expected = strip(snippet);
+      int[] expectedOffsets = correctedOffsets(snippet, expected.length());
+      for (int prefixLength = boundary - snippet.length() - 2;
+          prefixLength <= boundary + 2;
+          prefixLength++) {
+        StringBuilder prefix = new StringBuilder();
+        while (prefix.length() < prefixLength) {
+          prefix.append(prefix.length() % 8 == 7 ? ' ' : 'p');
+        }
+        String input = prefix + snippet;
+        HTMLStripCharFilter filter = new HTMLStripCharFilter(new StringReader(input));
+        String actual = readAll(filter);
+        assertEquals("prefixLength=" + prefixLength, prefix + expected, actual);
+        for (int i = 0; i <= expected.length(); i++) {
+          assertEquals(
+              "prefixLength=" + prefixLength + " offset=" + i,
+              prefixLength + expectedOffsets[i],
+              filter.correctOffset(prefixLength + i));
+        }
+        filter.close();
+      }
+    }
+  }
+
+  private static String strip(String input) throws IOException {
+    try (HTMLStripCharFilter filter = new HTMLStripCharFilter(new StringReader(input))) {
+      return readAll(filter);
+    }
+  }
+
+  private static int[] correctedOffsets(String input, int outputLength) throws IOException {
+    try (HTMLStripCharFilter filter = new HTMLStripCharFilter(new StringReader(input))) {
+      readAll(filter);
+      int[] offsets = new int[outputLength + 1];
+      for (int i = 0; i <= outputLength; i++) {
+        offsets[i] = filter.correctOffset(i);
+      }
+      return offsets;
+    }
+  }
+
+  private static String readAll(Reader reader) throws IOException {
+    StringBuilder builder = new StringBuilder();
+    char[] buffer = new char[37];
+    int n;
+    while ((n = reader.read(buffer, 0, buffer.length)) != -1) {
+      builder.append(buffer, 0, n);
+    }
+    return builder.toString();
+  }
+
   public void testComment() throws Exception {
     String test = "<!--- three dashes, still a valid comment ---> ";
     String gold = " ";
