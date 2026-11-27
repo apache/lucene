@@ -24,6 +24,7 @@ import org.apache.lucene.document.LateInteractionField;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.util.VectorUtil;
 
 /**
  * A {@link DoubleValuesSource} that scores documents using similarity between a multi-vector query,
@@ -150,7 +151,23 @@ public class LateInteractionFloatValuesSource extends DoubleValuesSource {
   /** Defines the function to compute similarity score between query and document multi-vectors */
   public enum ScoreFunction implements MultiVectorSimilarity {
 
-    /** Computes the sum of max similarity between query and document vectors */
+    /**
+     * Computes the sum of max similarity between query and document vectors.
+     *
+     * <p>For each query token vector, this takes the best raw similarity with any document token
+     * vector: the dot product for {@link VectorSimilarityFunction#DOT_PRODUCT} and {@link
+     * VectorSimilarityFunction#MAXIMUM_INNER_PRODUCT}, the cosine for {@link
+     * VectorSimilarityFunction#COSINE}, and the negated squared distance for {@link
+     * VectorSimilarityFunction#EUCLIDEAN}. These maxima are summed to {@code S}, and the score for
+     * {@code n} query token vectors is {@code n * f(S / n)}, where {@code f} is the score scaling
+     * that {@link VectorSimilarityFunction#compare(float[], float[])} applies to a single raw
+     * similarity. The score is therefore non-negative and ranks documents in order of {@code S}.
+     * Summing the per-token scaled scores instead would not, because the scaling is not affine for
+     * {@link VectorSimilarityFunction#EUCLIDEAN} and {@link
+     * VectorSimilarityFunction#MAXIMUM_INNER_PRODUCT}. For {@link VectorSimilarityFunction#COSINE}
+     * and {@link VectorSimilarityFunction#DOT_PRODUCT} the two are equal, and with a single query
+     * token vector the score equals the best per-token {@code compare} score.
+     */
     SUM_MAX_SIM {
       @Override
       public float compare(
@@ -160,9 +177,9 @@ public class LateInteractionFloatValuesSource extends DoubleValuesSource {
         if (docVector.length == 0) {
           return Float.MIN_VALUE;
         }
-        float result = 0f;
+        double sum = 0;
         for (float[] q : queryVector) {
-          float maxSim = Float.MIN_VALUE;
+          float maxSim = Float.NEGATIVE_INFINITY;
           for (float[] d : docVector) {
             if (q.length != d.length) {
               throw new IllegalArgumentException(
@@ -172,12 +189,36 @@ public class LateInteractionFloatValuesSource extends DoubleValuesSource {
                       + " != "
                       + d.length);
             }
-            maxSim = Float.max(maxSim, vectorSimilarityFunction.compare(q, d));
+            maxSim = Float.max(maxSim, rawSimilarity(vectorSimilarityFunction, q, d));
           }
-          result += maxSim;
+          sum += maxSim;
         }
-        return result;
+        final int n = queryVector.length;
+        return n * scaleRawSimilarity(vectorSimilarityFunction, (float) (sum / n));
       }
     };
+
+    /** Raw similarity between two token vectors, where larger means more similar. */
+    private static float rawSimilarity(
+        VectorSimilarityFunction vectorSimilarityFunction, float[] q, float[] d) {
+      return switch (vectorSimilarityFunction) {
+        case EUCLIDEAN -> -VectorUtil.squareDistance(q, d);
+        case DOT_PRODUCT, MAXIMUM_INNER_PRODUCT -> VectorUtil.dotProduct(q, d);
+        case COSINE -> VectorUtil.cosine(q, d);
+      };
+    }
+
+    /**
+     * Applies the scaling of {@link VectorSimilarityFunction#compare(float[], float[])} to a raw
+     * similarity produced by {@link #rawSimilarity}.
+     */
+    private static float scaleRawSimilarity(
+        VectorSimilarityFunction vectorSimilarityFunction, float rawSimilarity) {
+      return switch (vectorSimilarityFunction) {
+        case EUCLIDEAN -> VectorUtil.normalizeDistanceToUnitInterval(-rawSimilarity);
+        case DOT_PRODUCT, COSINE -> VectorUtil.normalizeToUnitInterval(rawSimilarity);
+        case MAXIMUM_INNER_PRODUCT -> VectorUtil.scaleMaxInnerProductScore(rawSimilarity);
+      };
+    }
   }
 }
