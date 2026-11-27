@@ -25,6 +25,7 @@ import java.util.Locale;
 import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.IORunnable;
+import org.apache.lucene.util.IOUtils;
 
 /**
  * A graph builder that is used during segments' merging.
@@ -65,7 +66,7 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
       RandomVectorScorerSupplier scorerSupplier,
       int beamWidth,
       long seed,
-      OnHeapHnswGraph initializedGraph,
+      BuildableHnswGraph initializedGraph,
       HnswGraph[] graphs,
       int[][] ordMaps,
       BitSet initializedNodes)
@@ -104,11 +105,51 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
       BitSet initializedNodes,
       IORunnable abortCheck)
       throws IOException {
-    OnHeapHnswGraph graph =
+    return fromGraphs(
+        scorerSupplier,
+        beamWidth,
+        seed,
+        graphs,
+        ordMaps,
+        totalNumberOfVectors,
+        initializedNodes,
+        abortCheck,
+        false);
+  }
+
+  /**
+   * Same as {@link #fromGraphs(RandomVectorScorerSupplier, int, long, HnswGraph[], int[][], int,
+   * BitSet, IORunnable)}, optionally building the merged graph off-heap.
+   *
+   * @param offHeap whether to build an {@link OffHeapHnswGraph}
+   */
+  public static MergingHnswGraphBuilder fromGraphs(
+      RandomVectorScorerSupplier scorerSupplier,
+      int beamWidth,
+      long seed,
+      HnswGraph[] graphs,
+      int[][] ordMaps,
+      int totalNumberOfVectors,
+      BitSet initializedNodes,
+      IORunnable abortCheck,
+      boolean offHeap)
+      throws IOException {
+    BuildableHnswGraph graph =
         InitializedHnswGraphBuilder.initGraph(
-            graphs[0], ordMaps[0], totalNumberOfVectors, beamWidth, scorerSupplier, abortCheck);
-    return new MergingHnswGraphBuilder(
-        scorerSupplier, beamWidth, seed, graph, graphs, ordMaps, initializedNodes);
+            graphs[0],
+            ordMaps[0],
+            totalNumberOfVectors,
+            beamWidth,
+            scorerSupplier,
+            abortCheck,
+            offHeap);
+    try {
+      return new MergingHnswGraphBuilder(
+          scorerSupplier, beamWidth, seed, graph, graphs, ordMaps, initializedNodes);
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, graph);
+      throw t;
+    }
   }
 
   /**
@@ -141,7 +182,7 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
   }
 
   @Override
-  public OnHeapHnswGraph build(int maxOrd) throws IOException {
+  public BuildableHnswGraph build(int maxOrd) throws IOException {
     if (frozen) {
       throw new IllegalStateException("This HnswGraphBuilder is frozen and cannot be updated");
     }

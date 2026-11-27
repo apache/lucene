@@ -332,6 +332,8 @@ Improvements
 
 * GITHUB#17027: IntersectTermsEnum now checks the query timeout during long terms dictionary scans. (Prudhvi Godithi)
 
+* GITHUB#16815: Add offHeapGraphBuild option to HNSW vector formats. (Navneet Verma)
+
 Optimizations
 ---------------------
 * GITHUB#17084: Unordered, ordered and maxgaps intervals over a disjunction no longer expand
