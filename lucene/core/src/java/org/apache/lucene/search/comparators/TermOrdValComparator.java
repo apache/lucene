@@ -17,7 +17,8 @@
 package org.apache.lucene.search.comparators;
 
 import java.io.IOException;
-import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesSkipper;
@@ -215,6 +216,9 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
 
     private CompetitiveState competitiveState;
 
+    /** Last doc ID passed to this comparator, used to estimate how many docs are left to visit. */
+    private int lastDoc = -1;
+
     private final boolean dense;
 
     TermOrdValLeafComparator(LeafReaderContext context, SortedDocValues values) throws IOException {
@@ -322,6 +326,7 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
     @Override
     public int compareBottom(int doc) throws IOException {
       assert bottomSlot != -1;
+      lastDoc = doc;
       int docOrd = getOrdForDoc(doc);
       if (docOrd == -1) {
         docOrd = missingOrd;
@@ -341,6 +346,7 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
 
     @Override
     public void copy(int slot, int doc) throws IOException {
+      lastDoc = doc;
       int ord = getOrdForDoc(doc);
       if (ord == -1) {
         ord = missingOrd;
@@ -496,7 +502,7 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
       }
       assert minOrd >= 0;
       assert maxOrd < termsIndex.getValueCount();
-      competitiveState.update(minOrd, maxOrd);
+      competitiveState.update(minOrd, maxOrd, lastDoc + 1);
     }
 
     @Override
@@ -522,7 +528,11 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
       iterator.update(DocIdSetIterator.all(context.reader().maxDoc()));
     }
 
-    abstract void update(int minOrd, int maxOrd) throws IOException;
+    /**
+     * Update the competitive iterator to match docs whose ordinal is between {@code minOrd} and
+     * {@code maxOrd} included. Docs before {@code nextDoc} have already been visited.
+     */
+    abstract void update(int minOrd, int maxOrd, int nextDoc) throws IOException;
   }
 
   private static class EmptyCompetitiveState extends CompetitiveState {
@@ -532,7 +542,7 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
     }
 
     @Override
-    void update(int minOrd, int maxOrd) throws IOException {
+    void update(int minOrd, int maxOrd, int nextDoc) throws IOException {
       iterator.update(DocIdSetIterator.empty());
     }
   }
@@ -541,11 +551,21 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
 
     private static final int MAX_TERMS = 1024;
 
+    /**
+     * Opening a postings list costs much more than checking the ordinal of one doc, so only switch
+     * to postings when the docs left to visit in the segment outnumber the terms to open by this
+     * factor. Chosen with benchmarks on segments of 5k to 1M docs with unique values.
+     */
+    private static final int MIN_REMAINING_DOCS_PER_TERM = 64;
+
     private final LeafReaderContext context;
+    private final int maxDoc;
     private final String field;
     private final boolean dense;
     private final TermsEnum docValuesTerms;
-    private ArrayDeque<PostingsEnumAndOrd> postings;
+    // Current competitive range, terms outside of it are lazily removed from the disjunction
+    private int competitiveMinOrd;
+    private int competitiveMaxOrd;
     private DocIdSetIterator docsWithField;
     private PriorityQueue<PostingsEnumAndOrd> disjunction;
     private final DocIdSetIterator disjunctionIterator;
@@ -554,6 +574,7 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
         LeafReaderContext context, String field, boolean dense, TermsEnum docValuesTerms) {
       super(context);
       this.context = context;
+      this.maxDoc = context.reader().maxDoc();
       this.field = field;
       this.dense = dense;
       this.docValuesTerms = docValuesTerms;
@@ -568,22 +589,29 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
             @Override
             public int advance(int target) throws IOException {
               PostingsEnumAndOrd top = disjunction.top();
-              if (top == null) {
-                // priority queue is empty, none of the remaining documents are competitive
-                return doc = NO_MORE_DOCS;
+              while (top != null) {
+                if (top.ord < competitiveMinOrd || top.ord > competitiveMaxOrd) {
+                  // This term is no longer competitive: drop it lazily.
+                  disjunction.pop();
+                  top = disjunction.top();
+                } else if (top.postings.docID() < target) {
+                  top.postings.advance(target);
+                  top = disjunction.updateTop();
+                } else {
+                  return doc = top.postings.docID();
+                }
               }
-              while (top.postings.docID() < target) {
-                top.postings.advance(target);
-                top = disjunction.updateTop();
-              }
-              return this.doc = top.postings.docID();
+              // priority queue is empty, none of the remaining documents are competitive
+              return doc = NO_MORE_DOCS;
             }
 
             @Override
             public long cost() {
               long cost = 0;
               for (PostingsEnumAndOrd posting : disjunction) {
-                cost += posting.postings.cost();
+                if (posting.ord >= competitiveMinOrd && posting.ord <= competitiveMaxOrd) {
+                  cost += posting.postings.cost();
+                }
               }
               return cost;
             }
@@ -595,29 +623,25 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
      * included and {@code maxOrd} included.
      */
     @Override
-    public void update(int minOrd, int maxOrd) throws IOException {
+    public void update(int minOrd, int maxOrd, int nextDoc) throws IOException {
       final int maxTerms = Math.min(MAX_TERMS, IndexSearcher.getMaxClauseCount());
       final int size = Math.max(0, maxOrd - minOrd + 1);
-      if (size > maxTerms) {
+      final long remainingDocs = (long) maxDoc - nextDoc;
+      if (size > maxTerms
+          || (disjunction == null && (long) size * MIN_REMAINING_DOCS_PER_TERM > remainingDocs)) {
         if (dense == false && docsWithField == null) {
           docsWithField = getSortedDocValues(context, field);
           iterator.update(docsWithField);
         }
-      } else if (postings == null) {
+      } else if (disjunction == null) {
         init(minOrd, maxOrd);
         iterator.update(disjunctionIterator);
-      } else if (size < postings.size()) {
-        // One or more ords got removed
-        assert postings.isEmpty() || postings.getFirst().ord <= minOrd;
-        while (postings.isEmpty() == false && postings.getFirst().ord < minOrd) {
-          postings.removeFirst();
-        }
-        assert postings.isEmpty() || postings.getLast().ord >= maxOrd;
-        while (postings.isEmpty() == false && postings.getLast().ord > maxOrd) {
-          postings.removeLast();
-        }
-        disjunction.clear();
-        disjunction.addAll(postings);
+      } else {
+        // The competitive range only shrinks. Rebuilding the queue here would cost O(size) on
+        // every competitive hit, so terms that fall out of range are dropped lazily instead.
+        assert minOrd >= competitiveMinOrd && maxOrd <= competitiveMaxOrd;
+        competitiveMinOrd = minOrd;
+        competitiveMaxOrd = maxOrd;
       }
     }
 
@@ -628,7 +652,9 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
      */
     private void init(int minOrd, int maxOrd) throws IOException {
       final int size = Math.max(0, maxOrd - minOrd + 1);
-      postings = new ArrayDeque<>(size);
+      competitiveMinOrd = minOrd;
+      competitiveMaxOrd = maxOrd;
+      List<PostingsEnumAndOrd> postings = new ArrayList<>(size);
       if (size > 0) {
         docValuesTerms.seekExact(minOrd);
         BytesRef minTerm = docValuesTerms.term();
@@ -682,7 +708,7 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
     }
 
     @Override
-    public void update(int minOrd, int maxOrd) {
+    public void update(int minOrd, int maxOrd, int nextDoc) {
       if (state == State.DISABLED) {
         return;
       }
