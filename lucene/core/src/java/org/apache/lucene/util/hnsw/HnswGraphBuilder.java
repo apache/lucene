@@ -32,6 +32,7 @@ import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.InfoStream;
@@ -80,6 +81,8 @@ public class HnswGraphBuilder implements HnswBuilder {
   protected final GraphBuilderKnnCollector
       beamCandidates; // for levels of graph where we add the node
   private final GraphBuilderKnnCollector beamCandidates0;
+  // per-level candidate arrays reused across insertions, see scratchArray
+  private NeighborArray[] scratchArrays = new NeighborArray[0];
 
   protected final OnHeapHnswGraph hnsw;
   protected final HnswLock hnswLock;
@@ -354,7 +357,7 @@ public class HnswGraphBuilder implements HnswBuilder {
         }
         graphSearcher.searchLevel(candidates, scorer, level, eps, hnsw, null);
         eps = candidates.popUntilNearestKNodes();
-        scratchPerLevel[i] = new NeighborArray(Math.max(candidates.k(), M + 1), false);
+        scratchPerLevel[i] = scratchArray(level);
         popToScratch(candidates, scratchPerLevel[i]);
       }
 
@@ -389,6 +392,20 @@ public class HnswGraphBuilder implements HnswBuilder {
                 + " has not changed while we are inserting the node.");
       }
     } while (true);
+  }
+
+  /**
+   * Returns this level's candidate array. It is reused across insertions, so each insertion does
+   * not regrow a new array from 1/8 of its capacity.
+   */
+  private NeighborArray scratchArray(int level) {
+    if (level >= scratchArrays.length) {
+      scratchArrays = ArrayUtil.growExact(scratchArrays, level + 1);
+    }
+    if (scratchArrays[level] == null) {
+      scratchArrays[level] = new NeighborArray(Math.max(beamCandidates.k(), M + 1), false);
+    }
+    return scratchArrays[level];
   }
 
   @Override
