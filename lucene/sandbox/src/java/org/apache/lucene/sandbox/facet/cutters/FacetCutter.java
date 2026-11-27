@@ -34,21 +34,32 @@ public interface FacetCutter {
   LeafFacetCutter createLeafCutter(LeafReaderContext context) throws IOException;
 
   /**
-   * For facets that have hierarchy (levels), return all top level dimension ordinals that require
-   * rollup.
+   * Returns true if this cutter records raw ordinals during collection that must be remapped to
+   * final ordinals at reduce time via {@link #remapOrd}.
    *
-   * <p>Rollup is an optimization for facets types that support hierarchy, if single document
-   * belongs to at most one node in the hierarchy, we can first record data for these nodes only,
-   * and then roll up values to parent ordinals.
+   * <p>When false (the default), recorded ordinals are already final and the recorder skips the
+   * remap step entirely.
    *
-   * <p>Default implementation returns null, which means that rollup is not needed.
+   * <p>Called once per {@link org.apache.lucene.sandbox.facet.recorders.FacetRecorder#reduce}
+   * invocation.
    */
-  default OrdinalIterator getOrdinalsToRollup() throws IOException {
-    return null;
+  default boolean needsRemapping() throws IOException {
+    return false;
   }
 
-  /** For facets that have hierarchy (levels), get all children ordinals for given ord. */
-  default OrdinalIterator getChildrenOrds(int ord) throws IOException {
-    return null;
+  /**
+   * Map a raw ordinal recorded during collection to zero or more final ordinals.
+   *
+   * <p>Only called when {@link #needsRemapping()} returns true. Called once per distinct recorded
+   * ordinal inside {@link org.apache.lucene.sandbox.facet.recorders.FacetRecorder#reduce}.
+   * Implementations must return a fresh or reset iterator on every invocation.
+   *
+   * @param mergedOrd raw ordinal as recorded by the leaf cutter
+   * @return iterator over final ordinals; may be {@link OrdinalIterator#EMPTY}
+   */
+  default OrdinalIterator remapOrd(int mergedOrd) throws IOException {
+    throw new UnsupportedOperationException(
+        "remapOrd called on a cutter that does not override it; "
+            + "needsRemapping() must return true only when remapOrd() is implemented");
   }
 }
