@@ -26,6 +26,7 @@ import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestUsageTrackingFilterCachingPolicy extends LuceneTestCase {
 
@@ -73,7 +74,10 @@ public class TestUsageTrackingFilterCachingPolicy extends LuceneTestCase {
     w.close();
 
     IndexSearcher searcher = new IndexSearcher(reader);
-    UsageTrackingQueryCachingPolicy policy = new UsageTrackingQueryCachingPolicy();
+    // This test counts uses across bq, q1 and q2, so it needs them all to share one history window.
+    // Histories smaller than 64 use a single stripe; with the default (striped) history, bq could
+    // land in q1's stripe, depending on its class hash, and push q1's earlier uses out of it.
+    UsageTrackingQueryCachingPolicy policy = new UsageTrackingQueryCachingPolicy(31);
     LRUQueryCache cache =
         new LRUQueryCache(10, Long.MAX_VALUE, _ -> true, Float.POSITIVE_INFINITY, 1, null);
     searcher.setQueryCache(cache);
@@ -103,6 +107,28 @@ public class TestUsageTrackingFilterCachingPolicy extends LuceneTestCase {
 
     reader.close();
     dir.close();
+  }
+
+  public void testInvalidHistorySize() {
+    expectThrows(IllegalArgumentException.class, () -> new UsageTrackingQueryCachingPolicy(1));
+    expectThrows(IllegalArgumentException.class, () -> new UsageTrackingQueryCachingPolicy(0));
+  }
+
+  public void testConsecutiveUsesAreCounted() throws IOException {
+    // Whatever the history size, a query that is used minFrequencyToCache times in a row must be
+    // cached. Small histories must not end up with stripes too small to ever reach the threshold.
+    for (int historySize :
+        new int[] {5, 8, 31, 32, 63, 64, 100, 256, 1000, TestUtil.nextInt(random(), 5, 5000)}) {
+      UsageTrackingQueryCachingPolicy policy = new UsageTrackingQueryCachingPolicy(historySize);
+      DummyQuery q = new DummyQuery(random().nextInt());
+      int minFrequency = policy.minFrequencyToCache(q);
+      for (int i = 0; i < minFrequency; ++i) {
+        assertFalse("historySize=" + historySize, policy.shouldCache(q));
+        assertEquals(i, policy.frequency(q));
+        policy.onUse(q);
+      }
+      assertTrue("historySize=" + historySize, policy.shouldCache(q));
+    }
   }
 
   private static class DummyQuery extends Query {

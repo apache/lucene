@@ -423,6 +423,9 @@ Optimizations
   fewer radix passes. This speeds up DocIdSetBuilder, e.g. for range queries on fields whose values
   follow doc ID order such as timestamps or index sort fields. (Asharam)
 
+* GITHUB#16306: Reduce lock contention in UsageTrackingQueryCachingPolicy by splitting its usage
+  history into small per-lock ring buffers with lock-free reads. (prudhvigodithi)
+
 Bug Fixes
 ---------------------
 * GITHUB#17020: Reduce CachingTokenFilter memory use by not copying stale term bytes in

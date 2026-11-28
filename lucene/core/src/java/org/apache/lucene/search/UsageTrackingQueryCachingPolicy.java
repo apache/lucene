@@ -17,7 +17,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import org.apache.lucene.util.FrequencyTrackingRingBuffer;
+import org.apache.lucene.util.StripedFrequencyTracker;
 
 /**
  * A {@link QueryCachingPolicy} that tracks usage statistics of recently-used filters in order to
@@ -90,7 +90,11 @@ public class UsageTrackingQueryCachingPolicy implements QueryCachingPolicy {
     return false;
   }
 
-  private final FrequencyTrackingRingBuffer recentlyUsedFilters;
+  /**
+   * Recently used hash codes. The history is striped so that concurrent searches on different
+   * queries do not contend on a single lock, see {@link StripedFrequencyTracker}.
+   */
+  private final StripedFrequencyTracker recentlyUsedFilters;
 
   /**
    * Expert: Create a new instance with a configurable history size. Beware of passing too large
@@ -99,10 +103,14 @@ public class UsageTrackingQueryCachingPolicy implements QueryCachingPolicy {
    * {@link #minFrequencyToCache} returns high values that are function of the size of the history
    * but then filters will be slow to make it to the cache.
    *
+   * <p>Internally the history is split into stripes of 32 to 64 entries (a single stripe is used
+   * for histories smaller than 64), and a query only competes for history slots with the queries of
+   * its own stripe. The default history of 256 is split into 8 stripes.
+   *
    * @param historySize the number of recently used filters to track
    */
   public UsageTrackingQueryCachingPolicy(int historySize) {
-    this.recentlyUsedFilters = new FrequencyTrackingRingBuffer(historySize, SENTINEL);
+    this.recentlyUsedFilters = new StripedFrequencyTracker(historySize, SENTINEL);
   }
 
   /**
@@ -146,29 +154,19 @@ public class UsageTrackingQueryCachingPolicy implements QueryCachingPolicy {
       return;
     }
 
-    // call hashCode outside of sync block
-    // in case it's somewhat expensive:
-    int hashCode = query.hashCode();
-
     // we only track hash codes to avoid holding references to possible
     // large queries; this may cause rare false positives, but at worse
     // this just means we cache a query that was not in fact used enough:
-    synchronized (this) {
-      recentlyUsedFilters.add(hashCode);
-    }
+    final int hashCode = query.hashCode();
+    recentlyUsedFilters.add(hashCode);
   }
 
   int frequency(Query query) {
     assert query instanceof BoostQuery == false;
     assert query instanceof ConstantScoreQuery == false;
 
-    // call hashCode outside of sync block
-    // in case it's somewhat expensive:
-    int hashCode = query.hashCode();
-
-    synchronized (this) {
-      return recentlyUsedFilters.frequency(hashCode);
-    }
+    final int hashCode = query.hashCode();
+    return recentlyUsedFilters.frequency(hashCode);
   }
 
   @Override
