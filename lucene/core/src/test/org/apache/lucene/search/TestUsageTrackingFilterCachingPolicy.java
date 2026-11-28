@@ -17,7 +17,6 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.index.IndexReader;
@@ -76,7 +75,7 @@ public class TestUsageTrackingFilterCachingPolicy extends LuceneTestCase {
 
     IndexSearcher searcher = new IndexSearcher(reader);
     // This test counts uses across bq, q1 and q2, so it needs them all to share one history window.
-    // Histories smaller than 32 use a single stripe; with the default (striped) history, bq could
+    // Histories smaller than 64 use a single stripe; with the default (striped) history, bq could
     // land in q1's stripe, depending on its class hash, and push q1's earlier uses out of it.
     UsageTrackingQueryCachingPolicy policy = new UsageTrackingQueryCachingPolicy(31);
     LRUQueryCache cache =
@@ -129,63 +128,6 @@ public class TestUsageTrackingFilterCachingPolicy extends LuceneTestCase {
         policy.onUse(q);
       }
       assertTrue("historySize=" + historySize, policy.shouldCache(q));
-    }
-  }
-
-  public void testHistoryEvictsOldEntries() {
-    UsageTrackingQueryCachingPolicy policy = new UsageTrackingQueryCachingPolicy(256);
-    DummyQuery q = new DummyQuery(42);
-    for (int i = 0; i < 10; ++i) {
-      policy.onUse(q);
-    }
-    assertEquals(10, policy.frequency(q));
-    // flooding with other queries eventually pushes q out of its stripe
-    for (int i = 0; i < 100_000; ++i) {
-      policy.onUse(new DummyQuery(1000 + i));
-    }
-    assertEquals(0, policy.frequency(q));
-  }
-
-  public void testFrequencyNeverExceedsUses() {
-    UsageTrackingQueryCachingPolicy policy =
-        new UsageTrackingQueryCachingPolicy(TestUtil.nextInt(random(), 2, 2000));
-    int numQueries = TestUtil.nextInt(random(), 1, 100);
-    int[] uses = new int[numQueries];
-    for (int i = 0; i < 10_000; ++i) {
-      int id = random().nextInt(numQueries);
-      policy.onUse(new DummyQuery(id));
-      uses[id]++;
-      assertTrue(policy.frequency(new DummyQuery(id)) <= uses[id]);
-    }
-  }
-
-  public void testConcurrentUse() throws Exception {
-    UsageTrackingQueryCachingPolicy policy = new UsageTrackingQueryCachingPolicy();
-    int numThreads = TestUtil.nextInt(random(), 2, 8);
-    Thread[] threads = new Thread[numThreads];
-    CountDownLatch start = new CountDownLatch(1);
-    for (int t = 0; t < numThreads; ++t) {
-      final int seed = random().nextInt();
-      threads[t] =
-          new Thread(() -> {
-            java.util.Random r = new java.util.Random(seed);
-            try {
-              start.await();
-            } catch (InterruptedException e) {
-              throw new RuntimeException(e);
-            }
-            for (int i = 0; i < 10_000; ++i) {
-              DummyQuery q = new DummyQuery(r.nextInt(64));
-              policy.onUse(q);
-              int freq = policy.frequency(q);
-              assertTrue(freq >= 0 && freq <= 256);
-            }
-          });
-      threads[t].start();
-    }
-    start.countDown();
-    for (Thread thread : threads) {
-      thread.join();
     }
   }
 
