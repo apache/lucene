@@ -170,8 +170,8 @@ public final class DeflateWithPresetDictCompressionMode extends CompressionMode 
         DataInput in, int originalLength, int offset, int length) throws IOException {
       assert offset + length <= originalLength;
 
-      // TODO: more simple way to handle this case?
       if (length == 0) {
+        // Return an empty input before reading the dictionary from the compressed stream.
         return new Lucene90DecompressingDataInput() {
           @Override
           public byte readByte() throws IOException {

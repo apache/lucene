@@ -37,7 +37,11 @@ public interface Lucene90SkippableDecompressor {
 
   /**
    * Creates a skippable input, optionally reusing state from the same compressed block.
-   * Implementations that reuse a dictionary must initialize it before returning.
+   * Implementations that reuse a dictionary must initialize it before returning a non-empty input.
+   * A zero-length request returns an empty input and preserves the current dictionary state.
+   *
+   * @param reuseIfPossible true only if the reusable state still belongs to this compressed block
+   *     following a successful non-empty request
    */
   default Lucene90DecompressingDataInput decompressingDataInput(
       DataInput in, int originalLength, int offset, int length, boolean reuseIfPossible)

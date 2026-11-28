@@ -174,8 +174,8 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
         throws IOException {
       assert offset + length <= originalLength;
 
-      // TODO: more simple way to handle this case?
       if (length == 0) {
+        // An empty input leaves the cached dictionary associated with its original block.
         return new Lucene90DecompressingDataInput() {
           @Override
           public byte readByte() throws IOException {
